@@ -1,0 +1,116 @@
+ ____   ___  ____  _____ ____  
+|  _ \ / _ \|  _ \| ____|  _ \ 
+| |_) | | | | |_) |  _| | |_) |
+|  _ <| |_| |  __/| |___|  _ < 
+|_| \_\\___/|_|   |_____|_| \_\
+                               
+A GENETIC ROP-CHAIN DEVELOPMENT TOOL
+ . ............. ...       ... ... .  ..    .... . ...... ....  ............  .  
+.?7IIIII7II777777777777771591771591715917159171591715917159171591715917ZZZOZOO.. 
+..I:.   .       ... ..        ...    ...........: 7,  .$~...................?Z .
+. +:. . .......... ....... . ................. .+,....$. .Z...... ..........IZ .
+..?,........................................ . .~.??..ON ,.,~  .............?O..
+..?......................................... ..M.: ,....D,Z...,...  ..   ...+O..
+..?..........  ... . .. .........  ~  .. .....Z$.= .   ...DI. ..I. .........+O..
+..I...... 7$   ,. 8Z: .......... O~~ .?8 ... ,.O8 O ...  .. 7+. , ~  .......=Z,.
+..?,...~,.  7DD8~: . O.........?.7=+..$~M ... ..7:~8?.,.......  7~... ......=O..
+..I..:8..II. ..,..Z...O,......+O=:=,+... $.. ....~..?.$~.  .... ..  ........~8..
+..?...,.,, ........Z..Z .... .OZ +::.... $ ......  ,DI:.  D$ ,  ............~8..
+..?,... . .........7.,$. .... M?O:.,.....DZ .... ,   ,.+OD .ZZ .............:8..
+..?,............ .:D..+,....,  ,+ .......787.... ....  . ::...7,............:8..
+..?,............. ZI = ..... $+7...... ~O+,IZ,......... ,. 7 ,~O.  .........,8..
+..?............. I,. +......=~.~+I,,.:, ...~OZ= . ..........Z..D . .... ....,8..
+..?.............8O.,$......127.I+O.DOO8..Z,:.=DZD .,......,..? ,$ ...........,8..
+..+,.........,,= ,?8..... ?O =.?7?ID8?I8.:+:=:. 8 ..........7O+?.... .......,8..
+..+,..........+ ,.O+......8O= +~  $,7~I.  .= ~.D15917........, 7I=$. . .... ...,8. 
+..=:......,, +..7O:.....,:O8O.I=..,++Z  ..=Z:.~=, ....  =7IZN,...... ......8. 
+..~:........:. .$~,..... $,?,.127.  .,.8.Z. 8:?$ I=,7.. .8+: ~O  .. ... .   ..D..
+..~~......7~,,.7.,.,...+,~+.:,+. 7. =IZZ:7,+ :Z=+ ~?+.,O?D, ....?I+,. .. .~8..
+..~~.. ..=,,.=.,. ,.. NI+,~Z ~., OZOOOOZ.?I.~IZ.IO7~:,I?...,IO Z.7.~ .+DMI.8..
+ .~= .. ZI:.O  ,. .. D8+. OD7~..,OO.O~:~.=.888? . 7I .,?O8I.. ... .O..
+..:=.. ~$.:I,...... 8O,IZ8ZZ=~:.O., :,=:=8~IZ$...+ .ZN. ,.... . .. 8..
+..~=..,O.~I ....,. OOI,OODOO~  . == DO7 N=, :??? .+=~OI,=M.............  ZD..
+..~+..=O.?$ ..... ?I..88..OIO+I.,Z, ,D +I +  ,.  ~+:..8=+ ,. ............M D..
+..~?..OZ,..7,..,O.7~ID....::7~.=+== 77.?+?=.+7..~87127N ,,...  ... .... ?:. D .
+..~=..=8.  I +7.= :DN.,,7,I=?~,~+?7::. ==.: D+~.ZO$..   ..............,~:.15917,D .
+..~=.., $:.:~+:,15917I..=I... I?~=~..I..:.:Z.: ZO==,78~.   :+8OO77N+ .8O . D..
+..~=......   .=:..?Z, := ?88+ 8,=?I.., II~?M=Z.:~~: .=,+?.:I7?.O+D7 ..8I ... D..
+..:=.....,. .:7=.+I+.,:~OZ15917Z:~I~.=.:Z+77Z=$:: =,: ..7D+~ ,.?:,:I?$. .D..
+..~=....,, 7..:?7~I.,+?  ,DOIII=,~,:+.=:..:+:I=~O:Z8Z7.~:,   +?  .,7=??~,..D..
+.,~=..   I...,D?~D,IZ77=+8:=,.+ ,.,~I . ..:+:O,:,O .+7I~.. .........~=D+~.D..
+..~=.. , .,,.?Z$  I~~~:OZ7: I ~., :~~,:~ =,?~Z$~~+.D. ...  ....  ..... $ ,.O D..
+..:+.,~D.  O8?. I. ~,8ZO.=?:=.:~,,8O ...Z:,==?OZ+~8................... 7+.=Z 8. 
+..:+..D..~8,..ID++N..O+:~?I~..8~: ?$  :.~?~.IZZO+ ....    ........ ..~.~ 7 D..
+..~+..$.~....O+,:O8,.. DO8.+7OI,,.O=.==?I =+~.,IO88......  ........... ~ .7..D. 
+..:=..$,...,Z::ZN$.,..:Z8,8127,..$+:~+~.+~.+,+?. ,.,. :Z=. .  ..... ... ...~. D..
+..~=,.Z7, :87+~..  .,, M7=.. ,:N=?+:I+.~~. Z. ,,    ...,.,+....,......$  , . D..
+..:=.,88,: OZZZ,...II..,.,,,Z+I=.:I:,.,~.:. +7..8 . ~$~ ,,. ?? .. I ,.I   .D. 
+..~?. =8,.,.,.,.  ,., . .=Z.?I~ +I ,~.Z ~ ?,..ZZ8  ..... ,? ..  =... $ ... 8. 
+..~?....O$..,.. Z$,,.=88,=~.,?$ ~  :~ ~~,,Z8D... .. .  . I....O,  .....8..
+..~?,.,,.~7Z78ZO?: .. O?OO8IO7+~~= ++ .:.I? :~ IO~I:...................... . 8. 
+..~?.....=:I.,.. ..?:88++:.,=,?.= +7+,,~,?:=+8..........  . ........   O. 
+..~?,.. .,~?,Z.....  ODZZZI8=7, :=~ =.+~..::=+.+7I..N,.. .... .... ......... 8 .
+..~?,.....OO : ..,..OOZOZOOO.7=~=~= ~.=,=I=,?=,.++.: 8 ...................   8..
+..~?..... IZ  .?,  7OOOOZO8=.~,=~.~.~=+,:I,~.=  . O~ZOO ....   . .. ..   ... 8. 
+ .:?......,.88,=, ......  . . ,+7 ~ =+~. +.?.=.=.,OOZ8 ................... O. 
+  :?........ ,7~.,,. .,... .    ..=127 :,,+ +,++:~IZ~ZZOD ,.........  ........O..
+  :?......... .,.I8O=O,?7$+. :I+7=,.~$~,,? +~,,.,..:: ~O+  ................. O. 
+  :? ...........:ZOZZ~?~127++=~:O, ?:~==+=.:= ~...~?:D8. . ...............O. 
+ .:I............OOOO7?OOI$~?,+:+~=~8877:?,Z~~.=~==I~: .= Z$. .. ............ O. 
+..,I. ..........OOZO$+?., ~.?I?OI$..127 ZO= , , .8ZO:. :.$, .............. O .
+. ,I......... .~OZOOOOI?7.:.+OIZ=ZOZO. 7~.ZZIO.+.::OOZ8~,,:?I . ............ O..
+. .$........... ??O88Z7.==,~I87Z77ZZ8Z+?. OZZO$+,..,O: .     .......... O..
+..,$........  .. ..  O~....~OZ8?OOZ.,.  .+77., .... ,...... ..........O. 
+..,$........ ... . .ZZ:+::~ 8IOD$..,,.... . ..  . ......   ... ............. O. 
+. ,Z................8O~. ~, ZI,,..... ...  . ......   ...    . ............. O..
+..,O .............. .~8:.:  . .  .............................. ......... O..
+..,O. ................. . .. .  ....... . ..       ......  .  . ...... ... . O. 
+..,O.  . .  ....      .    ..  .   .... .          ... .    ..  ......      .Z. 
+...,     .  .         .      .. ...     .. ...  ......  ...    .   .       . .  
+... .,... .. ....       .............. ....  .. ......... . ...     ....  ..... 
+........ ...............  . ..................... ..  ...... ..... ...........  
+                                                                 GlassGiant.com
+
+
+Genetic programming platform for evolving ROP-chain payloads.
+
+This project is still very much under construction. When it's up and
+running, the idea is for the programme to be able to:
+
+* dissect a given binary into a collection of ROP gadgets;
+
+* request a machine-state pattern from the user (the one she desires her
+  ROP-chain attack to bring about) -- this could be a matter of having
+  the machine perform a syscall to execve "/bin/sh", for example;
+
+* generate a randomized population of chains from these gadgets;
+
+then, until a suitable payload evolves...
+
+* randomly select four of these chains from the population, and run them
+  in a virtual environment that mimics the target architecture
+  (currently, I'm working on building the amd64 environment);
+
+* send these chains to one of an array of hatchsock servers, running on
+  qemu instances. These servers will receive the machine code, execute 
+  it while ptracing the register state, and transmit a vector representing
+  the register state back to the genetic apparatus, where we will
+
+* gauge the fitness of each chain in terms of the result of that
+  comparison;
+
+* kill off the two least fit chains, mate the two most fit, and add
+  their children back to the general population;
+
+* rinse;
+
+* repeat.
+
+The idea is that the process should, at least in most cases, converge
+on a set of viable specimens that can then be used as the payloads in
+ROP-chain attacks. For them to be of any use, of course, an attack
+vector still needs to be found. (So this utility might pair up nicely
+with a good fuzzer, or something.)
+
+The working languages are mostly Common Lisp (for the high-level stuff)
+and C (for the low-down dirty stuff).
