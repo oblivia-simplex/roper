@@ -114,3 +114,15 @@ with a good fuzzer, or something.)
 
 The working languages are mostly Common Lisp (for the high-level stuff)
 and C (for the low-down dirty stuff).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+very much under development at this point. If you want to see what
+the genetic component will look like, you can take a look at the
+genlin repository. There will be some similarities to that (which
+I wrote earlier this year). Right now, I'm working on getting all
+the low-level razzmatazz to play nice. Expect to see a rudimentary
+genetic system up and running by the end of April, though, and
+refinements to come over the summer. 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
