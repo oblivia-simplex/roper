@@ -1,5 +1,9 @@
 #include "includes.h"
 
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
 /**
  * Server. Listens for messages containing machine-code, executes them, and
  * returns the resulting registers state.
@@ -75,10 +79,11 @@ int codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
   int i;
   /* Insert a breakpoint at the beginning of the code */
   if (!codelength){
-    codebuffer[0] = BREAKPOINT_OPCODE;
-    codelength++;
-  }
-  for (i = 1; i < recvlength; i ++){
+    codebuffer[0] = 0xCC;
+    codebuffer[1] = 0x03;
+    codelength = 2;
+    } 
+  for (i = 0; i < recvlength; i ++){
     codebuffer[codelength++] = recvbuffer[i];
     if (RET(recvbuffer[i])){
       codelength = -(codelength);
@@ -155,7 +160,8 @@ int listen_for_code(void){
     sin_size = sizeof(struct sockaddr_in);
     
     if ((new_sockfd =
-         accept(sockfd, (struct sockaddr *) &cli_addr, &sin_size)) == -1)
+         accept(sockfd, (struct sockaddr *) &cli_addr, &sin_size))
+        == -1)
       fatal("accepting connection");
 
     printf("SERVER: ACCEPTED CONNECTION FROM %s PORT %d\n",
@@ -176,16 +182,20 @@ int listen_for_code(void){
     
     while (recvlength > 0) {
       printf("RECV: %d bytes\n", recvlength);
-      if (DUMP) fdump(stdout, buffer, recvlength);
+      if (DEBUG) fdump(stdout, buffer, recvlength);
 
-      //      memcpy(codebuffer+codelength, buffer, recvlength);
+
       codelength = codecopy(codebuffer, buffer,
                             codelength, recvlength);
-      //      codelength += recvlength;
 
-      printf("code length = %d\n", codelength);
+      printf("code length = %d\n", -(codelength));
 
       if (READY(codelength)){
+        /*
+         * todo: load the register seed from a file. 
+         * this file will be written in the code analysis stage
+         * probably from the lispy side of things
+         */
         hatch_code(codebuffer, NULL, result);
         actual_sexp_length = lisp_encode(result, sexp);
         send(new_sockfd, sexp, actual_sexp_length, 0);

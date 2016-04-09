@@ -29,9 +29,11 @@ SERVER = $(BUILD_DIR)hatchsock
 
 
 
-.PHONY: dump clean dotest make_build_dir all 
+.PHONY: dump clean dotest make_build_dir all debug
 
 all: $(LIB) $(TEST) $(FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
+
+
 
 
 clean:

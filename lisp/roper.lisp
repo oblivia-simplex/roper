@@ -13,6 +13,11 @@
 ;;(import '(sb-assem:inst sb-vm::make-ea)) 
 
 
+(export 'pick)
+(defmacro pick (seq)
+  `(elt ,seq (random (length ,seq))))
+
+
 
 ;; "a macro for defining delimiter read-macros"
 ;; from paul graham's on lisp, ch. 17, fig. 17.4
@@ -55,7 +60,7 @@ an in-house objdump."
       (sb-sys:with-pinned-objects (sap)
         (sb-disassem:disassemble-memory sap (or len (length seq)))))))
 
-(defun cffi-objdump (seq &optional len)
+(defun dump (seq &optional len)
   (with-output-to-string (*standard-output*)
     (with-foreign-pointer (pointer (length seq) size)
       (loop for byte in seq
@@ -410,20 +415,19 @@ which the text section begins, as a secondary value."
 
 
 
-(defun concat-gadgets (gadget-list)
+(defun concat (gadget-list)
   "Concatenates gadgets, removing the *ret* instruction at the end,
 first, to approximate executing them in sequence. Mostly just for
 testing."
-  (let ((chain))
-    (loop for gadget in gadget-list do
-         (setf chain (nconc chain (butlast gadget))))
-    (nconc chain `(,*ret*))))
+
+  (nconc (apply #'nconc (mapcar #'butlast gadget-list)) (list *ret*)))
+
 
 
 
 (defparameter *code-server-port* 9999)
 
-(defun dispatch-code (code &key (ip "localhost") (port "9999"))
+(defun dispatch (code &key (ip "localhost") (port "9999"))
   (let ((code-arr (make-array (length code) ;; should already be this
                               :element-type '(unsigned-byte 8)
                               :initial-contents code)))

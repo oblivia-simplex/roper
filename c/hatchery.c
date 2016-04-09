@@ -1,6 +1,10 @@
 #include "includes.h"
-#define TTL 1024
+#define TTL 128
+
+#ifndef DEBUG
 #define DEBUG 1
+#endif
+
 // do debug flag as a command line opt.
 
 // todo: intercept syscalls, intercept segfaults
@@ -23,25 +27,48 @@ long long int bytes_to_integer(unsigned char *bytes){
   return number;
 }
 
-/****
- * Out of service
-
-int seed_registers(pid_t pid, unsigned char *register_seed){
-  REGISTERS *regs;
-  regs = calloc(1,sizeof(REGISTERS));
+void print_word(long long int word){
   int i;
-  unsigned char *ptr;
-  for (i = 0; i < sizeof(REGISTERS); i++){
-    ptr = register_seed + sizeof(long int);
-    regs->vector[i] = bytes_to_integer(ptr);
-    printf("Okay, seeded %llx\n",regs->vector[i]);
+  for (i = 0; i < sizeof(long long int); i++){
+    printf("%2.2hhx ", (u8) (word >> (8 * i)) & 0xFF);
   }
-  
-  //  ptrace(PTRACE_SETREGS, pid, NULL, regs);
-  return 0;
+  puts("");
+  return;
 }
 
-***/
+/****
+ * Out of service
+ */
+REGISTERS * seed_registers(pid_t pid, REGISTERS *regs,
+                                 unsigned char *register_seed){
+
+  ptrace(PTRACE_GETREGS, pid, NULL, regs);
+  long long rip = regs->structure.rip; 
+  
+  if (register_seed){
+    printf("*** SEEDING REG ***\n");
+    memcpy(regs,register_seed,sizeof(REGISTERS));
+  } else {
+    printf("zeroing registers\n");
+    regs->structure.rax =
+      regs->structure.rbx =
+      regs->structure.rcx =
+      regs->structure.rdx =
+      regs->structure.rdi =
+      regs->structure.rsi =
+      regs->structure.r8 =
+      regs->structure.r9 =
+      regs->structure.r10 = 1; // just for testing    
+  }
+  //regs->structure.rip = rip; // restore instruction pointer
+  
+  ptrace(PTRACE_SETREGS, pid, NULL, regs);
+  return regs; // remember to free afterwards
+}
+  
+ 
+
+
 
 #define INT80 0x80cd
 #define SYSCALL 0x050f
@@ -67,8 +94,7 @@ int hatch_code (unsigned char *code, unsigned char *seed,
   /* This struct will be loaded by the tracer with a representation
    * of all the registers at the end of the code's execution. 
    */
-  // struct user_regs_struct
-  
+    
   pid_t pid;
   /* fork a new process in which to run the shellcode */
   pid = fork();
@@ -76,7 +102,6 @@ int hatch_code (unsigned char *code, unsigned char *seed,
     ptrace(PTRACE_TRACEME, 0, NULL, NULL);
     //kill(getpid(), SIGSTOP); // to let the tracer catch up
     proc(); // if you want to pass any params to the code, do it here
-    //kill(getpid(), SIGSTOP); // to let the tracer catch up
     exit(1); // we're done with this child, now
   } else {
     /* We're in the tracer process. It will observe the child and
@@ -84,17 +109,20 @@ int hatch_code (unsigned char *code, unsigned char *seed,
      */
     REGISTERS *regs;
     regs = calloc(1,sizeof(REGISTERS));
-
+    
     int status;
     wait(&status);
-    printf("-- TRAPPED CHILD %d WITH STATUS %d --\n", pid, status);
+    printf("-- TRAPPED CHILD %d WITH STATUS %d --\n", pid,
+           WSTOPSIG(status));
+    //    seed_registers(pid, regs, seed);
+
     // To prevent escape
-    ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_EXITKILL);
+    //ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_EXITKILL);
     long long int inst = 0;
-    //    int in_code = 0;
+    int in_code = 0;
     int steps = 0;
 
-    while(!WIFEXITED(status)){
+    while(in_code || !WIFEXITED(status)){
       long opcode = 0;
       int ptrace_errno;
       //      if (!in_code) printf ("not yet in code\n");
@@ -107,8 +135,11 @@ int hatch_code (unsigned char *code, unsigned char *seed,
 
       opcode = ptrace(PTRACE_PEEKTEXT, pid, regs->structure.rip,
                       NULL);
-      if (DEBUG) printf("PEEKING AT OPCODE %lx\n", opcode);
-      if (syscallp(opcode)){
+      if (DEBUG){
+        printf("PEEKING AT OPCODES: ");
+        print_word(opcode);
+      }
+      if (in_code && syscallp(opcode)){
         fprintf(stderr, "**** WARNING: SYSCALL AT RIP %llx\n",
                 regs->structure.rip);
         fprintf(stderr, "**** YOUR SYSTEM MAY BE UNDER ATTACK! \n");
@@ -123,12 +154,19 @@ int hatch_code (unsigned char *code, unsigned char *seed,
       }
 
       inst = regs->structure.rip;
-      steps ++;
+      printf("AT LINE %llx\n", inst);
+      if (!in_code && inst < THE_SHELLCODE_LIES_BELOW){
+        printf("ENTERING CODE\n");
+        in_code = 1;
+      }
+      if (in_code) steps ++;
       if (retp(opcode) ||
-          inst > THE_SHELLCODE_LIES_BELOW || (steps > TTL))
+          (in_code && inst > THE_SHELLCODE_LIES_BELOW)
+          || (steps > TTL))
         break;
       
-      if (DEBUG) {
+      if (in_code){
+        if (DEBUG) {
           printf("AT INSTRUCTION %llx\n", inst);
           printf("IN RAX: %llx\n" 
                  "IN RDI: %llx\n"
@@ -144,10 +182,12 @@ int hatch_code (unsigned char *code, unsigned char *seed,
                  regs->structure.r10,
                  regs->structure.r8,
                  regs->structure.r9);
-        }       
+        }
+        
         /**
          * Serialize the register information
          **/
+        #ifdef __x86_64__
         syscall_reg_vec.rvec[rax] = regs->structure.rax;
         syscall_reg_vec.rvec[rdi] = regs->structure.rdi;
         syscall_reg_vec.rvec[rsi] = regs->structure.rsi;
@@ -155,16 +195,21 @@ int hatch_code (unsigned char *code, unsigned char *seed,
         syscall_reg_vec.rvec[r10] = regs->structure.r10;
         syscall_reg_vec.rvec[r8] = regs->structure.r8;
         syscall_reg_vec.rvec[r9] = regs->structure.r9;
-        
-        //}
-      
+        #endif
+
+        #ifdef __arm__
+
+        // put ARM syscall reg vec assignments here
+
+        #endif 
+      }
+            
       ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
 
       waitpid(pid, &status, 0);
-
-      
-           
+                 
     }
+    printf("-- EXITING WITH STATUS %d --\n", WSTOPSIG(status));
     /* int j; */
     /* for (j=0; j<26; j++){ */
     /*   printf("Register number %d: %llx\n", */
