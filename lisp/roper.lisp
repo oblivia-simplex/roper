@@ -3,7 +3,7 @@
 (defparameter *debug* t)
 
 (cffi:load-foreign-library
- #p"~/quicklisp/local-projects/roper/c/libhatchery.so")
+ #p"~/quicklisp/local-projects/roper/build/libhatchery.so")
 ;; may need to change this, depending on where things are.
 
 #+sbcl

@@ -40,6 +40,13 @@ typedef union syscall_reg_vec {
 
 enum sysreg_t {rax, rdi, rsi, rdx, r10, r8, r9};
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+
+
 /************************************************************/
 
 #endif // __x86_64__

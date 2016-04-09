@@ -9,6 +9,8 @@ LD = ld
 ASFLAGS =
 BINLDFLAGS = -Ttext 200000 --oformat binary
 
+BUILD_DIR = ../build/
+
 ELFCODE = example.elf
 FLATBIN = example.bin
 EXAMPLE = example.s
@@ -18,31 +20,33 @@ DUMP = xxd
 DUMPFLAGS = -i
 
 
-LIB = libhatchery.so
+LIB = $(BUILD_DIR)libhatchery.so
 SOURCES = hatchery.c 
 HEADERS = hatchery.h includes.h
-TEST = test
+TEST = $(BUILD_DIR)test
 TESTSRC = main.c example.h
-OBJECTS = $(SOURCES:.c=.o)
-SERVER = hatchsock
+SERVER = $(BUILD_DIR)hatchsock
 
 
-.PHONY: dump clean dotest all
+
+.PHONY: dump clean dotest make_build_dir all 
 
 all: $(LIB) $(TEST) $(FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
 
+
 clean:
-	rm -f $(OBJECTS) $(LIB) $(TEST) $(FLATBIN) $(ELFCODE) $(EXAMPLE_HEADER)
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
-$(LIB): $(OBJECTS)
-	export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`"
+
+$(LIB): hatchery.o
 	$(CC) $(CFLAGS) $(SOURCES) -o $@ $(LDFLAGS) $(STACKFLAGS)
-
+#	rm hatchery.o
 
 $(ELFCODE): $(EXAMPLE)
 	$(AS) $(ASFLAGS) $(EXAMPLE) -o $(ELFCODE)
 
-$(FLATBIN): $(ELFCODE)
+$(FLATBIN): $(ELFCODE) 
 	$(LD) $(BINLDFLAGS) $(ELFCODE) -o $(FLATBIN)
 
 $(EXAMPLE_HEADER): $(FLATBIN)
@@ -50,13 +54,15 @@ $(EXAMPLE_HEADER): $(FLATBIN)
 
 
 $(TEST): $(LIB) $(TESTSRC) $(EXAMPLE_HEADER)
-	$(CC) -L `pwd` -lhatchery main.c -o test $(STACKFLAGS)
+	$(CC) -L $(BUILD_DIR) -lhatchery main.c -o $(TEST) $(STACKFLAGS)
+
 
 $(SERVER): $(LIB) $(SOURCES) $(HEADERS) hatchsock.c
-	$(CC) -L `pwd` -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS)
+	$(CC) -L $(BUILD_DIR) -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS)
+
 
 dotest:
-	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:`pwd`" ./test
+	LD_LIBRARY_PATH="$LD_LIBRARY_PATH:." $(TEST)
 
 
 

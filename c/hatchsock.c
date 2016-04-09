@@ -15,6 +15,8 @@
 #define MAX_CODE_SIZE 0x10000
 #define SEXP_LENGTH 137
 
+#define BREAKPOINT_OPCODE 0xCC
+
 // marks end of code transmission
 
 
@@ -71,7 +73,12 @@ int validate(char *header){
 int codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
              int codelength, int recvlength){
   int i;
-  for (i = 0; i < recvlength; i ++){
+  /* Insert a breakpoint at the beginning of the code */
+  if (!codelength){
+    codebuffer[0] = BREAKPOINT_OPCODE;
+    codelength++;
+  }
+  for (i = 1; i < recvlength; i ++){
     codebuffer[codelength++] = recvbuffer[i];
     if (RET(recvbuffer[i])){
       codelength = -(codelength);
@@ -196,6 +203,12 @@ int listen_for_code(void){
 }
 
 int main(int argc, char **argv){
+  printf("************************************************************\n"
+         "*                     READY TO SERVE...                    *\n"
+         "* Send machine code to be executed to port %4d.           *\n"
+         "* This is not a secure service. Run this on an insecure    *\n"
+         "* network, and you *will* be pwned.                        *\n"
+         "************************************************************\n", PORT);
   listen_for_code();
   return 0;
 }

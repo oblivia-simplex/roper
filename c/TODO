@@ -1,0 +1,2 @@
+Intercept and block syscalls in hatch_code. 
+set time limit for shellcode execution. 1 second should be more than enough. 
