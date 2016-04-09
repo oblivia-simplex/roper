@@ -1,14 +1,14 @@
 (ql:quickload :elf)
 (ql:quickload :cffi)
 (ql:quickload :iolib)
-(defpackage #:asmtools-pkg
+(defpackage #:roper-pkg
   (:use :cl :asdf :cffi :iolib))
 
-(in-package :asmtools-pkg)
+(in-package :roper-pkg)
 
-(asdf:defsystem :asmtools
+(asdf:defsystem :roper
 ;;  (:pretty-name "Assembly Tools")
   :serial t
-  :components ((:file "asmtools")))
+  :components ((:file "roper")))
 	
 

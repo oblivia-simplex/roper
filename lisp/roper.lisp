@@ -1,9 +1,9 @@
-(in-package :asmtools-pkg)
+(in-package :roper-pkg)
 
 (defparameter *debug* t)
 
 (cffi:load-foreign-library
- #p"~/quicklisp/local-projects/asmtools/c/libhatchery.so")
+ #p"~/quicklisp/local-projects/roper/c/libhatchery.so")
 ;; may need to change this, depending on where things are.
 
 #+sbcl
@@ -401,7 +401,7 @@ which the text section begins, as a secondary value."
   ;; detects gadgets that have instructions I don't yet know how
   ;; best to deal with
   ;; first, let's catch jumps and calls
-  (let ((bad '("J" "CALL" "POP" "PUSH" "SP" "IP"))
+  (let ((bad '("J" "CALL" "POP" "PUSH" "SP" "IP" "["))
         (disas (cffi-objdump gadget)))
     (or (block check
           (loop for b in bad do
@@ -423,7 +423,7 @@ testing."
 
 (defparameter *code-server-port* 9999)
 
-(defun dispatch-code (code &key (ip #/IP/127.0.0.1) (port "9999"))
+(defun dispatch-code (code &key (ip "localhost") (port "9999"))
   (let ((code-arr (make-array (length code) ;; should already be this
                               :element-type '(unsigned-byte 8)
                               :initial-contents code)))
@@ -431,12 +431,15 @@ testing."
                               :address-family :internet
                               :type :stream
                               :ipv6 :nil)
-      (connect socket ip
-               ;;(lookup-hostname ip)
+      (connect socket 
+               (lookup-hostname ip)
                :port port :wait t)
       (send-to socket code-arr)
       (read socket))))
-                              
+
+
+(defun hvals (hashmap)
+  (loop for v being the hash-values in hashmap collect v))
      
 ;; pareto? select against bad characters, e.g.
 ;;;; badchars (fatal), size (bounded), accuracy (prime impt)
