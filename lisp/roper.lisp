@@ -2,8 +2,9 @@
 
 (defparameter *debug* t)
 
-(cffi:load-foreign-library
- #p"~/quicklisp/local-projects/roper/build/libhatchery.so")
+(defun load-libhatchery.so ()
+  (cffi:load-foreign-library
+   #p"~/quicklisp/local-projects/roper/build/libhatchery.so"))
 ;; may need to change this, depending on where things are.
 
 #+sbcl
@@ -45,8 +46,13 @@
 
 ;; this might or might not come in handy...
 ;; #[a b c d] will be read as a system-area-pointer to bytes a b c d...
-(defdelim #\[ #\] (&rest bytes)
-  (sapify bytes))
+(defdelim #\[ #\] (bytes)
+  ;; (let ((stuff (if (listp (symbol-value (car bytes)))
+  ;;                  (apply #'values (car bytes))
+  ;;                  bytes)))
+  ;;  (print bytes) (print stuff)
+    (make-array (length (symbol-value bytes)) :element-type '(unsigned-byte 8)
+                :initial-contents (symbol-value bytes)))
 
 
 ;;(export 'objdump)
@@ -427,19 +433,74 @@ testing."
 
 (defparameter *code-server-port* 9999)
 
-(defun dispatch (code &key (ip "localhost") (port "9999"))
-  (let ((code-arr (make-array (length code) ;; should already be this
-                              :element-type '(unsigned-byte 8)
-                              :initial-contents code)))
-    (with-open-socket (socket :connect :active
-                              :address-family :internet
-                              :type :stream
-                              :ipv6 :nil)
-      (connect socket 
-               (lookup-hostname ip)
-               :port port :wait t)
-      (send-to socket code-arr)
-      (read socket))))
+;; (defun dispatch (code &key (ip "localhost") (port "9999"))
+;;   (let ((code-arr (make-array (length code) ;; should already be this
+;;                               :element-type '(unsigned-byte 8)
+;;                               :initial-contents code)))
+;;     (with-open-socket (socket :connect :active
+;;                               :address-family :internet
+;;                               :type :stream
+;;                               :ipv6 :nil)
+;;       (connect socket 
+;;                (lookup-hostname ip)
+;;                :port port :wait t)
+;;       (send-to socket code-arr)
+;;       (read socket))))
+
+(defun ar (code)
+  (make-array (length code) :element-type '(unsigned-byte 8)
+              :initial-contents code))
+
+(defun socket-read-bytes (socket &key (timeout 10))
+  (let ((stream (usocket:socket-stream socket)))
+    (usocket:wait-for-input (list socket) :timeout timeout)
+    (loop while (listen stream) collect (read-byte stream))))
+
+(defun socket-send-bytes (socket bytes)
+   (loop for byte in bytes do (write-byte byte (usocket:socket-stream socket)))
+   (force-output (usocket:socket-stream socket)))
+
+(defun bytes->sexp (bytes)
+  ;;  (declare (type (cons (unsigned-byte 8))) bytes)
+  (read-from-string (coerce (mapcar #'code-char bytes) 'string)))
+
+(defun sexp->bytes (sexp)
+  ;; mostly just for testing bytes->sexp
+  (let ((string (format nil "~S" sexp)))
+    (mapcar #'char-code (coerce string 'list))))
+
+(defun dispatch (code &key (ip "localhost") (port *code-server-port*))
+  (let ((socket (usocket:socket-connect ip port :element-type '(unsigned-byte 8))))
+    (socket-send-bytes socket code)
+    (let ((result (bytes->sexp (socket-read-bytes socket))))
+      (usocket:socket-close socket)
+      result)))
+
+
+
+;; (defun dispatch2 (code &key (ip #(127 0 0 1)) (port 9999))
+;;   (let* ((code-arr (make-array (length code) ;; should already be this
+;;                                :element-type '(unsigned-byte 8)
+;;                               :initial-contents code))
+;;          (socket (make-instance 'inet-socket
+;;                                :type :stream
+;;                                :protocol :tcp))
+;;          (recvbuf (make-array 128 :element-type 'character)))
+           
+   
+;;     ;;(socket-bind socket #(127 0 0 1) (+ (random 3000) 7000))
+;;     (socket-connect socket ip port)
+;;     ;;(let ((stream (socket-make-stream socket :output t :input t)))
+;;       ;; (loop for byte in code do
+;;       ;;     (write-byte byte stream)))))
+;; ;;   
+;;     (socket-send socket code-arr (length code-arr))
+;;     (socket-receive socket recvbuf 128)))
+    
+;;     ;; (let* ((stream (socket-make-stream socket :input t :output t
+;;     ;;                                    :buffering :none))
+;; ;;    (socket-send socket code-arr (length code-arr))))
+;;    ;;       (read socket))))
 
 
 (defun hvals (hashmap)

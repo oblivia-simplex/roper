@@ -1,8 +1,8 @@
 (ql:quickload :elf)
 (ql:quickload :cffi)
-(ql:quickload :iolib)
+(ql:quickload :usocket)
 (defpackage #:roper-pkg
-  (:use :cl :asdf :cffi :iolib))
+  (:use :cl :asdf :cffi :usocket))
 
 (in-package :roper-pkg)
 
