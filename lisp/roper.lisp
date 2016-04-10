@@ -460,9 +460,19 @@ testing."
    (loop for byte in bytes do (write-byte byte (usocket:socket-stream socket)))
    (force-output (usocket:socket-stream socket)))
 
+(defun unsanitary-p (bytes)
+  (let ((flag) (res))
+    (loop for byte in bytes do
+         ;; #x23 = ., and #x2E = # ;; We're detecting read macros here. 
+         (when flag (if (= byte #x23) (progn (setf res t) (return)) (setf flag nil)))
+         (when (= byte #x2E) (setf flag t)))
+    res))
+
 (defun bytes->sexp (bytes)
-  ;;  (declare (type (cons (unsigned-byte 8))) bytes)
-  (read-from-string (coerce (mapcar #'code-char bytes) 'string)))
+  (let ((string (coerce (mapcar #'code-char bytes) 'string)))
+    (if (unsanitary-p bytes)
+        (format t "POSSIBLE ATTACK DETECTED: ~A~%" string)
+        (read-from-string string))))
 
 (defun sexp->bytes (sexp)
   ;; mostly just for testing bytes->sexp
