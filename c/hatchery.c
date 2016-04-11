@@ -176,17 +176,17 @@ int hatch_code (unsigned char *code, unsigned char *seed,
 
       
       printf("AT LINE "WORDFMT"\n", inst);
-      /* if (!in_code && inst < THE_SHELLCODE_LIES_BELOW){
+      if (!in_code && inst < THE_SHELLCODE_LIES_BELOW){
         printf("ENTERING CODE\n");
         in_code = 1;
-        } */
+      } 
       if (in_code) steps ++;
-      /*
+      
       if (retp(opcode) ||
           (in_code && inst > THE_SHELLCODE_LIES_BELOW)
           || (steps > TTL))
         break;
-      */
+      
       if (in_code){
         if (DEBUG) {
           printf("AT INSTRUCTION "WORDFMT"\n", inst);
