@@ -196,7 +196,11 @@ int listen_for_code(void){
          * this file will be written in the code analysis stage
          * probably from the lispy side of things
          */
-        hatch_code(codebuffer, NULL, result);
+        int num_insts = 0;
+#ifdef __arm__
+        num_insts = codelength / 4; // ignoring thumb mode for now
+#endif
+        hatch_code(codebuffer, num_insts, NULL, result);
         actual_sexp_length = lisp_encode(result, sexp);
         send(new_sockfd, sexp, actual_sexp_length, 0);
         break;

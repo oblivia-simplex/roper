@@ -254,10 +254,7 @@ int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
   /* cast the byte array as a function */
   long (*proc)() = (long(*)())code;
   SYSCALL_REG_VEC syscall_reg_vec;
-
-  
-
-    
+  // just replace the return with a breakpoint!
   pid_t pid;
   /* fork a new process in which to run the shellcode */
   pid = fork();

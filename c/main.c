@@ -26,13 +26,13 @@ void print_registers(unsigned char *bytes){
   #ifdef __x86_64__
   SYSCALL_REG_VEC srv;
   memcpy(srv.bvec, bytes, sizeof(SYSCALL_REG_VEC));
-  printf("RAX: %llx\n"
-         "RDI: %llx\n"
-         "RSI: %llx\n"
-         "RDX: %llx\n"
-         "R10: %llx\n"
-         "R8:  %llx\n"
-         "R9:  %llx\n"
+  printf("RAX: "WORDFMT"\n"
+         "RDI: "WORDFMT"\n"
+         "RSI: "WORDFMT"\n"
+         "RDX: "WORDFMT"\n"
+         "R10: "WORDFMT"\n"
+         "R8:  "WORDFMT"\n"
+         "R9:  "WORDFMT"\n"
          ,srv.rvec[rax]
          ,srv.rvec[rdi]
          ,srv.rvec[rsi]
@@ -42,9 +42,11 @@ void print_registers(unsigned char *bytes){
          ,srv.rvec[r9]);
 #endif //__x86_64__
   #ifdef __arm__
+  REGISTERS regs;
+  memcpy(&regs,bytes,sizeof(REGISTERS));
   int i;
   for (i = 0; i < 18; i++){
-    printf("R%d: %lx\n", i, regs->uregs[i]);
+    printf("R%d: "WORDFMT"\n", i, regs.vector[i]);
   }
 #endif // __arm__
 }
@@ -65,8 +67,8 @@ int main(int argc, char **argv){
 
   unsigned char somebytes[] = {255,255,255,255,
                                255,255,255,255};
-  long long int number = bytes_to_integer(somebytes);
-  printf("number = 0x%llx\n", number);
+  word number = bytes_to_integer(somebytes);
+  printf("number = 0x"WORDFMT"\n", number);
 
   /* unsigned char fakeseedbytes[sizeof(REGISTERS)] */
   /*   = {1,2,3,4,5,6,7,8}; */
@@ -83,7 +85,7 @@ int main(int argc, char **argv){
   puts("--- REGISTERS BEFORE ---");
   print_registers(res);
   result = hatch_code(example_bin,NULL,res);
-  printf("You're back. Result code: %llx\n", result);
+  printf("You're back. Result code: "WORDFMT"\n", result);
   puts("--- REGISTERS AFTER ---");
   print_registers(res);
   return 0;

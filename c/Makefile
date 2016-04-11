@@ -1,3 +1,4 @@
+
 CC = gcc
 CFLAGS = -fPIC -Wall -O0 
 LDFLAGS = -shared
@@ -7,13 +8,20 @@ AS = as
 LD = ld
 
 ASFLAGS =
-BINLDFLAGS = -Ttext 200000 --oformat binary
+#BINLDFLAGS = -Ttext 200000 --oformat binary
 
 BUILD_DIR = ../build/
 
+ARCH=$(shell uname -m)
+ifeq ($(ARCH),armv6l)
+EXAMPLE = example.arm.s
+else
+EXAMPLE = example.x86.s
+endif
+
+
 ELFCODE = example.elf
 FLATBIN = example.bin
-EXAMPLE = example.s
 EXAMPLE_HEADER = example.h
 
 DUMP = xxd
@@ -37,6 +45,7 @@ all: $(LIB) $(TEST) $(FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
 
 
 clean:
+	rm *.elf *.bin
 	rm -rf $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)
 
@@ -49,7 +58,7 @@ $(ELFCODE): $(EXAMPLE)
 	$(AS) $(ASFLAGS) $(EXAMPLE) -o $(ELFCODE)
 
 $(FLATBIN): $(ELFCODE) 
-	$(LD) $(BINLDFLAGS) $(ELFCODE) -o $(FLATBIN)
+	objcopy -O binary example.elf example.bin
 
 $(EXAMPLE_HEADER): $(FLATBIN)
 	  $(DUMP) $(DUMPFLAGS) $(FLATBIN) | tee $(EXAMPLE_HEADER)
