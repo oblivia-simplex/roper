@@ -31,6 +31,12 @@
 #include <arpa/inet.h>
 
 /**
+ * Unicorn
+ **/
+
+#include <unicorn/unicorn.h> // for emulation
+
+/**
  * Project-specific headers
  **/
 

@@ -1,1 +1,2 @@
 alias dump="objdump -b binary -m i386:x86-64 -D"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:."

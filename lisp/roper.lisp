@@ -433,18 +433,19 @@ testing."
 
 (defparameter *code-server-port* 9999)
 
-;; (defun dispatch (code &key (ip "localhost") (port "9999"))
+;; (ql:quickload :iolib)
+;; (defun old-dispatch (code &key (ip "localhost") (port "9999"))
 ;;   (let ((code-arr (make-array (length code) ;; should already be this
 ;;                               :element-type '(unsigned-byte 8)
 ;;                               :initial-contents code)))
-;;     (with-open-socket (socket :connect :active
+;;     (iolib:with-open-socket (iolib:socket :connect :active
 ;;                               :address-family :internet
 ;;                               :type :stream
 ;;                               :ipv6 :nil)
-;;       (connect socket 
-;;                (lookup-hostname ip)
+;;       (iolib:connect socket 
+;;                (iolib:lookup-hostname ip)
 ;;                :port port :wait t)
-;;       (send-to socket code-arr)
+;;       (iolib:send-to socket code-arr)
 ;;       (read socket))))
 
 (defun ar (code)
@@ -479,11 +480,13 @@ testing."
   (let ((string (format nil "~S" sexp)))
     (mapcar #'char-code (coerce string 'list))))
 
-(defun dispatch (code &key (ip "localhost") (port *code-server-port*))
-  (let ((socket (usocket:socket-connect ip port :element-type '(unsigned-byte 8))))
+(defun dispatch (code &key (ip #(127 0 0 1)) (port *code-server-port*))
+  (let ((socket (usocket:socket-connect
+                 ip port
+                 :element-type '(unsigned-byte 8))))
     (socket-send-bytes socket code)
     (let ((result (bytes->sexp (socket-read-bytes socket))))
-      (usocket:socket-close socket)
+;;      (usocket:socket-close socket)
       result)))
 
 

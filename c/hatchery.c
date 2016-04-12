@@ -1,9 +1,11 @@
 #include "includes.h"
+
+
 #define TTL 128
 
-#ifndef DEBUG
-#define DEBUG 1
-#endif
+
+#define DEBUG 0
+
 
 // do debug flag as a command line opt.
 
@@ -47,10 +49,12 @@ REGISTERS * seed_registers(pid_t pid, REGISTERS *regs,
 
   
   if (register_seed){
-    printf("*** SEEDING REG ***\n");
+    if (DEBUG)
+      printf("*** SEEDING REG ***\n");
     memcpy(regs,register_seed,sizeof(REGISTERS));
   } else {
-    printf("zeroing registers\n");
+    if (DEBUG)
+      printf("zeroing registers\n");
     #ifdef __x86_64__
     regs->structure.rax =
       regs->structure.rbx =
@@ -60,7 +64,7 @@ REGISTERS * seed_registers(pid_t pid, REGISTERS *regs,
       regs->structure.rsi =
       regs->structure.r8 =
       regs->structure.r9 =
-      regs->structure.r10 = 1; // just for testing
+      regs->structure.r10 = 0; // just for testing
     #endif
     #ifdef __arm__
     memset(regs, 1, (13 * sizeof(word)));
@@ -111,19 +115,14 @@ int retp (long int peeked){
   /* }  */
   
 #ifdef __x86_64__ // handle separately for now, maybe refactor together later
+
+// Bare metal:
 #define BKPT "\xCC\x03"
 #define BKPT_LEN 2
 int hatch_code (u8 *code, int bytelength,
                 u8 *seed, u8 *res){
-  /* cast the byte array as a function */
-
-  u8 code_with_breakpoints[BKPT_LEN + bytelength + BKPT_LEN]; // 4+n+4
-  memcpy(code_with_breakpoints, BKPT, BKPT_LEN);
-  memcpy(code_with_breakpoints + BKPT_LEN,code, bytelength);
-  memcpy(code_with_breakpoints + (BKPT_LEN + bytelength ), BKPT, BKPT_LEN);
-  // the -1 there is b/c we want the last BKPT to overwrite the RET.
-  // being a CISC architecture, this may fail terribly. nah. forget it. 
-  long (*proc)() = (long(*)())code_with_breakpoints; // or fall back to code
+ 
+  long (*proc)() = (long(*)())code; // or fall back to code
   SYSCALL_REG_VEC syscall_reg_vec;
   /* This struct will be loaded by the tracer with a representation
    * of all the registers at the end of the code's execution. 
@@ -134,7 +133,7 @@ int hatch_code (u8 *code, int bytelength,
   pid = fork();
   if (pid == 0){ // if in child process (tracee)
     ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-    kill(getpid(), SIGSTOP); // to let the tracer catch up
+    //    kill(getpid(), SIGSTOP); // to let the tracer catch up
     proc(); // if you want to pass any params to the code, do it here
     exit(1); // we're done with this child, now
   } else {
@@ -146,9 +145,10 @@ int hatch_code (u8 *code, int bytelength,
     
     int status;
     wait(&status);
-    printf("-- TRAPPED CHILD %d WITH STATUS %d --\n", pid,
-           WSTOPSIG(status));
-    //    seed_registers(pid, regs, seed);
+    if (DEBUG)
+      printf("-- TRAPPED CHILD %d WITH STATUS %d --\n", pid,
+             WSTOPSIG(status));
+    seed_registers(pid, regs, seed);
 
     // To prevent escape
     //ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_EXITKILL);
@@ -175,12 +175,15 @@ int hatch_code (u8 *code, int bytelength,
       }
 
       if (in_code && syscallp(opcode)){
-        fprintf(stderr, "**** WARNING: SYSCALL AT PC "WORDFMT"\n",
-                regs->PC);
-        fprintf(stderr, "**** YOUR SYSTEM MAY BE UNDER ATTACK! \n");
+        if (DEBUG){
+          fprintf(stderr, "**** WARNING: SYSCALL AT PC "WORDFMT"\n",
+                  regs->PC);
+          fprintf(stderr, "**** YOUR SYSTEM MAY BE UNDER ATTACK! \n");
+          fprintf(stderr, "**** INCREMENTING PC TO SKIP SYSCALL\n");
+        }
         regs->PC += SYSCALL_INST_SIZE; // size of int 80 and syscall
         ptrace(PTRACE_SETREGS, pid, NULL, regs);
-        fprintf(stderr, "**** INCREMENTING PC TO SKIP SYSCALL\n");
+        
       }
 
       //    print_registers(regs);
@@ -191,8 +194,8 @@ int hatch_code (u8 *code, int bytelength,
       inst = regs->PC; // programme counter
 
       
-      printf("AT LINE "WORDFMT"\n", inst);
-      if (!in_code && inst < THE_SHELLCODE_LIES_BELOW){
+      //      printf("AT LINE "WORDFMT"\n", inst);
+      if (DEBUG && !in_code && inst < THE_SHELLCODE_LIES_BELOW){
         printf("ENTERING CODE\n");
         in_code = 1;
       } 
@@ -244,7 +247,8 @@ int hatch_code (u8 *code, int bytelength,
       waitpid(pid, &status, 0); // having troublke getting singlestep to work on arm
                  
     }
-    printf("-- EXITING WITH STATUS %d --\n", WSTOPSIG(status));
+    if (DEBUG)
+      printf("-- EXITING WITH STATUS %d --\n", WSTOPSIG(status));
     /* int j; */
     /* for (j=0; j<26; j++){ */
     /*   printf("Register number %d: %llx\n", */
@@ -259,7 +263,7 @@ int hatch_code (u8 *code, int bytelength,
 }
 #endif // __x86_64__
 
-
+// bare metal
 #ifdef __arm__
 #define BKPT "\x70\x00\x20\xE1" // e1200070
 #define BKPT_LEN 4
@@ -396,4 +400,144 @@ int hatch_code (u8 *code, int bytelength,
    end each gadget with a null/dummy syscall, to hand
    control to the monitor
 */
+
+
+void uc_perror(const char *func, uc_err err)
+{
+    fprintf(stderr, "Error in %s(): %s\n", func, uc_strerror(err));
+}
+
+
+int roundup(int num){
+  int i;
+  for (i=1; i < num; i <<= 1);
+  return i;
+}
+
+
+#define EM_ADDR 0x1000000 // arbitrary?
+
+/*
+ * unicorn-powered
+ */
+int x86_64_syscall_abi[] = {
+  UC_X86_REG_RAX, UC_X86_REG_RDI, UC_X86_REG_RSI, UC_X86_REG_RDX,
+  UC_X86_REG_R10, UC_X86_REG_R8, UC_X86_REG_R9
+};
+int x86_64_syscall_abi_len = 7;
+
+int arm_32_syscall_abi[] = {
+  UC_ARM_REG_R0
+}; // NB: this is just a standin. i need to look up the ARM syscall
+// abi
+
+int arm_32_syscall_abi_len = 1; // need to look this up
+
+//void em_hook_ret(uc_engine *uc, 
+
+int em_code(u8 *code, int bytelength,
+            u8 *seed_res, uc_arch arch){
+
+  int roundlength = roundup(bytelength);
+  uc_engine *uc;
+  uc_err err;
+  //  uc_hook sys_hook;
+  int sys_abi_len;
+  uc_mode mode;
+  //int ret;
+  int *sys_abi_vec;
+  
+  switch (arch) {
+  case UC_ARCH_X86 :
+    sys_abi_vec = x86_64_syscall_abi; // careful
+    sys_abi_len = x86_64_syscall_abi_len;
+    mode = UC_MODE_64;
+    // ret = (int) UC_X86_INS_RET; 
+    break;
+  case UC_ARCH_ARM :
+    sys_abi_vec = arm_32_syscall_abi;
+    sys_abi_len = arm_32_syscall_abi_len;
+    mode = UC_MODE_ARM;
+    break;
+  default :
+    fprintf(stderr,"Unknown architecture requested of em_code.\nExiting.\n");
+    exit(EXIT_FAILURE);
+  }
+    
+  union seedvals {
+    word words[sys_abi_len];
+    u8 bytes[sys_abi_len * sizeof(word)];
+  } seedvals;
+
+  /* fprintf(stderr, "bytelength = %d\nroundlength = %d\nsizeof(seedvals.bytes) = %d\nsizeof(seed_res) = %d\nsizeof(word) * sys_abi_len = %d\n",bytelength, roundlength, sizeof(seedvals.bytes), sizeof(seed_res), (sys_abi_len * sizeof(word))); */
+  
+  memcpy(seedvals.bytes, seed_res,
+         (sys_abi_len * sizeof(word)));
+
+  /**
+   * from the unicorn src: "This part of the API is less... clean...
+   * because Unicorn supports arbitrary register types. So the least
+   * intrusive solution is passing individual pointers. On the plus
+   * side, you only need to make this pointer array once."
+   */
+  void *ptrs[sys_abi_len];
+  int i;
+  for (i = 0; i < sys_abi_len; i++) {
+    ptrs[i] = &(seedvals.words[i]);
+  }
+  
+  if ((err = uc_open(arch, mode, &uc))) {
+    uc_perror("uc_open", err);
+    return -1;
+  }
+
+  // seed the registers
+  if ((err = uc_reg_write_batch(uc, sys_abi_vec, ptrs, sys_abi_len))){
+    uc_perror("uc_reg_write_batch", err);
+    return -1;
+  }
+  // don't leave 0x1000 a magic number
+  if ((err = uc_mem_map(uc, EM_ADDR, 0x1000, UC_PROT_ALL))) {
+    // does PROT_ALL mean 777? might want to set to XN for ROP...
+    uc_perror("uc_mem_map", err);
+    return -1;
+  }
+
+  if ((err = uc_mem_write(uc, EM_ADDR, (void *) code, bytelength-1))) {
+    uc_perror("uc_mem_write", err);
+    return -1;
+  }
+  // why does the unicorn example suggest sizeof(CODE) -1
+  // where I have bytelength (sizeof(CODE))? probably because
+  // it's implemented as a string, so it ends with a null byte
+  if ((err = uc_emu_start(uc, EM_ADDR, EM_ADDR + bytelength -1, 0,0))){
+    uc_perror("uc_emu_start", err);
+    return -1;
+  }
+
+  uc_reg_read_batch(uc, sys_abi_vec, ptrs, sys_abi_len);
+
+  /** for testing  **/
+  if (DEBUG) {
+    printf("syscall vec: {");
+    for (i = 0; i < sys_abi_len; i++) {
+      if (i != 0) printf(", ");
+      printf(WORDFMT, seedvals.words[i]);
+    }
+    printf("}\n");
+  }
+  /******************/
+
+  
+  memcpy(seed_res, seedvals.bytes,
+         (sys_abi_len * sizeof(word)));  
+  
+  return 0;
+  
+}
+
+
+
+
+
 

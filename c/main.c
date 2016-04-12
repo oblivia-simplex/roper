@@ -82,11 +82,11 @@ int main(int argc, char **argv){
   //  registers = calloc(1,sizeof(REGISTERS));
   unsigned char *res;
   res = calloc(sizeof(SYSCALL_REG_VEC),1);
-  puts("--- REGISTERS BEFORE ---");
+  fprintf(stderr,"--- REGISTERS BEFORE ---\n");
   print_registers(res);
   result = hatch_code(example_bin,example_bin_len,NULL,res);
-  printf("You're back. Result code: "WORDFMT"\n", result);
-  puts("--- REGISTERS AFTER ---");
+  fprintf(stderr,"You're back. Result code: "WORDFMT"\n\n", result);
+  fprintf(stderr,"--- REGISTERS AFTER ---\n");
   print_registers(res);
   return 0;
 }

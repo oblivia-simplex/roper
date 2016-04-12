@@ -1,7 +1,8 @@
 
 CC = gcc
-CFLAGS = -fPIC -Wall -O0 
-LDFLAGS = -shared
+CFLAGS = -fPIC -Wall -O0 -g
+
+LDFLAGS += $(shell pkg-config --libs glib-2.0) -lpthread -lm -lunicorn
 STACKFLAGS = -zexecstack -fno-stack-protector
 
 AS = as
@@ -40,7 +41,7 @@ SERVER = $(BUILD_DIR)hatchsock
 .PHONY: dump clean dotest make_build_dir all debug
 
 all: $(LIB) $(TEST) $(FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
-
+	bash -c	"source ../aliases.rc"
 
 
 
@@ -51,7 +52,7 @@ clean:
 
 
 $(LIB): hatchery.o
-	$(CC) $(CFLAGS) $(SOURCES) -o $@ $(LDFLAGS) $(STACKFLAGS)
+	$(CC) $(CFLAGS) $(SOURCES) -o $@ -shared $(LDFLAGS) $(STACKFLAGS)
 #	rm hatchery.o
 
 $(ELFCODE): $(EXAMPLE)
@@ -69,7 +70,7 @@ $(TEST): $(LIB) $(TESTSRC) $(EXAMPLE_HEADER)
 
 
 $(SERVER): $(LIB) $(SOURCES) $(HEADERS) hatchsock.c
-	$(CC) -L $(BUILD_DIR) -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS)
+	$(CC) -L $(BUILD_DIR) -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
 
 
 dotest:

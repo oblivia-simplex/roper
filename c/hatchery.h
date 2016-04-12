@@ -25,10 +25,11 @@ typedef uint64_t u64;
 /************************************************************
  * Some useful types
  ************************************************************/
+typedef u64 word;
 
 typedef union {
   struct user_regs_struct structure;
-  u64 int vector[sizeof(struct user_regs_struct)];
+  u64 vector[sizeof(struct user_regs_struct)];
 } REGISTERS;
 
 typedef union syscall_reg_vec {
@@ -44,7 +45,7 @@ enum sysreg_t {rax, rdi, rsi, rdx, r10, r8, r9};
 
 #define WORDFMT "%llx"
 
-typedef u64 word;
+
 
 /************************************************************/
 
@@ -89,6 +90,11 @@ int size_of_registers(void);
 
 int size_of_sysreg_union(void);
 
+/************************************************************
+ * Unicorn-related stuff, etc.
+ ************************************************************/
+
+enum{ARCH_X86_64, ARCH_ARM_32} arch_t;
 
 #endif // hatchery_h__
 
