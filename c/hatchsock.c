@@ -77,12 +77,12 @@ int validate(char *header){
 int codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
              int codelength, int recvlength){
   int i;
-  /* Insert a breakpoint at the beginning of the code */
-  if (!codelength){
-    codebuffer[0] = 0xCC;
-    codebuffer[1] = 0x03;
-    codelength = 2;
-    } 
+  /* /\* Insert a breakpoint at the beginning of the code *\/ */
+  /* if (!codelength){ */
+  /*   codebuffer[0] = 0xCC; */
+  /*   codebuffer[1] = 0x03; */
+  /*   codelength = 2; */
+  /* }  */
   for (i = 0; i < recvlength; i ++){
     codebuffer[codelength++] = recvbuffer[i];
     if (RET(recvbuffer[i])){
@@ -196,11 +196,9 @@ int listen_for_code(void){
          * this file will be written in the code analysis stage
          * probably from the lispy side of things
          */
-        int num_insts = 0;
-#ifdef __arm__
-        num_insts = codelength / 4; // ignoring thumb mode for now
-#endif
-        hatch_code(codebuffer, num_insts, NULL, result);
+        
+
+        hatch_code(codebuffer, codelength, NULL, result);
         actual_sexp_length = lisp_encode(result, sexp);
         send(new_sockfd, sexp, actual_sexp_length, 0);
         break;

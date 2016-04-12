@@ -84,7 +84,7 @@ int main(int argc, char **argv){
   res = calloc(sizeof(SYSCALL_REG_VEC),1);
   puts("--- REGISTERS BEFORE ---");
   print_registers(res);
-  result = hatch_code(example_bin,NULL,res);
+  result = hatch_code(example_bin,example_bin_len,NULL,res);
   printf("You're back. Result code: "WORDFMT"\n", result);
   puts("--- REGISTERS AFTER ---");
   print_registers(res);

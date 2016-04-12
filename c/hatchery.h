@@ -81,9 +81,9 @@ typedef union syscall_reg_vec {
  * Function prototypes
  ************************************************************/
 
-word bytes_to_integer(unsigned char *bytes);
-int hatch_code (unsigned char *code, unsigned char *seed,
-                unsigned char *reg);
+word bytes_to_integer(u8 *bytes);
+int hatch_code (u8 *code, int bytelength,
+                u8 *seed, u8 *reg);
 
 int size_of_registers(void);
 

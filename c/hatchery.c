@@ -44,7 +44,7 @@ REGISTERS * seed_registers(pid_t pid, REGISTERS *regs,
                                  unsigned char *register_seed){
 
   ptrace(PTRACE_GETREGS, pid, NULL, regs);
-  word pc = regs->PC;
+
   
   if (register_seed){
     printf("*** SEEDING REG ***\n");
@@ -91,7 +91,7 @@ int syscallp (word peeked){
   // they're actually called 'software interrupts' on ARM, but let's keep
   // the nomenclature consistent
   // a swi has bits [24:28] all set to 1
-  return ((peeked >> 24) & 0xF == 0xF);
+  return (((peeked >> 24) & 0xF) == 0xF);
 }
 #endif
 
@@ -100,14 +100,30 @@ int syscallp (word peeked){
 #define BYTEMASK 0x000000000000000FF
 int retp (long int peeked){
   u8 op = (u8) (peeked & BYTEMASK);
-
   return (op == RET);
 }
 
-int hatch_code (unsigned char *code, unsigned char *seed,
-                unsigned char *res){
+/* /\* Insert a breakpoint at the beginning of the code *\/ */
+  /* if (!codelength){ */
+  /*   codebuffer[0] = 0xCC; */
+  /*   codebuffer[1] = 0x03; */
+  /*   codelength = 2; */
+  /* }  */
+  
+#ifdef __x86_64__ // handle separately for now, maybe refactor together later
+#define BKPT "\xCC\x03"
+#define BKPT_LEN 2
+int hatch_code (u8 *code, int bytelength,
+                u8 *seed, u8 *res){
   /* cast the byte array as a function */
-  long (*proc)() = (long(*)())code;
+
+  u8 code_with_breakpoints[BKPT_LEN + bytelength + BKPT_LEN]; // 4+n+4
+  memcpy(code_with_breakpoints, BKPT, BKPT_LEN);
+  memcpy(code_with_breakpoints + BKPT_LEN,code, bytelength);
+  memcpy(code_with_breakpoints + (BKPT_LEN + bytelength ), BKPT, BKPT_LEN);
+  // the -1 there is b/c we want the last BKPT to overwrite the RET.
+  // being a CISC architecture, this may fail terribly. nah. forget it. 
+  long (*proc)() = (long(*)())code_with_breakpoints; // or fall back to code
   SYSCALL_REG_VEC syscall_reg_vec;
   /* This struct will be loaded by the tracer with a representation
    * of all the registers at the end of the code's execution. 
@@ -157,7 +173,7 @@ int hatch_code (unsigned char *code, unsigned char *seed,
         printf("PEEKING AT OPCODES: ");
         print_word(opcode);
       }
-#ifdef __x86_64__ // temporary, until i debug
+
       if (in_code && syscallp(opcode)){
         fprintf(stderr, "**** WARNING: SYSCALL AT PC "WORDFMT"\n",
                 regs->PC);
@@ -166,7 +182,7 @@ int hatch_code (unsigned char *code, unsigned char *seed,
         ptrace(PTRACE_SETREGS, pid, NULL, regs);
         fprintf(stderr, "**** INCREMENTING PC TO SKIP SYSCALL\n");
       }
-#endif      
+
       //    print_registers(regs);
       if (WTERMSIG(status) == SIGSEGV){
         fprintf(stderr, "-- SEGFAULT --\n");  // not detecting ?
@@ -190,7 +206,7 @@ int hatch_code (unsigned char *code, unsigned char *seed,
       if (in_code){
         if (DEBUG) {
           printf("AT INSTRUCTION "WORDFMT"\n", inst);
-          #ifdef __x86_64__
+
           printf("IN RAX: %llx\n" 
                  "IN RDI: %llx\n"
                  "IN RSI: %llx\n"
@@ -205,13 +221,13 @@ int hatch_code (unsigned char *code, unsigned char *seed,
                  regs->structure.r10,
                  regs->structure.r8,
                  regs->structure.r9);
-          #endif
+
         }
         
         /**
          * Serialize the register information
          **/
-        #ifdef __x86_64__
+
         syscall_reg_vec.rvec[rax] = regs->structure.rax;
         syscall_reg_vec.rvec[rdi] = regs->structure.rdi;
         syscall_reg_vec.rvec[rsi] = regs->structure.rsi;
@@ -219,14 +235,8 @@ int hatch_code (unsigned char *code, unsigned char *seed,
         syscall_reg_vec.rvec[r10] = regs->structure.r10;
         syscall_reg_vec.rvec[r8] = regs->structure.r8;
         syscall_reg_vec.rvec[r9] = regs->structure.r9;
-        #endif
 
-        #ifdef __arm__
 
-        // put ARM syscall reg vec assignments here
-        syscall_reg_vec.rvec[0] = regs->vector[0];
-        
-        #endif 
       }
             
       //      printf(">>> single step code: %ld",ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL));
@@ -247,12 +257,21 @@ int hatch_code (unsigned char *code, unsigned char *seed,
 
   return syscall_reg_vec.rvec[0]; // rax for x86_64
 }
+#endif // __x86_64__
+
 
 #ifdef __arm__
-int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
-                unsigned char *res){
-  /* cast the byte array as a function */
-  long (*proc)() = (long(*)())code;
+#define BKPT "\x70\x00\x20\xE1" // e1200070
+#define BKPT_LEN 4
+int hatch_code (u8 *code, int bytelength,
+                u8 *seed, u8 *res){
+  /* cast the byte array as a function */ // sizeof is a macro. compiles out. 
+
+  u8 code_with_breakpoints[BKPT_LEN + bytelength + BKPT_LEN]; // 4+n+4
+  memcpy(code_with_breakpoints, BKPT, BKPT_LEN);
+  memcpy(code_with_breakpoints + BKPT_LEN,code, bytelength);
+  memcpy(code_with_breakpoints + BKPT_LEN + bytelength, BKPT, BKPT_LEN);
+  long (*proc)() = (long(*)())code_with_breakpoints;
   SYSCALL_REG_VEC syscall_reg_vec;
   // just replace the return with a breakpoint!
   pid_t pid;
@@ -260,7 +279,7 @@ int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
   pid = fork();
   if (pid == 0){ // if in child process (tracee)
     ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-    kill(getpid(), SIGSTOP); // to let the tracer catch up
+    //    kill(getpid(), SIGSTOP); // to let the tracer catch up
     proc(); // if you want to pass any params to the code, do it here
     exit(1); // we're done with this child, now
   } else {
@@ -299,7 +318,7 @@ int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
         printf("PEEKING AT OPCODES: ");
         print_word(opcode);
       }
-#ifdef __x86_64__ // temporary, until i debug
+
       if (in_code && syscallp(opcode)){
         fprintf(stderr, "**** WARNING: SYSCALL AT PC "WORDFMT"\n",
                 regs->PC);
@@ -308,13 +327,17 @@ int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
         ptrace(PTRACE_SETREGS, pid, NULL, regs);
         fprintf(stderr, "**** INCREMENTING PC TO SKIP SYSCALL\n");
       }
-#endif      
+
       //    print_registers(regs);
       if (WTERMSIG(status) == SIGSEGV){
         fprintf(stderr, "-- SEGFAULT --\n");  // not detecting ?
       }
 
       inst = regs->PC; // programme counter
+
+      // increment the pc
+      regs->PC += 4;
+      ptrace(PTRACE_SETREGS, pid, NULL, regs);
 
       
       printf("AT LINE "WORDFMT"\n", inst);
@@ -332,47 +355,24 @@ int hatch_code (unsigned char *code, int num_insts, unsigned char *seed,
       if (in_code){
         if (DEBUG) {
           printf("AT INSTRUCTION "WORDFMT"\n", inst);
-          #ifdef __x86_64__
-          printf("IN RAX: %llx\n" 
-                 "IN RDI: %llx\n"
-                 "IN RSI: %llx\n"
-                 "IN RDX: %llx\n"
-                 "IN R10: %llx\n"
-                 "IN R8:  %llx\n"
-                 "IN R9:  %llx\n\n",
-                 regs->structure.rax,
-                 regs->structure.rdi,
-                 regs->structure.rsi,
-                 regs->structure.rdx,
-                 regs->structure.r10,
-                 regs->structure.r8,
-                 regs->structure.r9);
-          #endif
+          int i;
+          for (i = 0; i < 16; i++){
+            printf("R%d: "WORDFMT"\n",i, regs->vector[i]);
+          }
         }
         
         /**
          * Serialize the register information
          **/
-        #ifdef __x86_64__
-        syscall_reg_vec.rvec[rax] = regs->structure.rax;
-        syscall_reg_vec.rvec[rdi] = regs->structure.rdi;
-        syscall_reg_vec.rvec[rsi] = regs->structure.rsi;
-        syscall_reg_vec.rvec[rdx] = regs->structure.rdx;
-        syscall_reg_vec.rvec[r10] = regs->structure.r10;
-        syscall_reg_vec.rvec[r8] = regs->structure.r8;
-        syscall_reg_vec.rvec[r9] = regs->structure.r9;
-        #endif
-
-        #ifdef __arm__
-
+        
         // put ARM syscall reg vec assignments here
         syscall_reg_vec.rvec[0] = regs->vector[0];
         
-        #endif 
       }
             
       //      printf(">>> single step code: %ld",ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL));
-      ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL);
+      // ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL); // BROKEN
+      ptrace(PTRACE_CONT, pid, NULL, NULL);
       waitpid(pid, &status, 0); // having troublke getting singlestep to work on arm
                  
     }
