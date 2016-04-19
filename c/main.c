@@ -53,7 +53,7 @@ void print_registers(unsigned char *bytes){
 
 
 int test_code(){
-  void (*proc)() = (void(*)())example_bin;
+  void (*proc)() = (void(*)())example_x86_bin;
   proc();
   return 1;
 }
@@ -84,7 +84,7 @@ int main(int argc, char **argv){
   res = calloc(sizeof(SYSCALL_REG_VEC),1);
   fprintf(stderr,"--- REGISTERS BEFORE ---\n");
   print_registers(res);
-  result = hatch_code(example_bin,example_bin_len,NULL,res);
+  result = hatch_code(example_x86_bin,example_x86_bin_len,NULL,res);
   fprintf(stderr,"You're back. Result code: "WORDFMT"\n\n", result);
   fprintf(stderr,"--- REGISTERS AFTER ---\n");
   print_registers(res);

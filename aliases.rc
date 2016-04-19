@@ -1,2 +1,5 @@
 alias dump="objdump -b binary -m i386:x86-64 -D"
+alias armdump="arm-none-eabi-objdump -b binary -m arm -D"
+alias thumbdump="arm-none-eabi-objdump -b binary -m arm -M force-thumb -D "
+export ARM="arm-none-eabi-"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:."

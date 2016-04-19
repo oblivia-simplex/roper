@@ -1,8 +1,5 @@
 #include "includes.h"
-
-
-#define SOCKDEBUG 0
-
+#define SOCKDEBUG 1
 
 /**
  * Server. Listens for messages containing machine-code, executes them, and
@@ -21,9 +18,21 @@
 
 #define BREAKPOINT_OPCODE 0xCC
 
+#define ARM_WORD_LEN 4
+#define X86_NOP 0x90
+
+#define ARM_NOP "\x00\x00\x00\x00"
+
+
 #define BAREMETAL 0
 
 // marks end of code transmission
+
+u8 *armrets[] = {
+  "\x0e\xf0\xa0\xe1", // mov  pc, lr
+};
+
+int armrets_len = 1;
 
 
 /**
@@ -72,31 +81,65 @@ int validate(char *header){
 }
 
 
+int arm_return_p(u8 *word){
+  int i;
+  int yes_or_no = 0;
+  for (i = 0; i < armrets_len; i++){
+    if (!memcmp(word, armrets[i], ARM_WORD_LEN)){
+      yes_or_no = 1;
+      break;
+    }
+  }
+  return yes_or_no;
+
+}
+
 /**
  * Returns next free position in codebuffer, or -1 * that position
  * if a return instruction has been received.
  **/
 int codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
-             int codelength, int recvlength){
+             int codelength, int recvlength, uc_arch arch){
   int i;
   /* Insert a breakpoint at the beginning of the code */
   /* it's more efficient to do this here, than in hatch_code */
-  if (!codelength){
+  /*
+    if (!codelength){
     codebuffer[0] = 0xCC;
     codebuffer[1] = 0x03;
     codelength = 2;
-  }
-  for (i = 0; i < recvlength; i ++){
-    codebuffer[codelength++] = recvbuffer[i];
-    if (RET(recvbuffer[i])){
-      codelength = -(codelength);
-      break;
+    if (SOCKDEBUG) printf("Added breakpoint at head.\n");
     }
-  }
+  */
+  
+  if (arch == UC_ARCH_X86) { // check to see this is default for bare metal mode
+    for (i = 0; i < recvlength; i ++){
+      codebuffer[codelength++] =
+        (RET(recvbuffer[i]))? 0x90 : recvbuffer[i];
+      if (RET(recvbuffer[i])){
+        codelength = -(codelength);
+        break;
+      }
+    }
+  } else if (arch == UC_ARCH_ARM) {
+    u8 lastword[4] = {0,0,0,0};
+    
+    for (i = 0; i < recvlength; i ++){
+      lastword[i%4] = recvbuffer[i];
+      arm_return_p(lastword);
+      codebuffer[codelength++] = recvbuffer[i];
+      if (arm_return_p(lastword)){
+        memcpy(codebuffer+(codelength-4), ARM_NOP, ARM_WORD_LEN); 
+        codelength = -(codelength);
+        break;
+      }
+    }
+  }  
   return codelength;
 }
+    
 
-
+  
 
 int lisp_encode(unsigned char *vector, char *sexp){
   int vptr=0, sptr, length=0;
@@ -170,8 +213,6 @@ int listen_for_code(int baremetal, uc_arch arch){
     if (SOCKDEBUG) printf("SERVER: ACCEPTED CONNECTION FROM %s PORT %d\n",
                           inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
 
-    //send(new_sockfd, "Hello, world!\n\r", 13, 0); // just for testing
-
     recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0);
     
     /** 
@@ -204,7 +245,7 @@ int listen_for_code(int baremetal, uc_arch arch){
         offset = 1;
       }
       codelength = codecopy(codebuffer, buffer + offset,
-                            codelength, recvlength);
+      codelength, recvlength, arch);
 
       if (SOCKDEBUG)
         printf("code length = %d\n", -(codelength));
@@ -215,8 +256,13 @@ int listen_for_code(int baremetal, uc_arch arch){
          * this file will be written in the code analysis stage
          * probably from the lispy side of things
          */
-        
         codelength *= -1;
+        if (SOCKDEBUG)
+          fdump(stdout, codebuffer, codelength);
+        
+        /*************************************************/
+        /* This is where the code actually gets launched */
+        /*************************************************/
         if (baremetal) {
           if (SOCKDEBUG)
             printf("Running on bare metal.\n");
@@ -226,9 +272,10 @@ int listen_for_code(int baremetal, uc_arch arch){
             printf("Running in virtual environment.\n");
           em_code(codebuffer, codelength, result, arch);
         }
-        //em_code takes seed and result as same pointer.
-        // hatch_code should be updated to do this too. 
-        
+        /*************************************************
+         em_code takes seed and result as same pointer.
+         hatch_code should be updated to do this too. 
+        *************************************************/
         actual_sexp_length = lisp_encode(result, sexp);
         send(new_sockfd, sexp, actual_sexp_length, 0);
         break;
@@ -287,3 +334,4 @@ int main(int argc, char **argv){
   listen_for_code(baremetal, arch);
   return 0;
 }
+

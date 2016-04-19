@@ -11,18 +11,29 @@ LD = ld
 ASFLAGS =
 #BINLDFLAGS = -Ttext 200000 --oformat binary
 
+X86_AS=$(AS)
+
 BUILD_DIR = ../build/
 
-ARCH=$(shell uname -m)
-ifeq ($(ARCH),armv6l)
-EXAMPLE = example.arm.s
-else
-EXAMPLE = example.x86.s
-endif
+#ARCH=$(shell uname -m)
+#ifeq ($(ARCH),armv6l)
+ARM_EXAMPLE = example.arm.s
+#else
+X86_EXAMPLE = example.x86.s
+#endif
+
+ARM_PREFIX=arm-none-eabi-
+ARM_AS=$(ARM_PREFIX)$(AS)
 
 
-ELFCODE = example.elf
-FLATBIN = example.bin
+
+X86_ELFCODE = example.x86.elf
+X86_FLATBIN = example.x86.bin
+
+ARM_ELFCODE=example.arm.elf
+ARM_FLATBIN=example.arm.bin
+
+
 EXAMPLE_HEADER = example.h
 
 DUMP = xxd
@@ -40,7 +51,7 @@ SERVER = $(BUILD_DIR)hatchsock
 
 .PHONY: dump clean dotest make_build_dir all debug
 
-all: $(LIB) $(TEST) $(FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
+all: $(LIB) $(TEST) $(X86_FLATBIN) $(ARM_FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
 	bash -c	"source ../aliases.rc"
 
 
@@ -55,14 +66,20 @@ $(LIB): hatchery.o
 	$(CC) $(CFLAGS) $(SOURCES) -o $@ -shared $(LDFLAGS) $(STACKFLAGS)
 #	rm hatchery.o
 
-$(ELFCODE): $(EXAMPLE)
-	$(AS) $(ASFLAGS) $(EXAMPLE) -o $(ELFCODE)
+$(X86_ELFCODE): $(X86_EXAMPLE)
+	$(X86_AS) $(X86_ASFLAGS) $(X86_EXAMPLE) -o $(X86_ELFCODE)
 
-$(FLATBIN): $(ELFCODE) 
-	objcopy -O binary example.elf example.bin
+$(X86_FLATBIN): $(X86_ELFCODE) 
+	objcopy -O binary $(X86_ELFCODE) $(X86_FLATBIN)
 
-$(EXAMPLE_HEADER): $(FLATBIN)
-	  $(DUMP) $(DUMPFLAGS) $(FLATBIN) | tee $(EXAMPLE_HEADER)
+$(ARM_ELFCODE): $(ARM_EXAMPLE)
+	$(ARM_AS) $(ARM_ASFLAGS) $(ARM_EXAMPLE) -o $(ARM_ELFCODE)
+
+$(ARM_FLATBIN): $(ARM_ELFCODE)
+	$(ARM_PREFIX)objcopy -O binary $(ARM_ELFCODE) $(ARM_FLATBIN)
+
+$(EXAMPLE_HEADER): $(X86_FLATBIN)
+	  $(DUMP) $(DUMPFLAGS) $(X86_FLATBIN) | tee $(EXAMPLE_HEADER)
 
 
 $(TEST): $(LIB) $(TESTSRC) $(EXAMPLE_HEADER)

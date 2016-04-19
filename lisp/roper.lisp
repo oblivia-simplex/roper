@@ -315,6 +315,8 @@ where the final type keyword specifies the return type."
              by #'(lambda (x) (nthcdr 8 x)) collect
                (elf:bytes-to-int (subseq bytes 0 8))))))))
 
+
+
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; using the elf package
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -372,7 +374,7 @@ which the text section begins, as a secondary value."
 ;;   (values gadget addr))
 
 (defun ends-with-ret-p (gadget)
-  (string= (last3let (cffi-objdump gadget)) "RET"))
+  (string= (last3let (dump gadget)) "RET"))
 
 (defun prune-gadget (gadget &optional (addr 0))
   (loop while (or (has-bad-inst-p gadget)
@@ -413,7 +415,7 @@ which the text section begins, as a secondary value."
   ;; best to deal with
   ;; first, let's catch jumps and calls
   (let ((bad '("J" "CALL" "POP" "PUSH" "SP" "IP" "["))
-        (disas (cffi-objdump gadget)))
+        (disas (dump gadget)))
     (or (block check
           (loop for b in bad do
                (if (search b disas) (return-from check T) nil)))
@@ -425,7 +427,8 @@ which the text section begins, as a secondary value."
   "Concatenates gadgets, removing the *ret* instruction at the end,
 first, to approximate executing them in sequence. Mostly just for
 testing."
-
+  ;; consider just replacing #xC3 with #x90 instead
+  ;; for x86
   (nconc (apply #'nconc (mapcar #'butlast gadget-list)) (list *ret*)))
 
 
@@ -480,15 +483,27 @@ testing."
   (let ((string (format nil "~S" sexp)))
     (mapcar #'char-code (coerce string 'list))))
 
-(defun dispatch (code &key (ip #(127 0 0 1)) (port *code-server-port*))
+
+(defun ready-socket (&key (ip #(127 0 0 1)) (port *code-server-port*)
+                       (timeout 10))
+       (usocket:socket-connect
+                 ip port
+                 :element-type '(unsigned-byte 8) :timeout timeout))
+
+(defun dispatch (code &key (ip #(127 0 0 1))
+                        (port *code-server-port*)
+                        (header #x00))
+  "The header is one byte long. The lower nibble should be set to 0
+for virtualized execution (using Unicorn), or 1 for bare metal
+execution. If virtualized execution is chosen, then the upper nibble
+is consulted. Set it to 1 for ARM, or 0 for x86_64."
   (let ((socket (usocket:socket-connect
                  ip port
                  :element-type '(unsigned-byte 8))))
-    (socket-send-bytes socket code)
-    (let ((result (bytes->sexp (socket-read-bytes socket))))
-;;      (usocket:socket-close socket)
+    (socket-send-bytes socket (cons header code))
+     (let ((result (bytes->sexp (socket-read-bytes socket))))
+      (usocket:socket-close socket)
       result)))
-
 
 
 ;; (defun dispatch2 (code &key (ip #(127 0 0 1)) (port 9999))

@@ -1,10 +1,8 @@
 #include "includes.h"
 
-
 #define TTL 128
 
-
-#define DEBUG 0
+#define DEBUG 1
 
 
 // do debug flag as a command line opt.
@@ -121,7 +119,8 @@ int retp (long int peeked){
 #define BKPT_LEN 2
 int hatch_code (u8 *code, int bytelength,
                 u8 *seed, u8 *res){
- 
+  
+  int errcode = 0;
   long (*proc)() = (long(*)())code; // or fall back to code
   SYSCALL_REG_VEC syscall_reg_vec;
   /* This struct will be loaded by the tracer with a representation
@@ -140,7 +139,7 @@ int hatch_code (u8 *code, int bytelength,
     /* We're in the tracer process. It will observe the child and
      * report back to the head office.
      */
-    REGISTERS *regs;
+   REGISTERS *regs;
     regs = calloc(1,sizeof(REGISTERS));
     
     int status;
@@ -259,7 +258,7 @@ int hatch_code (u8 *code, int bytelength,
     free(regs);
   }
 
-  return syscall_reg_vec.rvec[0]; // rax for x86_64
+  return errcode;
 }
 #endif // __x86_64__
 
@@ -271,6 +270,7 @@ int hatch_code (u8 *code, int bytelength,
                 u8 *seed, u8 *res){
   /* cast the byte array as a function */ // sizeof is a macro. compiles out. 
 
+  int errcode = 0;
   u8 code_with_breakpoints[BKPT_LEN + bytelength + BKPT_LEN]; // 4+n+4
   memcpy(code_with_breakpoints, BKPT, BKPT_LEN);
   memcpy(code_with_breakpoints + BKPT_LEN,code, bytelength);
@@ -404,7 +404,9 @@ int hatch_code (u8 *code, int bytelength,
 
 void uc_perror(const char *func, uc_err err)
 {
+  if (DEBUG)
     fprintf(stderr, "Error in %s(): %s\n", func, uc_strerror(err));
+  
 }
 
 
@@ -415,7 +417,7 @@ int roundup(int num){
 }
 
 
-#define EM_ADDR 0x1000000 // arbitrary?
+#define EM_ADDR 0x100000 // arbitrary?
 
 /*
  * unicorn-powered
@@ -433,18 +435,24 @@ int arm_32_syscall_abi[] = {
 
 int arm_32_syscall_abi_len = 1; // need to look this up
 
-//void em_hook_ret(uc_engine *uc, 
+void hook_ret(uc_engine *uc, void *user_data) {
+    printf("*** Hello, I am in the hook. ***\n");
+    return;
+}
+
 
 int em_code(u8 *code, int bytelength,
             u8 *seed_res, uc_arch arch){
-
+  
+  int errcode = 0;
   int roundlength = roundup(bytelength);
   uc_engine *uc;
   uc_err err;
-  //  uc_hook sys_hook;
+  uc_hook ret_hook;
   int sys_abi_len;
   uc_mode mode;
-  //int ret;
+  
+  int ret_inst;
   int *sys_abi_vec;
   
   switch (arch) {
@@ -452,9 +460,10 @@ int em_code(u8 *code, int bytelength,
     sys_abi_vec = x86_64_syscall_abi; // careful
     sys_abi_len = x86_64_syscall_abi_len;
     mode = UC_MODE_64;
-    // ret = (int) UC_X86_INS_RET; 
+    ret_inst = UC_X86_INS_RET; 
     break;
   case UC_ARCH_ARM :
+    if (DEBUG) printf("Emulating ARM architecture...\n");
     sys_abi_vec = arm_32_syscall_abi;
     sys_abi_len = arm_32_syscall_abi_len;
     mode = UC_MODE_ARM;
@@ -496,6 +505,15 @@ int em_code(u8 *code, int bytelength,
     uc_perror("uc_reg_write_batch", err);
     return -1;
   }
+
+
+  if ((err = uc_hook_add(uc, &ret_hook, UC_HOOK_INSN, hook_ret, NULL, 1, 0, ret_inst))) {
+    uc_perror("uc_hook_add", err);
+    return 1;
+  }
+
+
+
   // don't leave 0x1000 a magic number
   if ((err = uc_mem_map(uc, EM_ADDR, 0x1000, UC_PROT_ALL))) {
     // does PROT_ALL mean 777? might want to set to XN for ROP...
@@ -514,7 +532,7 @@ int em_code(u8 *code, int bytelength,
     uc_perror("uc_emu_start", err);
     return -1;
   }
-
+  
   uc_reg_read_batch(uc, sys_abi_vec, ptrs, sys_abi_len);
 
   /** for testing  **/
@@ -532,7 +550,7 @@ int em_code(u8 *code, int bytelength,
   memcpy(seed_res, seedvals.bytes,
          (sys_abi_len * sizeof(word)));  
   
-  return 0;
+  return errcode;
   
 }
 
@@ -541,3 +559,10 @@ int em_code(u8 *code, int bytelength,
 
 
 
+// write a return hook. i think that some of the errors are due
+// to the return instruction being executed, and this is why the
+// code benefits from the -1 length
+/**********************************************************************
+ * Check for memory leaks! The thing devours memory right now. Are you
+ *  freeing all your mallocs? probably missed at least one
+ */
