@@ -7,7 +7,7 @@
 ;; global lookup tables and the like
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-(defvar *gadmap* (make-hash-table :test #'=))
+(defvar *gadmap* (make-hash-table :test #'eql))
 
 ;; note that gadgets% has almost exactly the same structure as strings
 ;; is there some common idiom here that we could abstract into a macro?
@@ -110,8 +110,8 @@ which the text section begins, as a secondary value."
       ((:x86) (gadmap-x86% text addr :glength glength))
       ((:arm) (gadmap-arm% text addr :glength glength)))))
              
-(defun file->gadmap (filename &key (arch :arm))
-  (gadmap (elf:read-elf filename) :arch arch))
+(defun file->gadmap (filename &key (arch :arm) (gadget-length *gadget-length*))
+  (gadmap (elf:read-elf filename) :glength gadget-length :arch arch))
    
 (defun gadgets%% (elf-section &optional (gadlen *gadget-length*))
   (gadgets% (coerce (elf:data elf-section) 'list) gadlen))
@@ -225,8 +225,8 @@ testing."
 ;; request code for jump targets, or maintain a static image of the
 ;; code on that end as well?
 
-(defun init-gadmap (path)
-  (setf *gadmap* (file->gadmap path)))
+(defun init-gadmap (path &key (gadget-length *gadget-length*))
+  (setf *gadmap* (file->gadmap path :gadget-length gadget-length)))
 
 
 
@@ -237,8 +237,8 @@ testing."
 ;; Fitness-related:
 (defvar *target*)
 
-(defun init-gadmap (path)
-  (setf *gadmap* (file->gadmap path)))
+(defun init-gadmap (path &key (gadget-length *gadget-length*))
+  (setf *gadmap* (file->gadmap path :gadget-length gadget-length) ))
 
 (defvar *wordsize* 32) ;; for arm
 
@@ -321,6 +321,14 @@ second element is a list of the target values."
                              (pick keys))))))))
 
 
+(defun everything ()
+  "for debugging purposes. get everything to a testable state."
+  (init-target #(0 _ _ #x10 _ _ #x111))
+  (init-gadmap #P"~/Projects/roper/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
+  (init-pop))
+  
+  
+
 ;; Todo:
 ;; * pass starting address in header along to hatchsock
 ;; * detect and report infinite loops. kill offending gadgets
@@ -328,3 +336,9 @@ second element is a list of the target values."
 ;;     that use those contraband gadgets
 ;;  -- perhaps do the same for other hard-to-fix errors
 ;; * pass a stack along with the gadget. (advanced, save for later)
+  
+
+
+
+
+

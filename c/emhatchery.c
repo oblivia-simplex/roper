@@ -1,5 +1,6 @@
 #include "includes.h"
 #define DEBUG 1
+#define TTL 1024
 
 /*********************************************************************
  *********************************************************************
@@ -210,7 +211,7 @@ int em_code(u8 *code, int bytelength,
   // where I have bytelength (sizeof(CODE))? probably because
   // it's implemented as a string, so it ends with a null byte
   if ((err = uc_emu_start(uc, EM_ADDR,
-                          EM_ADDR + bytelength -1, 0,0))){
+                          EM_ADDR + bytelength -1, 0, TTL))){
     if (DEBUG){
       uc_perror("uc_emu_start", err);
       if (err == UC_ERR_FETCH_UNMAPPED)
