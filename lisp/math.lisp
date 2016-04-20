@@ -1,3 +1,4 @@
+(in-package :roper-pkg)
 
 ;; calculate the euclidean distance between two points
 ;; in an n-dimensional space. 
@@ -7,3 +8,7 @@
            (loop for i below (length vec1) collect
                 (expt (- (elt vec1 i) (elt vec2 i)) 2)))))
 
+
+(export 'pick)
+(defmacro pick (seq)
+  `(elt ,seq (random (length ,seq))))

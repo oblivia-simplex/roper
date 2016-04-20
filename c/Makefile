@@ -40,7 +40,8 @@ DUMP = xxd
 DUMPFLAGS = -i
 
 
-LIB = $(BUILD_DIR)libhatchery.so
+LIB1 = $(BUILD_DIR)libhatchery.so
+LIB2 = $(BUILD_DIR)libemhatchery.so
 SOURCES = hatchery.c 
 HEADERS = hatchery.h includes.h
 TEST = $(BUILD_DIR)test
@@ -51,10 +52,8 @@ SERVER = $(BUILD_DIR)hatchsock
 
 .PHONY: dump clean dotest make_build_dir all debug
 
-all: $(LIB) $(TEST) $(X86_FLATBIN) $(ARM_FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
+all: $(LIB1) $(LIB2) $(TEST) $(X86_FLATBIN) $(ARM_FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
 	bash -c	"source ../aliases.rc"
-
-
 
 clean:
 	rm *.elf *.bin
@@ -62,8 +61,11 @@ clean:
 	mkdir -p $(BUILD_DIR)
 
 
-$(LIB): hatchery.o
-	$(CC) $(CFLAGS) $(SOURCES) -o $@ -shared $(LDFLAGS) $(STACKFLAGS)
+$(LIB1): hatchery.o
+	$(CC) $(CFLAGS) hatchery.c -o $@ -shared $(LDFLAGS) $(STACKFLAGS)
+
+$(LIB2): emhatchery.o
+	$(CC) $(CFLAGS) emhatchery.c -o $@ -shared $(LDFLAGS) 
 #	rm hatchery.o
 
 $(X86_ELFCODE): $(X86_EXAMPLE)
@@ -82,12 +84,12 @@ $(EXAMPLE_HEADER): $(X86_FLATBIN)
 	  $(DUMP) $(DUMPFLAGS) $(X86_FLATBIN) | tee $(EXAMPLE_HEADER)
 
 
-$(TEST): $(LIB) $(TESTSRC) $(EXAMPLE_HEADER)
-	$(CC) -L $(BUILD_DIR) -lhatchery main.c -o $(TEST) $(STACKFLAGS)
+$(TEST): $(LIB1) $(LIB2) $(TESTSRC) $(EXAMPLE_HEADER)
+	$(CC) -L $(BUILD_DIR) -lemhatchery -lhatchery main.c -o $(TEST) $(STACKFLAGS)
 
 
-$(SERVER): $(LIB) $(SOURCES) $(HEADERS) hatchsock.c
-	$(CC) -L $(BUILD_DIR) -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
+$(SERVER): $(LIB1) $(LIB2) $(SOURCES) $(HEADERS) hatchsock.c
+	$(CC) -L $(BUILD_DIR) -lemhatchery -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
 
 
 dotest:

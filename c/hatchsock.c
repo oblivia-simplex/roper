@@ -1,5 +1,5 @@
 #include "includes.h"
-#define SOCKDEBUG 0
+#define SOCKDEBUG 1
 
 /**
  * Server. Listens for messages containing machine-code, executes them, and
@@ -14,7 +14,7 @@
 
 #define DUMP 1
 #define MAX_CODE_SIZE 0x10000
-#define SEXP_LENGTH 137
+#define SEXP_LENGTH 256
 
 #define BREAKPOINT_OPCODE 0xCC
 
@@ -130,12 +130,14 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
   // maximum length for sexp is 1 + 2 + (16+2)*7 + 7
   // #, parens, seven 64bit hex numbers, prefixed by #x, spaces
   // grand total of 135, plus a null character, so 137
-  // vector is SYSREG_BYTES long.
+  // vector is SYSREG_BYTES long. Bump it up to 256. More than we need
   memset(sexp, 0, SEXP_LENGTH);
     
   length += sprintf(sexp+length, "#(");
-  
-  for (vptr = 0; vptr < SYSREG_BYTES; vptr += sizeof(long int)) {
+
+  // we should do something about this magic #. parameterize.
+  // it's the # of registers we're tracking, btw. 
+  for (vptr = 0; vptr < 64; vptr += sizeof(long int)) {
     length += sprintf(sexp+length, "#x%llx ",
                       bytes_to_integer(vector + vptr));
   }
@@ -209,7 +211,7 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
     codelength = 0;
     u32 offset = 0;
     u32 params = 0;
-    u32 expect = 0;
+    u16 expect = 0;
     baremetal = SET_BY_CLIENT;
     while (recvlength > 0) {
       if (SOCKDEBUG){
@@ -222,7 +224,7 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
         //        params = recvbuffer  //parse_header(recvbuffer);
         baremetal = buffer[0] & 0x0F;
         arch = (0xF0 & buffer[0])? UC_ARCH_ARM : UC_ARCH_X86;
-        expect = buffer[1] | (buffer[2] << 8);
+        expect = ((u8) buffer[1]) | ((u8) (buffer[2] << 8));
 
         if (SOCKDEBUG)
           printf("baremetal = %s\narch = %s\nexpect = %d\n",

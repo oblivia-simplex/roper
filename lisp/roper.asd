@@ -10,7 +10,7 @@
 (asdf:defsystem :roper
 ;;  (:pretty-name "Assembly Tools")
   :serial t
-  :components ((:file "roper")
-               (:file "math")))
+  :components ((:file "aux")
+               (:file "roper")))
 	
 

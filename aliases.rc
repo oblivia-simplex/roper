@@ -2,5 +2,12 @@ alias dump="objdump -b binary -m i386:x86-64 -D"
 alias armdump="arm-none-eabi-objdump -b binary -m arm -D"
 alias thumbdump="arm-none-eabi-objdump -b binary -m arm -M force-thumb -D "
 alias fix="cd /home/oblivia/Projects/roper && make && cd build && echo Tada\!"
+
+alias debugoff="sed -i'' s:'DEBUG 1':'DEBUG 0': *.c"
+alias debugon="sed -i'' s:'DEBUG 0':'DEBUG 1': *.c"
+
+alias serve="fix && ./hatchsock"
+
 export ARM="arm-none-eabi-"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:."
+
