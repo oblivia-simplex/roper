@@ -321,6 +321,24 @@ where the final type keyword specifies the return type."
 ;; using the elf package
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+
+(defun int-arm-pop-pc-p (opcode)
+  (and
+   ;; is it a pop?
+   (= (print (logand opcode #xFFFF0000)) #xe8bd0000)
+   ;; does it pop into register 15 (pc)?
+   (/= (print (logand opcode (ash 1 15))) 0 )))
+
+(defun arm-pop-pc-p% (bytes)
+  ;; works backwards
+  (and
+   (= (elt bytes 0) #xe8)
+   (= (elt bytes 1) #xbd)
+   (/= (logand (elt bytes 2)
+               (ash 1 7))
+       0)))
+
+
 (defun extract-text (elf-obj)
   "Returns the text section as a vector of bytes, and the address at
 which the text section begins, as a secondary value."
@@ -331,7 +349,11 @@ which the text section begins, as a secondary value."
     (values (elf:data (elt secs text-idx))
             (elt addrs text-idx))))
 
-(defun gadmap% (bytes start &key (glength *gadget-length*))
+
+;; this only works for 1 byte return instructions.
+;; modify it, using a trick like lastword in the C
+;; counterpart. 
+(defun gadmap-x86% (bytes start &key (glength *gadget-length*))
   (let ((tyb (reverse (coerce bytes 'list)))
         (end (1- (+ start (length bytes))))
         (found 0)
@@ -339,7 +361,33 @@ which the text section begins, as a secondary value."
     (loop for code on tyb for i from 0 do
          (when (retp (car code))
            (let* ((gad (reverse (subupto code glength)))
-                 (gadlen (length gad))) ;; usually = glength
+                  (gadlen (length gad))) ;; usually = glength
+             (incf found)
+             (and *debug*
+                  (format t "FOUND GADGET #~:D AT 0x~X - 0x~X~%"
+                          found (- end (+ i gadlen)) (- end i)))
+             (setf (gethash (- end (+ i gadlen)) gadmap)
+                   gad)
+           (incf i glength)
+           (setf code (nthcdr glength code)))))
+    gadmap))
+
+
+;; branch instructions have the most significant byte #xeb
+;; scan for these and avoid inside gadgets for now.
+;; blx have #xe12f (#x2f #xe1) in their most significant half
+;; word
+(defun gadmap-arm% (bytes start &key (glength *gadget-length*))
+  (let ((tyb (reverse (coerce bytes 'list)))
+        (end (1- (+ start (length bytes))))
+        (found 0)
+        (gadmap (make-hash-table)))
+    (loop
+       for code on tyb by #'cddddr
+       and i = 0 then (+ i 4) do
+         (when (arm-pop-pc-p% (subseq code 0 4))
+           (let* ((gad (reverse (subupto code glength)))
+                  (gadlen (length gad))) ;; usually = glength
              (incf found)
              (and *debug*
                   (format t "FOUND GADGET #~:D AT 0x~X - 0x~X~%"
@@ -350,14 +398,15 @@ which the text section begins, as a secondary value."
            (setf code (nthcdr glength code)))))
     gadmap))
                  
-
-(defun gadmap (elf &optional (glength *gadget-length*))
+(defun gadmap (elf &key (glength *gadget-length*) (arch :arm))
   (multiple-value-bind (text addr)
       (extract-text elf)
-    (gadmap% text addr :glength glength)))
+    (case arch
+      ((:x86) (gadmap-x86% text addr :glength glength))
+      ((:arm) (gadmap-arm% text addr :glength glength)))))
              
-(defun file->gadmap (filename)
-  (gadmap (elf:read-elf filename)))
+(defun file->gadmap (filename &key (arch :arm))
+  (gadmap (elf:read-elf filename) :arch arch))
    
 (defun gadgets%% (elf-section &optional (gadlen *gadget-length*))
   (gadgets% (coerce (elf:data elf-section) 'list) gadlen))
@@ -436,20 +485,24 @@ testing."
 
 (defparameter *code-server-port* 9999)
 
-;; (ql:quickload :iolib)
-;; (defun old-dispatch (code &key (ip "localhost") (port "9999"))
-;;   (let ((code-arr (make-array (length code) ;; should already be this
-;;                               :element-type '(unsigned-byte 8)
-;;                               :initial-contents code)))
-;;     (iolib:with-open-socket (iolib:socket :connect :active
-;;                               :address-family :internet
-;;                               :type :stream
-;;                               :ipv6 :nil)
-;;       (iolib:connect socket 
-;;                (iolib:lookup-hostname ip)
-;;                :port port :wait t)
-;;       (iolib:send-to socket code-arr)
-;;       (read socket))))
+;;(ql:quickload :iolib)
+
+(defun old-dispatch (code &key (ip "localhost") (port 9999) (header '(#x10)))
+  (let* ((len (elf:int-to-bytes (length code) 2))
+         (code-arr (make-array (+ 3 (length code)) ;; should already be this
+                               :element-type '(unsigned-byte 8)
+                               :initial-contents
+                               (concatenate 'list header len code))))
+     (iolib:with-open-socket (socket :connect :active
+                                     :address-family :internet
+                                     :type :stream
+                                     :ipv6 :nil)
+       (iolib:connect socket 
+                      (iolib:lookup-hostname ip)
+                      :port port :wait t)
+       (iolib:send-to socket code-arr)
+       (read socket))))
+
 
 (defun ar (code)
   (make-array (length code) :element-type '(unsigned-byte 8)
@@ -545,4 +598,3 @@ is consulted. Set it to 1 for ARM, or 0 for x86_64."
 ;; final paper: assume some standard conference format. IEEE, e.g.
 ;; look it up. submit in pdf.
 ;; see if there's a LaTeX pkg
-

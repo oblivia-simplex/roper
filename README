@@ -126,3 +126,4 @@ genetic system up and running by the end of April, though, and
 refinements to come over the summer. 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+(nb: if using :iolib for sockets, install fixlibpostfix-dev first)

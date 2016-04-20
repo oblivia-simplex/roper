@@ -2,7 +2,36 @@
 
 #define TTL 128
 
-#define DEBUG 1
+#define DEBUG 0
+
+
+//Dumps raw memory in hex byte and printable split format
+void fdump(FILE *fp, const unsigned char *data_buffer, const unsigned int length){
+  unsigned char byte;
+  unsigned int i, j;
+
+  char *shade = "";
+  for (i=0; i < length; i++) {
+    byte = data_buffer[i];
+    fprintf(fp, "%02x ", data_buffer[i]); // Display byte in hex
+    if (((i%16) == 15) || (i == length-1)){
+      for (j=0; j <= 15-(i%16); j++) 
+        fprintf(fp,"   ");
+      fprintf(fp,"| ");
+      for(j=(i-(i%16)); j <= i; j++) {
+        
+        // display printable bytes from line
+        byte = data_buffer[j];
+        if ((byte > 31) && (byte < 127)){
+          fprintf(fp,"%c", byte);
+        } else  
+          fprintf(fp,".");
+      }
+      fprintf(fp,"\n"); // end of dump line (each line is 16 bytes)
+    }// end if
+  } // end for
+}         
+
 
 
 // do debug flag as a command line opt.
@@ -401,24 +430,14 @@ int hatch_code (u8 *code, int bytelength,
    control to the monitor
 */
 
+/**********************************************************************
+ **********************************************************************
+                        Virtual Land Begins Here
+ **********************************************************************
+ **********************************************************************/
 
-void uc_perror(const char *func, uc_err err)
-{
-  if (DEBUG)
-    fprintf(stderr, "Error in %s(): %s\n", func, uc_strerror(err));
-  
-}
-
-
-int roundup(int num){
-  int i;
-  for (i=1; i < num; i <<= 1);
-  return i;
-}
-
-
-#define EM_ADDR 0x100000 // arbitrary?
-
+#define EM_ADDR 0x1000 // arbitrary?
+uc_arch global_arch; // for lack of a better place
 /*
  * unicorn-powered
  */
@@ -429,31 +448,114 @@ int x86_64_syscall_abi[] = {
 int x86_64_syscall_abi_len = 7;
 
 int arm_32_syscall_abi[] = {
-  UC_ARM_REG_R0
+  UC_ARM_REG_R0,
+  UC_ARM_REG_R1,
+  UC_ARM_REG_R2,
+  UC_ARM_REG_R3
 }; // NB: this is just a standin. i need to look up the ARM syscall
 // abi
+int arm_32_syscall_abi_len = 4; // need to look this up
 
-int arm_32_syscall_abi_len = 1; // need to look this up
 
-void hook_ret(uc_engine *uc, void *user_data) {
-    printf("*** Hello, I am in the hook. ***\n");
+void uc_perror(const char *func, uc_err err)
+{
+  if (DEBUG)
+    fprintf(stderr, "Error in %s(): %s\n", func, uc_strerror(err));  
+}
+
+
+int roundup(int num){
+  int i;
+  for (i=1; i < num; i <<= 1);
+  return i;
+}
+
+
+
+void hook_step(uc_engine *uc, void *user_data) {
+
+  int *sys_abi_vec, sys_abi_len;
+  //  uc_arch arch = UC_ARCH_ARM;  // just a stopgap
+  int pc;
+
+  
+  switch (global_arch) {
+  case UC_ARCH_X86 :
+    sys_abi_vec = x86_64_syscall_abi; // careful
+    sys_abi_len = x86_64_syscall_abi_len;
+    uc_reg_read(uc, UC_X86_REG_RIP, &pc);
+    break;
+  case UC_ARCH_ARM :
+    sys_abi_vec = arm_32_syscall_abi;
+    sys_abi_len = arm_32_syscall_abi_len;
+    uc_reg_read(uc, UC_ARM_REG_PC, &pc);
+    break;
+  }
+  // bad code rep for now, but refactor later
+  // this is mostly just for debugging, anyways
+  union seedvals {
+    word words[sys_abi_len];
+    u8 bytes[sys_abi_len * sizeof(word)];
+  } seedvals;
+  void *ptrs[sys_abi_len];      
+  int i;
+  for (i = 0; i < sys_abi_len; i++) {
+    ptrs[i] = &(seedvals.words[i]);
+  }
+  
+  uc_reg_read_batch(uc, sys_abi_vec, ptrs, sys_abi_len);
+
+    
+  
+  /** for testing  **/
+  if (DEBUG) {
+    printf("[ PC: %x ] syscall vec: {", pc);
+    for (i = 0; i < sys_abi_len; i++) {
+      if (i != 0) printf(", ");
+      printf("%x", seedvals.words[i]);
+    }
+    printf("}\n");
+  }
+  /******************/
     return;
+}
+
+
+void ret_msg(uc_engine *uc, int err, uc_arch arch){
+  // check to see if you've reached the end of the code, by
+  // accessing the instruction pointer in uc
+  u32 pc;
+  if (arch == UC_ARCH_X86) {
+    uc_reg_read(uc, UC_X86_REG_RIP, &pc);
+  } else if (arch == UC_ARCH_ARM) {
+    uc_reg_read(uc, UC_ARM_REG_PC, &pc);
+  }
+  printf("Attempted to branch to %x\n",pc);
+
+  return;
+  
 }
 
 
 int em_code(u8 *code, int bytelength,
             u8 *seed_res, uc_arch arch){
-  
+  if (global_arch != arch)
+    global_arch = arch;
   int errcode = 0;
   int roundlength = roundup(bytelength);
   uc_engine *uc;
   uc_err err;
-  uc_hook ret_hook;
+  uc_hook hook1;
   int sys_abi_len;
   uc_mode mode;
   
   int ret_inst;
   int *sys_abi_vec;
+
+  if (DEBUG){
+    printf("IN EMULATOR\n");
+    fdump(stdout, code, bytelength);
+  }
   
   switch (arch) {
   case UC_ARCH_X86 :
@@ -480,9 +582,11 @@ int em_code(u8 *code, int bytelength,
 
   /* fprintf(stderr, "bytelength = %d\nroundlength = %d\nsizeof(seedvals.bytes) = %d\nsizeof(seed_res) = %d\nsizeof(word) * sys_abi_len = %d\n",bytelength, roundlength, sizeof(seedvals.bytes), sizeof(seed_res), (sys_abi_len * sizeof(word))); */
   
-  memcpy(seedvals.bytes, seed_res,
-         (sys_abi_len * sizeof(word)));
-
+  if (!memcpy(seedvals.bytes, seed_res,
+              (sys_abi_len * sizeof(word)))){
+    fprintf(stderr, "Error in memcpy, in em_code.\n");
+  }
+  
   /**
    * from the unicorn src: "This part of the API is less... clean...
    * because Unicorn supports arbitrary register types. So the least
@@ -507,9 +611,12 @@ int em_code(u8 *code, int bytelength,
   }
 
 
-  if ((err = uc_hook_add(uc, &ret_hook, UC_HOOK_INSN, hook_ret, NULL, 1, 0, ret_inst))) {
-    uc_perror("uc_hook_add", err);
-    return 1;
+  /* Add a single-stepping hook if debugging */
+  if (DEBUG){
+    if ((err = uc_hook_add(uc, &hook1, UC_HOOK_CODE, hook_step, NULL, 1, 0, 0))) {
+      uc_perror("uc_hook_add", err);
+      return 1;
+    }
   }
 
 
@@ -529,8 +636,12 @@ int em_code(u8 *code, int bytelength,
   // where I have bytelength (sizeof(CODE))? probably because
   // it's implemented as a string, so it ends with a null byte
   if ((err = uc_emu_start(uc, EM_ADDR, EM_ADDR + bytelength -1, 0,0))){
-    uc_perror("uc_emu_start", err);
-    return -1;
+    if (DEBUG){
+      uc_perror("uc_emu_start", err);
+      if (err == UC_ERR_FETCH_UNMAPPED)
+        ret_msg(uc, err, arch);
+    }
+    errcode = -2;
   }
   
   uc_reg_read_batch(uc, sys_abi_vec, ptrs, sys_abi_len);
@@ -549,7 +660,8 @@ int em_code(u8 *code, int bytelength,
   
   memcpy(seed_res, seedvals.bytes,
          (sys_abi_len * sizeof(word)));  
-  
+
+
   return errcode;
   
 }
