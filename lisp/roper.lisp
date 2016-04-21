@@ -2,6 +2,7 @@
 
 (defparameter *debug* t)
 
+(defvar *best* nil)
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; global lookup tables and the like
@@ -288,21 +289,6 @@ second element is a list of the target values."
 (defun init-target (pattern)
   (setf *target* (pattern->idxlist pattern)))
 
-(defun test-chain-old (chain &key
-                           (target *target*)
-                           (arch :arm))
-  (let* ((result (dispatch
-                  (incarnate chain)
-                  :header (if (eq arch :arm)
-                              '(#x12)
-                              '(#x00))))
-         (fitness (match target result)))
-    (if *debug* (format t "ADDRESSES: ~A~%CHAIN:~%~A~%RESULT:~A~%MATCH: ~F~%"
-                        (chain-addr chain) (incarnate chain)
-                        result fitness))
-    (setf (chain-fit chain) fitness)))
-
-
 (defun test-chain (chain &key (target *target*) (arch :arm))
   (let ((result)
         (archheader (if (eq arch :arm) #x10 #x00)))
@@ -322,7 +308,11 @@ second element is a list of the target values."
                              (car gadget)
 ;;                             (gethash (car gadget) *gadmap*)
                              result)))
-    (setf (chain-fit chain) (match target result))))
+    (setf (chain-fit chain) (match target result))
+    (if (or (null *best*)
+            (< (chain-fit chain) (chain-fit *best*)))
+        (setf *best* chain))
+    (chain-fit chain)))
     
 
 ;; ------------------------------------------------------------
@@ -402,6 +392,40 @@ second element is a list of the target values."
       :addr (append (subseq (chain-addr chain2) 0 idx2)
                     (subseq (chain-addr chain1) idx1))))))
 
+
+(defparameter *mutation-vs-crossover-rate* 0.5)
+(defun mate (parent1 parent2)
+  (cond ((< (random 1.0) *mutation-vs-crossover-rate*)
+         (multiple-value-bind (child1 child2)
+           (crossover parent1 parent2)
+           (if *debug* (print 'crossover))
+           (values child1 child2)))
+        (:OTHERWISE
+         (let ((child1 (make-chain :addr (chain-addr parent1)))
+               (child2 (make-chain :addr (chain-addr parent2))))
+           (if *debug* (print 'mutating))
+           (setf child1 (random-mutation child1))
+           (setf child2 (random-mutation child2))
+           (values child1 child2)))))
+               
+      
+  
+
+(defun tournement (tsize population)
+  (let ((contenders (subseq (shuffle (copy-seq population)) 0 tsize)))
+    (loop for chain in contenders do
+         (unless (chain-fit chain)
+           (test-chain chain)))
+    (setf contenders (sort contenders #'(lambda (x y)
+                                          (< (chain-fit x)
+                                             (chain-fit y)))))
+    (multiple-value-bind (child1 child2)
+        (mate (first contenders) (second contenders))
+      (test-chain child1)
+      (test-chain child2)
+      (nsubst child1 (caddr contenders) population)
+      (nsubst child2 (caddr contenders) population))))
+    
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; testing and debugging functions

@@ -1,5 +1,5 @@
 #include "includes.h"
-#define DEBUG 1
+#define DEBUG 0
 #define TTL 256
 
 /*********************************************************************

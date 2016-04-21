@@ -1,5 +1,5 @@
 #include "includes.h"
-#define SOCKDEBUG 1
+#define SOCKDEBUG 0
 
 /**
  * Server. Listens for messages containing machine-code, executes
