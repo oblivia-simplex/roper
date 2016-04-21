@@ -123,7 +123,7 @@ u32 codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
 }
     
 
-  
+#define REGISTER_COUNT 15  
 #define WORDSIZE 4 // needs to be less ad hoc, more easily adjusted
 u32 lisp_encode(unsigned char *vector, char *sexp){
   u32 vptr=0, sptr, length=0;
@@ -137,7 +137,7 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 
   // we should do something about this magic #. parameterize.
   // it's the # of registers we're tracking, btw. 
-  for (vptr = 0; vptr < WORDSIZE*8; vptr += WORDSIZE) {
+  for (vptr = 0; vptr < WORDSIZE * REGISTER_COUNT; vptr += WORDSIZE) {
     length += sprintf(sexp+length, "#x%x ",
                       bytes_to_integer(vector + vptr));
   }

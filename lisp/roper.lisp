@@ -2,6 +2,9 @@
 
 (defparameter *debug* t)
 
+(defparameter *default-ip* #(#10r127 0 0 1))
+(defparameter *default-port* #(#10r9999))
+
 
 
 ;; == constants, which var vars only b/c that makes slime happy ==
@@ -319,16 +322,22 @@ second element is a list of the target values."
     result))
 
 (defvar *register-count* 8)
-(defvar *activity-test-pattern*
+(defparameter *activity-test-pattern*
   (coerce (loop repeat *register-count*
-               collect #x202020202020202) 'vector))
+             collect #x02020202) 'vector))
+
 (defun activity-test (chain &key
                               (arch :arm)
                               (ip #(#10r127 0 0 1))
                               (port #10r9999))
-  
-  (test-chain chain :arch arch :ip ip :port port :activity-test t))
-                              
+  (not (equalp *activity-test-pattern*
+               (test-chain chain :arch arch
+                           :ip ip :port port
+                           :activity-test t))))
+
+(defun cull-the-idle (&key (arch :arm)
+                        (ip *default-ip*
+                        (port *default-port*
 
 ;; ------------------------------------------------------------
 ;; population control

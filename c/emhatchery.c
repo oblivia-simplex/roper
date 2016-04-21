@@ -33,10 +33,17 @@ int arm_32_syscall_abi[] = {
   UC_ARM_REG_R4,
   UC_ARM_REG_R5,
   UC_ARM_REG_R6,
-  UC_ARM_REG_R7
+  UC_ARM_REG_R7,
+  UC_ARM_REG_R8,
+  UC_ARM_REG_R9,
+  UC_ARM_REG_R10,
+  UC_ARM_REG_R11,
+  UC_ARM_REG_R12,
+  UC_ARM_REG_R13,
+  UC_ARM_REG_R14,  
 }; 
 
-int arm_32_syscall_abi_len = 8; // need to look this up
+int arm_32_syscall_abi_len = 15; // need to look this up
 
 
 void uc_perror(const char *func, uc_err err)
