@@ -156,6 +156,7 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 #define BAREMETAL(x) (0x01 & x[0])
 #define RESET(x) (0x02 & x[0]) 
 #define RESPOND(x) (0x04 & x[0])
+#define ACTIVITY_TEST(x) (0x08 & x[0])
 #define ARCHFLAG(x) ((0xF0 & x[0])? UC_ARCH_ARM : UC_ARCH_X86)
 #define EXPECT(x) ((x[1]) | ( (x[2] << 8)))
 #define STARTAT(x)  ((0xFF & x[3]) |  ((0xFF & x[4]) << 8) | \
@@ -258,6 +259,7 @@ u32 listen_for_code(u32 port, char *allowed_ip){
     u32 startat = 0;
     u16 expect = 0;
     u8 respond = 0;
+    u8 activity_test = 0;
     u8 reset = 0; // treat as boolean
     
     baremetal = SET_BY_CLIENT;
@@ -278,17 +280,20 @@ u32 listen_for_code(u32 port, char *allowed_ip){
         reset = RESET(buffer);
         respond = RESPOND(buffer);
         startat = (u32) STARTAT(buffer);
+        activity_test = ACTIVITY_TEST(buffer);
         /*****************************/
         if (reset)
           memset(result, 0, SYSREG_BYTES);
         
         if (SOCKDEBUG)
           printf("baremetal = %s\narch = %s\nexpect = %d\n"
-                 "reset = %s\nstartat = %x\n",
+                 "reset = %s\nstartat = %x\n"
+                 "activity_test = %s\n",
                  baremetal? "yes":"no",
                  arch == UC_ARCH_ARM? "arm":"x86",
                  expect, reset? "yes" : "no",
-                 startat);
+                 startat,
+                 activity_test? "yes" : "no");
         
         //if (!codelength && baremetal < 0){
         /* The lower nibble of the first byte sets the bare metal
@@ -297,8 +302,8 @@ u32 listen_for_code(u32 port, char *allowed_ip){
          * Currently: 1 for ARM, 0 for X86;
          */         
 
-        recvlength -= 3;
-        offset = 3;
+        recvlength -= 7;
+        offset = 7;
       }
       
       codelength = codecopy(codebuffer, buffer + offset,

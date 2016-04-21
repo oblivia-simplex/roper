@@ -6,6 +6,10 @@
 
 ;; == constants, which var vars only b/c that makes slime happy ==
 
+
+(defstruct chain addr fit res)
+
+
 (defvar *arm-nop* '(#x00 #x00 #x00 #x00))
 (defvar *x86-nop* '(#x90))
 (defvar *word-in-bytes* 4)
@@ -133,9 +137,6 @@ which the text section begins, as a secondary value."
 (defun file->gadmap (filename &key (arch :arm) (gadget-length *gadget-length*))
   (gadmap (elf:read-elf filename) :glength gadget-length :arch arch))
    
-(defun gadgets%% (elf-section &optional (gadlen *gadget-length*))
-  (gadgets% (coerce (elf:data elf-section) 'list) gadlen))
-
 
 ;; ------------------------------------------------------------
 ;; too ugly to live: ;; and only relevant to x86 arch
@@ -177,11 +178,6 @@ which the text section begins, as a secondary value."
 ;; end too ugly to live section
 ;; ------------------------------------------------------------
 
-(defun disas-inst (code)
-  "Intended for disassembly of single instructions. Only for native
-arch. "
-  (let ((dis (cffi-objdump code)))
-    (chomp (subseq dis (- (length dis) 10) (length dis)))))
   
 ;; (defun ret-filter% (gadgets)
 ;;   (remove-if-not #'cdr (mapcar #'shrink-gad gadgets)))
@@ -255,11 +251,6 @@ testing."
 ;; Fitness-related:
 
 
-(defun init-gadmap (path &key (gadget-length *gadget-length*))
-  (setf *gadmap* (file->gadmap path :gadget-length gadget-length) ))
-
-
-
 (defun distance (vec1 vec2)
   (flet ((chop (n)
            (ldb (byte *word-in-bits* 0) n)))
@@ -271,7 +262,7 @@ testing."
                       2))))))
 
 (defun pattern->idxlist (pattern)
-"A pattern is a vector consisting of unsigned word-sized integers and
+  "A pattern is a vector consisting of unsigned word-sized integers and
 wildcard symbols _. Returns a cons pair whose first element is a list
 of the positions of nonwildcard values in the pattern, and whose
 second element is a list of the target values."
@@ -279,11 +270,8 @@ second element is a list of the target values."
     (loop
        for mark across pattern
        for i from 0 do
-         (unless (eq mark '_) (push i pos)))
-    (cons
-     (reverse pos)
-     (mapcar #'(lambda (x) (elt pattern x)) pos))))
-       
+         (unless (eq mark '_) (push (cons i mark) pos)))
+    (reverse pos)))
 
 (defun match-pat (pattern regvec)
   (assert (<= (length pattern) (length regvec)))
@@ -291,16 +279,18 @@ second element is a list of the target values."
 
 ;; This will be the fitness function.
 ;; we'll use a default pattern and idxlist for testing. 
-(defun match (idxlist regvec)
-  (let ((target (cdr idxlist))
-        (result (loop for i in (car idxlist)
+(defun match (target regvec)
+  (let ((vals (mapcar #'cdr target))
+        (result (loop for i in (mapcar #'car target)
                    collect (aref regvec i))))
-    (distance target result)))
+    (distance vals result)))
+
+           
 
 (defun init-target (pattern)
   (setf *target* (pattern->idxlist pattern)))
 
-(defun test-chain (chain &key (target *target*)
+(defun test-chain (chain &key 
                            (arch :arm)
                            (ip #(#10r127 0 0 1))
                            (port 9999))
@@ -324,11 +314,7 @@ second element is a list of the target values."
                              (car gadget)
 ;;                             (gethash (car gadget) *gadmap*)
                              result)))
-    (setf (chain-fit chain) (match target result))
-    (if (or (null *best*)
-            (< (chain-fit chain) (chain-fit *best*)))
-        (setf *best* chain))
-    (chain-fit chain)))
+    result))
     
 
 ;; ------------------------------------------------------------
@@ -336,8 +322,6 @@ second element is a list of the target values."
 ;; ------------------------------------------------------------
 
 
-
-(defstruct chain addr fit)
 
 
 (defun init-pop (&key (max-start-len 5)
@@ -425,15 +409,75 @@ second element is a list of the target values."
            (values child1 child2)))))
                
       
-  
+
+(defun lexicase (tsize population &key(ip #(127 0 0 1))
+                 (port 9999))
+  (let ((contenders
+         (subseq (shuffle (copy-seq population)) 0 tsize))
+        (targets (shuffle (copy-seq *target*)))
+        (mother (cons nil nil))
+        (father (cons nil nil)))
+    (loop for chain in contenders do
+         (when (null (chain-res chain))
+           (setf (chain-res chain)
+                 (test-chain chain :ip ip :port port))))
+    (if *debug* (format t "LEXICASE FILTERING...~%"))
+    (loop for aims in (list targets (reverse targets))
+       for parent in (list (cons mother nil) (cons father nil)) do
+         (loop for point in targets do
+              (let ((next)
+                    (score (length targets)))
+                (format t "TESTING POINT ~A~%" point)
+                (loop for chain in contenders do
+                     (if (= (elt (chain-res chain) (car point))
+                            (cdr point))
+                         (push chain next)))
+                (and *debug* (format t "REMAINING: ~D~%" (length next)))
+                (when (cddr next) ;; if there are <= 2 chains left
+                  (decf score)
+                  (mapc (lambda (x) (setf (chain-fit x) score)) next)
+                  (and *debug* (format t "SCORE: ~D~%" score))
+                  (when (zerop score)
+                    (format t "PERFECT SPECIMEN FOUND: ~A~%"
+                            (car contenders))
+                    (setf *best* (car contenders)))
+                  (setf contenders next)
+                  (setf next nil))))
+         (setf (caar parent) (car contenders))
+    (when *debug*
+      (format t "MOTHER: ~A~%FATHER: ~A~%" mother father))
+    ;; now we have two parents
+    (multiple-value-bind (child1 child2)
+        (mate (car mother) (car father))
+      (test-chain child1 :ip ip :port port)
+      (test-chain child2 :ip ip :port port)
+      (nsubst child1 (caddr contenders) population)
+      (nsubst child2 (caddr contenders) population))))
+
+
+
+            
+            
+    
+
+
 
 (defun tournement (tsize population &key(ip #(127 0 0 1))
-                   (port 9999))
+                   (port 9999) (target *target*))
   (let ((contenders (subseq (shuffle (copy-seq population)) 0 tsize)))
     (loop for chain in contenders do
-         (cond ((null (chain-fit chain))
-                (test-chain chain :ip ip :port port))
+         (cond ((null (chain-res chain))
+                (setf (chain-res chain)
+                      (test-chain chain :ip ip :port port))
+                (setf (chain-fit chain)
+                      (match target (chain-res chain)))
+                (if (or (null *best*)
+                        (< (chain-fit chain) (chain-fit *best*)))
+                    (setf *best* chain)))
                (:OTHERWISE
+                (unless (chain-fit chain)
+                  (setf (chain-fit chain)
+                        (match target (chain-res chain))))
                 (and *debug*
                      (format t "ALREADY TESTED ~A~%" chain)))))
     (setf contenders (sort contenders #'(lambda (x y)
@@ -453,7 +497,7 @@ second element is a list of the target values."
 
 (defun everything ()
   "for debugging purposes. get everything to a testable state."
-  (init-target #(0 _ _ #x10 _ _ #x111))
+  (init-target #(1 _ _ #xFF _ _ #x2))
   (init-gadmap #P"~/Projects/roper/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
   (init-pop))
   
