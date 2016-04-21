@@ -321,7 +321,7 @@ second element is a list of the target values."
                              result)))
     result))
 
-(defvar *register-count* 8)
+(defvar *register-count* 15)
 (defparameter *activity-test-pattern*
   (coerce (loop repeat *register-count*
              collect #x02020202) 'vector))

@@ -1,5 +1,5 @@
 #include "includes.h"
-#define SOCKDEBUG 0
+#define SOCKDEBUG 1
 
 /**
  * Server. Listens for messages containing machine-code, executes
@@ -207,7 +207,8 @@ u32 listen_for_code(u32 port, char *allowed_ip){
   u32 codelength, actual_sexp_length;
   int unauth_count = 0;
   int max_unauth = 100;
-  int result_buffer_size = 16 * sizeof(u32); // make more flexible
+  int result_buffer_size = (REGISTER_COUNT + 1) * sizeof(u32);
+  // make more flexible
   /* in_addr *client_ip; */
   /* if (!inet_aton(ip, client_ip)){ */
   /*   printf("Error converting client ip address to binary.\n"); */
