@@ -143,10 +143,10 @@ int em_code(u8 *code, u32 bytelength, u32 startat,
   int ret_inst;
   int *sys_abi_vec;
 
-  if (DEBUG){
-    printf("IN EMULATOR\n");
-    fdump(stdout, code, bytelength);
-  }
+  /* if (DEBUG){ */
+  /*   printf("IN EMULATOR\n"); */
+  /*   fdump(stdout, code, bytelength); */
+  /* } */
   
   switch (arch) {
   case UC_ARCH_X86 :

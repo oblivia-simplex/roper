@@ -1,5 +1,5 @@
 #include "includes.h"
-#define SOCKDEBUG 1
+#define SOCKDEBUG 0
 
 /**
  * Server. Listens for messages containing machine-code, executes
@@ -160,6 +160,7 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 #define EXPECT(x) ((x[1]) | ( (x[2] << 8)))
 #define STARTAT(x)  ((0xFF & x[3]) |  ((0xFF & x[4]) << 8) | \
                      ((0xFF & x[5]) << 16) | ((0xFF & x[6]) << 24)) 
+#define HEADERLENGTH 7
 
 /******************************************************************/
 
@@ -235,12 +236,13 @@ u32 listen_for_code(u32 port){
     
     baremetal = SET_BY_CLIENT;
     while (recvlength > 0) {
-      if (SOCKDEBUG){
-        printf("RECV: %d bytes\n", recvlength);
-        fdump(stdout, buffer, recvlength);
-      }
 
       if(!codelength){
+        if (SOCKDEBUG){
+          printf("HEADER: %d bytes\n", HEADERLENGTH);
+          fdump(stdout, buffer, HEADERLENGTH);
+        }
+
         /******************************/
         /* Extract header information */
         /******************************/
