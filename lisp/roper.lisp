@@ -300,7 +300,10 @@ second element is a list of the target values."
 (defun init-target (pattern)
   (setf *target* (pattern->idxlist pattern)))
 
-(defun test-chain (chain &key (target *target*) (arch :arm))
+(defun test-chain (chain &key (target *target*)
+                           (arch :arm)
+                           (ipaddr #(#10r127 0 0 1))
+                           (port 9999))
   (let ((result)
         (archheader (if (eq arch :arm) #x10 #x00)))
     (when *debug*
@@ -310,6 +313,8 @@ second element is a list of the target values."
        for gadget on (chain-addr chain) do
          (setf result
                (dispatch (gethash (car gadget) *gadmap*)
+                         :ip ipaddr
+                         :port port
                          :header (list
                                   (logior archheader
                                           (if result 0 2)

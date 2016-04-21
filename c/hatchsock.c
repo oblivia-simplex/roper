@@ -1,5 +1,5 @@
 #include "includes.h"
-#define SOCKDEBUG 0
+#define SOCKDEBUG 1
 
 /**
  * Server. Listens for messages containing machine-code, executes
@@ -326,7 +326,7 @@ u32 listen_for_code(u32 port){
   }
   printf("Now we are at the end...\n");
   free(codebuffer);
-  //  free(result);
+  free(result);
   free(sexp);
 }
 

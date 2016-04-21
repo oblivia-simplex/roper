@@ -1,5 +1,5 @@
 #include "includes.h"
-#define DEBUG 0
+#define DEBUG 1
 #define TTL 256
 
 /*********************************************************************
@@ -248,6 +248,7 @@ int em_code(u8 *code, u32 bytelength, u32 startat,
   /******************/
   memcpy(seed_res, seedvals.bytes,
          (sys_abi_len * sizeof(word)));  
+  uc_close(uc);
   return errcode;
 }
 

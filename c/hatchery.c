@@ -2,7 +2,7 @@
 
 #define TTL 128
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 //Dumps raw memory in hex byte and printable split format
