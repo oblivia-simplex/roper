@@ -207,13 +207,14 @@ u32 listen_for_code(u32 port, char *allowed_ip){
   u32 codelength, actual_sexp_length;
   int unauth_count = 0;
   int max_unauth = 100;
+  int result_buffer_size = 16 * sizeof(u32); // make more flexible
   /* in_addr *client_ip; */
   /* if (!inet_aton(ip, client_ip)){ */
   /*   printf("Error converting client ip address to binary.\n"); */
   /*   exit(EXIT_FAILURE); */
   /* } */
   codebuffer = malloc(MAX_CODE_SIZE);
-  result = malloc(16 * sizeof(u32)); // make this more flexible
+  result = malloc(result_buffer_size);
   sexp = malloc(SEXP_LENGTH);
   sin_size = sizeof(struct sockaddr_in);
   while (1) {
@@ -253,7 +254,7 @@ u32 listen_for_code(u32 port, char *allowed_ip){
     memset(sexp, 0, SEXP_LENGTH);
     
     codelength = 0;
-    u32 offset = 0;
+
     u8 baremetal = 0;
     //    u32 params = 0;
     u32 startat = 0;
@@ -283,7 +284,13 @@ u32 listen_for_code(u32 port, char *allowed_ip){
         activity_test = ACTIVITY_TEST(buffer);
         /*****************************/
         if (reset)
-          memset(result, 0, SYSREG_BYTES);
+          memset(result, 0, result_buffer_size);
+        /* An activity test checks to see if a gadget is having
+         * any effect on the register state at all. To do this, 
+         * the registers are filled with 2-bytes. 
+         */
+        if (activity_test)
+          memset(result, 2, result_buffer_size);
         
         if (SOCKDEBUG)
           printf("baremetal = %s\narch = %s\nexpect = %d\n"
@@ -301,13 +308,11 @@ u32 listen_for_code(u32 port, char *allowed_ip){
          * The upper nibble sets the architecture, when virtual. 
          * Currently: 1 for ARM, 0 for X86;
          */         
-
-        recvlength -= 7;
-        offset = 7;
+        recvlength -= HEADERLENGTH;
       }
       
-      codelength = codecopy(codebuffer, buffer + offset,
-      codelength, recvlength, arch);
+      codelength = codecopy(codebuffer, buffer + HEADERLENGTH,
+                            codelength, recvlength, arch);
 
       if (SOCKDEBUG)
         printf("code length = %d\n", (codelength));

@@ -293,7 +293,8 @@ second element is a list of the target values."
 (defun test-chain (chain &key 
                            (arch :arm)
                            (ip #(#10r127 0 0 1))
-                           (port 9999))
+                           (port 9999)
+                           (activity-test nil))
   (let ((result)
         (archheader (if (eq arch :arm) #x10 #x00)))
     (when *debug*
@@ -305,10 +306,11 @@ second element is a list of the target values."
                (dispatch (gethash (car gadget) *gadmap*)
                          :ip ip
                          :port port
-                         :header (list
-                                  (logior archheader
-                                          (if result 0 2)
-                                          (if (cdr gadget) 0 4)))
+                         :header (list (logior
+                                        archheader
+                                        (if result 0 2)
+                                        (if (cdr gadget) 0 4)
+                                        (if (activity-test) 8 0)))
                          :start-at (car gadget)))
          (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
                              (car gadget)
@@ -316,6 +318,13 @@ second element is a list of the target values."
                              result)))
     result))
     
+
+(defun activity-test (chain &key
+                              (arch :arm)
+                              (ip #(#10r127 0 0 1))
+                              (port #10r9999))
+  (test-chain chain :arch arch :ip ip :port port))
+                              
 
 ;; ------------------------------------------------------------
 ;; population control
@@ -391,6 +400,7 @@ second element is a list of the target values."
      (make-chain
       :addr (append (subseq (chain-addr chain2) 0 idx2)
                     (subseq (chain-addr chain1) idx1))))))
+
 
 
 
