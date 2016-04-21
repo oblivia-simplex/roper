@@ -83,7 +83,7 @@ void hook_step(uc_engine *uc, void *user_data) {
   // this is mostly just for debugging, anyways
   union seedvals {
     word words[sys_abi_len];
-    u8 bytes[sys_abi_len * sizeof(word)];
+    u8 bytes[sys_abi_len * WORDSIZE];
   } seedvals;
   void *ptrs[sys_abi_len];      
   int i;

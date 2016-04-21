@@ -149,7 +149,7 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
   return length;
 }
 
-#define SET_BY_CLIENT -1
+
 /******************************************************************/
 /* Some functional macros for quickly parsing the packet's header */
 /******************************************************************/

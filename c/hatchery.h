@@ -93,6 +93,9 @@ int size_of_sysreg_union(void);
 /************************************************************
  * Unicorn-related stuff, etc.
  ************************************************************/
+#define REGISTER_COUNT 15  
+#define WORDSIZE 4 // needs to be less ad hoc, more easily adjusted
+
 
 enum{ARCH_X86_64, ARCH_ARM_32} arch_t;
 
