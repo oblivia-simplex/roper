@@ -1,6 +1,6 @@
 #include "includes.h"
 #define DEBUG 1
-#define TTL 1024
+#define TTL 256
 
 /*********************************************************************
  *********************************************************************
@@ -114,10 +114,24 @@ void ret_msg(uc_engine *uc, int err, uc_arch arch){
 }
 
 
-int em_code(u8 *code, int bytelength,
+
+/**
+ * This is the part that launches the code in the Unicorn emulator.
+ **/
+int em_code(u8 *code, u32 bytelength, u32 startat,
             u8 *seed_res, uc_arch arch){
+
+  // bit of lazy coding here: update a global arch var, so that
+  // we can easily read the arch from the single step hook.
+  // neither elegant nor dangerous. 
   if (global_arch != arch)
     global_arch = arch;
+
+  /* The start address must be aligned to 4KB, or uc_mem_map will
+   * throw a UC_ERR_ARG error. 
+   */
+  u32 round_start = startat & (u32) (~0xFFF);
+  u32 offset = startat - round_start;
   int errcode = 0;
   int roundlength = roundup(bytelength);
   uc_engine *uc;
@@ -196,13 +210,13 @@ int em_code(u8 *code, int bytelength,
   }
 
   // don't leave 0x1000 a magic number
-  if ((err = uc_mem_map(uc, EM_ADDR, 0x1000, UC_PROT_ALL))) {
+  if ((err = uc_mem_map(uc, round_start, 0x1000, UC_PROT_ALL))) {
     // does PROT_ALL mean 777? might want to set to XN for ROP...
     uc_perror("uc_mem_map", err);
     return -1;
   }
 
-  if ((err = uc_mem_write(uc, EM_ADDR, (void *) code,
+  if ((err = uc_mem_write(uc, startat, (void *) code,
                           bytelength-1))) {
     uc_perror("uc_mem_write", err);
     return -1;
@@ -210,8 +224,8 @@ int em_code(u8 *code, int bytelength,
   // why does the unicorn example suggest sizeof(CODE) -1
   // where I have bytelength (sizeof(CODE))? probably because
   // it's implemented as a string, so it ends with a null byte
-  if ((err = uc_emu_start(uc, EM_ADDR,
-                          EM_ADDR + bytelength -1, 0, TTL))){
+  if ((err = uc_emu_start(uc, startat,
+                          startat + bytelength -1, 0, TTL))){
     if (DEBUG){
       uc_perror("uc_emu_start", err);
       if (err == UC_ERR_FETCH_UNMAPPED)

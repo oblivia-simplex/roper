@@ -2,8 +2,8 @@
 #define SOCKDEBUG 1
 
 /**
- * Server. Listens for messages containing machine-code, executes them, and
- * returns the resulting registers state.
+ * Server. Listens for messages containing machine-code, executes
+ * them, and returns the resulting registers state.
  **/
 
 #define PORT 9999
@@ -150,6 +150,19 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 }
 
 #define SET_BY_CLIENT -1
+/******************************************************************/
+/* Some functional macros for quickly parsing the packet's header */
+/******************************************************************/
+#define BAREMETAL(x) (0x01 & x[0])
+#define RESET(x) (0x02 & x[0]) 
+#define RESPOND(x) (0x04 & x[0])
+#define ARCHFLAG(x) ((0xF0 & x[0])? UC_ARCH_ARM : UC_ARCH_X86)
+#define EXPECT(x) ((x[1]) | ( (x[2] << 8)))
+#define STARTAT(x)  ((0xFF & x[3]) |  ((0xFF & x[4]) << 8) | \
+                     ((0xFF & x[5]) << 16) | ((0xFF & x[6]) << 24)) 
+
+/******************************************************************/
+
 u32 listen_for_code(u32 baremetal, uc_arch arch){
 
   u32 sockfd, new_sockfd, port=PORT, yes=1, recvlength=1;
@@ -185,7 +198,7 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
   u32 codelength, actual_sexp_length;
   
   codebuffer = malloc(MAX_CODE_SIZE);
-  result = malloc(SYSREG_BYTES);
+  result = malloc(16 * sizeof(u32)); // make this more flexible
   sexp = malloc(SEXP_LENGTH);
   
   while (1) {
@@ -196,8 +209,10 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
         == -1)
       fatal("accepting connection");
 
-    if (SOCKDEBUG) printf("SERVER: ACCEPTED CONNECTION FROM %s PORT %d\n",
-                          inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+    if (SOCKDEBUG) printf("SERVER: ACCEPTED CONNECTION "
+                          "FROM %s PORT %d\n",
+                          inet_ntoa(cli_addr.sin_addr),
+                          ntohs(cli_addr.sin_port));
 
     recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0);
     
@@ -205,13 +220,17 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
      * Clean the buffers
      **/
     memset(codebuffer, 0, MAX_CODE_SIZE);
-    memset(result, 0, SYSREG_BYTES);
+    //    memset(result, 0, SYSREG_BYTES);
     memset(sexp, 0, SEXP_LENGTH);
     
     codelength = 0;
     u32 offset = 0;
-    u32 params = 0;
+    //    u32 params = 0;
+    u32 startat = 0;
     u16 expect = 0;
+    u8 respond = 0;
+    u8 reset = 0; // treat as boolean
+    
     baremetal = SET_BY_CLIENT;
     while (recvlength > 0) {
       if (SOCKDEBUG){
@@ -220,17 +239,26 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
       }
 
       if(!codelength){
-        // todo: write this parse_header function.
-        //        params = recvbuffer  //parse_header(recvbuffer);
-        baremetal = buffer[0] & 0x0F;
-        arch = (0xF0 & buffer[0])? UC_ARCH_ARM : UC_ARCH_X86;
-        expect = ((u8) buffer[1]) | ((u8) (buffer[2] << 8));
-
+        /******************************/
+        /* Extract header information */
+        /******************************/
+        baremetal = BAREMETAL(buffer);
+        arch = ARCHFLAG(buffer);
+        expect = EXPECT(buffer);
+        reset = RESET(buffer);
+        respond = RESPOND(buffer);
+        startat = (u32) STARTAT(buffer);
+        /*****************************/
+        if (reset)
+          memset(result, 0, SYSREG_BYTES);
+        
         if (SOCKDEBUG)
-          printf("baremetal = %s\narch = %s\nexpect = %d\n",
+          printf("baremetal = %s\narch = %s\nexpect = %d\n"
+                 "reset = %s\nstartat = %x\n",
                  baremetal? "yes":"no",
                  arch == UC_ARCH_ARM? "arm":"x86",
-                 expect);
+                 expect, reset? "yes" : "no",
+                 startat);
         
         //if (!codelength && baremetal < 0){
         /* The lower nibble of the first byte sets the bare metal
@@ -241,7 +269,8 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
 
         recvlength -= 3;
         offset = 3;
-      } 
+      }
+      
       codelength = codecopy(codebuffer, buffer + offset,
       codelength, recvlength, arch);
 
@@ -261,6 +290,11 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
         /*************************************************/
         /* This is where the code actually gets launched */
         /*************************************************/
+        // for debugging //
+        if (SOCKDEBUG){
+          printf("REGISTERS GOING IN: \n");
+          lisp_encode(result, sexp);
+        }
         if (baremetal) {
           if (SOCKDEBUG)
             printf("Running on bare metal.\n");
@@ -268,14 +302,18 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
         } else {
           if (SOCKDEBUG)
             printf("Running in virtual environment.\n");
-          em_code(codebuffer, codelength, result, arch);
+          em_code(codebuffer, codelength, startat, result, arch);
         }
         /*************************************************
          em_code takes seed and result as same pointer.
          hatch_code should be updated to do this too. 
         *************************************************/
-        actual_sexp_length = lisp_encode(result, sexp);
-        send(new_sockfd, sexp, actual_sexp_length, 0);
+        if (respond) {
+          actual_sexp_length = lisp_encode(result, sexp);
+          send(new_sockfd, sexp, actual_sexp_length, 0);
+        } else {
+          send(new_sockfd, "Ok", 2, 0);
+        }
         break;
       } else {      
         recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0);
@@ -284,8 +322,9 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
 
     close(new_sockfd);
   }
+  printf("Now we are at the end...\n");
   free(codebuffer);
-  free(result);
+  //  free(result);
   free(sexp);
 }
 
@@ -330,6 +369,8 @@ u32 main(u32 argc, char **argv){
          "* network, and you *will* be pwned.                        *\n"
          "************************************************************\n", PORT);
   listen_for_code(baremetal, arch);
+  
   return 0;
 }
+
 

@@ -22,6 +22,10 @@
   `(elt ,seq (random (length ,seq))))
 
 
+(export 'shuffle)
+(defun shuffle (seq)
+  (sort seq #'(lambda (x y) (declare (ignore x y))(= 0 (random 2)))))
+
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 

@@ -23,9 +23,8 @@
 (defparameter *x86-reg-count* 26) ;; machine dependent
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-;; using the elf package
+;; Extracting ROP gadgets and preparing the payload for the hatchery
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 
 (defun int-arm-pop-pc-p (opcode)
   (and
@@ -84,7 +83,7 @@ which the text section begins, as a secondary value."
 ;; word
 (defun gadmap-arm% (bytes start &key (glength *gadget-length*))
   (let ((tyb (reverse (coerce bytes 'list)))
-        (end (1- (+ start (length bytes))))
+        (end (+ start (length bytes)))
         (found 0)
         (gadmap (make-hash-table)))
     (loop
@@ -190,20 +189,27 @@ testing."
     (if (cdr keylist)
         (concat (mapcar #'(lambda (x) (gethash x ht)) keylist))
         (gethash (car keylist) ht))))
-    
 
 (defparameter *code-server-port* 9999)
 
 ;;(ql:quickload :iolib)
 
-(defun dispatch (code &key (ip #(127 0 0 1))
+(defvar *word-size* 4)
+
+(defun dispatch (code &key (ip #(#10r127 0 0 #10r1))
                         (port *code-server-port*)
-                        (header '(#x10)))
+                        (header '(#x12))
+                        (start-at #x1000))
   (let* ((len (elf:int-to-bytes (length code) 2))
-         (code-arr (make-array (+ 3 (length code)) ;; should already be this
+         (start (elf:int-to-bytes start-at *word-size*))
+         (code-arr (make-array (+ 3 *word-size* (length code)) ;; should already be this
                                :element-type '(unsigned-byte 8)
                                :initial-contents
-                               (concatenate 'list header len code))))
+                               (concatenate 'list
+                                            header
+                                            len
+                                            start
+                                            code))))
      (iolib:with-open-socket (socket :connect :active
                                      :address-family :internet
                                      :type :stream
@@ -282,13 +288,13 @@ second element is a list of the target values."
 (defun init-target (pattern)
   (setf *target* (pattern->idxlist pattern)))
 
-(defun test-chain (chain &key
+(defun test-chain-old (chain &key
                            (target *target*)
                            (arch :arm))
   (let* ((result (dispatch
                   (incarnate chain)
                   :header (if (eq arch :arm)
-                              '(#x10)
+                              '(#x12)
                               '(#x00))))
          (fitness (match target result)))
     (if *debug* (format t "ADDRESSES: ~A~%CHAIN:~%~A~%RESULT:~A~%MATCH: ~F~%"
@@ -296,6 +302,28 @@ second element is a list of the target values."
                         result fitness))
     (setf (chain-fit chain) fitness)))
 
+
+(defun test-chain (chain &key (target *target*) (arch :arm))
+  (let ((result)
+        (archheader (if (eq arch :arm) #x10 #x00)))
+    (when *debug*
+      (format t "~%--------------------------------------~%TESTING CHAIN OF ~D GADGETS~%--------------------------------------~%"
+              (length (chain-addr chain))))
+    (loop
+       for gadget on (chain-addr chain) do
+         (setf result
+               (dispatch (gethash (car gadget) *gadmap*)
+                         :header (list
+                                  (logior archheader
+                                          (if result 0 2)
+                                          (if (cdr gadget) 0 4)))
+                         :start-at (car gadget)))
+         (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
+                             (car gadget)
+;;                             (gethash (car gadget) *gadmap*)
+                             result)))
+    (setf (chain-fit chain) (match target result))))
+    
 
 ;; ------------------------------------------------------------
 ;; population control
@@ -320,6 +348,64 @@ second element is a list of the target values."
                            collect
                              (pick keys))))))))
 
+;; ------------------------------------------------------------
+;; mutation operators
+;; ------------------------------------------------------------
+
+(defun mut-push-gadget (chain)
+  (push (pick (loop for k being the hash-keys in *gadmap* collect k))
+        (chain-addr chain))
+  chain)
+
+(defun mut-pop-gadget (chain)
+  (when (cdr (chain-addr chain))
+    (pop (chain-addr chain)))
+  chain)
+
+(defun mut-shuffle-gadgets (chain)
+  (setf (chain-addr chain) (shuffle (chain-addr chain)))
+  chain)
+
+(defun mut-shrink-gadget (chain)
+  (let* ((addr (pick (chain-addr chain)))
+         (gadget (gethash addr *gadmap*))) ;; about to do something non-threadsafe
+    (print addr)
+    (setf (chain-addr chain)
+          (delete addr (chain-addr chain)))   
+    (setf addr (+ addr *word-size*))
+    (pop gadget)
+    (if (cdr gadget)
+        (progn
+          (setf (gethash addr *gadmap*) gadget)
+          (push addr (chain-addr chain)))
+        (mut-push-gadget chain)))
+  chain);; replace with random if exhausted
+
+(defparameter *mut-vec*
+  #(mut-push-gadget
+    mut-pop-gadget
+    mut-shuffle-gadgets
+    mut-shrink-gadget))
+
+(defun random-mutation (chain)
+  (funcall (print (pick *mut-vec*)) chain))
+
+(defun crossover (chain1 chain2)
+  "One-point crossover."
+  (let ((idx1 (random (length (chain-addr chain1))))
+        (idx2 (random (length (chain-addr chain2)))))
+    (values
+     (make-chain
+      :addr (append (subseq (chain-addr chain1) 0 idx1)
+                    (subseq (chain-addr chain2) idx2)))
+     (make-chain
+      :addr (append (subseq (chain-addr chain2) 0 idx2)
+                    (subseq (chain-addr chain1) idx1))))))
+
+
+;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+;; testing and debugging functions
+;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 (defun everything ()
   "for debugging purposes. get everything to a testable state."
