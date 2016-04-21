@@ -163,9 +163,10 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 
 /******************************************************************/
 
-u32 listen_for_code(u32 baremetal, uc_arch arch){
+u32 listen_for_code(u32 port){
 
-  u32 sockfd, new_sockfd, port=PORT, yes=1, recvlength=1;
+  u32 sockfd, new_sockfd, yes=1, recvlength=1;
+  uc_arch arch;
   socklen_t sin_size;
   char buffer[TRANSMISSION_SIZE];
   struct sockaddr_in srv_addr, cli_addr;
@@ -225,6 +226,7 @@ u32 listen_for_code(u32 baremetal, uc_arch arch){
     
     codelength = 0;
     u32 offset = 0;
+    u8 baremetal = 0;
     //    u32 params = 0;
     u32 startat = 0;
     u16 expect = 0;
@@ -333,26 +335,17 @@ u32 main(u32 argc, char **argv){
    * TODO: parse command line options to select architecture
    * and virtualization vs baremetal options
    */
-  u32 baremetal = SET_BY_CLIENT;
   char opt;
-  uc_arch arch = UC_ARCH_X86;
+  u32 port = 9999;
   if (argc < 2)
-    goto noopts;  
-  while ((opt = getopt(argc, argv, "m")) != -1){
+    goto noopts;
+  while ((opt = getopt(argc, argv, "p:v:")) != -1){
     switch (opt) {
-    case 'm':
-      if (!strncmp("bare",optarg,4)){
-        baremetal = 1;
-      } else if (!strncmp("x86",optarg,3)){
-        baremetal = 0;
-        arch = UC_ARCH_X86;
-      } else if (!strncmp("arm",optarg,3)){
-        baremetal = 0;
-        arch = UC_ARCH_ARM;
-      } else {
-        fprintf(stderr, "Unrecognized architecture.\n");
-        exit(EXIT_FAILURE);
-      }
+    case 'v':
+      printf("verification not yet implemented.\n");
+      break;
+    case 'p':
+      sscanf(optarg, "%d",&port);
       break;
     case 'h':
     default:
@@ -367,8 +360,8 @@ u32 main(u32 argc, char **argv){
          "* Send machine code to be executed to port %4d.           *\n"
          "* This is not a secure service. Run this on an insecure    *\n"
          "* network, and you *will* be pwned.                        *\n"
-         "************************************************************\n", PORT);
-  listen_for_code(baremetal, arch);
+         "************************************************************\n", port);
+  listen_for_code(port);
   
   return 0;
 }

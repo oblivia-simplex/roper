@@ -2,26 +2,46 @@
 
 (defparameter *debug* t)
 
+
+
+;; == constants, which var vars only b/c that makes slime happy ==
+
+(defvar *arm-nop* '(#x00 #x00 #x00 #x00))
+(defvar *x86-nop* '(#x90))
+(defvar *word-in-bytes* 4)
+(defvar *word-in-bits* (* *word-in-bytes* 4)) ;; for arm
+(defparameter *code-server-port* 9999)
+(defparameter *x86-ret* '(#xc3))
+(defun retp (byte)
+  (member byte *x86-ret*))
+(defparameter *gadget-length* 32)
+(defparameter *x86-reg-count* 26) ;; machine dependent
+;; genetic parameters
+(defparameter *mutation-vs-crossover-rate* 0.5)
+
+;; == variables initialized once, and then read globally == 
+(defvar *target*)
+
+;; == variables both written to and read from globally ==
+;; == these will need to be either mutexed or refactored ==
+;; == if threading is used.
 (defvar *best* nil)
+(defvar *population*)
+(defvar *gadmap* (make-hash-table :test #'eql))
+;;(ql:quickload :iolib)
+
+
+
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; global lookup tables and the like
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-(defvar *gadmap* (make-hash-table :test #'eql))
+
 
 ;; note that gadgets% has almost exactly the same structure as strings
 ;; is there some common idiom here that we could abstract into a macro?
 ;; or would that just make it more complicated?
-(defparameter *x86-ret* '(#xc3))
-
-(export 'retp)
-(defun retp (byte)
-  (member byte *x86-ret*))
-
-(defparameter *gadget-length* 32)
-
-(defparameter *x86-reg-count* 26) ;; machine dependent
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; Extracting ROP gadgets and preparing the payload for the hatchery
@@ -166,10 +186,6 @@ arch. "
 ;; (defun ret-filter% (gadgets)
 ;;   (remove-if-not #'cdr (mapcar #'shrink-gad gadgets)))
 
-
-(defvar *arm-nop* '(#x00 #x00 #x00 #x00))
-(defvar *x86-nop* '(#x90))
-
 (defun concat (gadget-list &key (arch :arm))
   "Concatenates gadgets, removing the *ret* instruction at the end,
 first, to approximate executing them in sequence. Mostly just for
@@ -191,19 +207,14 @@ testing."
         (concat (mapcar #'(lambda (x) (gethash x ht)) keylist))
         (gethash (car keylist) ht))))
 
-(defparameter *code-server-port* 9999)
-
-;;(ql:quickload :iolib)
-
-(defvar *word-size* 4)
 
 (defun dispatch (code &key (ip #(#10r127 0 0 #10r1))
                         (port *code-server-port*)
                         (header '(#x12))
                         (start-at #x1000))
   (let* ((len (elf:int-to-bytes (length code) 2))
-         (start (elf:int-to-bytes start-at *word-size*))
-         (code-arr (make-array (+ 3 *word-size* (length code)) ;; should already be this
+         (start (elf:int-to-bytes start-at *word-in-bytes*))
+         (code-arr (make-array (+ 3 *word-in-bytes* (length code)) ;; should already be this
                                :element-type '(unsigned-byte 8)
                                :initial-contents
                                (concatenate 'list
@@ -242,16 +253,16 @@ testing."
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 ;; Fitness-related:
-(defvar *target*)
+
 
 (defun init-gadmap (path &key (gadget-length *gadget-length*))
   (setf *gadmap* (file->gadmap path :gadget-length gadget-length) ))
 
-(defvar *wordsize* 32) ;; for arm
+
 
 (defun distance (vec1 vec2)
   (flet ((chop (n)
-           (ldb (byte *wordsize* 0) n)))
+           (ldb (byte *word-in-bits* 0) n)))
     (sqrt
      (reduce #'+
            (loop for i below (length vec1) collect
@@ -319,7 +330,7 @@ second element is a list of the target values."
 ;; population control
 ;; ------------------------------------------------------------
 
-(defvar *population*)
+
 
 (defstruct chain addr fit)
 
@@ -362,7 +373,7 @@ second element is a list of the target values."
     (print addr)
     (setf (chain-addr chain)
           (delete addr (chain-addr chain)))   
-    (setf addr (+ addr *word-size*))
+    (setf addr (+ addr *word-in-bytes*))
     (pop gadget)
     (if (cdr gadget)
         (progn
@@ -393,7 +404,7 @@ second element is a list of the target values."
                     (subseq (chain-addr chain1) idx1))))))
 
 
-(defparameter *mutation-vs-crossover-rate* 0.5)
+
 (defun mate (parent1 parent2)
   (cond ((< (random 1.0) *mutation-vs-crossover-rate*)
          (multiple-value-bind (child1 child2)
