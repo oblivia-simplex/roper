@@ -153,7 +153,7 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 #define RESET(x) (0x02 & x[0]) 
 #define RESPOND(x) (0x04 & x[0])
 #define ACTIVITY_TEST(x) (0x08 & x[0])
-#define ARCHFLAG(x) ((0xF0 & x[0])? UC_ARCH_ARM : UC_ARCH_X86)
+#define ARCHFLAG(x) ((0x10 & x[0])? UC_ARCH_ARM : UC_ARCH_X86)
 #define EXPECT(x) ((x[1]) | ( (x[2] << 8)))
 #define STARTAT(x)  ((0xFF & x[3]) |  ((0xFF & x[4]) << 8) | \
                      ((0xFF & x[5]) << 16) | ((0xFF & x[6]) << 24)) 

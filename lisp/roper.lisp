@@ -336,8 +336,15 @@ second element is a list of the target values."
                            :activity-test t))))
 
 (defun cull-the-idle (&key (arch :arm)
-                        (ip *default-ip*
-                        (port *default-port*
+                        (ip *default-ip*)
+                        (port *default-port*)
+                        (population *population*))
+  (setf population
+        (remove-if-not #'(lambda (x)
+                           (activity-test x :arch arch
+                                          :ip ip
+                                          :port port)))))
+                                               
 
 ;; ------------------------------------------------------------
 ;; population control
@@ -433,8 +440,8 @@ second element is a list of the target values."
                
       
 
-(defun lexicase (tsize population &key(ip #(127 0 0 1))
-                 (port 9999))
+(defun lexicase (tsize population &key (ip *default-ip*)
+                                    (port *default-port*))
   (let ((contenders
          (subseq (shuffle (copy-seq population)) 0 tsize))
         (targets (shuffle (copy-seq *target*)))
@@ -466,7 +473,7 @@ second element is a list of the target values."
                     (setf *best* (car contenders)))
                   (setf contenders next)
                   (setf next nil))))
-         (setf (caar parent) (car contenders))
+         (setf (caar parent) (car contenders)))
     (when *debug*
       (format t "MOTHER: ~A~%FATHER: ~A~%" mother father))
     ;; now we have two parents
@@ -485,8 +492,8 @@ second element is a list of the target values."
 
 
 
-(defun tournement (tsize population &key(ip #(127 0 0 1))
-                   (port 9999) (target *target*))
+(defun tournement (tsize population &key(ip *default-ip*)
+                   (port *default-port*) (target *target*))
   (let ((contenders (subseq (shuffle (copy-seq population)) 0 tsize)))
     (loop for chain in contenders do
          (cond ((null (chain-res chain))
@@ -520,6 +527,7 @@ second element is a list of the target values."
 
 (defun everything ()
   "for debugging purposes. get everything to a testable state."
+  (setf *best* nil)
   (init-target #(1 _ _ #xFF _ _ #x2))
   (init-gadmap #P"~/Projects/roper/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
   (init-pop))

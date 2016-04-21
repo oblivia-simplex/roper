@@ -82,7 +82,7 @@ void hook_step(uc_engine *uc, void *user_data) {
   // bad code rep for now, but refactor later
   // this is mostly just for debugging, anyways
   union seedvals {
-    word words[sys_abi_len];
+    u32 words[sys_abi_len];
     u8 bytes[sys_abi_len * WORDSIZE];
   } seedvals;
   void *ptrs[sys_abi_len];      
@@ -174,7 +174,7 @@ int em_code(u8 *code, u32 bytelength, u32 startat,
   }
     
   union seedvals {
-    word words[sys_abi_len];
+    u32 words[sys_abi_len]; // wrinkle here: the word size should be dynamic
     u8 bytes[sys_abi_len * sizeof(word)];
   } seedvals;
 
