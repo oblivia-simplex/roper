@@ -164,8 +164,14 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 
 /******************************************************************/
 
-u32 listen_for_code(u32 port){
+u32 listen_for_code(u32 port, char *allowed_ip){
 
+  u8 any_ip;
+
+  if (!strncmp(allowed_ip, "any", 3)){
+    printf("Accepting connections from any ip.\n");
+    any_ip = 1;
+  }
   u32 sockfd, new_sockfd, yes=1, recvlength=1;
   uc_arch arch;
   socklen_t sin_size;
@@ -198,7 +204,13 @@ u32 listen_for_code(u32 port){
   unsigned char *result;
   char *sexp;
   u32 codelength, actual_sexp_length;
-  
+  int unauth_count = 0;
+  int max_unauth = 100;
+  /* in_addr *client_ip; */
+  /* if (!inet_aton(ip, client_ip)){ */
+  /*   printf("Error converting client ip address to binary.\n"); */
+  /*   exit(EXIT_FAILURE); */
+  /* } */
   codebuffer = malloc(MAX_CODE_SIZE);
   result = malloc(16 * sizeof(u32)); // make this more flexible
   sexp = malloc(SEXP_LENGTH);
@@ -210,11 +222,22 @@ u32 listen_for_code(u32 port){
          accept(sockfd, (struct sockaddr *) &cli_addr, &sin_size))
         == -1)
       fatal("accepting connection");
-
+    char *client_ip = inet_ntoa(cli_addr.sin_addr);
     if (SOCKDEBUG) printf("SERVER: ACCEPTED CONNECTION "
                           "FROM %s PORT %d\n",
-                          inet_ntoa(cli_addr.sin_addr),
+                          client_ip,
                           ntohs(cli_addr.sin_port));
+    if (strncmp(client_ip, allowed_ip, 0xF)){
+      fprintf(stderr, "UNAUTHORIZED CONNECTION ATTEMPTED. %d SO FAR.",
+              ++unauth_count);
+      if (unauth_count > max_unauth){
+        fprintf(stderr, " TERMINATING!\n");
+        exit(EXIT_FAILURE);
+      } else {
+        fprintf(stderr," IGNORING FOR NOW.\n");
+      }
+    }
+        
 
     recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0);
     
@@ -339,15 +362,20 @@ u32 main(u32 argc, char **argv){
    */
   char opt;
   u32 port = 9999;
+  char allowed_ip[0x10] = "any";
   if (argc < 2)
     goto noopts;
-  while ((opt = getopt(argc, argv, "p:v:")) != -1){
+  while ((opt = getopt(argc, argv, "p:v:i:")) != -1){
     switch (opt) {
     case 'v':
       printf("verification not yet implemented.\n");
       break;
     case 'p':
       sscanf(optarg, "%d",&port);
+      break;
+    case 'i':
+      printf("Setting allowed ip to %s\n", optarg);
+      strncpy(allowed_ip, optarg, 0xF);
       break;
     case 'h':
     default:
@@ -363,7 +391,7 @@ u32 main(u32 argc, char **argv){
          "* This is not a secure service. Run this on an insecure    *\n"
          "* network, and you *will* be pwned.                        *\n"
          "************************************************************\n", port);
-  listen_for_code(port);
+  listen_for_code(port, allowed_ip);
   
   return 0;
 }

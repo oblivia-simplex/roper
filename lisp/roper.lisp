@@ -302,7 +302,7 @@ second element is a list of the target values."
 
 (defun test-chain (chain &key (target *target*)
                            (arch :arm)
-                           (ipaddr #(#10r127 0 0 1))
+                           (ip #(#10r127 0 0 1))
                            (port 9999))
   (let ((result)
         (archheader (if (eq arch :arm) #x10 #x00)))
@@ -313,7 +313,7 @@ second element is a list of the target values."
        for gadget on (chain-addr chain) do
          (setf result
                (dispatch (gethash (car gadget) *gadmap*)
-                         :ip ipaddr
+                         :ip ip
                          :port port
                          :header (list
                                   (logior archheader
@@ -417,8 +417,8 @@ second element is a list of the target values."
            (if *debug* (print 'crossover))
            (values child1 child2)))
         (:OTHERWISE
-         (let ((child1 (make-chain :addr (chain-addr parent1)))
-               (child2 (make-chain :addr (chain-addr parent2))))
+         (let ((child1 (make-chain :addr (copy-seq (chain-addr parent1))))
+               (child2 (make-chain :addr (copy-seq (chain-addr parent2)))))
            (if *debug* (print 'mutating))
            (setf child1 (random-mutation child1))
            (setf child2 (random-mutation child2))
@@ -427,18 +427,22 @@ second element is a list of the target values."
       
   
 
-(defun tournement (tsize population)
+(defun tournement (tsize population &key(ip #(127 0 0 1))
+                   (port 9999))
   (let ((contenders (subseq (shuffle (copy-seq population)) 0 tsize)))
     (loop for chain in contenders do
-         (unless (chain-fit chain)
-           (test-chain chain)))
+         (cond ((null (chain-fit chain))
+                (test-chain chain :ip ip :port port))
+               (:OTHERWISE
+                (and *debug*
+                     (format t "ALREADY TESTED ~A~%" chain)))))
     (setf contenders (sort contenders #'(lambda (x y)
                                           (< (chain-fit x)
                                              (chain-fit y)))))
     (multiple-value-bind (child1 child2)
         (mate (first contenders) (second contenders))
-      (test-chain child1)
-      (test-chain child2)
+      (test-chain child1 :ip ip :port port)
+      (test-chain child2 :ip ip :port port)
       (nsubst child1 (caddr contenders) population)
       (nsubst child2 (caddr contenders) population))))
     
