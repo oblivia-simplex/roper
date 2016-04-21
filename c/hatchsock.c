@@ -24,8 +24,6 @@
 #define ARM_NOP "\x00\x00\x00\x00"
 
 
-#define BAREMETAL 0
-
 // marks end of code transmission
 
 u8 *armrets[] = {
@@ -123,8 +121,6 @@ u32 codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
 }
     
 
-#define REGISTER_COUNT 15  
-#define WORDSIZE 4 // needs to be less ad hoc, more easily adjusted
 u32 lisp_encode(unsigned char *vector, char *sexp){
   u32 vptr=0, sptr, length=0;
   // maximum length for sexp is 1 + 2 + (16+2)*7 + 7
@@ -264,7 +260,7 @@ u32 listen_for_code(u32 port, char *allowed_ip){
     u8 activity_test = 0;
     u8 reset = 0; // treat as boolean
     
-    baremetal = SET_BY_CLIENT;
+
     while (recvlength > 0) {
 
       if(!codelength){
