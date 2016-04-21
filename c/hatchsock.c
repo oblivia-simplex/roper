@@ -214,14 +214,15 @@ u32 listen_for_code(u32 port, char *allowed_ip){
   codebuffer = malloc(MAX_CODE_SIZE);
   result = malloc(16 * sizeof(u32)); // make this more flexible
   sexp = malloc(SEXP_LENGTH);
-  
+  sin_size = sizeof(struct sockaddr_in);
   while (1) {
-    sin_size = sizeof(struct sockaddr_in);
-    
+  restart:
     if ((new_sockfd =
          accept(sockfd, (struct sockaddr *) &cli_addr, &sin_size))
-        == -1)
+        == -1){
       fatal("accepting connection");
+    }
+
     char *client_ip = inet_ntoa(cli_addr.sin_addr);
     if (SOCKDEBUG) printf("SERVER: ACCEPTED CONNECTION "
                           "FROM %s PORT %d\n",
@@ -235,6 +236,8 @@ u32 listen_for_code(u32 port, char *allowed_ip){
         exit(EXIT_FAILURE);
       } else {
         fprintf(stderr," IGNORING FOR NOW.\n");
+        close(new_sockfd);
+        goto restart;
       }
     }
         
