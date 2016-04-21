@@ -310,20 +310,24 @@ second element is a list of the target values."
                                         archheader
                                         (if result 0 2)
                                         (if (cdr gadget) 0 4)
-                                        (if (activity-test) 8 0)))
+                                        (if activity-test 8 0)))
                          :start-at (car gadget)))
          (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
                              (car gadget)
 ;;                             (gethash (car gadget) *gadmap*)
                              result)))
     result))
-    
 
+(defvar *register-count* 8)
+(defvar *activity-test-pattern*
+  (coerce (loop repeat *register-count*
+               collect #x202020202020202) 'vector))
 (defun activity-test (chain &key
                               (arch :arm)
                               (ip #(#10r127 0 0 1))
                               (port #10r9999))
-  (test-chain chain :arch arch :ip ip :port port))
+  
+  (test-chain chain :arch arch :ip ip :port port :activity-test t))
                               
 
 ;; ------------------------------------------------------------

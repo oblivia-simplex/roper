@@ -124,7 +124,7 @@ u32 codecopy(unsigned char *codebuffer, unsigned char *recvbuffer,
     
 
   
-
+#define WORDSIZE 4 // needs to be less ad hoc, more easily adjusted
 u32 lisp_encode(unsigned char *vector, char *sexp){
   u32 vptr=0, sptr, length=0;
   // maximum length for sexp is 1 + 2 + (16+2)*7 + 7
@@ -137,8 +137,8 @@ u32 lisp_encode(unsigned char *vector, char *sexp){
 
   // we should do something about this magic #. parameterize.
   // it's the # of registers we're tracking, btw. 
-  for (vptr = 0; vptr < 64; vptr += sizeof(long int)) {
-    length += sprintf(sexp+length, "#x%llx ",
+  for (vptr = 0; vptr < WORDSIZE*8; vptr += WORDSIZE) {
+    length += sprintf(sexp+length, "#x%x ",
                       bytes_to_integer(vector + vptr));
   }
   length --;
