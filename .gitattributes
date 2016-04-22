@@ -1,0 +1,2 @@
+*.lisp linguist-language=Common\ Lisp
+*.c linguist-language=C
