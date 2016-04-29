@@ -1,4 +1,4 @@
-(in-package :roper-pkg)
+(in-package :roper)
 
 
 (defun load-libhatchery.so ()
@@ -54,12 +54,7 @@
                :initial-contents (coerce seq 'list))))
 
 ;; this might or might not come in handy...
-;; #[a b c d] will be read as a system-area-pointer to bytes a b c d...
 (defdelim #\[ #\] (bytes)
-  ;; (let ((stuff (if (listp (symbol-value (car bytes)))
-  ;;                  (apply #'values (car bytes))
-  ;;                  bytes)))
-  ;;  (print bytes) (print stuff)
     (make-array (length (symbol-value bytes)) :element-type '(unsigned-byte 8)
                 :initial-contents (symbol-value bytes)))
 

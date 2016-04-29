@@ -275,7 +275,19 @@ int em_code(u8 *code, u32 bytelength, u32 startat,
 
 
 
-
-
-
-
+/* Todo
+ * ----
+ * see if memory can be mapped separately from the gadget being tested
+ * to resolve what will otherwise be memory faults
+ * if this works, consider a new protocol:
+ * - load the entire binary vmmap (data,text) into memory at the beginning of the process
+ * --- memory analysis can happen on the client side. then send instructions to the server
+ *     via the header. 
+ * - dispatch just the addresses over the wire
+ * - maintain a stack the way that registers are now maintained. 
+ * - no, send the stack. the stack top is the payload. 
+ * 
+ * -> we'll need a way of trapping memory writes, and then rapidly
+      undoing them after a chain has executed. this will *probably* be
+      faster than restoring the entire memory image from scratch.
+ */

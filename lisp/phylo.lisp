@@ -1,17 +1,17 @@
-(in-package :roper-pkg)
+;; *******************
+;; Phylogenetic client
+;; *******************
+
+(in-package :roper)
 
 (defparameter *debug* t)
 
 (defparameter *default-ip* #(#10r127 0 0 1))
 (defparameter *default-port* #(#10r9999))
 
-
-
 ;; == constants, which var vars only b/c that makes slime happy ==
 
-
 (defstruct chain addr fit res)
-
 
 (defvar *arm-nop* '(#x00 #x00 #x00 #x00))
 (defvar *x86-nop* '(#x90))
@@ -72,14 +72,22 @@
 
 
 (defun extract-text (elf-obj)
+  ;; deprecated. use extract-by-name from now on. 
   "Returns the text section as a vector of bytes, and the address at
+which the text section begins, as a secondary value."
+  (multiple-value-bind (data addr)
+      (extract-by-name elf-obj ".text")
+    (values data addr)))
+
+(defun extract-by-name (elf-obj name)
+    "Returns a named section as a vector of bytes, and the address at
 which the text section begins, as a secondary value."
   (let* ((secs (elf:sections elf-obj))
          (addrs (mapcar #'elf:address (elf:section-table elf-obj)))
-         (text-idx (position ".text" secs
+         (named-idx (position name secs
                              :key #'elf:name :test #'equalp)))
-    (values (elf:data (elt secs text-idx))
-            (elt addrs text-idx))))
+    (values (elf:data (elt secs named-idx))
+            (elt addrs named-idx))))
 
 
 ;; this only works for 1 byte return instructions.
@@ -207,10 +215,95 @@ testing."
         (gethash (car keylist) ht))))
 
 
-(defun dispatch (code &key (ip #(#10r127 0 0 #10r1))
-                        (port *code-server-port*)
-                        (header '(#x12))
-                        (start-at #x1000))
+(defun make-header (&key
+                      (reset_data 0)
+                      (reset_reg 0)
+                      (feedback_sexp 1)
+                      (archflag 1) ;; 1 for arm
+                      (modeflag 0) ;; for arm mode or 64 bit x86
+                      (executable 1) ;; for yes
+                      (writeable 1) ;; for yes
+                      (expect 0) ;; a three-byte number (< 2^24)
+                      (startat 0)) ;; a four-byte number (< 2^32)
+  "Returns an array of bytes that encodes these attributes as a header."
+  (let* ((header (make-array '(8)
+                             :element-type '(unsigned-byte 8)
+                             :initial-element 0))
+         (expect_size 3)
+         (startat_size 4)
+         (expect_bytes (elf:int-to-bytes expect expect_size))
+         (startat_bytes (elf:int-to-bytes startat startat_size)))
+    (setf (aref header 0)
+          (logior reset_data
+                  (ash reset_reg 1)
+                  (ash feedback_sexp 2)
+                  (ash archflag 3)
+                  (ash modeflag 5) ;; bit 4 reserved
+                  (ash executable 6)
+                  (ash writeable 7))) ;; and that takes care of byte 0
+    (setf (subseq header 1 (1+ expect_size)) expect_bytes)
+    (setf (subseq header (1+ expect_size) (+ expect_size startat_size 1))
+          startat_bytes)
+    header))
+          
+        
+                            
+
+(defun stack->bytes (stack &key (wordsize 4))
+  (reduce #'(lambda (x y) (concatenate 'list x y))
+          (mapcar #'(lambda (z) (elf:int-to-bytes z wordsize)) stack)))
+
+
+(defvar *wordsize* 4)
+
+(defun dispatch (payload &key (ip #(#10r127 0 0 #10r1))
+                           (port *code-server-port*))
+  (iolib:with-open-socket (socket :connect :active
+                                  :address-family :internet
+                                  :type :stream
+                                  :ipv6 :nil)
+    (iolib:connect socket 
+                   (iolib:lookup-hostname ip)
+                   :port port :wait t)
+    (iolib:send-to socket payload)
+    ;; MASSIVE security hole! The server can send back read macros
+    ;; using the #. dispatch string, and execute arbitrary code
+    ;; on the lisp client.
+    ;; solution: sanitize the socket input before passing it to
+    ;; #'read!
+    (read socket)))
+
+(defparameter *header-length* 8)
+(defun dispatch-stack (stack-of-addrs &key (ip #(#10r127 0 0 1))
+                                        (port *code-server-port*)
+                                        (reset_data 0)
+                                        (reset_reg 0)
+                                        (feedback_sexp 1)
+                                        (archflag 1) ;; 1 for arm
+                                        (modeflag 0)) ;;for arm mode or 64 bit x86
+  (let* ((size (+ *header-length*
+                  (* (length stack-of-addrs) 4)))
+         (header (make-header :reset_data reset_data
+                              :reset_reg reset_reg
+                              :feedback_sexp feedback_sexp
+                              :archflag archflag
+                              :modeflag modeflag))
+         (stack (stack->bytes stack-of-addrs))
+         (payload (make-array `(,size)
+                              :element-type
+                              '(unsigned-byte 8)
+                              :initial-contents
+                              (concatenate 'list header stack))))
+    (dispatch payload :ip ip :port port)))
+
+
+;; note that the header protocol is unstable right now, and between
+;; two different formats. this function uses the old one, but i expect
+;; to deprecate it in favour of stack-based dispatches, in any case.
+(defun dispatch-code (code &key (ip #(#10r127 0 0 #10r1))
+                             (port *code-server-port*)
+                             (header '(#x12))
+                             (start-at #x1000))
   (let* ((len (elf:int-to-bytes (length code) 2))
          (start (elf:int-to-bytes start-at *word-in-bytes*))
          (code-arr (make-array (+ 3 *word-in-bytes* (length code)) ;; should already be this
@@ -221,20 +314,7 @@ testing."
                                             len
                                             start
                                             code))))
-     (iolib:with-open-socket (socket :connect :active
-                                     :address-family :internet
-                                     :type :stream
-                                     :ipv6 :nil)
-       (iolib:connect socket 
-                      (iolib:lookup-hostname ip)
-                      :port port :wait t)
-       (iolib:send-to socket code-arr)
-       ;; MASSIVE security hole! The server can send back read macros
-       ;; using the #. dispatch string, and execute arbitrary code
-       ;; on the lisp client.
-       ;; solution: sanitize the socket input before passing it to
-       ;; #'read!
-       (read socket))))
+    (dispatch code-arr :ip ip :port port)))
 
 
 ;; todo: find a way of handling branches. maintain the entire image of
@@ -246,6 +326,54 @@ testing."
   (setf *gadmap* (file->gadmap path :gadget-length gadget-length)))
 
 
+;; map each address in the gadmap to the stack-pointer delta -- how
+;; many pushes and pops does it have? +1 for each pop, -1 for each
+;; push. So far, we've been assuming every gadget has -1, as a
+;; temporary simplification technique. But this won't do.
+(defun arm-pop-p% (bytes)
+  (and
+   (= (elt bytes 0) #xe8)
+   (= (elt bytes 1) #xbd)))
+
+(defun arm-push-p% (bytes)
+  (and
+   (= (elt bytes 0) #xe9)
+   (= (elt bytes 1) #x2d)))
+;; double check these opcodes
+
+
+(defun push-p (x &key (arch :arm))
+  
+  )
+
+
+
+
+(defun pop-p (x &key (arch :arm))
+  
+  )
+
+ 
+(defun bytes->words (bytes wordsize)
+  (loop for b on bytes by (lambda (w) (nthcdr wordsize w))
+     collect (subseq b 0 wordsize)))
+
+(defun riscword (arch)
+  (case arch
+    ((:arm) 4)
+    ((:thumb) 2)
+    (:default nil)))
+
+(defun sp-delta (gadaddr &key (gadmap *gadmap*)
+                               (arch :arm))
+  (let* ((gadget (gethash gadaddr gadmap))
+         (gadwords (bytes->words gadget (riscword arch)))
+         (pushes (length (remove-if-not
+                          (lambda (x) (push-p x :arch arch)) gadwords)))
+         (pops (length (remove-if-not
+                        (lambda (x) (pop-p x :arch arch)) gadwords))))
+    (- pops pushes)))
+   
 
 ;; =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ;; =-=                      Genetic operations                     =-=
@@ -306,15 +434,15 @@ second element is a list of the target values."
     (loop
        for gadget on (chain-addr chain) do
          (setf result
-               (dispatch (gethash (car gadget) *gadmap*)
-                         :ip ip
-                         :port port
-                         :header (list (logior
-                                        archheader
-                                        (if result 0 2)
-                                        (if (cdr gadget) 0 4)
-                                        (if activity-test 8 0)))
-                         :start-at (car gadget)))
+               (dispatch-code (gethash (car gadget) *gadmap*)
+                              :ip ip
+                              :port port
+                              :header (list (logior
+                                             archheader
+                                             (if result 0 2)
+                                             (if (cdr gadget) 0 4)
+                                             (if activity-test 8 0)))
+                              :start-at (car gadget)))
          (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
                              (car gadget)
 ;;                             (gethash (car gadget) *gadmap*)

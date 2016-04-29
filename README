@@ -106,4 +106,8 @@ genetic system up and running by the end of April, though, and
 refinements to come over the summer. 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-(nb: if using :iolib for sockets, install fixlibpostfix-dev first)
+(nb: if using :iolib for sockets, install fixlibposix-dev first)
+For a fuller explanation of what this programme does so far
+(and note that it's still on the drawing board), check out the
+files in the doc directory.
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

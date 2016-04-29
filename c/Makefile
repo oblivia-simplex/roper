@@ -89,7 +89,7 @@ $(TEST): $(LIB1) $(LIB2) $(TESTSRC) $(EXAMPLE_HEADER)
 
 
 $(SERVER): $(LIB1) $(LIB2) $(SOURCES) $(HEADERS) hatchsock.c
-	$(CC) -L $(BUILD_DIR) -lemhatchery -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -L $(BUILD_DIR) -lemhatchery -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
 
 
 dotest:

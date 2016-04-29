@@ -6,6 +6,7 @@
 
 
 //Dumps raw memory in hex byte and printable split format
+// should put this somewhere else with other handy, general tools. 
 void fdump(FILE *fp, const unsigned char *data_buffer, const unsigned int length){
   unsigned char byte;
   unsigned int i, j;
