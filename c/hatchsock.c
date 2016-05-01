@@ -6,7 +6,7 @@
 /* them, and returns the resulting registers state. */
 
 #define PORT 9999
-#define TRANSMISSION_SIZE 0x10000 // how big can this be?
+#define TRANSMISSION_SIZE 0x100000 // how big can this be?
 
 #define RET(x) (x == 0xC3)
 #define READY(x) (x < 0)
@@ -18,24 +18,6 @@
 #define YESORNO(x) (x? "yes":"no")
 
 
-/************************************************************
-  Header parsing macros
- ************************************************************/
-
-#define BIT(n,x) (((u8) (1 << n) & (u8) x) >> n)
-
-#define RESET_DATA(x) BIT(0,x)  //((0x01 & x[0]))
-#define RESET_REG(x)  BIT(1,x) //((0x02 & x[0]) >> 1)
-#define FEEDBACK_SEXP(x) BIT(2,x) //((0x04 & x[0]) >> 2)
-#define ARCHFLAG(x) BIT(3,x) // ((0x08 & x[0]) >> 3) //? UC_ARCH_ARM : UC_ARCH_X86) // just return boolean
-#define RESERVED1(x) BIT(4,x) //((0x10 & x[0]) >> 4) // room for more arches
-#define MODEFLAG(x) BIT(5,x) //(0x20 & x[0])  // 0 for arm/x86_64, 1 for thumb/i386
-#define EXECUTABLE(x) BIT(6,x) //(0x40 & x[0])
-#define WRITEABLE(x) BIT(7,x) //(0x80 & x[0])
-#define EXPECT(x) ((0xFF & x[1]) | ((0xFF & x[2]) << 8) | ((0xFF & x[3]) << 16))
-#define STARTAT(x)  ((0xFF & x[4]) |  ((0xFF & x[5]) << 8) |            \
-                     ((0xFF & x[6]) << 16) | ((0xFF & x[7]) << 24)) 
-#define HEADERLENGTH 8 // bytes
 
 // init engine
 // map memory by request
@@ -183,6 +165,8 @@ int reset_unicorn_stack(uc_engine *uc, uc_arch arch, uc_mode mode,
   }
   return 0;
 }
+                       
+
 
 int roundup(int num, int shiftby){
   int i;
@@ -196,20 +180,23 @@ int roundup(int num, int shiftby){
 int map_memory(uc_engine *uc, u8 *bytes, size_t bytelength,
                u8 perms, u32 startat){
   uc_err err;
-  u32 rounded_length = roundup(bytelength, 0x1000); // must be 4k aligned
+  u32 rounded_length = roundup(bytelength, 12); // must be 4k aligned
   // TODO: incorporate more restrictive permissions, by processing perms parameter
+  fprintf(stderr, "Any minute now...\n");
   if ((err = uc_mem_map(uc, R4K(startat), rounded_length, UC_PROT_ALL))){
     uc_perror("uc_mem_map", err);
-    return -1;
+    exit(EXIT_FAILURE);
   }
   if (DEBUG)
-    fprintf(stderr, "Memory successfully mapped.\n");
+    fprintf(stderr, "Memory successfully mapped, starting at 0x%x.\n",
+            R4K(startat));
   if ((err = uc_mem_write(uc, startat, (void *) bytes, bytelength-1))){
     uc_perror("uc_mem_write", err);
-    return -2;
+    exit(EXIT_FAILURE);
   }
   if (DEBUG)
-    fprintf(stderr, "Memory successfully written.\n");
+    fprintf(stderr, "Memory successfully written, from 0x%x to 0x%x.\n",
+            startat, startat+bytelength);
   return 0;
 }
 
@@ -222,6 +209,28 @@ u32 datacopy(u8 *databuffer, u8 *recvbuffer, u32 stackheight, u32 recvlength){
   return stackheight;
 }
 
+
+
+/************************************************************
+  Header parsing macros
+ ************************************************************/
+
+#define BIT(n,x) (((u8) (1 << n) & (u8) *x) >> n)
+
+#define SET_DATA(x) BIT(0,x)  //((0x01 & x[0]))
+#define RESET_REG(x)  BIT(1,x) //((0x02 & x[0]) >> 1)
+#define RESET_DATA(x) BIT(1,x) // we can overload this bit; contexts differ
+#define FEEDBACK_SEXP(x) BIT(2,x) //((0x04 & x[0]) >> 2) // overloadable
+#define ARCHFLAG(x) BIT(3,x) // ((0x08 & x[0]) >> 3)
+#define RESERVED1(x) BIT(4,x) //((0x10 & x[0]) >> 4) // room for more arches
+#define MODEFLAG(x) BIT(5,x) //(0x20 & x[0])  // 0 for arm/x86_64, 1 for thumb/i386
+// we can overload MODEFLAG for architectures that only have one mode. 
+#define EXECUTABLE(x) BIT(6,x) //(0x40 & x[0])
+#define WRITEABLE(x) BIT(7,x) //(0x80 & x[0])
+#define EXPECT(x) ((0xFF & x[1]) | ((0xFF & x[2]) << 8) | ((0xFF & x[3]) << 16))
+#define STARTAT(x)  ((0xFF & x[4]) |  ((0xFF & x[5]) << 8) |            \
+                     ((0xFF & x[6]) << 16) | ((0xFF & x[7]) << 24)) 
+#define HEADERLENGTH 8 // bytes
 
 u32 stack_listener(u32 port, char *allowed_ip){
 
@@ -273,7 +282,11 @@ u32 stack_listener(u32 port, char *allowed_ip){
   u8 initflag = 1;
 
   /*** Data to extract from the header ***/
+  /* Consider putting this into a struct, if it ever needs to be
+   * passed around from func to func (when refactoring...)
+   */
   u8 reset_data;
+  u8 set_data;
   u8 reset_reg;
   u8 feedback_sexp;
   u8 archflag;
@@ -316,6 +329,8 @@ u32 stack_listener(u32 port, char *allowed_ip){
       }  
     } // end of saftey check
 
+    /** Get the first packet **/
+    fprintf(stderr, "Awaiting connection...\n");
     recvlength = recv(new_sockfd, buffer, TRANSMISSION_SIZE, 0);
 
     /* Clean the buffers.
@@ -330,6 +345,7 @@ u32 stack_listener(u32 port, char *allowed_ip){
     //    exit(EXIT_SUCCESS);
     while (recvlength > 0) {
       printf("*** RECVLENGTH = %d\n", recvlength);
+
       if (initflag){
         /* If the stack hasn't been built yet, then we must be at the beginning
          * of the packet. So read the header, and parse it. 
@@ -343,9 +359,9 @@ u32 stack_listener(u32 port, char *allowed_ip){
         /******************************
          * Extract header information *
          ******************************/
-
-        reset_data = RESET_DATA(buffer);
-        reset_reg = RESET_REG(buffer);
+        set_data = SET_DATA(buffer);
+        reset_data = set_data? RESET_DATA(buffer):0;
+        reset_reg = set_data? 0:RESET_REG(buffer); //slick overloading
         feedback_sexp = FEEDBACK_SEXP(buffer);
         archflag = ARCHFLAG(buffer);
         modeflag = MODEFLAG(buffer);
@@ -357,6 +373,8 @@ u32 stack_listener(u32 port, char *allowed_ip){
         if (DEBUG){
           fprintf(stderr,
                   "RECVLENGTH = %d\n"
+                  "EXPECT = %d\n"
+                  "SET_DATA = %s\n"
                   "RESET_DATA = %s\n"
                   "RESET_REG = %s\n"
                   "FEEDBACK_SEXP = %s\n"
@@ -365,6 +383,8 @@ u32 stack_listener(u32 port, char *allowed_ip){
                   "EXECUTABLE = %s\n"
                   "STARTAT = 0x%x\n",
                   recvlength,
+                  expect,
+                  YESORNO(set_data),
                   YESORNO(reset_data),
                   YESORNO(reset_reg),
                   YESORNO(feedback_sexp),
@@ -408,26 +428,27 @@ u32 stack_listener(u32 port, char *allowed_ip){
         if (reset_reg){
 
         }
-
+        
         initflag = 0;
         recvlength -= HEADERLENGTH;
       } // End of header section. 
 
-      printf("*** *** RECVLENGTH = %d\n", recvlength);
+      if (DEBUG)
+        fprintf(stderr,"*** *** RECVLENGTH = %d\n", recvlength);
 
       /* If RESET_DATA is 0, then we assume you're loading the stack. */
       /* If RESET_DATA is 1, then incoming bytes are loaded into the */
       /* other areas of memory. */
 
-      if (reset_data){ /* Load the rest of memory, destined for the unicorn*/
+      if (set_data){ /* Load the rest of memory, destined for the unicorn*/
         if (DEBUG){
-          fprintf(stderr, "Mapping memory...\n");
+          fprintf(stderr, "Loading data into transient buffer...\n");
         }
-        if (recvlength + datalength < expect){ // safeguard
+        if (recvlength + datalength <= expect){ // safeguard
           datalength = datacopy(databuffer, buffer + HEADERLENGTH,
                                 datalength, recvlength);
         }
-      } else { /* Load the stack. */
+      } else { /* Load the stack. */ // if not set_data
         if (DEBUG)
           fprintf(stderr, "Loading the stack...\n");
         if (recvlength + stackheight < expect){
@@ -437,8 +458,13 @@ u32 stack_listener(u32 port, char *allowed_ip){
       }
       
       if (DEBUG){
-        fprintf(stderr, "STACK HEIGHT: %d\n",stackheight);
-        fdump(stderr, databuffer, stackheight);
+        if (set_data){
+          fprintf(stderr, "DATA SIZE: %d\n", datalength);
+          fdump(stderr, databuffer, datalength);
+        } else {
+          fprintf(stderr, "STACK HEIGHT: %d\n",stackheight);
+          fdump(stderr, databuffer, stackheight);
+        }
       }
 
       /* There are two modes: load memory (rodata, text, etc.), or load stack */
@@ -451,12 +477,25 @@ u32 stack_listener(u32 port, char *allowed_ip){
        * won't happen until after the memory space is loaded, if it's being
        * loaded, because so long as reset_data is lit, stackheight remains at 0. 
        */
-      if (datalength >= expect) {
+      if (DEBUG)
+        fprintf(stderr, "DATALENGTH: %d / EXPECT: %d\n", datalength, expect);
+      if (set_data && (datalength >= expect)) {
+        u8 perms = executable | (writeable << 1) | (1 << 2);
+        if (DEBUG) fprintf(stderr, "About to map memory...\n");
 
-        
-        
-        initflag = 1;
+        map_memory(engine, databuffer, datalength, perms, startat);
+
+        send(new_sockfd, "Ready", 5, 0);
+
+
         free(databuffer);
+        recvlength = 0;
+        datalength = 0;
+        expect = 0;
+        initflag = 1;
+
+        break;
+        /*=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*/
       } else if (stackheight >= expect) {
         if (DEBUG){
           fprintf(stderr, "FINISHED RECEIVING STACK:\n");
@@ -491,19 +530,27 @@ u32 stack_listener(u32 port, char *allowed_ip){
         } else {
           send(new_sockfd, "Ok", 2, 0);
         }
-        break;
-        free(databuffer);
-        initflag = 1;
-      } else {
         
-        /* If neither the data or the stack is ready to be loaded into
-         * its respective data structure, just keep on receiving bytes
-         */        
-        recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0);
+        free(databuffer);
+        recvlength = 0;
+        datalength = 0;
+        expect = 0;
+        initflag = 1;
+        break;
+      } 
 
-      }
+      // the else is implicit...
       
-    }
+      /* If neither the data or the stack is ready to be loaded into
+       * its respective data structure, just keep on receiving bytes
+       */        
+      if (0 > (recvlength = recv(new_sockfd, &buffer, TRANSMISSION_SIZE, 0))){
+        fprintf("Error in socket %d. Reporting recvlength of %d.\n",
+                new_sockfd, recvlength);
+        exit(EXIT_FAILURE);
+      }
+      fprintf(stderr,"===================================================================\n");
+    }  // end while (recvlength > 0)
     close(new_sockfd);
   }
   printf("~ The end. ~\n");

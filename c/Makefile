@@ -1,6 +1,6 @@
 
 CC = gcc
-CFLAGS = -fPIC -Wall -O0 -g
+CFLAGS = -fPIC -Wall -O0 -g -w # turn warnings back on later. 
 
 LDFLAGS += $(shell pkg-config --libs glib-2.0) -lpthread -lm -lunicorn
 STACKFLAGS = -zexecstack -fno-stack-protector
@@ -46,7 +46,7 @@ SOURCES = hatchery.c
 HEADERS = hatchery.h includes.h
 TEST = $(BUILD_DIR)test
 TESTSRC = main.c example.h
-SERVER = $(BUILD_DIR)hatchsock
+SERVER = $(BUILD_DIR)onto
 
 
 
@@ -88,8 +88,8 @@ $(TEST): $(LIB1) $(LIB2) $(TESTSRC) $(EXAMPLE_HEADER)
 	$(CC) -L $(BUILD_DIR) -lemhatchery -lhatchery main.c -o $(TEST) $(STACKFLAGS)
 
 
-$(SERVER): $(LIB1) $(LIB2) $(SOURCES) $(HEADERS) hatchsock.c
-	$(CC) $(CFLAGS) -L $(BUILD_DIR) -lemhatchery -lhatchery hatchsock.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
+$(SERVER): $(LIB1) $(LIB2) $(SOURCES) $(HEADERS) listener.c
+	$(CC) $(CFLAGS) -L $(BUILD_DIR) -lemhatchery -lhatchery listener.c -o $(SERVER) $(STACKFLAGS) $(LDFLAGS)
 
 
 dotest:

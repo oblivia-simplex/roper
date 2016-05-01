@@ -36,7 +36,7 @@
 (defvar *population*)
 (defvar *gadmap* (make-hash-table :test #'eql))
 ;;(ql:quickload :iolib)
-
+(defvar *elf*)
 
 
 
@@ -71,6 +71,9 @@
        0)))
 
 
+(defun init-elf (path)
+  (setf *elf* (elf:read-elf path)))
+
 (defun extract-text (elf-obj)
   ;; deprecated. use extract-by-name from now on. 
   "Returns the text section as a vector of bytes, and the address at
@@ -87,7 +90,7 @@ which the text section begins, as a secondary value."
          (named-idx (position name secs
                              :key #'elf:name :test #'equalp)))
     (values (elf:data (elt secs named-idx))
-            (elt addrs named-idx))))
+            (elt addrs named-idx)))) ;; ???? +1
 
 
 ;; this only works for 1 byte return instructions.
@@ -217,6 +220,7 @@ testing."
 
 (defun make-header (&key
                       (reset_data 0)
+                      (set_data 0)
                       (reset_reg 0)
                       (feedback_sexp 1)
                       (archflag 1) ;; 1 for arm
@@ -234,8 +238,9 @@ testing."
          (expect_bytes (elf:int-to-bytes expect expect_size))
          (startat_bytes (elf:int-to-bytes startat startat_size)))
     (setf (aref header 0)
-          (logior reset_data
+          (logior set_data
                   (ash reset_reg 1)
+                  (ash reset_data 1)
                   (ash feedback_sexp 2)
                   (ash archflag 3)
                   (ash modeflag 5) ;; bit 4 reserved
@@ -249,12 +254,12 @@ testing."
         
                             
 
-(defun stack->bytes (stack &key (wordsize 4))
+(defun stack->bytes (stack &key (word-in-bytes *word-in-bytes*))
   (reduce #'(lambda (x y) (concatenate 'list x y))
-          (mapcar #'(lambda (z) (elf:int-to-bytes z wordsize)) stack)))
+          (mapcar #'(lambda (z) (elf:int-to-bytes z word-in-bytes)) stack)))
 
 
-(defvar *wordsize* 4)
+
 
 (defun dispatch (payload &key (ip #(#10r127 0 0 #10r1))
                            (port *code-server-port*))
@@ -276,15 +281,15 @@ testing."
 (defparameter *header-length* 8)
 (defun dispatch-stack (stack-of-addrs &key (ip #(#10r127 0 0 1))
                                         (port *code-server-port*)
-                                        (reset_data 0)
                                         (reset_reg 0)
                                         (feedback_sexp 1)
                                         (archflag 1) ;; 1 for arm
                                         (modeflag 0)) ;;for arm mode or 64 bit x86
   (let* ((size (+ *header-length*
                   (* (length stack-of-addrs) 4)))
-         (header (make-header :reset_data reset_data
+         (header (make-header :reset_data 0
                               :reset_reg reset_reg
+                              :expect (- size *header-length*)
                               :feedback_sexp feedback_sexp
                               :archflag archflag
                               :modeflag modeflag))
@@ -294,8 +299,39 @@ testing."
                               '(unsigned-byte 8)
                               :initial-contents
                               (concatenate 'list header stack))))
+    (format t "STACK: ~A~%HEADER: ~A~%SIZE: ~A~%EXPECT: ~A~%"
+            stack-of-addrs header size (- size *header-length*))
     (dispatch payload :ip ip :port port)))
 
+
+(defun dispatch-section (name-of-section &key
+                                           (elf *elf*)
+                                           (ip #(#10r127 0 0 1))
+                                           (port *code-server-port*)
+                                           (reset_data 0)
+                                           (archflag 1)
+                                           (modeflag 0))
+  (multiple-value-bind (data addr)
+      (extract-by-name elf name-of-section)
+    (let* ((size (+ *header-length* (length data)))
+           (header (make-header :set_data 1
+                                :reset_data reset_data
+                                :feedback_sexp 0
+                                :startat addr
+                                :expect (- size *header-length*)
+                                :archflag archflag
+                                :modeflag modeflag))
+           (payload (make-array `(,size)
+                                :element-type
+                                '(unsigned-byte 8)
+                                :initial-contents
+                                (concatenate 'list header data))))
+      (format t "HEADER: ~A~%SIZE: ~D~%EXPECT: ~D~%"
+              header size (- size *header-length*))
+      (dispatch payload :ip ip :port port))))
+
+                               
+                   
 
 ;; note that the header protocol is unstable right now, and between
 ;; two different formats. this function uses the old one, but i expect
@@ -354,9 +390,9 @@ testing."
   )
 
  
-(defun bytes->words (bytes wordsize)
-  (loop for b on bytes by (lambda (w) (nthcdr wordsize w))
-     collect (subseq b 0 wordsize)))
+(defun bytes->words (bytes word-in-bytes)
+  (loop for b on bytes by (lambda (w) (nthcdr word-in-bytes w))
+     collect (subseq b 0 word-in-bytes)))
 
 (defun riscword (arch)
   (case arch
@@ -657,6 +693,7 @@ second element is a list of the target values."
   "for debugging purposes. get everything to a testable state."
   (setf *best* nil)
   (init-target #(1 _ _ #xFF _ _ #x2))
+  (init-elf #P"~/Projects/roper/bins/arm/ldconfig.real")
   (init-gadmap #P"~/Projects/roper/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
   (init-pop))
   

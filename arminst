@@ -1,0 +1,8 @@
+#! /bin/sh
+
+inst=$1
+tmpfile=`mktemp`
+echo -en $inst > $tmpfile
+arm-none-eabi-objdump -b binary -m arm -D $tmpfile | grep 0: | cut -d: -f2
+rm $tmpfile
+
