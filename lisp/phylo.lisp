@@ -7,8 +7,9 @@
 (defparameter *debug* t)
 
 (defparameter *default-ip* #(#10r127 0 0 1))
-(defparameter *default-port* #(#10r9999))
-
+(defparameter *default-port* #10r9999
+(defparameter *arm-arch-flag* 1)
+  
 ;; == constants, which var vars only b/c that makes slime happy ==
 
 (defstruct chain addr fit res)
@@ -457,34 +458,42 @@ second element is a list of the target values."
 (defun init-target (pattern)
   (setf *target* (pattern->idxlist pattern)))
 
-(defun test-chain (chain &key 
-                           (arch :arm)
-                           (ip #(#10r127 0 0 1))
-                           (port 9999)
-                           (activity-test nil))
-  (let ((result)
-        (archheader (if (eq arch :arm) #x10 #x00)))
-    (when *debug*
-      (format t "~%--------------------------------------~%TESTING CHAIN OF ~D GADGETS~%--------------------------------------~%"
-              (length (chain-addr chain))))
-    (loop
-       for gadget on (chain-addr chain) do
-         (setf result
-               (dispatch-code (gethash (car gadget) *gadmap*)
-                              :ip ip
-                              :port port
-                              :header (list (logior
-                                             archheader
-                                             (if result 0 2)
-                                             (if (cdr gadget) 0 4)
-                                             (if activity-test 8 0)))
-                              :start-at (car gadget)))
-         (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
-                             (car gadget)
-;;                             (gethash (car gadget) *gadmap*)
-                             result)))
-    result))
+;; (defun test-chain (chain &key 
+;;                            (arch :arm)
+;;                            (ip #(#10r127 0 0 1))
+;;                            (port 9999)
+;;                            (activity-test nil))
+;;   (let ((result)
+;;         (archheader (if (eq arch :arm) #x10 #x00)))
+;;     (when *debug*
+;;       (format t "~%--------------------------------------~%TESTING CHAIN OF ~D GADGETS~%--------------------------------------~%"
+;;               (length (chain-addr chain))))
+;;     (loop
+;;        for gadget on (chain-addr chain) do
+;;          (setf result
+;;                (dispatch-code (gethash (car gadget) *gadmap*)
+;;                               :ip ip
+;;                               :port port
+;;                               :header (list (logior
+;;                                              archheader
+;;                                              (if result 0 2)
+;;                                              (if (cdr gadget) 0 4)
+;;                                              (if activity-test 8 0)))
+;;                               :start-at (car gadget)))
+;;          (if *debug* (format t "ADDRESS: ~X~%RESULT: ~A~%"
+;;                              (car gadget)
+;; ;;                             (gethash (car gadget) *gadmap*)
+;;                              result)))
+;;     result))
 
+(defun test-chain (chain &key (ip *default-ip*)
+                           (port *default-port*))
+  (dispatch-stack (chain-addr chain) :ip ip :port port
+                  :reset_reg 1 :feedback_sexp 1 :archflag *arm-arch-flag*))
+                  
+                           
+
+                           
 (defvar *register-count* 15)
 (defparameter *activity-test-pattern*
   (coerce (loop repeat *register-count*

@@ -1,6 +1,6 @@
 #include "includes.h"
 #include <unicorn/unicorn.h>
-#define DEBUG 1
+#define DEBUG 0
 
 /* Server. Listens for messages containing machine-code, executes */
 /* them, and returns the resulting registers state. */

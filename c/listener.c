@@ -148,7 +148,6 @@ int map_memory(uc_engine *uc, u8 *bytes, size_t bytelength,
 
 
 int init_stack(uc_engine *uc, uc_arch arch, uc_mode mode){
-
   uc_err err;
   int sp_val = IMAGINARY_STACK_ADDR;
   UNICORNMUST(uc_mem_map(uc, 0, 2*IMAGINARY_STACK_SIZE, UC_PROT_ALL),
@@ -215,63 +214,47 @@ void hook_step(uc_engine *uc, void *user_data) {
   u32 *reg_vec, reg_vec_len;
   reg_vec = arm_32_reg_vec;
   reg_vec_len = arm_32_reg_vec_len;
-  //  uc_arch arch = UC_ARCH_ARM;  // just a stopgap
   int pc;
-  UNICORNSHOULD(uc_reg_read(uc, UC_ARM_REG_PC, &pc),
-                "uc_reg_read in hook_step");
-  
+  u32 inst;
+
   union regun {      
     u32 words[reg_vec_len]; 
     u8 bytes[reg_vec_len * WORDSIZE]; 
   } regun;
+
   void *ptrs[reg_vec_len];      
   int j; 
   for (j = 0; j < reg_vec_len; j++) { 
     ptrs[j] = &(regun.words[j]);      
   } 
   
-  //  MAKE_REG_PTRS(regun, reg_vec_len, ptrs);
+  /* get pc */
+  UNICORNSHOULD(uc_reg_read(uc, UC_ARM_REG_PC, &pc),
+                "uc_reg_read in hook_step");
+
+  /* now get the instruction at mem[pc] */
   
+  UNICORNSHOULD(uc_mem_read(uc, pc, (void *) &inst, 4),
+                "uc_mem_read in hook_step");
+
   UNICORNSHOULD(uc_reg_read_batch(uc, reg_vec, ptrs, reg_vec_len),
                 "uc_reg_read_batch in hook_step");
   
-  /** for testing  **/
-  if (DEBUG) {
-
-    u32 inst;
-    UNICORNSHOULD(uc_mem_read(uc, pc, (void *) &inst, 4),
-                  "uc_mem_read in hook_step");
-
-    int i;
-    NOTEVAL("[ PC: %x ] ", pc);
-    if (!err)
-      NOTEVAL(": %8.8x\n", inst);
-    else
-      NOTE(" CANNOT READ\n");
-    NOTE("R: {");
-    for (i = 0; i < reg_vec_len; i++) {
-      if (i != 0) NOTE(", ");
-      NOTEVAL("%x", regun.words[i]);
-    }
-    NOTE("}\n");
+  NOTEVAL("[ PC: %x ] ", pc);
+  if (!err)
+    NOTEVAL(": %8.8x\n", inst);
+  else
+    NOTE(" CANNOT READ\n");
+  NOTE("R: #(");
+  int i;
+  for (i = 0; i < reg_vec_len; i++) {
+    if (i != 0) NOTE(" ");
+    NOTEVAL("%x", regun.words[i]);
   }
-  /******************/
+  NOTE(")\n");
+
   return;
 }
-
-
-/* Note to self:
- * the pointers passed to the unicorn functions MUST be heap-allocated.
- * if they are stack allocated, they *may* work fine, but nudge the stack
- * even the slightest bit, and their behaviour may become undefined. 
- * we saw this a little while ago when we hit a segfault for no apparent
- * reason whatsoever, after adding a trivial while loop (with no body!) to
- * the function below. comment out the loop, and everything works fine. 
- * but uncomment it, and you hit a segfault BEFORE YOU EVEN REACH IT!
- * Moral of the story: behaviour of unicorn with stack ptrs is undefined,
- * which is a special case of the more general, but easily forgotten, rule:
- * DO NOT PASS STACK POINTERS, YOU BLOODY FOOL. 
- */
 
 /**
  * Pops the first address of the stack, and begins execution there. 
@@ -323,9 +306,10 @@ int hatch_stack(uc_engine *uc, u8 *result){
           "uc_reg_write in hatch_stack");
   
   /* Add a single-stepping hook if debugging */
-
-  UNICORNMUST(uc_hook_add(uc, &_hook_step, UC_HOOK_CODE, hook_step, NULL, 1, 0, 0),
-              "uc_hook_add single-step hook in hatch_stack");
+  if (DEBUG){
+    UNICORNMUST(uc_hook_add(uc, &_hook_step, UC_HOOK_CODE, hook_step, NULL, 1, 0, 0),
+                "uc_hook_add single-step hook in hatch_stack");
+  }
 
   NOTEVAL("START = %8.8x\n", *start);
   
@@ -338,12 +322,12 @@ int hatch_stack(uc_engine *uc, u8 *result){
   
   /** for testing  **/
   if (DEBUG) {
-    printf("REGISTERS: {");
+    printf("REGISTERS: #(");
     for (i = 0; i < reg_vec_len; i++) {
-      if (i != 0) printf(", ");
-      printf(WORDFMT, seedvals.words[i]);
+      if (i != 0) printf(" ");
+      printf("%8.8x", seedvals.words[i]);
     }
-    printf("}\n");
+    printf(")\n");
   }
   /******************/
   memcpy(result, seedvals.bytes,
@@ -363,8 +347,6 @@ int display_stack(uc_engine *uc, int depth){
   
   UNICORNSHOULD(uc_reg_read(uc, UC_ARM_REG_SP, (void *) sp),
                 "uc_reg_read in display_stack");
-  //fprintf(stderr,"SP -> 0x%x\n",*sp);
-    
   u8 peek[4];
   u8 peek2[4];
   u32 i = 0;
@@ -390,8 +372,6 @@ int roundup(int num, int shiftby){
   for (i=1; i < num; i <<= shiftby);
   return i;
 }
-
-
 
 u32 datacopy(u8 *databuffer, u8 *recvbuffer, u32 stackheight, u32 recvlength){
   u32 i;
@@ -510,7 +490,7 @@ u32 hatch_listener(u32 port, char *allowed_ip){
     } // end of saftey check
 
     /** Get the first packet **/
-    fprintf(stderr, "Awaiting connection...\n");
+    NOTE("Awaiting connection...\n");
     recvlength = recv(new_sockfd, buffer, TRANSMISSION_SIZE, 0);
     stackheight = 0;
     while (recvlength > 0) {
@@ -695,7 +675,7 @@ u32 hatch_listener(u32 port, char *allowed_ip){
                 new_sockfd, recvlength);
         exit(EXIT_FAILURE);
       }
-      fprintf(stderr,"===================================================================\n");
+      NOTE("===================================================================\n");
 
     }  // end while (recvlength > 0)
     close(new_sockfd);
@@ -764,3 +744,16 @@ int main(int argc, char **argv){
 
 /* Current bug: mapping, say, rodata or bss after text erases text, and vice versa. 
  */
+
+/**
+ * Todo:
+ * tweak header protocol. first packet should be to set initial requirements
+ * -- how much space do you need? from where to where?
+ * -- then do all mapping at once. 
+ * -- dissociate mapping from writing. 
+ * -- there will be a header marking for "this is an init packet"
+ * -- there will be a lisp function that does nothing but send an init packet. 
+ * -- then will come data packets for rodata, text, etc. 
+ * -- then, once all that is done, will come the onslaught of stack packets. 
+ */
+ 
