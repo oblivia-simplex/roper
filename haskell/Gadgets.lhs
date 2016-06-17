@@ -121,21 +121,21 @@ secEnd sec = (elfSectionAddr sec) + (elfSectionSize sec) - wordsize
 -- \end{code}
 extractRawGads :: ElfSection -> (Word32 -> Bool) -> [[Word32]]
 extractRawGads sec gadp =
-  filter (\g -> length g > 1) $ ggrec (reverse (extractInsts sec)) (secEnd sec) gadp
+  filter (\g -> length g > 1) $ ergR (reverse (extractInsts sec)) (secEnd sec) gadp
   where
-    ggrec :: [Word32] -> Word64 -> (Word32 -> Bool) -> [[Word32]] -- replace w reclst
-    ggrec [] _ _ = []
-    ggrec insts addr gadp
+    ergR :: [Word32] -> Word64 -> (Word32 -> Bool) -> [[Word32]] -- replace w reclst
+    ergR [] _ _ = []
+    ergR insts addr gadp
     -- replace the gadget list with a gadget record
     -- for addr field, set to addr - l. check for off-by-one errors
       | gadp (head insts) = reverse (take l insts) :
-                            (ggrec (drop l insts)
-                             (addr - l * wordsize) gadp)
-      | otherwise = ggrec (tail insts) (addr - wordsize) gadp
+                            ergR (drop l insts) (step addr) gadp
+      | otherwise = ergR (tail insts) (addr - wordsize) gadp
       where l :: Integral n => n -- Word64
             l = (+1) $ fromIntegral $ (length (takeWhile
                                                 (not . gadp) $ tail
-                                                $ take gadLen insts)) -- ineff
+                                                $ take gadLen insts)) -- ineff?
+            step a = a - l * wordsize
 
 \end{code}
 
@@ -145,7 +145,7 @@ Finally, a 'main' function, for testing purposes.
 
 main :: IO ()
 main = do
-  let filename = "/home/oblivia/Projects/roper2/bins/ldconfig.real" :: [Char]
+  let filename = "/home/oblivia/Projects/roper/bins/arm/ldconfig.real" :: [Char]
   elf <- readElfFile filename
   let text = extractSection ".text" elf
   let rodata = extractSection ".rodata" elf
