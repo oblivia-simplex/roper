@@ -29,28 +29,37 @@ popPCp inst = (inst .&. 0xFFFF0000 == 0xe8bd0000) -- is it a POP ?
 -- MASK CONSTANTS --
 data InstType = DataProc | Mult | MultLong | SingDataSwap | BranchExch |
                 HalfWordData | SingDataTrans | Undef | BlockDataTrans |
-                Branch | CoprocDataTrans | CoprocDataOp | CoprocRegTrans | SWI
+                Branch | CoprocDataTrans | CoprocDataOp | CoprocRegTrans |
+                SWI deriving (Eq, Show)
 
 
-wordsize  = 32
 whitemask = 0xFFFFFFFF :: Word32
 blackmask = 0x00000000 :: Word32
--- MASKING FUNCTIONS --
 
--- returns bits [low..high] of word, inclusive
--- (consider making exclusive by incrementing high)
+--- remember to use fromIntegral to return more generic type in list
+-- use guards to dispatch appropriate masking function.
+destRegs :: Word32 -> InstType -> [Word32]
+destRegs w t
+  | t == DataProc = [m_dp_dstR w] 
+  | otherwise = error "Not yet implemented"
+
+-- returns bits [low..high] of word, high exclusive, low inclusive
 mask :: Word32 -> Int -> Int -> Word32
-mask word low high =
-  let lowmask  = shiftL whitemask low
-      highmask = shiftR whitemask high
-  in word .&. lowmask .&. highmask
+mask word low high
+  | low > high = error "Lower bound higher than upper bound"
+  | otherwise = (`shiftR` low) bitmask .&. word
+  where bitmask = complement (shiftL (shiftR whitemask high) high)
 
 m_cond :: Word32 -> Word32
-m_cond w = mask w 28 31
+m_cond w = mask w 28 32
 
 -- get operand 2 in data processing/PSR transfer insts
 m_dp_op2 :: Word32 -> Word32
-m_dp_op2 w = mask w 0 11
+m_dp_op2 w = mask w 0 12
+
+-- get the destination register in data processing/PSR insts
+m_dp_dstR :: Word32 -> Word32
+m_dp_dstR w = mask w 12 16
 
 
 
