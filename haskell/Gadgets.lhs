@@ -40,15 +40,20 @@ import System.IO
 import Control.Monad
 import Text.Printf
 
+import Hapstone.Capstone
+import Unicorn
+
 import ARM32
+import Aux
 
 -- make the field types more definite when you can
-data Gadget = Gadget { codebytes   :: BC.ByteString  -- the code of the gadget itself
-                     , codewords   :: [Word32]       -- same, but in 32 bit words
-                     , addr   :: Word64      -- initial address of the gadget
-                     , ctrl   :: String      -- a keyword would be better...
-                     , reads  :: [Int]       -- register indices
-                     , writes :: [Int]       -- register indices
+data Gadget = Gadget { g_codebytes   :: BC.ByteString  -- the code of the gadget itself
+                     , g_codewords   :: [Word32]       -- same, but in 32 bit words
+                     , g_start   :: Word64      -- initial address of the gadget
+                     , g_stop    :: Word64      -- last address of gadget, incl. 
+                     , g_ctrl   :: String      -- a keyword would be better...
+                     , g_src  :: [Word32]       -- register indices
+                     , g_dst :: [Word32]       -- register indices
                      }
 
 \end{code}
@@ -118,24 +123,35 @@ wordsize = 4 -- architecture dependent. should extract from elf.
 secEnd ::  ElfSection -> Word64
 secEnd sec = (elfSectionAddr sec) + (elfSectionSize sec) - wordsize
 
--- \end{code}
-extractRawGads :: ElfSection -> (Word32 -> Bool) -> [[Word32]]
+
+extractRawGads :: ElfSection -> (Word32 -> Bool) -> [Gadget]
 extractRawGads sec gadp =
-  filter (\g -> length g > 1) $ ergR (reverse (extractInsts sec)) (secEnd sec) gadp
+  filter (\g -> length (g_codewords g) > 1) $ ergR (reverse (extractInsts sec))
+  (secEnd sec) gadp
   where
-    ergR :: [Word32] -> Word64 -> (Word32 -> Bool) -> [[Word32]] -- replace w reclst
+    ergR :: [Word32] -> Word64 -> (Word32 -> Bool) -> [Gadget] -- replace w reclst
     ergR [] _ _ = []
     ergR insts addr gadp
     -- replace the gadget list with a gadget record
     -- for addr field, set to addr - l. check for off-by-one errors
-      | gadp (head insts) = reverse (take l insts) :
-                            ergR (drop l insts) (step addr) gadp
+      | gadp (head insts) = let wrds = reverse (take l insts)
+                            in Gadget {g_codewords = wrds
+                                      ,g_codebytes = w2bs wrds
+                                      ,g_start = addr - ((l+1) * wordsize)
+                                      ,g_stop = addr
+                                      ,g_ctrl = "" -- placeholder. might not even be a string
+                                      ,g_src = nub $ concat $ map (srcRegs False) wrds
+                                      ,g_dst = nub $ concat $ map (dstRegs False) wrds
+                                      } :
+                               ergR (drop l insts) (step addr) gadp
       | otherwise = ergR (tail insts) (addr - wordsize) gadp
       where l :: Integral n => n -- Word64
             l = (+1) $ fromIntegral $ (length (takeWhile
                                                 (not . gadp) $ tail
                                                 $ take gadLen insts)) -- ineff?
             step a = a - l * wordsize
+
+
 
 \end{code}
 
@@ -150,7 +166,8 @@ main = do
   let text = extractSection ".text" elf
   let rodata = extractSection ".rodata" elf
   let instructions = extractInsts text
-  let gads = extractRawGads text popPCp
+  let gadgets = extractRawGads text popPCp
+  let gads = map g_codewords gadgets
         --runGet get32bitInsts_ $ BL.fromStrict (elfSectionData text)
 -- >><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<
   printf "[*] Elf file: %s\n\n" filename
@@ -163,6 +180,24 @@ main = do
   printf ">>> Number of gadgets found: %d\n" (length gads)
   printf ">>> Avg length of gadgets: %d\n"
     ((sum $ map length gads) `div` (length gads))
+
+--  mapM_ (printf "%08x\n") $ filter ((== C_RESERVED) . whatCond) instructions
+--  mapM_ (printf "%s\n" . show) $ take 100 $ map dstRegs instructions
+  mapM_ (\g -> (mapM_ (\ (t,s,d) ->
+                          (printf "%s: %s ==> %s\n"
+                            (show t) (show s) (show d)))
+                 (zip3
+                   (map whatLayout g)
+                   (map (srcRegs True) g)
+                   (map (dstRegs True) g))
+               >> putStrLn "--------------")) gads
+
+  mapM_ (\g -> (printf "FROM %08x to %08x: %s ==> %s\n" (g_start g) (g_stop g)
+                (show $ g_src g) (show $ g_dst g)))
+    gadgets
+-- mapM_ (printf "%s\n" . binStr)  $ filter ((== UNSURE) . whatLayout) instructions
+--  mapM_ disasmIO $ filter ((== C_RESERVED) . whatCond) instructions
+--  $ map whatLayout instructions
 -- >><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<
 
 \end{code}
