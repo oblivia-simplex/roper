@@ -6,7 +6,7 @@ alias fix="cd ~/Projects/roper && make && cd build && echo Tada\!"
 alias debugoff="sed -i'' s:'DEBUG 1':'DEBUG 0': *.c"
 alias debugon="sed -i'' s:'DEBUG 0':'DEBUG 1': *.c"
 
-alias serve="fix && ./hatchsock"
+alias serve="fix && ./onto"
 
 export ARM="arm-none-eabi-"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:."

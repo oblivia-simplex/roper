@@ -1,0 +1,232 @@
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+             -=oO( DEF CON 24: Rise of the Machines )Oo=-
+                            .: SUBMISSION :.
+ -=oO( ROPER: A Genetic Engine for Evolving ROP-chain Payloads )Oo=-
+                          `: BY PSEUDO SUE :'
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+POTENTIAL TRACK: MAKE FRIENDS WITH THE MACHINES
+
+PRESENTATION INFORMATION:
+=-=-=-=-=-=-=-=-=-=-=-=-=
+
+IS THERE A DEMONSTRATION?                      yes
+ARE YOU RELEASING A NEW TOOL?                  yes
+ARE YOU RELEASING A NEW EXPLOIT?               no
+IS THERE AUDIENCE PARTICIPATION?               no
+LENGTH OF PRESENTATION?                        45m
+
+PRESENTER INFORMATION:
+=-=-=-=-=-=-=-=-=-=-=-
+
+ARE YOU SUBMITTING THIS TOPIC TO ANY OTHER
+CONFERENCES HELD PRIOR TO DEF CON 24?          no
+ARE YOU SUBMITTING TO BLACK HAT USA?           no
+ARE YOU SUBMITTING TO BSIDELV?                 no
+HAS THIS PRESENTATION BEEN GIVEN OR ACCEPTED
+TO ANY OTHER VENUE OR CONFERENCE?              no
+
+SCHEDULING INFORMATION:
+=-=-=-=-=-=-=-=-=-=-=-=
+
+IS THERE A SPECIFIC DAY OR TIME BY WHICH
+YOU MUST PRESENT?                              no
+
+EQUIPMENT REQUIREMENTS:
+=-=-=-=-=-=-=-=-=-=-=-=
+
+WILL YOU REQUIRE MORE THAN 1 LCD
+PROJECTOR FEED?                                no
+
+ABSTRACT:
+=-=-=-=-=
+
+ROPER* is a tool for generating ROP-chain payloads -- cannibalizing a
+target program's executable memory into shellcode golems ready to do
+the attacker's bidding. The technique is uses to do this is called
+"genetic programming", which is, essentially, an implementation of
+Darwinian natural selection on the level of code. First, on a
+"phylogenic" LISP client, ROP-gadgets are extracted from the binary to
+form a gene pool. Then a population of random chains is spawned. These
+chains are sent over TCP to an array of "ontogenic" server processes
+(written in C) that evaluate them, using the Unicorn Emulation Engine
+(which Nguyen Anh Quynh launched last year at Black Hat), and sends
+back the resulting CPU state. Chains that better approximate the
+desired state are rewarded with a higher chance of breeding, either by
+sexually recombining with other chains, or by cloning and mutation.
+The process continues until the evolution converges on a payload that
+does exactly what want -- typically, this means preparing the CPU
+context for a particular syscall, with particular parameters.
+
+To cut it short: In this talk, I'll be showing how ROP-chain attacks
+work, how to implement your own genetic algorithms, how ROPER in
+particular works and how it can be used for fun and profit.
+
+* "Return Oriented Program Evolution with ROPER". 
+
+
+SPEAKER BIO:
+=-=-=-=-=-=-
+
+PSEUDO SUE is a gray-hat hacker who's particularly interested in the
+use of machine learning in offensive cybersecurity. If anything ever
+slips through the Cyberdyne firewall, it might be her fault. In her
+hometown of Halifax, NS, she pursues her research in the NIMS security
+lab, facilitates cybersecurity workshops for laypeople and activists,
+develops vulnerability-scanning scripts, and teaches occasional
+college courses on anything from assembly language to biopolitics.
+She's also one of the many faces of Laboria Cuboniks. You can find her
+on twitter as @0xDEBA5E12.
+
+
+OUTLINE:
+=-=-=-=-
+   
+1. Primer on Genetic Programming: how to do unnatural things with
+   natural selection.
+   - natural selection as an abstract algo
+   - how to write a genetic 'hello world' in 10 minutes
+   - how is this useful knowledge for hackers? what sort of security
+     problems are good problems for GP? 
+   - a bit on Gunes Kayacik's 2010 work on evolving old school buffer
+     overflow/shellcode attacks 
+   - (15 minutes)
+
+2. Quick Refresher on Return-Oriented Programming: what to do when you
+   can't write to executable memory. 
+   - quick and dirty. enough to bring newbies up to speed, but not so
+     much as to bore experienced low-level hackers.
+   - (4-5 minutes). 
+
+3. Introducing ROPER: how it works, and what you can do with it. 
+   - client-side phylogeny (sex and death with ROP-chains): how the
+     lisp client manipulates the ROP-chain population
+   - ontogenesis as a service: how the C server observes and reports
+     the behaviour of the chains sent to it
+   - (15 minutes)
+
+4.0 Prayer to the Demo Gods
+   - (15 seconds)
+
+4.1 DEMO:
+    - Live evolution of a ROP-chain payload for an ARM ELF
+      binary.
+    - Does it work?
+    - (5 minutes)
+
+SUPPORTING FILES:
+=-=-=-=-=-=-=-=-=
+
+ROPER is currently under construction. Estimated completion date: May
+31st. A tarball of the source code, in its current state, is attached.
+A frequently-updated github repo can be found at
+
+https://github.com/oblivia-simplex/roper.git
+
+Dependencies:
+
+* quicklisp
+* libfixposix
+* unicorn engine
+* the usual gcc toolchain
+* the arm-none-eabi-* toolchain
+
+
+SUBMISSION AGREEMENTS:
+=-=-=-=-=-=-=-=-=-=-=-
+
+SUBMISSION AGREEMENTS
+
+Please read and accept these terms by inserting your name where noted.
+Failure to do so will render your submission incomplete. Please read
+these carefully as some of the terms have changed.
+
+Grant of Copyright Use
+
+I warrant that the above work has not been previously published
+elsewhere, or if it has, that I have obtained permission for its
+publication by DEF CON Communications, Inc. and that I will promptly
+supply DEF CON Communications, Inc. with wording for crediting the
+original publication and copyright owner. If I am selected for
+presentation, I hereby give DEF CON Communications, Inc. permission to
+duplicate, record and redistribute this presentation, which includes,
+but is not limited to, the conference proceedings, conference CD,
+video, audio, and hand-outs to the conference attendees for
+educational, on-line, and all other purposes.
+
+Terms of Speaking Requirements
+
+1) I will submit a completed presentation, a copy of the tool(s)
+and/or code(s), and a reference to all of the tool(s), law(s), Web
+sites and/or publications referenced to at the end of my talk and as
+described in this CFP submission for publication on the conference CD
+by 12:00 noon PST, July 08, 2016.
+
+2) I will submit a final Abstract and Biography for the DEF CON
+website and Printed Conference Materials by 12:00 noon PST, June 15,
+2016.
+
+3) I understand if I fail to submit a completed presentation by July
+08, 2016, I may be replaced by an alternate presentation or may
+forfeit my honorarium. This decision will be made by DEF CON and I
+will be informed in writing of my status.
+
+4) I will include a detailed bibliography as either a separate
+document or included within the presentation of all resources cited
+and/or used in my presentation.
+
+5) I will complete my presentation within the time allocated to me -
+not running over, or excessively under the time allocation.
+
+6) I understand that DEF CON will provide 1 LCD projector feed, 2
+screens, microphones, wired and/or wireless Internet. I understand
+that I am responsible for providing all other necessary equipment,
+including laptops and machines (with VGA output), to complete my
+presentation.
+
+7) If applicable, I will submit within 5 days of the completion of the
+conference any updated, revised or additional presentation(s) or
+materials that were used in my presentation but not included on the
+conference CD or conference proceedings.
+
+Terms of Speaking Remuneration
+
+1) I understand that I will be responsible for my own hotel and travel
+expenses.
+
+2) I understand that DEF CON will issue one $300 payment per
+presentation to the primary speaker only. Payment will be made in form
+of company check. I may choose to waive my $300 honorarium in exchange
+for 3 DEF CON Human badges, received at the start of the conference. I
+may also choose to donate my honorarium to charity.
+
+3) I understand that I may receive payment on-site at the conference.
+If selecting the $300 payment as my honorarium, I must provide a valid
+name and postal mail address so that the payment may be mailed. In
+some rare cases, I may be required to complete a W8 (Non-U.S. Citizen)
+or W9 (U.S. Citizen) before payment is issued.
+
+4) I understand that I will be paid within 30 days from the end of the
+conference, after I have completed my presentation. I understand that
+should my talk be determined to be unsuitable (e.g. a vendor or sales
+pitch, a talk on the keeping of goats, etc.) after I have presented,
+that I will not receive an honorarium.
+
+As detailed above, I, Pseudo Sue, have read and agree to the Grant of
+Copyright Use. I, Pseudo Sue, have read and agree to the Terms of
+Speaking Requirements. I, Pseudo Sue, have read and agree to the
+Agreement to Terms of Speaking Remuneration or I will forfeit my
+honorarium.
+
+
+PRESS CONTACT
+
+I, Pseudo Sue, understand that DEF CON's official Press Liaison & Staff
+may contact me. I consent to be contacted in order to arrange
+interviews with the media. My contact information will not be given to
+third parties without my consent.
+
+Our policies, including our privacy policy are located here:
+https://www.defcon.org/html/links/dc-policy.html
