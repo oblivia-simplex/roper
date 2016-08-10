@@ -29,8 +29,8 @@
   "for debugging purposes. get everything to a testable state."
   (setf *best* nil)
   (init-target #(1 _ _ #xFF _ _ #x2))
-  (init-elf #P"~/Projects/roper/bins/arm/ldconfig.real")
-  (init-gadmap #P"~/Projects/roper/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
+  (init-elf #P"~/Projects/roper-stack/bins/arm/ldconfig.real")
+  (init-gadmap #P"~/Projects/roper-stack/bins/arm/ldconfig.real" :gadget-length *gadget-length*)
   (init-pop))
 
 ;; >><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<>><<

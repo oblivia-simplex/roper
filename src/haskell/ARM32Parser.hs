@@ -2,14 +2,14 @@
 module ARM32Parser where
 
 import ARM32
+import Data.Word
 import Control.Applicative
 import qualified Data.List as L
 import qualified Data.ByteString as B
 import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
 
-import Data.Elf
-
+import Numeric (showHex)
 
 data Endian = Big | Little
 endian = Little
@@ -27,36 +27,47 @@ anyWord64 = case endian of
   Little -> anyWord64le
 
 data Inst = Inst {
-   iLay  :: Layout
+   iRaw  :: Word32
+  ,iLay  :: Layout
   ,iSrc  :: [Int]
   ,iDst  :: [Int]
   ,iCnd  :: Cond
+  ,iOpC  :: Mnemonic
   ,iOp   :: Operation
   }
+
+instance Eq Inst where
+  x == y  =  ((iRaw x) == (iRaw y))
+
+instance Show Inst where
+  show x  = ("0x" ++ showHex (iRaw x) "") ++ "\n || " ++ (show $ iLay x)
+    ++ ", " ++ (show $ iOpC x) ++ ":\t" ++ (show $ iSrc x) ++ " => " ++ (show $ iDst x) ++ "\n"
 
 inst :: Parser Inst
 inst = do
   w <- anyWord32
   let t = whatLayout w
   pure $ Inst {
-     iLay = t
+     iRaw = w
+    ,iLay = t
     ,iSrc = srcRegs w t
     ,iDst = dstRegs w t
     ,iCnd = whatCond w
     ,iOp  = operation w t
+    ,iOpC = getMnemonic w t
     }
 
 instructions :: Parser [Inst]
-instructions = many inst
+instructions = do
+  s <- many inst
+  pure s
 
-readElfFile :: [Char] -> IO Elf
-readElfFile filename = do
-  rawbytes <- B.readFile filename
-  return $ parseElf rawbytes
-
+-- the text section of an ARM Elf binary, extracted with dd
+-- just to tide us over until the Elf header parser is written
+textpath = "/home/oblivia/Projects/roper-stack/bins/arm/ldconfig.text"
 
 main :: IO ()
 main = do
-  let filename = "/home/oblivia/Projects/roper/bins/arm/ldconfig.real"
-  elf <- readElfFile filename
-  print elf
+  text   <- B.readFile textpath
+  let parsed = parseOnly instructions $ B.take 0x80 text
+  print parsed

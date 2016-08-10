@@ -13,7 +13,7 @@ ASFLAGS =
 
 X86_AS=$(AS)
 
-BUILD_DIR = ../build/
+BUILD_DIR = ../../build/
 
 #ARCH=$(shell uname -m)
 #ifeq ($(ARCH),armv6l)
@@ -53,7 +53,7 @@ SERVER = $(BUILD_DIR)onto
 .PHONY: dump clean dotest make_build_dir all debug
 
 all: $(LIB1) $(LIB2) $(TEST) $(X86_FLATBIN) $(ARM_FLATBIN) $(EXAMPLE_HEADER) $(SERVER)
-	bash -c	"source ../aliases.rc"
+	bash -c	"source ../../roper.env"
 
 clean:
 	rm *.elf *.bin

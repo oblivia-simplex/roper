@@ -1,0 +1,25 @@
+Name:          elf
+Version:       0.27
+License:       BSD3
+License-file:  LICENSE
+Category:      Data
+Author:        Erik Charlebois
+Copyright:     Erik Charlebois
+Maintainer:    Erik Charlebois <erikcharlebois@gmail.com>
+Stability:     stable
+Cabal-Version: >= 1.6
+Homepage:      http://github.com/erikcharlebois/elf
+Build-Depends: base
+Build-Type:    Custom
+Synopsis:      Parser for ELF object format.
+Description:   Parser for ELF object format.
+Data-Files:    tests/empty.elf tests/Test.hs
+
+source-repository head
+  type:     git
+  location: http://github.com/erikcharlebois/elf
+
+library
+    build-depends:   base >= 2 && < 5, bytestring, binary
+    hs-source-dirs:  src
+    exposed-modules: Data.Elf

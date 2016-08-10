@@ -7,7 +7,15 @@ import Data.Word
 import Data.Bits
 import Debug.Trace
 import Control.Exception.Base (assert)
-import qualified Data.ByteString as BS
+import qualified Data.ByteString as B
+
+bdrop :: Int -> B.ByteString -> B.ByteString
+bdrop n = B.pack . (Prelude.drop n) . B.unpack
+
+btake :: Int -> B.ByteString -> B.ByteString
+btake n = B.pack . (Prelude.take n) . B.unpack
+
+
 
 strBin :: (Integral a) => [Char] -> a
 strBin bitstring =
@@ -40,7 +48,7 @@ word32LEBytes wrd = wrec wrd 4
         wrec w n = (fromIntegral (0xFF .&. w)) :
                    (wrec (shiftR w 8) (n - 1))
 
-w2bs :: [Word32] -> BS.ByteString
-w2bs ws = (BS.pack . concat . map word32LEBytes) ws
+w2bs :: [Word32] -> B.ByteString
+w2bs ws = (B.pack . concat . map word32LEBytes) ws
 
 \end{code}
