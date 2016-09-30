@@ -9,7 +9,7 @@
 /* them, and returns the resulting registers state. */
 
 #define PORT 9999
-#define TRANSMISSION_SIZE 0x1000 // how big can this be?
+#define TRANSMISSION_SIZE 0x40000 // how big can this be?
 
 #define RET(x) (x == 0xC3)
 #define READY(x) (x < 0)
@@ -105,7 +105,7 @@ u32 lisp_encode(u8 *vector, char *sexp){
 // Unicorn initialization functions
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-#define SIZE_OF_UC_ENGINE 0x1000 // faking it. probably a disaster. o
+#define SIZE_OF_UC_ENGINE 0x40000 // faking it. probably a disaster. o
 uc_engine *init_unicorn(uc_arch arch, uc_mode mode){
   uc_err err;
   uc_engine *uc;
@@ -130,8 +130,13 @@ int kill_unicorn(uc_engine *uc){
 int map_memory(uc_engine *uc, u8 *bytes, size_t bytelength,
                u8 perms, u32 startat){
   uc_err err;
-  u32 rounded_length = roundup(bytelength, 12); // must be 4k aligned
+  u32 rounded_length = roundup(bytelength, 0x1000) + 0x1000; // must be 4k runaligned
+  
   // TODO: incorporate more restrictive permissions, by processing perms parameter
+
+  if (DEBUG) {
+    fprintf(stderr, "bytelength = %x\nperms = %x\nstartat = %x\nR4K(startat) = %x\nrounded_length = %x\n ", bytelength, perms, startat, R4K(startat), rounded_length);
+  }
 
   UNICORNMUST(uc_mem_map(uc, R4K(startat), rounded_length, UC_PROT_ALL),
               "uc_mem_map in map_memory");
@@ -374,10 +379,12 @@ int display_stack(uc_engine *uc, int depth){
 /**
  * Round up to the next nth power of two.
  **/
-int roundup(int num, int shiftby){
-  int i;
-  for (i=1; i < num; i <<= shiftby);
-  return i;
+int roundup(int num, int unit){
+  int t = 0;
+  while (t < num) {
+    t += unit;
+  }
+  return t;
 }
 
 /**
@@ -569,7 +576,7 @@ u32 hatch_listener(u16 port, char *allowed_ip){
           exit(EXIT_FAILURE);
         }
 
-        if (reset_data){
+        if (reset_data || !engine){
           if (engine){
             NOTE("Freeing old engine.");
             free(engine);
@@ -637,6 +644,10 @@ u32 hatch_listener(u16 port, char *allowed_ip){
         }
         u8 perms = executable | (writeable << 1) | (1 << 2);
         if (DEBUG) fprintf(stderr, "About to map memory...\n");
+        if (DEBUG && !engine) {
+          fprintf(stderr, "ENGINE NOT INITIALIZED!\n");
+          exit(EXIT_FAILURE);
+        }
         map_memory(engine, databuffer, datalength, perms, startat);
         send(new_sockfd, "Ready", 5, 0);
         free(databuffer);

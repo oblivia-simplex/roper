@@ -216,6 +216,7 @@ int em_code(u8 *code, u32 bytelength, u32 startat,
     }
   }
 
+  fprintf(stderr, "DID I GET THIS FAR?\n"); // FOR DEBUGGING
   // don't leave 0x1000 a magic number
   if ((err = uc_mem_map(uc, round_start, 0x100000, UC_PROT_ALL))) {
     // does PROT_ALL mean 777? might want to set to XN for ROP...

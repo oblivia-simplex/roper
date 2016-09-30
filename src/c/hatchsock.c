@@ -481,7 +481,9 @@ u32 stack_listener(u32 port, char *allowed_ip){
         fprintf(stderr, "DATALENGTH: %d / EXPECT: %d\n", datalength, expect);
       if (set_data && (datalength >= expect)) {
         u8 perms = executable | (writeable << 1) | (1 << 2);
-        if (DEBUG) fprintf(stderr, "About to map memory...\n");
+        //if (DEBUG) fprintf(stderr, "About to map memory...\n");
+        
+        exit(EXIT_FAILURE); // FOR DEBUGGING
 
         map_memory(engine, databuffer, datalength, perms, startat);
 
