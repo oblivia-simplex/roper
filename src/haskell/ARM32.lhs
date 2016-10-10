@@ -275,9 +275,9 @@ conditional execution, in this model.}
 operation :: Word32 -> Operation
 operation w = case (whatLayout w) of
   DataProc m  -> opDP m
-  Mult       -> opM
-  MultLong   -> opM
-  otherwise  -> error $ "Not yet implemented: 0x" ++ showHex w "\nBACK TO WORK!"
+  Mult        -> opM
+  MultLong    -> opM
+  otherwise   -> error $ "Not yet implemented: 0x" ++ showHex w "\nBACK TO WORK!"
   where --t = whatLayout w
     opDP :: DPMnemonic -> Operation
     opDP mnemonic = case mnemonic of
@@ -300,6 +300,14 @@ operation w = case (whatLayout w) of
       MVN -> \a _ y _ -> (a, complement y)
     opM :: Operation
     opM = \a x y _ -> (a, x * y)
+
+-- TODO: get immediate operands. 
+immediate :: Word32 -> Maybe Word32
+immediate w =
+  if (testBit w 25) then (Just $ mask w 0 12) else Nothing
+ 
+    
+
 
 m_block_data_regs :: Word32 -> [Word32]
 m_block_data_regs w =

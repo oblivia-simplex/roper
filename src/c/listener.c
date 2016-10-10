@@ -130,7 +130,7 @@ int kill_unicorn(uc_engine *uc){
 int map_memory(uc_engine *uc, u8 *bytes, size_t bytelength,
                u8 perms, u32 startat){
   uc_err err;
-  u32 rounded_length = roundup(bytelength, 0x1000) + 0x1000; // must be 4k runaligned
+  u32 rounded_length = roundup(bytelength, 0x1000) ; // must be 4k runaligned
   
   // TODO: incorporate more restrictive permissions, by processing perms parameter
 

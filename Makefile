@@ -1,10 +1,10 @@
-C_DIR = c/
+C_DIR = src/c/
 
 
 .PHONY: all clean
 
 
-all:	c/*.[ch]
+all:	$(C_DIR)*.[ch]
 	cd $(C_DIR) && make
 
 clean:

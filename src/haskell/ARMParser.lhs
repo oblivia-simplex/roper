@@ -31,7 +31,7 @@ import Data.Attoparsec.ByteString
 import Data.Attoparsec.Binary
 import Data.Word
 import Data.Bits
-import Numeric (showHex)
+import qualified Numeric as N (showHex)
 \end{code}
 \section{Parser}
 
@@ -49,7 +49,7 @@ The ARM architecture is bi-endian, meaning that it can operate in either big-end
 
 \begin{code}
 
-data Endian = Big | Little
+data Endian = Little | Big deriving (Show, Eq, Ord)
 endian = Little
 
 anyWord16 = case endian of
@@ -88,6 +88,7 @@ data Mode = ArmMode | ThumbMode deriving (Eq, Show, Enum)
 
 data Inst = Inst {
    iRaw  :: Raw
+  ,iImm  :: Maybe Word32
   ,iLay  :: Layout'
   ,iSrc  :: [Int]
   ,iDst  :: [Int]
@@ -98,12 +99,26 @@ data Inst = Inst {
 instance Eq Inst where
   x == y  =  ((iRaw x) == (iRaw y))
 
+showHex :: (Integral a, Show a) => a -> String
+showHex n =
+  let s = flip N.showHex "" n
+  in pad s
+  where pad st =
+          (L.take (4 - ((length st) `mod` 4)) $ repeat '0') ++ st
+
+
 instance Show Inst where
-  show x  = (show $ iRaw x) ++ ": "
-            ++ " " ++ (stringy iSrc) ++ " ->" ++ (stringy iDst)
+  show x  = (reverse $ L.take 8 $ reverse $ showHex $ fromRaw32 $ iRaw x) ++ ": "
+            ++ " " ++ (whatField) ++ " ->" ++ (stringy iDst)
             ++ "  (" ++ (show $ iLay x) ++ ")" ++ "\n"
-    where stringy field =
-            (foldl (\a b -> a ++ " " ++ b) [] (fmap show $ field x))
+    where stringy :: (Inst -> [Int]) -> String
+          stringy field =
+            (foldl (\a b -> a ++ " r" ++ b) "" (fmap show $ field x))
+          whatField = 
+            case (iImm x) of
+              Nothing -> stringy iSrc
+              Just v  -> "#&" ++ showHex v 
+            
 -- Some mnemonics we'll be using for DataProc instructions.
 -- Note that a different system will be needed for the
 -- other layouts.
@@ -121,6 +136,7 @@ thumbInst = do
   w <- anyWord16
   pure $ Inst {
      iRaw = W16 w
+    ,iImm = Nothing -- just for now
     ,iLay = Thumb $ Th.whatLayout w
     ,iSrc = Th.srcRegs w
     ,iDst = Th.dstRegs w
@@ -133,6 +149,7 @@ armInst = do
   w <- anyWord32
   pure $ Inst {
      iRaw = W32 w
+    ,iImm = Ar.immediate w
     ,iLay = ARM $ Ar.whatLayout w
     ,iSrc = Ar.srcRegs w
     ,iDst = Ar.dstRegs w
@@ -170,12 +187,14 @@ main = do
   putStrLn "===================================================="
   let aparsed = parseOnly  (instructions ArmMode) $  B.take 0x200 text
   print aparsed
-  putStrLn "===================================================="
-  putStrLn "                   Thumb Mode"
-  putStrLn "===================================================="
-  let tparsed = parseOnly  (instructions ThumbMode) $ B.take 0x200 text
-  print tparsed
+--  putStrLn "===================================================="
+--  putStrLn "                   Thumb Mode"
+--  putStrLn "===================================================="
+--  let tparsed = parseOnly  (instructions ThumbMode) $ B.take 0x200 text
+--  print tparsed
 -- find some pure Thumb code to test Thumb mode with (TODO)
+
+--parseARM :: B.Bytestring -> 
 \end{code}
 
 \end{document}
