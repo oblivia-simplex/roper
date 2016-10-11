@@ -21,6 +21,7 @@ import Network.Socket
 import Data.Bits
 import qualified Numeric as N
 import ElfHelper
+import Aux
 
 type Code    = BS.ByteString
 type Address = Int64
@@ -35,6 +36,13 @@ memSize = 0x100000 :: Int -- 1 MiB
 -- memory addr where emulaton starts
 baseAddress :: Word64
 baseAddress = 0x10000
+
+-- phony address used to mark stopping point
+stopAddress :: Word64
+stopAddress = (en memSize + baseAddress) - 4
+
+stackAddress :: Int64
+stackAddress = 0xb4238 -- Hardcoded for now
 
 -- calculate code length
 codeLength :: Num a => BS.ByteString -> a
@@ -63,24 +71,52 @@ prepareEngine eUc = do
   setRegisters' uc $ replicate 15 0
   return uc
 
+-- | littleEndian
+
+-- Note: these two functions look as if they should
+-- be taking or returning Word32s, but because of
+-- the way the unicorn api works, we have to treat
+-- these values as Word64s. 
+firstWord :: Code -> Word64
+firstWord bytes = 
+  let w = take 4 $ BS.unpack bytes
+  in foldr (.|.) 0 $ map (adj w) [0..3]
+  where adj :: [Word8] -> Int -> Word64
+        adj wrd i = 
+          (fromIntegral $ wrd !! i)  `shiftL` (i * 8)
+
+word2BS :: Word64 -> Code
+word2BS w = BS.pack $
+            map (\x -> en $ mask w (x*8) ((x+1)*8)) [0..3]
+
+
 -- | Note that any changes made to the engine state
 -- | will be forgotten after this function returns,
 -- | It is not wrapped in an Emulator monad...
 -- | Execute the payload and report the state. 
-hatchCode :: Emulator Engine -> Code -> IO [Char]
-hatchCode eUc code = do
+hatchChain :: Emulator Engine -> Code -> IO [Char]
+hatchChain eUc chain = do
   result <- runEmulator $ do
     -- initialize emulator in ARM mode
     -- pull the engine out of its monad wrapper
     uc <- eUc
 
     -- write machine code to be emulated to memory
-    memWrite uc baseAddress code
-  
-    -- emulate machine code in unlimited time, or when finishing
-    -- all the code
-    let codeLen = codeLength code
-    start uc baseAddress (baseAddress + codeLen) Nothing Nothing
+    -- memWrite uc baseAddress code
+    -- Unicorn oscillates between expecting Int64 and
+    -- expecting Word64, so we'll have to use the en func.
+    -- | write the rop payload to the stack
+    memWrite uc (en stackAddress) chain
+    -- | put the stopAddress at the bottom of the stack
+    memWrite uc (en $ stackAddress + codeLength chain) $ word2BS stopAddress
+
+    -- | set sp to point to the stackAddress + 4 (popped)
+    regWrite uc Arm.Sp $ en (stackAddress + 4)
+    -- | pop the uc stack into the start address
+    let startAddr = firstWord chain
+    -- | Start the emulation, stopping when the bottom of the
+    -- | stack is retrieved.
+    start uc baseAddress stopAddress Nothing Nothing
     -- Return the results
     rList <- mapM (regRead uc) $ map r [0..15]
     return rList
@@ -91,15 +127,15 @@ hatchCode eUc code = do
                           (showRegisters rList)
     Left err -> return $ "Failed with error: " ++ show err ++ 
                          " (" ++ strerror err ++ ")"
-
--- | Pretty print register contents.
-showRegisters :: (Show a, Integral a) => [a] -> String
-showRegisters rList = 
-  foldr (\(r,v) next -> margin ++ "r"++r++": "++(pad r)
+  where
+    -- | Pretty print register contents.
+    showRegisters :: (Show a, Integral a) => [a] -> String
+    showRegisters rList = 
+        foldr (\(r,v) next -> margin ++ "r"++r++": "++(pad r)
          ++v++"\n" ++ next)
         "" $ zip (map show [0..15]) 
           (map showHex rList)
-  where pad r = replicate (2 - length r) ' '
+      where pad r = replicate (2 - length r) ' '
                                   
 runConn :: (Socket, SockAddr) -> Emulator Engine -> IO [Char]
 runConn (skt, _) eUc = do
@@ -112,7 +148,7 @@ runConn (skt, _) eUc = do
   -- just to ease debugging, let's pass this to our parser, too
   let parsed = Atto.parseOnly (instructions ArmMode) packedCode
   let dealWith p = do
-                     result <- hatchCode ( eUc) $ BS.pack code
+                     result <- hatchChain ( eUc) $ BS.pack code
                      hPutStrLn hdl $ p ++ result
                      return $ p ++ result
   case parsed of 
@@ -150,10 +186,10 @@ initEngine text rodata = do
   --codeHookAdd uc hookCode () baseAddress baseAddress
   return uc
 
-textSection :: Section
-textSection   = undefined
+textSection   :: Section
+textSection    = undefined
 rodataSection :: Section
-rodataSection = undefined
+rodataSection  = undefined
 
 hatchMain :: IO ()
 hatchMain = do

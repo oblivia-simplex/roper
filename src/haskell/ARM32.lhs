@@ -206,6 +206,11 @@ whatCond w =
 
 
 \begin{code}
+-- | Is the second operand in a dataproc instruction immediate?
+dpOp2Imm :: Word32 -> Bool
+dpOp2Imm = flip testBit 25
+
+-- | Get a list of source registers
 srcRegs :: Word32 -> [Int]
 srcRegs w = map fromIntegral $ case (whatLayout w) of
   DataProc _      -> [mask w 16 20]
@@ -228,6 +233,11 @@ srcRegs w = map fromIntegral $ case (whatLayout w) of
   RAWDATA         -> []
 --  otherwise       -> error $ "Not yet implemented: 0x" ++ showHex w ""
 
+op2Regs :: Word32 -> [Int]
+op2Regs w = map fromIntegral $ case (whatLayout w) of
+  DataProc _      -> if (dpOp2Imm w) then [] else [(mask w 0 4)]
+-- TODO: Complete this, and incorporate it in instruction type
+
 dstRegs :: Word32 -> [Int]
 dstRegs w = map fromIntegral $ case (whatLayout w) of
   DataProc _      -> [mask w 12 16]
@@ -249,6 +259,14 @@ dstRegs w = map fromIntegral $ case (whatLayout w) of
   SWI             -> []
   RAWDATA         -> []
 --  otherwise       -> error $ "Not yet implemented: " ++ showHex w "\nGet back to work!"
+
+-- | break this down into op2immediate, etc. 
+-- TODO: get immediate operands, if present. 
+immediate :: Word32 -> Maybe Word32
+immediate w =
+  case (whatLayout w) of
+    DataProc _ -> if (dpOp2Imm w) then (Just $ mask w 0 12) else Nothing
+    otherwise  -> Nothing
 \end{code}
 
 \subsection{Operations}
@@ -269,6 +287,32 @@ are peformed only to update the status or flag register.) %
 conditional execution, in this model.}
 
 \begin{code}
+
+
+mkShift :: Bits c => Int -> (c -> c)
+mkShift i =
+  case (mask i 1 3) of
+    0 -> flip shiftL shiftVal
+    1 -> flip shiftR shiftVal
+    2 -> flip aShiftR shiftVal
+    3 -> flip rotateR shiftVal
+  where shiftVal = en $ if (testBit i 0)
+                           then mask i 7 12
+                           else 0 --mask i 8 12
+                      -- | KLUGDE should be register value
+                      -- this is an acceptable source of noise for now
+
+{-
+mkRot :: Bits c => Int -> (c -> c)
+mkRot i = flip rotate i
+-} 
+
+-- | returns a shift operation
+shifter :: (Bits c) => Word32 -> (c -> c)
+shifter w = case (whatLayout w) of 
+  DataProc _  -> if (dpOp2Imm w)
+                 then (flip rotate $ en (mask w 8 12))
+                 else (mkShift $ en (mask w 4 12))
 
 -- we could return a pair of Word32 values to capture the flags register
 -- or we could simplify things by just ignoring the flags for now.
@@ -301,10 +345,9 @@ operation w = case (whatLayout w) of
     opM :: Operation
     opM = \a x y _ -> (a, x * y)
 
--- TODO: get immediate operands. 
-immediate :: Word32 -> Maybe Word32
-immediate w =
-  if (testBit w 25) then (Just $ mask w 0 12) else Nothing
+  
+
+-- if (whatLayout w == (DataProc _) && testBit w 25) then (Just $ mask w 0 12) else Nothing
  
     
 

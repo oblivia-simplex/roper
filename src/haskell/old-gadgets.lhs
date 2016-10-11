@@ -40,7 +40,6 @@ import System.IO
 import Control.Monad
 import Text.Printf
 
-import Hapstone.Capstone
 import Unicorn
 
 import System.Random
@@ -102,8 +101,8 @@ main = do
                  (zip3
                    -- (map altSP g)
                    (map whatLayout g)
-                   (map (srcRegs True) g)
-                   (map (dstRegs True) g)
+                   (map (srcRegs ) g)
+                   (map (dstRegs ) g)
                    --
                  ))
           >> putStrLn "--------------") gads
@@ -196,9 +195,9 @@ extractRawGads sec gadp =
                                       ,g_spD = 0
                                       ,g_ctrl = "" -- placeholder.
                                       ,g_src = nub $ concat
-                                               $ map (srcRegs False) wrds
+                                               $ map (srcRegs ) wrds
                                       ,g_dst = nub $ concat
-                                               $ map (dstRegs False) wrds
+                                               $ map (dstRegs ) wrds
                                       } :
                                ergR (drop l insts) (step addr) gadp
       | otherwise = ergR (tail insts) (addr - wordsize) gadp

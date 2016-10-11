@@ -109,15 +109,16 @@ showHex n =
 
 instance Show Inst where
   show x  = (reverse $ L.take 8 $ reverse $ showHex $ fromRaw32 $ iRaw x) ++ ": "
-            ++ " " ++ (whatField) ++ " ->" ++ (stringy iDst)
-            ++ "  (" ++ (show $ iLay x) ++ ")" ++ "\n"
+            ++ (show $ iLay x)  
+            ++ " " ++ (showImm $ iImm x) ++ "; " ++ (stringy iSrc) ++ "-> "
+            ++ (stringy iDst) ++ "\n"
     where stringy :: (Inst -> [Int]) -> String
           stringy field =
-            (foldl (\a b -> a ++ " r" ++ b) "" (fmap show $ field x))
-          whatField = 
-            case (iImm x) of
-              Nothing -> stringy iSrc
-              Just v  -> "#&" ++ showHex v 
+            (foldr (\a b -> "r" ++ a ++ " " ++ b ) "" 
+              (fmap show $ field x))
+          showImm i = case i of
+                        Just im -> "#&" ++ showHex im
+                        Nothing -> "--"
             
 -- Some mnemonics we'll be using for DataProc instructions.
 -- Note that a different system will be needed for the
