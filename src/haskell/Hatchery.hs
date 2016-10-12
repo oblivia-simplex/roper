@@ -23,7 +23,7 @@ import qualified Numeric as N
 import ElfHelper
 import Aux
 
-type Code    = BS.ByteString
+-- type Code    = BS.ByteString
 type Address = Int64
 
 hardcodePath :: String
@@ -89,27 +89,18 @@ word2BS :: Word64 -> Code
 word2BS w = BS.pack $
             map (\x -> en $ mask w (x*8) ((x+1)*8)) [0..3]
 
-
 -- | Note that any changes made to the engine state
--- | will be forgotten after this function returns,
--- | It is not wrapped in an Emulator monad...
+-- | will be forgotten after this function returns. 
 -- | Execute the payload and report the state. 
 hatchChain :: Emulator Engine -> Code -> IO [Char]
 hatchChain eUc chain = do
   result <- runEmulator $ do
-    -- initialize emulator in ARM mode
     -- pull the engine out of its monad wrapper
     uc <- eUc
-
-    -- write machine code to be emulated to memory
-    -- memWrite uc baseAddress code
-    -- Unicorn oscillates between expecting Int64 and
-    -- expecting Word64, so we'll have to use the en func.
-    -- | write the rop payload to the stack
+    -- | write the rop chain to the stack
     memWrite uc (en stackAddress) chain
     -- | put the stopAddress at the bottom of the stack
     memWrite uc (en $ stackAddress + codeLength chain) $ word2BS stopAddress
-
     -- | set sp to point to the stackAddress + 4 (popped)
     regWrite uc Arm.Sp $ en (stackAddress + 4)
     -- | pop the uc stack into the start address
@@ -120,7 +111,6 @@ hatchChain eUc chain = do
     -- Return the results
     rList <- mapM (regRead uc) $ map r [0..15]
     return rList
-
   case result of
     Right rList -> return $ "\n" ++ "** Emulation complete. " ++
                           "Below is the CPU context **\n\n" ++  
@@ -129,6 +119,8 @@ hatchChain eUc chain = do
                          " (" ++ strerror err ++ ")"
   where
     -- | Pretty print register contents.
+    -- | for debugging. later replace with machine-readable format.
+    -- | a packed bytestring of register values would be fine
     showRegisters :: (Show a, Integral a) => [a] -> String
     showRegisters rList = 
         foldr (\(r,v) next -> margin ++ "r"++r++": "++(pad r)
@@ -181,9 +173,9 @@ initEngine text rodata = do
   --putStrLn "Loaded rodata section..."
    
    -- tracing all basic blocks with customized callback
-  --blockHookAdd uc hookBlock () 1 0
+  blockHookAdd uc hookBlock () 1 0
    -- tracing one instruction at address with customized callback
-  --codeHookAdd uc hookCode () baseAddress baseAddress
+  codeHookAdd uc hookCode () baseAddress baseAddress
   return uc
 
 textSection   :: Section

@@ -49,6 +49,8 @@ The ARM architecture is bi-endian, meaning that it can operate in either big-end
 
 \begin{code}
 
+type Code = B.ByteString
+
 data Endian = Little | Big deriving (Show, Eq, Ord)
 endian = Little
 
@@ -79,12 +81,15 @@ data Raw = W16 Word16 | W32 Word32 deriving (Show, Eq)
 --instance Enum Raw where
  -- fromEnum r = fromEnum $ fromRaw r
  -- toEnum r = W32 (fromEnum r)
+-- SHOW INSTANCE
+
 fromRaw32 :: Raw -> Word32
 fromRaw16 :: Raw -> Word16
 fromRaw16 (W16 w) = w
 fromRaw32 (W32 w) = w
 
 data Mode = ArmMode | ThumbMode deriving (Eq, Show, Enum)
+
 
 data Inst = Inst {
    iRaw  :: Raw
@@ -168,6 +173,18 @@ Since we are not emulating the code here, we have no \emph{a priori} way of know
 instructions :: Mode -> Parser [Inst]
 instructions ArmMode = many armInst
 instructions ThumbMode = many thumbInst
+
+
+
+parseInstructions :: Mode -> Code -> [Inst]
+parseInstructions mode code =
+  let res = parseOnly (instructions mode) code
+  in case res of
+      Left s  -> []
+      Right i -> i
+
+  
+
 \end{code}
 
 \section{Testing functions}
@@ -180,8 +197,8 @@ This bit here is solely for testing purposes, to see if our parser is able to pr
 -- just to tide us over until the Elf header parser is written
 textpath = "/home/oblivia/Projects/roper-stack/bins/arm/ldconfig.text"
 
-main :: IO ()
-main = do
+testMain :: IO ()
+testMain = do
   text   <- B.readFile textpath
   putStrLn "===================================================="
   putStrLn "                   Arm Mode"
