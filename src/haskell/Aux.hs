@@ -1,7 +1,3 @@
-A Collection of auxiliary and convenience functions, mostly
-dealing with Word32 values.
-
-\begin{code}
 module Aux where
 import Data.Word
 import Data.Bits
@@ -45,11 +41,21 @@ mask w low high
         highmask = (2^high)-1
 
 word32LEBytes :: Word32 -> [Word8]
-word32LEBytes wrd = wrec wrd 4
-  where wrec :: Word32 -> Int -> [Word8]
+word32LEBytes w = wordLEBytes (en w) 4
+
+word64LEBytes :: Word64 -> [Word8]
+word64LEBytes w = wordLEBytes (en w) 8
+
+wordLEBytes :: Word -> Int -> [Word8]
+wordLEBytes wrd size = wrec wrd size
+  where wrec :: Word -> Int -> [Word8]
         wrec _ 0 = []
         wrec w n = (fromIntegral (0xFF .&. w)) :
                    (wrec (shiftR w 8) (n - 1))
+
+word64BS :: Word64 -> B.ByteString 
+word64BS w = B.pack $
+            map (\x -> en $ mask w (x*8) ((x+1)*8)) [0..3]
 
 w2bs :: [Word32] -> B.ByteString
 w2bs ws = (B.pack . concat . map word32LEBytes) ws
@@ -60,6 +66,6 @@ aShiftR wrd16 i =
     True  -> (shiftL wrd16 i) `setBit` 15
     False -> (shiftL wrd16 i) `clearBit` 15
 
+(.++.) = B.append
+(.:.)  = B.cons
 
-
-\end{code}

@@ -271,7 +271,10 @@ void hook_step(uc_engine *uc, void *user_data) {
  * Address 0 should be made unwriteable, though. 
  **/
 int hatch_stack(uc_engine *uc, u8 *result){
-  if (!uc) {fprintf(stderr, "ENGINE NULL! ABORTING!\n"); exit(EXIT_FAILURE);}
+  if (!uc) {
+    fprintf(stderr, "ENGINE NULL! ABORTING!\n"); 
+    exit(EXIT_FAILURE);
+  }
 
   uc_err err;
   uc_hook _hook_step;
@@ -297,17 +300,24 @@ int hatch_stack(uc_engine *uc, u8 *result){
           "uc_reg_write in hatch_stack");
   /* finished seeding registers */
 
-  u64 *sp; // we'll only use half of this
-  sp = calloc(1,sizeof(u64));
+  /* What we're doing here is simulating a ret-style instruction:
+     popping the stack and starting execution at the address we
+     find there.
+   */
+  u64 *sp; 
+  sp = calloc(1,sizeof(u64)); // allocate mem for the stack ptr
 
-  UNICORNMUST(uc_reg_read(uc, UC_ARM_REG_SP, (void *) sp),
+  /* Now read from the top of the stack, store the addr in sp */
+  UNICORNMUST(uc_reg_read(uc, UC_ARM_REG_SP, (void *) sp), 
           "uc_reg_read in hatch_stack");
   
   u64 *start;
   start = malloc(sizeof(u64));
-  UNICORNMUST(uc_mem_read(uc, *sp, start, 4),
+  /* now load whatever sp points at, in uc mem, into start */
+  UNICORNMUST(uc_mem_read(uc, *sp, start, 4), // Read 
           "uc_mem_read in hatch_stack");
-  *sp += 4; // arch sensitive. word size. 
+  *sp += 4; /* Here's the "pop" */
+  /* tranfer that 'pop' to the emulator: adjust its own sp */
   UNICORNMUST(uc_reg_write(uc, UC_ARM_REG_SP, (void *) sp),
           "uc_reg_write in hatch_stack");
   
@@ -318,11 +328,17 @@ int hatch_stack(uc_engine *uc, u8 *result){
   }
 
   NOTEVAL("START = %8.8x\n", *start);
-  
+
+  /* Here's where the execution actually begins */  
+  /* Note that we're starting at where the address at
+     the top of the stack points */
   if ((err = (uc_emu_start(uc, *start, 0, 0, TTL)))){
     uc_perror("uc_emu_start in hatch_stack", err);
   }
-
+  /* The emulator will take care of the rest. When it's
+     finished, we just retrieve the register state with
+     the following instruction. 
+   */
   /* retrieve the register state */
   uc_reg_read_batch(uc, reg_vec, ptrs, reg_vec_len);
   

@@ -22,6 +22,7 @@ import Data.Bits
 import qualified Numeric as N
 import ElfHelper
 import Aux
+import Data.List.Split
 
 -- type Code    = BS.ByteString
 type Address = Int64
@@ -31,15 +32,20 @@ hardcodePath = "data/ldconfig.real"
 
 b = BS.pack
 port    = 8888     :: PortNumber
-memSize = 0x100000 :: Int -- 1 MiB 
+
+-- | At this point in the development, we're treating the entire
+-- | memory space as fair game, so that we don't have to worry about
+-- | segfaults. This will be tightened up later, once everything else
+-- | is working. 
+memSize = 0x100000000 :: Int -- 1 MiB 
 
 -- memory addr where emulaton starts
 baseAddress :: Word64
-baseAddress = 0x10000
+baseAddress = 0x00000000
 
 -- phony address used to mark stopping point
 stopAddress :: Word64
-stopAddress = (en memSize + baseAddress) - 4
+stopAddress = 0
 
 stackAddress :: Int64
 stackAddress = 0xb4238 -- Hardcoded for now
@@ -50,14 +56,39 @@ codeLength =
   fromIntegral . BS.length
 
 hookBlock :: BlockHook ()
-hookBlock _ addr size _ =
-  putStrLn $ margin ++ "Tracing basic block at 0x" ++ 
-  showHex addr ++ ", block size = 0x" ++ (maybe "0" showHex size)
+hookBlock uc addr size b =
+  putStrLn $ "\n" ++ margin ++ "Tracing gadget at 0x" ++ 
+  showHex addr ++ ", gadget size = 0x" ++ (maybe "0" showHex size) 
 
 hookCode :: CodeHook ()
-hookCode _ addr size _ =
-  putStrLn $ margin ++ "Tracing instruction at 0x" ++ showHex
-  addr ++ ", instruction size = 0x" ++ (maybe "0" showHex size)
+hookCode uc addr size _ = do 
+  inst'   <- runEmulator $ memRead uc addr 4
+  regs'   <- runEmulator $ mapM (regRead uc) $ map r [0..15] 
+  let inst :: String
+      inst = case inst' of
+                Left err -> "[" ++ (show err) ++ "]"
+                Right bs -> showHex $ firstWord $ BS.unpack bs 
+      regs :: String
+      regs = case regs' of
+                Left err -> show err
+                Right rg -> showRegisters rg
+  putStrLn $ "    " ++ (showHex addr) ++ ": " ++ inst ++ "\n"
+             ++ regs -- (showRegisters regs) 
+  return ()
+   
+hookMem :: MemoryHook ()
+hookMem uc accessType addr size writeVal _ =
+  putStrLn $ "--> .rodata memory access at " ++ (showHex addr)
+
+-- | Pretty print register contents.
+-- | for debugging. later replace with machine-readable format.
+-- | a packed bytestring of register values would be fine
+showRegisters :: (Show a, Integral a) => [a] -> String
+showRegisters rList = 
+  let s = foldr (\(r,v) next -> "r"++r++": "++ (replicate (2 - length r) ' ')
+            ++v++"  " ++ next)
+            "" $ zip (map show [0..15]) (map showHex rList)
+  in intercalate "\nr8" (splitOn "r8" s)
 
 margin :: String
 margin = "--| "
@@ -76,83 +107,62 @@ prepareEngine eUc = do
 -- Note: these two functions look as if they should
 -- be taking or returning Word32s, but because of
 -- the way the unicorn api works, we have to treat
--- these values as Word64s. 
-firstWord :: Code -> Word64
+-- these values as Word64s.
+ 
+firstWord :: [Word8] -> Word64
 firstWord bytes = 
-  let w = take 4 $ BS.unpack bytes
+  let w = take 4 bytes
   in foldr (.|.) 0 $ map (adj w) [0..3]
   where adj :: [Word8] -> Int -> Word64
         adj wrd i = 
           (fromIntegral $ wrd !! i)  `shiftL` (i * 8)
 
-word2BS :: Word64 -> Code
-word2BS w = BS.pack $
-            map (\x -> en $ mask w (x*8) ((x+1)*8)) [0..3]
+wordify :: [Word8] -> [Word64]
+wordify [] = []
+wordify xs = (firstWord xs):wordify (drop 4 xs)
+
 
 -- | Note that any changes made to the engine state
 -- | will be forgotten after this function returns. 
 -- | Execute the payload and report the state. 
 hatchChain :: Emulator Engine -> Code -> IO [Char]
 hatchChain eUc chain = do
-  result <- runEmulator $ do
+  res <- runEmulator $ do
     -- pull the engine out of its monad wrapper
-    uc <- eUc
+    uc <- prepareEngine eUc
     -- | write the rop chain to the stack
     memWrite uc (en stackAddress) chain
     -- | put the stopAddress at the bottom of the stack
-    memWrite uc (en $ stackAddress + codeLength chain) $ word2BS stopAddress
+    memWrite uc (en $ stackAddress + codeLength chain) $ 
+      word64BS stopAddress
     -- | set sp to point to the stackAddress + 4 (popped)
     regWrite uc Arm.Sp $ en (stackAddress + 4)
     -- | pop the uc stack into the start address
-    let startAddr = firstWord chain
+    let startAddr = firstWord $ BS.unpack chain
     -- | Start the emulation, stopping when the bottom of the
     -- | stack is retrieved.
-    start uc baseAddress stopAddress Nothing Nothing
+    start uc startAddr stopAddress Nothing (Just 0x100) 
     -- Return the results
-    rList <- mapM (regRead uc) $ map r [0..15]
-    return rList
-  case result of
-    Right rList -> return $ "\n" ++ "** Emulation complete. " ++
-                          "Below is the CPU context **\n\n" ++  
-                          (showRegisters rList)
-    Left err -> return $ "Failed with error: " ++ show err ++ 
-                         " (" ++ strerror err ++ ")"
-  where
-    -- | Pretty print register contents.
-    -- | for debugging. later replace with machine-readable format.
-    -- | a packed bytestring of register values would be fine
-    showRegisters :: (Show a, Integral a) => [a] -> String
-    showRegisters rList = 
-        foldr (\(r,v) next -> margin ++ "r"++r++": "++(pad r)
-         ++v++"\n" ++ next)
-        "" $ zip (map show [0..15]) 
-          (map showHex rList)
-      where pad r = replicate (2 - length r) ' '
+    rList <- mapM (regRead uc) $ map r [0..15] 
+    stack <- memRead uc (en stackAddress) 0x30
+    return (rList, stack)
+  case res of
+    Right (rList, stack) -> 
+      return $ "\n" ++ "** Emulation complete. " ++
+               "Below is the CPU context **\n\n" ++  
+               (showRegisters rList) ++
+               "\n\nAnd here is the stack:\n\n" ++
+               foldr (\x y -> x ++ "\n" ++ y) "\n" 
+                     (showHex <$> (wordify $ BS.unpack stack))
+    Left err -> 
+      return $ "Failed with error: " ++ show err ++ 
+               " (" ++ strerror err ++ ")"
                                   
-runConn :: (Socket, SockAddr) -> Emulator Engine -> IO [Char]
-runConn (skt, _) eUc = do
-  hdl <- socketToHandle skt ReadWriteMode
-  hSetBuffering hdl NoBuffering 
-  codeStr <- hGetContents hdl
-  let code :: [Word8]
-      code = map toEnum $ map fromEnum codeStr
-  let packedCode = BS.pack(code)
-  -- just to ease debugging, let's pass this to our parser, too
-  let parsed = Atto.parseOnly (instructions ArmMode) packedCode
-  let dealWith p = do
-                     result <- hatchChain ( eUc) $ BS.pack code
-                     hPutStrLn hdl $ p ++ result
-                     return $ p ++ result
-  case parsed of 
-    Right s -> dealWith $ foldr (++) "" $ map show s 
-    Left  e -> dealWith $ "Parsing Error: " ++ (show e)
 
-mainLoop :: Emulator Engine -> Socket -> IO () 
-mainLoop eUc skt = do
-  conn <- accept skt
-  result <- runConn conn eUc    
-  putStrLn result
-  mainLoop eUc skt
+textSection   :: Section
+textSection    = undefined
+rodataSection :: Section
+rodataSection  = undefined
 
 -- Do all the engine initialization stuff here. 
 -- including, for now, hardcoding in some nonwriteable mapped memory
@@ -168,30 +178,16 @@ initEngine text rodata = do
   -- now map the unwriteable memory zones
   -- leave it all under protall for now, but tweak later
   memWrite uc (addr text) (code text)
-  --putStrLn "Loaded text section..."
   memWrite uc (addr rodata) (code rodata)
-  --putStrLn "Loaded rodata section..."
-   
-   -- tracing all basic blocks with customized callback
+  -- tracing all basic blocks with customized callback
   blockHookAdd uc hookBlock () 1 0
-   -- tracing one instruction at address with customized callback
-  codeHookAdd uc hookCode () baseAddress baseAddress
+  -- tracing one instruction at address with customized callback
+  
+  codeHookAdd uc hookCode  () (addr text) ((addr text) + (en (BS.length (code text))))
+  memoryHookAdd uc HookMemRead hookMem () (addr rodata) ((addr rodata) + (en (BS.length (code rodata))))  
+ 
   return uc
 
-textSection   :: Section
-textSection    = undefined
-rodataSection :: Section
-rodataSection  = undefined
 
-hatchMain :: IO ()
-hatchMain = do
-  sections <- getElfSecs hardcodePath
-  let Just textSection   = find ((== ".text") . name)   sections
-  let Just rodataSection = find ((== ".rodata") . name) sections 
-  let eUc = initEngine textSection rodataSection 
-  sock <- socket AF_INET Stream 0
-  setSocketOption sock ReuseAddr 1 -- make socket immediately reusable
-  bind sock (SockAddrInet port iNADDR_ANY) -- listen on port 9999
-  listen sock 8
-  mainLoop eUc sock
-  return ()
+
+

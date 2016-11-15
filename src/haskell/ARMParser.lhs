@@ -109,7 +109,7 @@ showHex n =
   let s = flip N.showHex "" n
   in pad s
   where pad st =
-          (L.take (4 - ((length st) `mod` 4)) $ repeat '0') ++ st
+          (L.take (8 - (length st)) $ repeat '0') ++ st
 
 
 instance Show Inst where
