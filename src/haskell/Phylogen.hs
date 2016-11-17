@@ -14,21 +14,19 @@ import qualified Data.ByteString as BS
 import Unicorn
 
 type Chain = [Gadget]
-type Telos = ([Int], [Int])
+type Goal = ([Int], [Int])
 
+goal :: Goal
+goal = ([0, 1, 12], [100, 2, 0xdeadbeef])
 
-
-telos :: Telos
-telos = ([0, 1, 12], [100, 2, 0xdeadbeef])
-
-distance :: Telos -> [Int] -> Int
+distance :: Goal -> [Int] -> Int
 distance (idxs,target) out =
   let focus = map (out !!) idxs
   in  sum $ map abs $ zipWith (-) focus target
 
 evalChain :: Emulator Engine -> [Gadget] -> IO Int
 evalChain uc chain = 
-  (distance telos . take 16) <$> hatchChain uc (unicornPack chain)
+  (distance goal . take 16) <$> hatchChain uc (unicornPack chain)
 
 mate :: RandomGen g => Chain -> Chain -> Rand g Chain
 mate mom dad = (++) <$> flip take mom <*> flip drop dad <$> pivot

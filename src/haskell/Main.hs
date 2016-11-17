@@ -15,7 +15,7 @@ import Embryogen
 path :: String
 path = "data/ldconfig.real"
 
-seed = 777
+seed = 666
 chainSize = 64
 
 main :: IO ()
