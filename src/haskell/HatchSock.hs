@@ -16,17 +16,11 @@ import qualified Data.Attoparsec as Atto
 
 runConn :: (Socket, SockAddr) -> Emulator Engine -> IO [Char]
 runConn (skt, _) eUc = do
-  hdl <- socketToHandle skt ReadWriteMode
+  hdl    <- socketToHandle skt ReadWriteMode
   hSetBuffering hdl NoBuffering 
-  code <- BS.hGetContents hdl
-  let parsed = Atto.parseOnly (instructions ArmMode) code
-  let dealWith p = do
-                     result <- hatchChain ( eUc) code
-                     hPutStrLn hdl $ p ++ result
-                     return $ p ++ result
-  case parsed of 
-    Right s -> dealWith $ foldr (++) "" $ map show s 
-    Left  e -> dealWith $ "Parsing Error: " ++ (show e)
+  code   <- BS.hGetContents hdl
+  result <- hatchCode code
+  return result
 
 mainLoop :: Emulator Engine -> Socket -> IO () 
 mainLoop eUc skt = do

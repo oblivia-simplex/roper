@@ -118,7 +118,7 @@ data Layout =
   | HalfWordDataR
   | SingDataTrans
   | Undef
-  | BlockDataTrans
+  | BlockDataTrans BDTMnemonic
   | Branch
   | CoprocDataTrans
   | CoprocDataOp
@@ -138,7 +138,8 @@ whatLayout w
     && mask w 25 28 == 0                  = HalfWordDataI
   | mask w 26 28 == 1                     = SingDataTrans
   | mask w 25 28 == 3 && mask w 4 5 == 1  = Undef
-  | mask w 25 28 == 4                     = BlockDataTrans
+  | mask w 25 28 == 4                     = BlockDataTrans 
+                                              (lpu w)
   | mask w 25 28 == 5                     = Branch
   | mask w 25 28 == 6                     = CoprocDataTrans
   | mask w 24 28 == 14 && mask w 4 5 == 0 = CoprocDataOp
@@ -147,6 +148,13 @@ whatLayout w
   | mask w 25 28 <= 1                     = DataProc  (en $ mask w 21 25)
 
   | otherwise = RAWDATA
+
+lpu :: Word32 -> BDTMnemonic 
+lpu w = let idxs = [23, 24, 20]
+            f :: Int -> Int
+            f i  = fromIntegral $ 
+                   if testBit w (idxs !! i) then bit i else 0 :: Word8
+        in en $ sum $ map f [0, 1, 2]
 \end{code}
 
 The mnemonic types here will be developed in a fashion analogous to their counterparts in the Thumb16.lhs module. 
@@ -171,6 +179,16 @@ data DPMnemonic = AND
               | MVN
               | PLACEHOLDER deriving (Enum, Eq, Show)
 
+--                                                 LPU
+data BDTMnemonic = STMED -- post-decrement store | 000
+                 | STMEA -- post-increment store | 001
+                 | STMFD -- pre-decrement store  | 010
+                 | STMFA -- pre-increment store  | 011
+                 | LDMFA -- post-decrement load  | 100
+                 | LDMFD -- post-increment load  | 101
+                 | LDMEA -- pre-decrement load   | 110
+                 | LDMED -- pre-increment load   | 111
+                 deriving (Enum, Eq, Show)            
 
 \end{code}
 
@@ -213,24 +231,24 @@ dpOp2Imm = flip testBit 25
 -- | Get a list of source registers
 srcRegs :: Word32 -> [Int]
 srcRegs w = map fromIntegral $ case (whatLayout w) of
-  DataProc _      -> [mask w 16 20]
-  Mult            -> [mask w 12 16]
-  MultLong        -> [mask w 8 12, mask w 0 4] -- check
-  SingDataSwap    -> [mask w 16 20, mask w 0 4]
-  BranchExch      -> [mask w 0 4]
-  HalfWordDataI   -> [mask w 16 20]
-  HalfWordDataR   -> [mask w 0 4, mask w 12 16]
-  SingDataTrans   -> [mask w 16 20]
-  Undef           -> []
-  BlockDataTrans  -> if (testBit w 20)
-                     then [mask w 16 20]
-                     else m_block_data_regs w
-  Branch          -> []
-  CoprocDataTrans -> []
-  CoprocDataOp    -> []
-  CoprocRegTrans  -> [mask w 12 16]
-  SWI             -> []
-  RAWDATA         -> []
+  DataProc _        -> [mask w 16 20]
+  Mult              -> [mask w 12 16]
+  MultLong          -> [mask w 8 12, mask w 0 4] -- check
+  SingDataSwap      -> [mask w 16 20, mask w 0 4]
+  BranchExch        -> [mask w 0 4]
+  HalfWordDataI     -> [mask w 16 20]
+  HalfWordDataR     -> [mask w 0 4, mask w 12 16]
+  SingDataTrans     -> [mask w 16 20]
+  Undef             -> []
+  BlockDataTrans _  -> if (testBit w 20)
+                       then [mask w 16 20]
+                       else m_block_data_regs w
+  Branch            -> []
+  CoprocDataTrans   -> []
+  CoprocDataOp      -> []
+  CoprocRegTrans    -> [mask w 12 16]
+  SWI               -> []
+  RAWDATA           -> []
 --  otherwise       -> error $ "Not yet implemented: 0x" ++ showHex w ""
 
 op2Regs :: Word32 -> [Int]
@@ -240,24 +258,24 @@ op2Regs w = map fromIntegral $ case (whatLayout w) of
 
 dstRegs :: Word32 -> [Int]
 dstRegs w = map fromIntegral $ case (whatLayout w) of
-  DataProc _      -> [mask w 12 16]
-  Mult            -> [mask w 16 20]
-  MultLong        -> [mask w 12 16, mask w 16 20]
-  SingDataSwap    -> [mask w 12 16]
-  BranchExch      -> []
-  HalfWordDataI   -> [mask w 12 16]
-  HalfWordDataR   -> [mask w 12 16]
-  SingDataTrans   -> [mask w 12 16]
-  Undef           -> []
-  BlockDataTrans  -> if (testBit w 20)
+  DataProc _       -> [mask w 12 16]
+  Mult             -> [mask w 16 20]
+  MultLong         -> [mask w 12 16, mask w 16 20]
+  SingDataSwap     -> [mask w 12 16]
+  BranchExch       -> []
+  HalfWordDataI    -> [mask w 12 16]
+  HalfWordDataR    -> [mask w 12 16]
+  SingDataTrans    -> [mask w 12 16]
+  Undef            -> []
+  BlockDataTrans _ -> if (testBit w 20)
                      then m_block_data_regs w
                      else [mask w 16 20]
-  Branch          -> []
-  CoprocDataTrans -> []
-  CoprocDataOp    -> []
-  CoprocRegTrans  -> [mask w 12 16]
-  SWI             -> []
-  RAWDATA         -> []
+  Branch           -> []
+  CoprocDataTrans  -> []
+  CoprocDataOp     -> []
+  CoprocRegTrans   -> [mask w 12 16]
+  SWI              -> []
+  RAWDATA          -> []
 --  otherwise       -> error $ "Not yet implemented: " ++ showHex w "\nGet back to work!"
 
 -- | break this down into op2immediate, etc. 

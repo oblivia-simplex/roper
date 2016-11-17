@@ -27,6 +27,7 @@ data AbGad = -- abstract gadget
   | WriteMem Register Int Register -- [addr_reg + offset] = src
   | OpSP Operation Register Int      -- SP = SP `op` reg
   | OpPC Operation Register Int      -- PC = PC `op` reg
+  | Immediate
   | DUMMY
 -- | I'll leave out ReadMemOp and WriteMemOp for now, since those aren't
 -- | ARM primitive anyway, and can be composed from WriteMem * BinOp, etc.
@@ -37,51 +38,67 @@ data Gadget = Gadget { gAbstract    :: [AbGad]       -- abstract type
                      , gMode        :: Mode
                      , gInsts       :: [Inst]        -- same, but parsed 
                      , gStart       :: Address        -- initial address of the gadget
-                     , gStop        :: Address        -- last address of gadget 
                      , gSrcRegs     :: [Int]         -- register indices
                      , gDstRegs     :: [Int]         -- register indices
                      , gSpDelta     :: Int           -- stack ptr delta
                      }
 
+-- Sometimes a "gadget" will just be an immediate
+-- value: 0xFFFFFFFF in gStart, for example, and
+-- nothing else. 
+
 instance Show Gadget where
-  show g = let line  = (replicate 60 '-') 
-               start = (gStart g)
-               stop  = (gStop g)
+  show g = let line  = replicate 60 '-'
+               start = gStart g
+               len   = length (gInsts g)
+               stop  = (en $ gStart g) + len
                step  = stepSize (gMode g)
            in line ++ "\n" 
               ++ "[" ++ (showHex $ gStart g) ++ "-" 
-              ++(showHex $ gStop g)++"]: " 
-              ++ (show $ (length (gInsts g)))
+              ++ showHex stop
+              ++ "]: " 
+              ++ show len
               ++ " instructions; SP moves "++(show $ gSpDelta g)
               ++ "\n"++line
-              ++(foldl (++) "\n" 
+              ++ foldl (++) "\n" 
                     (zipWith (\x y -> x++ ":  "++y) 
-                         (fmap showHex [start,start+step..])
-                         (fmap show $ gInsts g)))
+                         (showHex <$> [start,start+step..])
+                         (show <$> gInsts g))
               ++ line ++ "\n"
  
+isRet :: Inst -> Bool
+isRet inst = isPop inst &&
+             pc `elem` (iDst inst) &&
+             sp `elem` (iSrc inst)
 
-isRet :: Mode -> Inst -> Bool
-isRet mode inst = (iLay inst) == ARM BlockDataTrans &&
-                  pc `elem` (iDst inst) &&
-                  sp `elem` (iSrc inst)
+isCtrl :: Inst -> Bool
+isCtrl inst = isRet inst
+              || (iLay inst == (ARM Branch))
+              || (pc `elem` (iDst inst))
+              || (sp `elem` (iDst inst))
 
-isCtrl :: Mode -> Inst -> Bool
-isCtrl mode inst = isRet mode inst
-                   || (iLay inst == (ARM Branch))
-                   || (pc `elem` (iDst inst))
-                   || (sp `elem` (iDst inst))
+isPop :: Inst -> Bool
+isPop inst = 
+  case iLay inst of
+    ARM (BlockDataTrans m) -> m == LDMFD || m == LDMED
+    otherwise              -> False
+    
+isPush :: Inst -> Bool
+isPush inst =
+  case iLay inst of
+    ARM (BlockDataTrans m) -> m == STMFD || m == STMED
+    other                  -> False
 
 splitUpon :: (a -> Bool) -> [a] -> [[a]]
 splitUpon p xs = 
   let first = L.takeWhile (not . p) xs
   in first : [L.drop (length first) xs]
 
-spDelta :: Integral a => Inst -> a
+spDelta :: Inst -> Int
 spDelta inst
-  | iLay inst == (ARM BlockDataTrans) = 
-      fromIntegral $ length (iDst inst)
-  | otherwise = 0
+  | isPop  inst = length (iDst inst)
+  | isPush inst = (-1) * length (iSrc inst) 
+  | otherwise   = 0
 
 
 stepSize :: Mode -> Address
@@ -108,8 +125,8 @@ parseIntoPreGadgets mode sec =
     gad       :: Address -> [Inst] -> [(Address, [Inst])]
     gad _ []   = []
     gad a (x:xs) 
-      | isRet mode x =
-          let chopped  = splitUpon (isCtrl ArmMode) xs
+      | isRet x =
+          let chopped  = splitUpon isCtrl xs
           in ((a + (stride $ head chopped)), (x:head chopped))
              : gad (a+(stride $ head chopped)+step) 
                    (last chopped) 
@@ -127,11 +144,9 @@ gadgetize mode ((addr,insts):ps)
       Gadget { gInsts    = (reverse insts)
              , gMode     = mode
              , gStart    = addr
-             , gStop     = (addr + (stepSize mode) 
-                                   * (en (length insts)))
              , gSrcRegs  = L.nub $ foldr (++) [] (fmap iSrc insts)
              , gDstRegs  = L.nub $ foldr (++) [] (fmap iDst insts) 
-             , gSpDelta  = spDelta (head insts)
+             , gSpDelta  = foldr (+) 0 $ map spDelta insts
              , gAbstract = [DUMMY]
              } : gadgetize mode ps
 
@@ -162,7 +177,13 @@ mkRndChains :: (RandomGen g) => g -> Int -> Int -> [a] -> [[a]]
 mkRndChains g num size xs = 
   take num $ streamChunks size $ rndChain g xs
 
-
+mkImmGadget :: Integral a => a -> Gadget
+mkImmGadget w = Gadget { gStart    = fromIntegral w
+                       , gAbstract = [Immediate]
+                       , gInsts    = []
+                       , gDstRegs  = []
+                       , gSrcRegs  = []
+                       }
 
 testGadget :: Int -> String -> Int -> Int -> IO ()
 testGadget seed path gadnum chainsize = do

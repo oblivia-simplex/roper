@@ -1,7 +1,6 @@
 module Main where
 import Gadget
 import Hatchery
-import HatchSock
 import Data.Elf
 import qualified Data.List as L
 import ARM32
@@ -10,11 +9,12 @@ import System.Random
 import Control.Monad.Random
 import ElfHelper
 import qualified Data.ByteString as BS
+import Phylogen
 
 path :: String
 path = "data/ldconfig.real"
 
-seed = 43
+seed = 1042
 chainSize = 8
 
 main :: IO ()
@@ -28,14 +28,9 @@ main = do
   putStrLn "Initializing random list of gadgets..."
   let rndGen      = (mkStdGen seed)
   let chains      = mkRndChains rndGen 10 chainSize gadgets
-  let pkChains    = map unicornPack chains
-  let testChain   = pkChains !! 0
   putStrLn "Initializing engine..."
   let uc          = initEngine text rodata  
   putStrLn $ show (chains !! 0)
-  putStrLn $ show $ BS.unpack testChain
   putStrLn "Hatching chain..."
-  out <- (hatchChain uc) $ pkChains !! 0
-   
-  putStrLn $ out
-  
+  out <- evalChain uc (chains !! 0)
+  putStrLn $ showHex out

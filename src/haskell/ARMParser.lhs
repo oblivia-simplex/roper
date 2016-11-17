@@ -77,16 +77,12 @@ We will also introduce the Inst type, which will assemble all the information we
 \begin{code}
 data Layout' = Thumb Th.Layout | ARM Ar.Layout deriving (Show, Eq)
 
-data Raw = W16 Word16 | W32 Word32 deriving (Show, Eq)
+type Raw = Word32
 --instance Enum Raw where
  -- fromEnum r = fromEnum $ fromRaw r
  -- toEnum r = W32 (fromEnum r)
 -- SHOW INSTANCE
 
-fromRaw32 :: Raw -> Word32
-fromRaw16 :: Raw -> Word16
-fromRaw16 (W16 w) = w
-fromRaw32 (W32 w) = w
 
 data Mode = ArmMode | ThumbMode deriving (Eq, Show, Enum)
 
@@ -113,7 +109,7 @@ showHex n =
 
 
 instance Show Inst where
-  show x  = (reverse $ L.take 8 $ reverse $ showHex $ fromRaw32 $ iRaw x) ++ ": "
+  show x  = (reverse $ L.take 8 $ reverse $ showHex $ iRaw x) ++ ": "
             ++ (show $ iLay x)  
             ++ " " ++ (showImm $ iImm x) ++ "; " ++ (stringy iSrc) ++ "-> "
             ++ (stringy iDst) ++ "\n"
@@ -141,26 +137,28 @@ thumbInst :: Parser Inst
 thumbInst = do
   w <- anyWord16
   pure $ Inst {
-     iRaw = W16 w
-    ,iImm = Nothing -- just for now
-    ,iLay = Thumb $ Th.whatLayout w
-    ,iSrc = Th.srcRegs w
-    ,iDst = Th.dstRegs w
-    ,iCnd = undefined
-    ,iOp  = Th.operation w
+     iRaw  = en w
+    ,iImm  = Nothing -- just for now
+    ,iLay  = Thumb $ Th.whatLayout w
+    ,iSrc  = Th.srcRegs w
+    ,iDst  = Th.dstRegs w
+    ,iCnd  = undefined
+    ,iOp   = Th.operation w
+   -- ,iMnem = Mnemonic
     }
 
 armInst :: Parser Inst
 armInst = do
   w <- anyWord32
   pure $ Inst {
-     iRaw = W32 w
-    ,iImm = Ar.immediate w
-    ,iLay = ARM $ Ar.whatLayout w
-    ,iSrc = Ar.srcRegs w
-    ,iDst = Ar.dstRegs w
-    ,iCnd = undefined
-    ,iOp  = Ar.operation w
+     iRaw  = w
+    ,iImm  = Ar.immediate w
+    ,iLay  = ARM $ Ar.whatLayout w
+    ,iSrc  = Ar.srcRegs w
+    ,iDst  = Ar.dstRegs w
+    ,iCnd  = undefined
+    ,iOp   = Ar.operation w
+    -- ,iMnem = Mnemonic
     }
 \end{code}
 

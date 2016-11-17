@@ -40,20 +40,98 @@ port    = 8888     :: PortNumber
 memSize = 0x100000000 :: Int -- 1 MiB 
 
 -- memory addr where emulaton starts
-baseAddress :: Word64
-baseAddress = 0x00000000
+baseAddr :: Word64
+baseAddr = 0x00000000
 
 -- phony address used to mark stopping point
 stopAddress :: Word64
 stopAddress = 0
 
-stackAddress :: Int64
-stackAddress = 0xb4238 -- Hardcoded for now
+stackAddr :: Int64
+stackAddr = 0xb4238 -- Hardcoded for now
 
 -- calculate code length
 codeLength :: Num a => BS.ByteString -> a
 codeLength =
   fromIntegral . BS.length
+
+
+-- | Pretty print register contents.
+-- | for debugging. later replace with machine-readable format.
+-- | a packed bytestring of register values would be fine
+showRegisters :: (Show a, Integral a) => [a] -> String
+showRegisters rList = 
+  let s = foldr (\(r,v) next -> "r"++r++": "++ (replicate (2 - length r) ' ')
+            ++v++"  " ++ next)
+            "" $ zip (map show [0..15]) (map showHex rList)
+  in intercalate "\nr8" (splitOn "r8" s)
+
+margin :: String
+margin = "--| "
+
+-- | Run this function to prepare the engine for
+-- | each round of execution. (Whereas initEngine
+-- | only needs to be run once per session.)
+prepareEngine :: Emulator Engine -> Emulator Engine 
+prepareEngine eUc = do
+  uc <- eUc 
+  setRegisters' uc $ replicate 15 0
+  return uc
+
+-- Note: these two functions look as if they should
+-- be taking or returning Word32s, but because of
+-- the way the unicorn api works, we have to treat
+-- these values as Word64s.
+ 
+firstWord :: [Word8] -> Word64
+firstWord bytes = 
+  let w = take 4 bytes
+  in foldr (.|.) 0 $ map (adj w) [0..3]
+  where adj :: [Word8] -> Int -> Word64
+        adj wrd i = 
+          (fromIntegral $ wrd !! i)  `shiftL` (i * 8)
+
+wordify :: [Word8] -> [Word64]
+wordify [] = []
+wordify xs = (firstWord xs):wordify (drop 4 xs)
+
+
+-- | Note that any changes made to the engine state
+-- | will be forgotten after this function returns. 
+-- | Execute the payload and report the state. 
+hatchChain :: Emulator Engine -> Code -> IO [Int] --[Char]
+hatchChain eUc chain = do
+  res <- runEmulator $ do
+    let startAddr = firstWord $ BS.unpack chain
+    uc <- prepareEngine eUc
+    memWrite uc (en stackAddr) chain
+    memWrite uc (en $ stackAddr + codeLength chain) $ 
+      word64BS stopAddress
+    regWrite uc Arm.Sp $ en (stackAddr + 4)
+    start uc startAddr stopAddress Nothing (Just 0x1000) 
+    rList <- mapM (regRead uc) $ map r [0..15] 
+    stack <- memRead uc (en stackAddr) 0x30
+    return (rList, stack)
+  case res of
+    Right (rList, stack) -> 
+      return $ map en $ rList ++ (map en $ wordify $ BS.unpack stack)
+               -- | "\n" ++ "** Emulation complete. " ++
+               -- | "Below is the CPU context **\n\n" ++  
+               -- | (showRegisters rList) ++
+               -- |"\n\nAnd here is the stack:\n\n" ++
+               -- |foldr (\x y -> x ++ "\n" ++ y) "\n" 
+               -- |      (showHex <$> (wordify $ BS.unpack stack))
+    Left err -> 
+      return $ []
+              -- | "Failed with error: " ++ show err ++ 
+              -- | " (" ++ strerror err ++ ")"
+
+textSection   :: Section
+textSection    = undefined
+rodataSection :: Section
+rodataSection  = undefined
+
+-- | ** Hooks ** | -- 
 
 hookBlock :: BlockHook ()
 hookBlock uc addr size b =
@@ -80,89 +158,13 @@ hookMem :: MemoryHook ()
 hookMem uc accessType addr size writeVal _ =
   putStrLn $ "--> .rodata memory access at " ++ (showHex addr)
 
--- | Pretty print register contents.
--- | for debugging. later replace with machine-readable format.
--- | a packed bytestring of register values would be fine
-showRegisters :: (Show a, Integral a) => [a] -> String
-showRegisters rList = 
-  let s = foldr (\(r,v) next -> "r"++r++": "++ (replicate (2 - length r) ' ')
-            ++v++"  " ++ next)
-            "" $ zip (map show [0..15]) (map showHex rList)
-  in intercalate "\nr8" (splitOn "r8" s)
+hookPreText :: CodeHook ()
+hookPreText uc addr size _ =
+  putStrLn "--| executing prior to .text!"
 
-margin :: String
-margin = "--| "
-
--- | Run this function to prepare the engine for
--- | each round of execution. (Whereas initEngine
--- | only needs to be run once per session.)
-prepareEngine :: Emulator Engine -> Emulator Engine 
-prepareEngine eUc = do
-  uc <- eUc 
-  setRegisters' uc $ replicate 15 0
-  return uc
-
--- | littleEndian
-
--- Note: these two functions look as if they should
--- be taking or returning Word32s, but because of
--- the way the unicorn api works, we have to treat
--- these values as Word64s.
- 
-firstWord :: [Word8] -> Word64
-firstWord bytes = 
-  let w = take 4 bytes
-  in foldr (.|.) 0 $ map (adj w) [0..3]
-  where adj :: [Word8] -> Int -> Word64
-        adj wrd i = 
-          (fromIntegral $ wrd !! i)  `shiftL` (i * 8)
-
-wordify :: [Word8] -> [Word64]
-wordify [] = []
-wordify xs = (firstWord xs):wordify (drop 4 xs)
-
-
--- | Note that any changes made to the engine state
--- | will be forgotten after this function returns. 
--- | Execute the payload and report the state. 
-hatchChain :: Emulator Engine -> Code -> IO [Char]
-hatchChain eUc chain = do
-  res <- runEmulator $ do
-    -- pull the engine out of its monad wrapper
-    uc <- prepareEngine eUc
-    -- | write the rop chain to the stack
-    memWrite uc (en stackAddress) chain
-    -- | put the stopAddress at the bottom of the stack
-    memWrite uc (en $ stackAddress + codeLength chain) $ 
-      word64BS stopAddress
-    -- | set sp to point to the stackAddress + 4 (popped)
-    regWrite uc Arm.Sp $ en (stackAddress + 4)
-    -- | pop the uc stack into the start address
-    let startAddr = firstWord $ BS.unpack chain
-    -- | Start the emulation, stopping when the bottom of the
-    -- | stack is retrieved.
-    start uc startAddr stopAddress Nothing (Just 0x100) 
-    -- Return the results
-    rList <- mapM (regRead uc) $ map r [0..15] 
-    stack <- memRead uc (en stackAddress) 0x30
-    return (rList, stack)
-  case res of
-    Right (rList, stack) -> 
-      return $ "\n" ++ "** Emulation complete. " ++
-               "Below is the CPU context **\n\n" ++  
-               (showRegisters rList) ++
-               "\n\nAnd here is the stack:\n\n" ++
-               foldr (\x y -> x ++ "\n" ++ y) "\n" 
-                     (showHex <$> (wordify $ BS.unpack stack))
-    Left err -> 
-      return $ "Failed with error: " ++ show err ++ 
-               " (" ++ strerror err ++ ")"
-                                  
-
-textSection   :: Section
-textSection    = undefined
-rodataSection :: Section
-rodataSection  = undefined
+hookPostText :: CodeHook ()
+hookPostText uc addr size _ =
+  putStrLn "--| executing posterior to .text!"
 
 -- Do all the engine initialization stuff here. 
 -- including, for now, hardcoding in some nonwriteable mapped memory
@@ -174,7 +176,7 @@ rodataSection  = undefined
 initEngine :: Section -> Section -> Emulator Engine
 initEngine text rodata = do
   uc <- open ArchArm [ModeArm]
-  memMap uc baseAddress memSize [ProtAll]
+  memMap uc baseAddr memSize [ProtAll]
   -- now map the unwriteable memory zones
   -- leave it all under protall for now, but tweak later
   memWrite uc (addr text) (code text)
@@ -182,12 +184,11 @@ initEngine text rodata = do
   -- tracing all basic blocks with customized callback
   blockHookAdd uc hookBlock () 1 0
   -- tracing one instruction at address with customized callback
-  
-  codeHookAdd uc hookCode  () (addr text) ((addr text) + (en (BS.length (code text))))
-  memoryHookAdd uc HookMemRead hookMem () (addr rodata) ((addr rodata) + (en (BS.length (code rodata))))  
- 
+  let endText = ((addr text) + (en (BS.length (code text))))
+  codeHookAdd uc hookCode () (addr text) endText
+  codeHookAdd uc hookPreText () baseAddr (addr text) 
+  codeHookAdd uc hookPostText () endText (baseAddr + en memSize)
+  memoryHookAdd uc HookMemRead hookMem () (addr rodata) 
+    ((addr rodata) + (en (BS.length (code rodata))))  
   return uc
-
-
-
 
