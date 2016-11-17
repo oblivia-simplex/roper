@@ -9,6 +9,7 @@ import ARM32
 import ARMParser
 import System.Random
 import Control.Monad.Random
+import Control.Applicative
 import qualified Data.ByteString as BS
 import Unicorn
 
