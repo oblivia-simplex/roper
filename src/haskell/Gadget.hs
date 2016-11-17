@@ -10,6 +10,7 @@ import Data.Word
 import qualified Data.List as L
 import Data.Bits
 import Control.Monad
+import Control.Applicative
 import qualified Data.Attoparsec.ByteString as Atto
 import qualified Data.ByteString as BS
 import ElfHelper
