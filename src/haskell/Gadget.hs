@@ -17,6 +17,7 @@ import ElfHelper
 import ARM32
 --import Thumb16
 import ARMCommon (sp, fp, lr, pc)
+
 --type Code = BS.ByteString 
 -- lifting a lot of this from common.ml in ropc-llvm, and translating it from
 -- ocaml to haskell.
@@ -49,24 +50,30 @@ data Gadget = Gadget { gAbstract    :: [AbGad]       -- abstract type
 -- nothing else. 
 
 instance Show Gadget where
-  show g = let line  = replicate 60 '-'
-               start = gStart g
-               len   = length (gInsts g)
-               stop  = (en $ gStart g) + len
-               step  = stepSize (gMode g)
-           in line ++ "\n" 
-              ++ "[" ++ (showHex $ gStart g) ++ "-" 
-              ++ showHex stop
-              ++ "]: " 
-              ++ show len
-              ++ " instructions; SP moves "++(show $ gSpDelta g)
-              ++ "\n"++line
-              ++ foldl (++) "\n" 
-                    (zipWith (\x y -> x++ ":  "++y) 
-                         (showHex <$> [start,start+step..])
-                         (show <$> gInsts g))
-              ++ line ++ "\n"
- 
+  show g = case gAbstract g of
+             [Immediate] -> "[Immediate: " 
+                            ++ showHex (gStart g)
+                            ++ "]\n"
+             _           -> 
+               let line  = replicate 60 '-'
+                   start = gStart g
+                   len   = length (gInsts g)
+                   stop  = (en $ gStart g) + len
+                   step  = stepSize (gMode g)
+               in line ++ "\n" 
+                       ++ "[" ++ (showHex $ gStart g) ++ "-" 
+                       ++ showHex stop
+                       ++ "]: " 
+                       ++ show len
+                       ++ " instructions; SP moves "
+                       ++ show (gSpDelta g)
+                       ++ "\n"++line
+                       ++ foldl (++) "\n" 
+                                (zipWith (\x y -> x++ ":  "++y) 
+                                (showHex <$> [start,start+step..])
+                                (show <$> gInsts g))
+                       ++ line ++ "\n"
+         
 isRet :: Inst -> Bool
 isRet inst = isPop inst &&
              pc `elem` (iDst inst) &&
@@ -154,6 +161,16 @@ gadgetize mode ((addr,insts):ps)
 parseIntoGadgets :: Mode -> Section -> [Gadget]
 parseIntoGadgets m s = gadgetize m $ parseIntoPreGadgets m s
 
+mkImmGadget :: Integral a => a -> Gadget
+mkImmGadget w = Gadget { gStart    = 0xFFFFFFFF .&. fromIntegral w
+                       , gAbstract = [Immediate]
+                       , gInsts    = []
+                       , gDstRegs  = []
+                       , gSrcRegs  = []
+                       , gSpDelta  = 0
+                       , gMode     = ArmMode
+                       }
+
 packAddr :: Int -> Gadget -> BS.ByteString
 packAddr size g = BS.pack $ wordLEBytes (en $ gStart g) size
 
@@ -166,38 +183,6 @@ unicornPack gs = packChain 4 gs
 -- now we need a func to build random chains, for testing
 -- purposes, and to seed the population with a little noise
 
-rndChain :: (RandomGen g) => g -> [a] -> [a]
-rndChain g xs = map (\i -> xs !! i) $ randomRs (0, (length xs)-1) g
-
-streamChunks :: Int -> [a] -> [[a]]
-streamChunks _ [] = []
-streamChunks n xs = let (a,b) = splitAt n xs
-                    in  a : streamChunks n b
-
-mkRndChains :: (RandomGen g) => g -> Int -> Int -> [a] -> [[a]]
-mkRndChains g num size xs = 
-  take num $ streamChunks size $ rndChain g xs
-
-mkImmGadget :: Integral a => a -> Gadget
-mkImmGadget w = Gadget { gStart    = fromIntegral w
-                       , gAbstract = [Immediate]
-                       , gInsts    = []
-                       , gDstRegs  = []
-                       , gSrcRegs  = []
-                       }
-
-testGadget :: Int -> String -> Int -> Int -> IO ()
-testGadget seed path gadnum chainsize = do
-  secs <- getElfSecs path
-  let Just text = L.find ((== ".text") . name) secs
-  let gadgets = parseIntoGadgets ArmMode text
-  let g = (mkStdGen seed)
-  let r = mkRndChains g gadnum chainsize gadgets 
-  putStrLn $ show r
-  putStrLn "packed:"
-  putStrLn $ show $ map unicornPack r
---  let insts = parseInstructions ArmMode (code text)
---  putStrLn $ "Number of rets: " ++ (show $ length $ filter (isRet ArmMode) insts)
 
 
 

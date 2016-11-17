@@ -10,12 +10,13 @@ import Control.Monad.Random
 import ElfHelper
 import qualified Data.ByteString as BS
 import Phylogen
+import Embryogen
 
 path :: String
 path = "data/ldconfig.real"
 
-seed = 1042
-chainSize = 8
+seed = 777
+chainSize = 64
 
 main :: IO ()
 main = do
@@ -25,9 +26,9 @@ main = do
   let Just rodata = L.find ((== ".rodata") . name) secs
   putStrLn "Extracting gadgets..."
   let gadgets     = parseIntoGadgets ArmMode text
-  putStrLn "Initializing random list of gadgets..."
   let rndGen      = (mkStdGen seed)
-  let chains      = mkRndChains rndGen 10 chainSize gadgets
+  let chains      = mkRndChains rndGen 64 chainSize gadgets
+  putStrLn "Initializing random list of gadgets..."
   putStrLn "Initializing engine..."
   let uc          = initEngine text rodata  
   putStrLn $ show (chains !! 0)

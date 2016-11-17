@@ -16,6 +16,8 @@ import Unicorn
 type Chain = [Gadget]
 type Telos = ([Int], [Int])
 
+
+
 telos :: Telos
 telos = ([0, 1, 12], [100, 2, 0xdeadbeef])
 
@@ -23,18 +25,6 @@ distance :: Telos -> [Int] -> Int
 distance (idxs,target) out =
   let focus = map (out !!) idxs
   in  sum $ map abs $ zipWith (-) focus target
-
-evalChain' :: Emulator Engine -> [Gadget] -> IO Int
-evalChain' uc chain = do
-  let pkChain = unicornPack chain
-  out <- hatchChain uc pkChain
-  let (regs, stack) = (take 16 out, drop 16 out)
-  let f = distance telos regs
-  -- debug
-  putStrLn $ "\n\n=-=-=-= RESULTS =-=-=-=\n\n" ++ showRegisters regs
-  putStrLn $ "\nFitness: " ++ (showHex f) ++ "\n"
-  -- 
-  return f
 
 evalChain :: Emulator Engine -> [Gadget] -> IO Int
 evalChain uc chain = 
