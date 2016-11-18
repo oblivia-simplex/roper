@@ -33,5 +33,8 @@ main = do
   let uc          = initEngine text rodata  
   putStrLn $ show (chains !! 0)
   putStrLn "Hatching chain..."
-  out <- evalChain uc (chains !! 0)
-  putStrLn $ showHex out
+  let packed = unicornPack (chains !! 0)
+  putStrLn $ show $ BS.unpack packed
+  out <- mapM (evalChain uc) chains
+  putStrLn $ show $ map showHex out
+

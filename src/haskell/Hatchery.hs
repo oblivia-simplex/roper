@@ -122,7 +122,7 @@ hatchChain eUc chain = do
                -- |foldr (\x y -> x ++ "\n" ++ y) "\n" 
                -- |      (showHex <$> (wordify $ BS.unpack stack))
     Left err -> 
-      return $ []
+      return $ [0xdeadfeed, en err]
               -- | "Failed with error: " ++ show err ++ 
               -- | " (" ++ strerror err ++ ")"
 
