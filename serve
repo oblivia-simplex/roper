@@ -1,4 +1,0 @@
-#! /bin/bash
-
-cd build
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:." ./hatchsock
