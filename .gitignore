@@ -4,5 +4,8 @@
 *.core
 foo*
 doc/nonpublic/
+*.so
+*.o
+*.hi
 
 
