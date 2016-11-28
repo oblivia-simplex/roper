@@ -25,13 +25,16 @@ library
   exposed-modules:     Lib
                      , ARM32
                      , ARMParser
+                     , ARMCommon
                      , Aux
                      , Embryogen
                      , Gadget
                      , Hatchery
                      , Phylogen
                      , Thumb16
+                     , UnicornUtils
                      , ElfHelper
+                     
   build-depends:       base >= 4.7 && < 5
                      , transformers
                      , either
@@ -61,6 +64,17 @@ executable roper
                      , random
                      , network
                      , split
+  other-modules:       ARM32
+                     , ARMCommon
+                     , ARMParser
+                     , Aux
+                     , ElfHelper
+                     , Embryogen
+                     , Gadget
+                     , Hatchery
+                     , Phylogen
+                     , Thumb16
+                     , UnicornUtils
   default-language:    Haskell2010
 
 test-suite roper-test
