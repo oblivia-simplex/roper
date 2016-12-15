@@ -1,0 +1,43 @@
+I think that eventually I'll need to define a custom
+monad for this project, which will combine the random and
+unicorn emulator engine monads, which are almost always
+invoked together. 
+
+Just a state monad, where the state = (uc, g)
+
+-----
+
+take list of constants and generate subpopulation that fuzzes
+around those. Simplest way of doing this:
+
+for constant value that contains badchars:
+  take gadget in the abstract
+  derive inverse function of gadget
+  apply gadget to constant value
+  does result contain badchars?
+  OR:
+  - increment op counter
+  - if op counter = max ops, then: does result contain badchars?
+    else: add altered constant back to subpop. 
+
+This can, and should, be done WITHOUT the emulator, even if the
+results are inexact. Use the derived functions for this. 
+
+Work some algebra magic to tidy up that part of ARM32 and Thumb16
+
+Note that GA could be used here as well. Or we could attempt it
+in a brute force manner. 
+
+Fitness: # of badchars
+
+Should be brief, though
+
+record for each constant:
+- to each constant should be associated a list of the gadgets
+  used to mutate it. 
+=========
+ 
+ suggestions from malcolm:
+ - spector's tagging method
+ - grammatrical methods
+
