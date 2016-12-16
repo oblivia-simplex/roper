@@ -61,7 +61,7 @@ codeLength =
 -- | a packed bytestring of register values would be fine
 showRegisters :: (Show a, Integral a) => [a] -> String
 showRegisters rList = 
-  let s = foldr (\(r,v) next -> "r"++r++": "++ (replicate (2 - length r) ' ')
+  let s = foldr (\(r,v) next -> "r"++r++": "++ replicate (2 - length r) ' '
             ++v++"  " ++ next)
             "" $ zip (map show [0..15]) (map showHex rList)
   in intercalate "\nr8" (splitOn "r8" s)
@@ -85,21 +85,22 @@ prepareEngine eUc = do
  
 firstWord :: [Word8] -> Word64
 firstWord bytes = 
-  let w = take 4 bytes
-  in foldr (.|.) 0 $ map (adj w) [0..3]
+  let w = take 4 bytes ++ repeat 0
+  in foldr ((.|.) . adj w) 0 [0..3]
   where adj :: [Word8] -> Int -> Word64
         adj wrd i = 
-          (fromIntegral $ wrd !! i)  `shiftL` (i * 8)
+          fromIntegral (wrd !! i)  `shiftL` (i * 8)
+
+firstWord' :: [Word8] -> Word64
+firstWord' = undefined 
 
 wordify :: [Word8] -> [Word64]
 wordify [] = []
-wordify xs = (firstWord xs):wordify (drop 4 xs)
+wordify xs = firstWord xs : wordify (drop 4 xs)
 
 prepAndHatch :: Section -> Section -> Code -> IO [Int]
-prepAndHatch text rodata chain = do
-  let uc = initEngine text rodata
-  out <- hatchChain uc chain 
-  return out
+prepAndHatch text rodata = hatchChain (initEngine text rodata) 
+
 -- | Note that any changes made to the engine state
 -- | will be forgotten after this function returns. 
 -- | Execute the payload and report the state. 
@@ -113,12 +114,12 @@ hatchChain eUc chain = do
       word64BS stopAddress
     regWrite uc Arm.Sp $ en (stackAddr + 4)
     start uc startAddr stopAddress Nothing (Just 0x1000) 
-    rList <- mapM (regRead uc) $ map r [0..15] 
+    rList <- mapM (regRead uc . r) [0..15] 
     stack <- memRead uc (en stackAddr) 0x30
     return (rList, stack)
   case res of
     Right (rList, stack) -> 
-      return $ map en $ rList ++ (map en $ wordify $ BS.unpack stack)
+      return $ map en $ rList ++ map en (wordify $ BS.unpack stack)
                -- | "\n" ++ "** Emulation complete. " ++
                -- | "Below is the CPU context **\n\n" ++  
                -- | (showRegisters rList) ++
@@ -126,7 +127,7 @@ hatchChain eUc chain = do
                -- |foldr (\x y -> x ++ "\n" ++ y) "\n" 
                -- |      (showHex <$> (wordify $ BS.unpack stack))
     Left err -> 
-      return $ [0xdeadfeed, en err]
+      return [0xdeadfeed, en err]
               -- | "Failed with error: " ++ show err ++ 
               -- | " (" ++ strerror err ++ ")"
 
@@ -140,27 +141,27 @@ rodataSection  = undefined
 hookBlock :: BlockHook ()
 hookBlock uc addr size b =
   putStrLn $ "\n" ++ margin ++ "Tracing gadget at 0x" ++ 
-  showHex addr ++ ", gadget size = 0x" ++ (maybe "0" showHex size) 
+  showHex addr ++ ", gadget size = 0x" ++ maybe "0" showHex size 
 
 hookCode :: CodeHook ()
 hookCode uc addr size _ = do 
   inst'   <- runEmulator $ memRead uc addr 4
-  regs'   <- runEmulator $ mapM (regRead uc) $ map r [0..15] 
+  regs'   <- runEmulator $ mapM (regRead uc . r) [0..15] 
   let inst :: String
       inst = case inst' of
-                Left err -> "[" ++ (show err) ++ "]"
+                Left err -> "[" ++ show err ++ "]"
                 Right bs -> showHex $ firstWord $ BS.unpack bs 
       regs :: String
       regs = case regs' of
                 Left err -> show err
                 Right rg -> showRegisters rg
-  putStrLn $ "    " ++ (showHex addr) ++ ": " ++ inst ++ "\n"
+  putStrLn $ "    " ++ showHex addr ++ ": " ++ inst ++ "\n"
              ++ regs -- (showRegisters regs) 
   return ()
    
 hookMem :: MemoryHook ()
 hookMem uc accessType addr size writeVal _ =
-  putStrLn $ "--> .rodata memory access at " ++ (showHex addr)
+  putStrLn $ "--> .rodata memory access at " ++ showHex addr
 
 hookPreText :: CodeHook ()
 hookPreText uc addr size _ =
@@ -187,11 +188,11 @@ initEngine text rodata = do
   memWrite uc (addr rodata) (code rodata)
   -- tracing all basic blocks with customized callback
   blockHookAdd uc hookBlock () 1 0
-  let endText = ((addr text) + (en (BS.length (code text))))
+  let endText = addr text + en (BS.length (code text))
   codeHookAdd uc hookCode () (addr text) endText
   -- codeHookAdd uc hookPreText () baseAddr (addr text) 
   -- codeHookAdd uc hookPostText () endText (baseAddr + en memSize)
   memoryHookAdd uc HookMemRead hookMem () (addr rodata) 
-    ((addr rodata) + (en (BS.length (code rodata))))  
+    (addr rodata + en (BS.length (code rodata)))  
   return uc
 

@@ -39,29 +39,34 @@ data Gadget = Gadget { gAbstract    :: [AbGad]       -- abstract type
                      --, gOperation   :: Operation     -- func gadget performs 
                      , gMode        :: Mode
                      , gInsts       :: [Inst]        -- same, but parsed 
-                     , gStart       :: Address        -- initial address of the gadget
+                     , gAddr       :: Address        -- initial address of the gadget
                      , gSrcRegs     :: [Int]         -- register indices
                      , gDstRegs     :: [Int]         -- register indices
                      , gSpDelta     :: Int           -- stack ptr delta
                      }
 
+instance Ord Gadget where
+  g <= g' = gAddr g <= gAddr g'
+
+instance Eq Gadget where
+  g == g' = gAddr g == gAddr g'
 -- Sometimes a "gadget" will just be an immediate
--- value: 0xFFFFFFFF in gStart, for example, and
+-- value: 0xFFFFFFFF in gAddr, for example, and
 -- nothing else. 
 
 instance Show Gadget where
   show g = case gAbstract g of
              [Immediate] -> "[Immediate: " 
-                            ++ showHex (gStart g)
+                            ++ showHex (gAddr g)
                             ++ "]\n"
              _           -> 
                let line  = replicate 60 '-'
-                   start = gStart g
+                   start = gAddr g
                    len   = length (gInsts g)
-                   stop  = (en $ gStart g) + len
+                   stop  = (en $ gAddr g) + len
                    step  = stepSize (gMode g)
                in line ++ "\n" 
-                       ++ "[" ++ (showHex $ gStart g) ++ "-" 
+                       ++ "[" ++ (showHex $ gAddr g) ++ "-" 
                        ++ showHex stop
                        ++ "]: " 
                        ++ show len
@@ -149,20 +154,20 @@ gadgetize mode ((addr,insts):ps)
   -- place other filter conditions here, if desired 
   | (length insts) <= 1  = gadgetize mode ps
   | otherwise            =
-      Gadget { gInsts    = (reverse insts)
+      Gadget { gInsts    = reverse insts
              , gMode     = mode
-             , gStart    = addr
-             , gSrcRegs  = L.nub $ foldr (++) [] (fmap iSrc insts)
-             , gDstRegs  = L.nub $ foldr (++) [] (fmap iDst insts) 
-             , gSpDelta  = foldr (+) 0 $ map spDelta insts
+             , gAddr     = addr
+             , gSrcRegs  = L.nub $ concatMap iSrc insts
+             , gDstRegs  = L.nub $ concatMap iDst insts
+             , gSpDelta  = sum  $ map spDelta insts
              , gAbstract = [DUMMY]
              } : gadgetize mode ps
 
 parseIntoGadgets :: Mode -> Section -> [Gadget]
-parseIntoGadgets m s = gadgetize m $ parseIntoPreGadgets m s
+parseIntoGadgets m s = gadgetize m $! parseIntoPreGadgets m s
 
 mkImmGadget :: Integral a => a -> Gadget
-mkImmGadget w = Gadget { gStart    = 0xFFFFFFFF .&. fromIntegral w
+mkImmGadget w = Gadget { gAddr    = 0xFFFFFFFF .&. fromIntegral w
                        , gAbstract = [Immediate]
                        , gInsts    = []
                        , gDstRegs  = []
@@ -172,13 +177,13 @@ mkImmGadget w = Gadget { gStart    = 0xFFFFFFFF .&. fromIntegral w
                        }
 
 packAddr :: Int -> Gadget -> BS.ByteString
-packAddr size g = BS.pack $ wordLEBytes (en $ gStart g) size
+packAddr size g = BS.pack $ wordLEBytes (en $ gAddr g) size
 
 packChain :: Int -> [Gadget] -> BS.ByteString
-packChain wordsize gs = foldr (.++.) BS.empty $ map (packAddr wordsize) gs
+packChain wordsize = foldr ((.++.) . packAddr wordsize) BS.empty
 
 unicornPack :: [Gadget] -> BS.ByteString
-unicornPack gs = packChain 4 gs
+unicornPack = packChain 4 
 
 -- now we need a func to build random chains, for testing
 -- purposes, and to seed the population with a little noise
