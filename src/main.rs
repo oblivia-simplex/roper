@@ -4,7 +4,7 @@ extern crate unicorn;
 
 use std::path::PathBuf;
 use roper::hatchery::*;
-use unicorn::{Cpu, CpuARM};
+use unicorn::*;
 
 // use std::io;
 
@@ -30,7 +30,7 @@ fn main() {
   //let () = text;
   println!("text addr: {:?}, size: {:?}", text.shdr.addr, text.shdr.size);
 
-  let uc = init_engine(text, rodata);
+  let mut uc = init_engine(text, rodata);
   
   
   let regions = uc.mem_regions()
@@ -39,6 +39,17 @@ fn main() {
   for region in &regions {
     println!("> {:?}", region);
   }
+
+  let pc = uc.reg_read(RegisterARM::PC)
+    .expect("Failed to read register");
+  println!("PC BEFORE >  {:08x}", pc);
+
+  let phony_stack : Vec<u8> = vec![4,2,4,8,16,32,64,128];
+  hatch_chain(&mut uc, &phony_stack);
+  
+  let pc = uc.reg_read(RegisterARM::PC)
+    .expect("Failed to read register");
+  println!("PC AFTER >   {:08x}", pc);
   /*
   let page_size = uc.query(unicorn::Query::PAGE_SIZE)
     .expect("Failed to query page size");
