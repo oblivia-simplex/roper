@@ -1,0 +1,13 @@
+[package]
+name = "roper"
+version = "0.1.0"
+authors = ["oblivia simplex <oblivia@paranoici.org>"]
+
+
+[dependencies]
+unicorn  = { git = "https://github.com/oblivia-simplex/unicorn-rs", branch = "master" }
+capstone = "0.0.4"
+elf      = "0.0.10"
+byteorder = "0.5.3"
+
+
