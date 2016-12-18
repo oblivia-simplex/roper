@@ -31,6 +31,7 @@ fn main() {
   println!("text addr: {:?}, size: {:?}", text.shdr.addr, text.shdr.size);
 
   let mut uc = init_engine(text, rodata);
+  add_hooks(&mut uc);
   
   
   let regions = uc.mem_regions()
@@ -44,12 +45,20 @@ fn main() {
     .expect("Failed to read register");
   println!("PC BEFORE >  {:08x}", pc);
 
-  let phony_stack : Vec<u8> = vec![4,2,4,8,16,32,64,128];
-  hatch_chain(&mut uc, &phony_stack);
-  
+  let phony_stack : Vec<u8> = vec![0x20,0x01,0x01,0x00,4,8,4,8];
+  let ret : Vec<i32> = hatch_chain(&mut uc, &phony_stack);
+  println!("Registers: {:?}", ret);
   let pc = uc.reg_read(RegisterARM::PC)
     .expect("Failed to read register");
   println!("PC AFTER >   {:08x}", pc);
+
+  for _ in 0..40 { print!("*"); }
+  println!("\n  Round Two");
+  for _ in 0..40 { print!("*"); }
+  println!("");
+  let ret2 : Vec <i32> = hatch_chain(&mut uc, &phony_stack);
+  println!("Registers, again: {:?}", ret2);
+
   /*
   let page_size = uc.query(unicorn::Query::PAGE_SIZE)
     .expect("Failed to query page size");
