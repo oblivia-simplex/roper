@@ -187,12 +187,12 @@ initEngine text rodata = do
   memWrite uc (addr text) (code text)
   memWrite uc (addr rodata) (code rodata)
   -- tracing all basic blocks with customized callback
-  blockHookAdd uc hookBlock () 1 0
-  let endText = addr text + en (BS.length (code text))
-  codeHookAdd uc hookCode () (addr text) endText
+  --blockHookAdd uc hookBlock () 1 0
+  --let endText = addr text + en (BS.length (code text))
+  --codeHookAdd uc hookCode () (addr text) endText
   -- codeHookAdd uc hookPreText () baseAddr (addr text) 
   -- codeHookAdd uc hookPostText () endText (baseAddr + en memSize)
-  memoryHookAdd uc HookMemRead hookMem () (addr rodata) 
-    (addr rodata + en (BS.length (code rodata)))  
+  --memoryHookAdd uc HookMemRead hookMem () (addr rodata) 
+  --  (addr rodata + en (BS.length (code rodata)))  
   return uc
 
