@@ -6,8 +6,9 @@ authors = ["oblivia simplex <oblivia@paranoici.org>"]
 
 [dependencies]
 unicorn  = { git = "https://github.com/oblivia-simplex/unicorn-rs", branch = "master" }
-capstone = "0.0.4"
+capstone = { git = "https://github.com/oblivia-simplex/capstone-rs", branch = "master" }
 elf      = "0.0.10"
 byteorder = "0.5.3"
+pcre = "0.2.3"
 
 
