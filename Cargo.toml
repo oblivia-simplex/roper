@@ -10,5 +10,5 @@ capstone = { git = "https://github.com/oblivia-simplex/capstone-rs", branch = "m
 elf      = "0.0.10"
 byteorder = "0.5.3"
 pcre = "0.2.3"
-
+bitflags = "0.7.0"
 
