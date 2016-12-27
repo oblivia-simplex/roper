@@ -2,15 +2,17 @@
 //       since not all of them will be u16.
 //
 
+use roper::util::*;
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Endian {
   LITTLE,
   BIG,
 }
 
-static PC : i32 = 15;
-static LR : i32 = 14;
-static SP : i32 = 13;
+static PC : usize = 15;
+static LR : usize = 14;
+static SP : usize = 13;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Lay {
@@ -66,8 +68,8 @@ pub fn what_layout (w: u16) -> Lay
   Lay::RAWDATA
 }
 
-pub fn ppr_rlist (w: u16) -> Vec<i32> {
-  (0..9).filter(|&i: &i32| w & (1 << i) != 0)
+pub fn ppr_rlist (w: u16) -> Vec<usize> {
+  (0..9).filter(|&i: &usize| w & (1 << i) != 0)
         .map(|x| match x == 8 {
                    false                 => x,
                    true if ppr_is_pop(w) => PC,
@@ -80,16 +82,19 @@ fn ppr_is_pop (w: u16) -> bool {
 }
 
 /// Param:  instruction, as u16
-/// Returns Some(sp_delta:i32,  [regs:i32]) (-len for push, +len for pop)
+/// Returns Some(sp_delta:usize,  [regs:usize]) (-len for push, +len for pop)
 ///         None, otherwise
-pub fn sp_delta_ppr (w: u16) -> Option<(i32, Vec<i32>)> {
+pub fn sp_delta (w: u16) -> Option<(i32, Vec<usize>)> {
   match what_layout(w) {
-    Lay::PPR  => {
-      let rl = ppr_rlist(w);
-      let de = if ppr_is_pop(w) {1} else {-1};
-      Some((de * rl.len() as i32, rl))},
+    Lay::PPR  => Some(sp_delta_ppr(w)),
     _         => None,
   }
+}
+
+pub fn sp_delta_ppr (w: u16) -> (i32, Vec<usize>) {
+  let rl = ppr_rlist(w);
+  let de = if ppr_is_pop(w) {1} else {-1};
+  (de * rl.len() as i32, rl)
 }
 
 // what we want to know is when we're able to control the
@@ -97,12 +102,15 @@ pub fn sp_delta_ppr (w: u16) -> Option<(i32, Vec<i32>)> {
 // where there's a pop R, bx R sequence. if the value in R
 // is odd, the processor stays in thumb mode and rounds down
 // if even, it switches to arm.
-pub fn bx_reg (w: u16) -> Option<i32> {
+pub fn bx_reg (w: u16) -> Option<usize> {
   match what_layout(w) {
-    Lay::HROB => Some((w as i32 & 0b111000) 
-                      << (if w & (1<<6) != 0 {8} else {0})),
+    Lay::HROB => Some(bx_reg_hrob(w)),
     _         => None,
   }
+}
+
+fn bx_reg_hrob (w: u16) -> usize {
+  (w as usize & 0b00111000) << (if w & (1 << 6) != 0 {8} else {0})
 }
 
 pub fn u8s_to_u16s (bytes: &Vec<u8>, endian: Endian) -> Vec<u16> {
@@ -118,4 +126,35 @@ pub fn u8s_to_u16s (bytes: &Vec<u8>, endian: Endian) -> Vec<u16> {
   out
 }
 
+
+pub fn scan_for_rets (ws: &Vec<u16>) -> Vec<(usize,usize,usize)> {
+  // rets will be triplets of integers:
+  // prior padding, offset of ret inst, post padding
+  let mut rets : Vec<(usize,usize,usize)> = Vec::new();
+  let mut i    : usize                = ws.len() as usize - 1;
+  let mut bxr  : Option<(usize,usize)>  = None;
+  while i >= 0 {
+    match what_layout(ws[i]) {
+      Lay::HROB => {bxr = Some((bx_reg_hrob(ws[i]),i));}
+      Lay::PPR  => {
+        let rs = ppr_rlist(ws[i]);
+        if rs.contains(&PC) { // you can't push pc in thumb
+          rets.push((rs.len(),i,0));
+        } else {
+          match bxr {
+            Some((r,o)) if rs.contains(&r) => {
+              rets.push((rs.len(), 
+                         o, 
+                         (rs.len()-(rs.index(r)))))
+            },
+            _                              => {bxr = None;},
+          }
+        }
+      },
+      _         => (),
+    }
+    i -= 1;
+  }
+  rets
+}
 

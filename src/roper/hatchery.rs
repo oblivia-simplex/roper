@@ -85,6 +85,12 @@ fn read_registers (uc: &unicorn::CpuARM) -> Vec<i32> {
                   .collect()
 }
 
+fn err_encode (e: Error) -> Vec<i32> {
+  // return a vector that gives details on the error/
+  // if you need to ask for a ref to the engine, go ahead.
+  vec![0; 11] // dummy. 
+}
+
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
                             stack: &Vec<u8>) 
                             -> Vec<i32> {
@@ -93,7 +99,9 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop
     .expect("Error writing SP register");
   let start_addr : u64 = get_word32le(stack) as u64;
-  uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS)
-    .expect("Error running emulation");
-  read_registers(&uc)
+  if let Err(e) = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS) {
+    err_encode(e)
+  } else {
+    read_registers(&uc)
+  }
 }

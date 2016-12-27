@@ -22,10 +22,10 @@ fn pretty (xs : &Vec<u16>) -> Vec<u16> {
 
 fn wordvec_analysis (wordvec : &Vec<u16>) {
 
-  let sp_delta_info : Vec<Option<(i32, Vec<i32>)>> 
+  let sp_delta_info : Vec<Option<(i32, Vec<usize>)>> 
     = wordvec.iter()
-                 .map(|&x| sp_delta_ppr(x))
-                 .collect();
+             .map(|&x| sp_delta(x))
+             .collect();
   let mut j = 0;
   let mut retcount = 0;
   for s in sp_delta_info.iter() {
