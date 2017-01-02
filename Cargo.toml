@@ -11,4 +11,4 @@ elf      = "0.0.10"
 byteorder = "0.5.3"
 pcre = "0.2.3"
 bitflags = "0.7.0"
-
+rand = "0.3.0"

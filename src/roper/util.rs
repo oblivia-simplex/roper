@@ -1,8 +1,6 @@
 #[allow(dead_code)]
 
-type dword = u32;
-type halfword = u16;
-type byte = u8;
+use roper::params::*;
 
 /*
 trait Maskable {
@@ -44,6 +42,14 @@ pub fn pack_word32le (n: u32) -> Vec<u8> {
   v
 }   
 
+pub fn pack_word32le_vec (v: &Vec<u32>) -> Vec<u8> {
+  let mut p : Vec<u8> = Vec::new();
+  for ref w in v {
+    p.extend(pack_word32le(**w).iter())
+  }
+  p
+}
+
 
 pub fn get_word16le (a: &Vec<u8>) -> u16 {
   let mut s : u16 = 0;
@@ -78,4 +84,17 @@ impl <T: PartialEq> Indexable <T> for Vec<T> {
   fn index (&self, t: T) -> usize {
     self.iter().position(|x| x == &t).unwrap()
   }
+}
+
+pub fn u8s_to_u16s (bytes: &Vec<u8>, endian: Endian) -> Vec<u16> {
+  let be = if endian == Endian::BIG {8} else {0};
+  let le = if endian == Endian::LITTLE {8} else {0};
+  let l = bytes.len();
+  let mut i = 0;
+  let mut out = Vec::new();
+  while i < l {
+    out.push(((bytes[i] as u16) << be) | ((bytes[i+1] as u16) << le));
+    i += 2;
+  }
+  out
 }

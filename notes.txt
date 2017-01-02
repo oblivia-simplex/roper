@@ -1,0 +1,22 @@
+spec lang spec:
+
+(register tuple),[stack] -> (register tuple)[stack]
+
+wildcards can be used
+-> wild in src = use spray of random values
+-> wild in dst = ignore
+
+BX: performs a branch to a routine whose start address
+    is specified in a Lo or Hi register. 
+    Bit 0 of the address -- NB: not in the instruction code itself --
+    determines the processor state on entry to the routine.
+    Bit 0 = 0: causes the processor to enter the ARM state.
+    Bit 0 = 1: causes the processor to enter THUMB state.
+
+Some GBA information, gleaned from the mGBA code:
+
+SP_BASE_IRQ
+SP_BASE_SUPERVISOR
+SP_BASE_SYSTEM
+
+sizeof(*gbacore) = 0x46d0

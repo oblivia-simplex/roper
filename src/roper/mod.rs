@@ -4,8 +4,10 @@ pub mod util;
 pub mod hatchery;
 pub mod thumb;
 pub mod population;
+pub mod params;
 //pub mod dis;
 
+pub use self::params::*;
 pub use self::util::*;
 pub use self::hatchery::*;
 pub use self::thumb::*;

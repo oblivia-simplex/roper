@@ -2,6 +2,11 @@
 extern crate elf;
 extern crate unicorn;
 extern crate capstone;
+extern crate rand;
+mod roper;
+
+use rand::{Rng,Generator};
+
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
@@ -11,7 +16,9 @@ use capstone::instruction::Instructions;
 use capstone::constants::{CsMode,CsArch};
 //use roper::dis::{disas_sec,Inst};
 use roper::thumb::*;
-mod roper;
+use roper::util::*;
+use roper::params::*;
+use roper::population::*;
 
 fn pretty (xs : &Vec<u16>) -> Vec<u16> {
    xs.iter().map(|&x| {println!("{:016b}: {:?} -> {:?}",
@@ -110,37 +117,40 @@ fn main() {
   let (rodata_addr, ref rodata_data) = elf_addr_data[1];
   let wordvec_elf = u8s_to_u16s(&text_data, Endian::LITTLE);
   wordvec_analysis(&wordvec_elf);
-
+/*
   println!("******************* GBA {} **********************",
            gba_path);
   let (gba_addr, ref gba_data) = gba_addr_data[0];
   let wordvec_gba = u8s_to_u16s(gba_data, Endian::LITTLE);
-  wordvec_analysis(&wordvec_gba);
-  //pretty(&wordvec);
+  // wordvec_analysis(&wordvec_gba);
+*/  
+  let elf_clumps = reap_gadgets(text_data,
+                            text_addr as u32,
+                            MachineMode::THUMB);
 
-  //println!("sp_delta_info:\n{:?}\n", sp_delta_info);
+  
+  println!("==================================================\n          CLUMPS FROM ELF BINARY\n==================================================\n{:?}", elf_clumps);
+  
+  /** saturation time! **/
 
-  /**************** Testing out Capstone *******************
-  let cs_mode = CsMode::MODE_THUMB;
-  let cs_mode_s = "Thumb";
-  let dissed : Vec<Inst>
-      = disas_sec(text, 
-                  CsArch::ARCH_ARM, 
-                  cs_mode);
-  println!("{:?} instructions in {:?}",
-           dissed.len(), cs_mode_s);
-  let mut length = 0;
-  for inst in dissed.iter() {
-    let mnemonic = &inst.mnem;
-    println!("{:x} > {:08x} {} {:?} {:?}",
-             length,
-             inst.addr,
-             mnemonic,
-             inst.src,
-             inst.dst,);
-  }
-  *********************************************************/
-  let mut uc = roper::init_engine(&gba_addr_data);
+  let mut rng = rand::thread_rng();
+  let mut pool = rng.gen_iter::<u32>();
+  let sat_elf_clumps = saturate_clumps(&elf_clumps, &mut pool, 100); 
+  
+  println!("==================================================\n          SATURATED CLUMPS FROM ELF BINARY\n==================================================\n{:?}", sat_elf_clumps);
+ 
+  /** make some chains **/
+
+  return ();
+  /*********
+  let gba_clumps = reap_gadgets(gba_data,
+                                gba_addr as u32,
+                                MachineMode::THUMB);
+  println!("==================================================\n          CLUMPS FROM GBA BINARY\n==================================================\n{:?}", gba_clumps);
+  return (); 
+  /** Cut it off here for now **/
+  /* emulating elf code */
+  let mut uc = roper::init_engine(&elf_addr_data);
   roper::add_hooks(&mut uc);
   
   
@@ -184,4 +194,5 @@ fn main() {
     println!(">> hardware mode: {}", hardware_mode);
 
   println!("None: {:?}", None as Option<i32>);
+  */
 }

@@ -1,0 +1,39 @@
+
+
+
+Gadgets
+=======
+
+
+0x000218e8 (0x000218e9): asrs r0, r1, #0x20; asrs r0, r4, #6; pop {r1, r2, r3, r6, r7, pc}; 
+0x00021ade (0x00021adf): asrs r0, r4, #6; pop {r0, r4, r6, pc}; 
+0x000218ea (0x000218eb): asrs r0, r4, #6; pop {r1, r2, r3, r6, r7, pc}; 
+0x00021c02 (0x00021c03): asrs r0, r4, #6; pop {r3, pc}; 
+0x00021c00 (0x00021c01): asrs r4, r0, #0x20; asrs r0, r4, #6; pop {r3, pc}; 
+0x00021adc (0x00021add): asrs r7, r0, #0x20; asrs r0, r4, #6; pop {r0, r4, r6, pc}; 
+0x0000ef7c (0x0000ef7d): cmp ip, ip; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000f68c (0x0000f68d): ldr r1, [pc, #0x1b0]; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000ef7a (0x0000ef7b): movs r0, r0; cmp ip, ip; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000f68a (0x0000f68b): movs r1, r0; ldr r1, [pc, #0x1b0]; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000ef7e (0x0000ef7f): movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000ef76 (0x0000ef77): movs r4, r0; pop {r1, r2, r4}; movs r0, r0; cmp ip, ip; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000f686 (0x0000f687): movs r4, r0; pop {r1, r2, r4}; movs r1, r0; ldr r1, [pc, #0x1b0]; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x00023e54 (0x00023e55): pop {r0, r1, r2, r3, r4, r7, pc}; 
+0x00020e24 (0x00020e25): pop {r0, r2, r3, r4, r6, r7, pc}; 
+0x0002e624 (0x0002e625): pop {r0, r2, r3, r4, r7, pc}; 
+0x00021ae0 (0x00021ae1): pop {r0, r4, r6, pc}; 
+0x00027ef4 (0x00027ef5): pop {r1, r2, r3, r4, r7, pc}; 
+0x00022090 (0x00022091): pop {r1, r2, r3, r5, r6, pc}; 
+0x000218ec (0x000218ed): pop {r1, r2, r3, r6, r7, pc}; 
+0x0000ef80 (0x0000ef81): pop {r1, r2, r4, pc}; 
+0x0000ef78 (0x0000ef79): pop {r1, r2, r4}; movs r0, r0; cmp ip, ip; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0000f688 (0x0000f689): pop {r1, r2, r4}; movs r1, r0; ldr r1, [pc, #0x1b0]; movs r4, r0; pop {r1, r2, r4, pc}; 
+0x0002e7e4 (0x0002e7e5): pop {r2, r3, r4, r5, pc}; 
+0x0002e6a8 (0x0002e6a9): pop {r2, r3, r4, r5, r6, pc}; 
+0x00021e58 (0x00021e59): pop {r2, r3, r4, r5, r6, r7, pc}; 
+0x0001718c (0x0001718d): pop {r2, r3, r5, r6, pc}; 
+0x0002d654 (0x0002d655): pop {r2, r3, r7, pc}; 
+0x00021c04 (0x00021c05): pop {r3, pc}; 
+0x00021a04 (0x00021a05): pop {r3, r7, pc}; 
+
+409 gadgets found

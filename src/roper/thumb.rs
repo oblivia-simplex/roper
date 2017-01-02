@@ -3,12 +3,9 @@
 //
 
 use roper::util::*;
+use roper::population::*;
 
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum Endian {
-  LITTLE,
-  BIG,
-}
+use roper::params::*;
 
 static PC : usize = 15;
 static LR : usize = 14;
@@ -113,39 +110,60 @@ fn bx_reg_hrob (w: u16) -> usize {
   (w as usize & 0b00111000) << (if w & (1 << 6) != 0 {8} else {0})
 }
 
-pub fn u8s_to_u16s (bytes: &Vec<u8>, endian: Endian) -> Vec<u16> {
-  let be = if endian == Endian::BIG {8} else {0};
-  let le = if endian == Endian::LITTLE {8} else {0};
-  let l = bytes.len();
-  let mut i = 0;
-  let mut out = Vec::new();
-  while i < l {
-    out.push(((bytes[i] as u16) << be) | ((bytes[i+1] as u16) << le));
-    i += 2;
-  }
-  out
+
+
+
+
+
+// Consider just having this function return an unsaturated
+// clump. Follow it up with an "expand clump" function, that
+// will do the backwards walk, and then a "saturate clump"
+// function that will populate words.
+pub fn th_is_ctrl (w: u16) -> bool {
+  // check for control-flow instructions
+  // i.e. the kind we don't typically want in gadgets
+  // at least not yet
+    // stub
+  false
 }
 
-
-pub fn scan_for_rets (ws: &Vec<u16>) -> Vec<(usize,usize,usize)> {
+fn th_scan_for_rets (ws: &Vec<u16>) 
+                      -> Vec<Clump> {
   // rets will be triplets of integers:
   // prior padding, offset of ret inst, post padding
-  let mut rets : Vec<(usize,usize,usize)> = Vec::new();
-  let mut i    : usize                = ws.len() as usize - 1;
+  let mut rets : Vec<Clump> = Vec::new();
+  let mut i    : usize = ws.len() as usize;
   let mut bxr  : Option<(usize,usize)>  = None;
-  while i >= 0 {
+  while i > 0 {
+    i -= 1;
     match what_layout(ws[i]) {
+      // check to see if bxr, not just hrob
+      // fix this
       Lay::HROB => {bxr = Some((bx_reg_hrob(ws[i]),i));}
       Lay::PPR  => {
         let rs = ppr_rlist(ws[i]);
         if rs.contains(&PC) { // you can't push pc in thumb
-          rets.push((rs.len(),i,0));
+          rets.push(Clump {
+            exchange:   false,
+            sp_delta:   rs.len() as i32,
+            ret_offset: rs.len() as i32,
+            words:      vec![i as u32],
+            mode:       MachineMode::THUMB,
+          });//(rs.len(),i,0,false));
         } else {
           match bxr {
             Some((r,o)) if rs.contains(&r) => {
-              rets.push((rs.len(), 
+              rets.push(Clump {
+                exchange:   true,
+                sp_delta:   rs.len() as i32,
+                ret_offset: (rs.index(r)+1) as i32,
+                words:      vec![o as u32],
+                mode:       MachineMode::THUMB,
+              });
+              /*(rs.len(), 
                          o, 
-                         (rs.len()-(rs.index(r)))))
+                         (rs.len()-(rs.index(r))),
+                         true)) */
             },
             _                              => {bxr = None;},
           }
@@ -153,8 +171,40 @@ pub fn scan_for_rets (ws: &Vec<u16>) -> Vec<(usize,usize,usize)> {
       },
       _         => (),
     }
-    i -= 1;
   }
   rets
 }
+// Consider just having this function return an unsaturated
+// clump. Follow it up with an "expand clump" function, that
+// will do the backwards walk, and then a "saturate clump"
+// function that will populate words.
+pub fn reap_thumb_gadgets (code: &Vec<u8>, 
+                            start_addr: u32) 
+                           -> Vec<Clump> {
+  let mut gads : Vec<Clump> = Vec::new();
+  let insts : Vec<u16>      = u8s_to_u16s(code, Endian::LITTLE);
+  let mut rets : Vec<Clump> = th_scan_for_rets(&insts); 
 
+  // rets = Vec<(prior padding, offset, post padding)>
+  for clump in rets {
+    // now start walking up from offset until you hit a 
+    // control instruction
+    let from : u32 = clump.words[0];
+    let mut o = from.clone() as usize;
+    while o > 0 && o > (from as usize - 8) {
+      // any additional sp changes affect prior, but not post
+      // so i could mutate p here, relative to insts[o]
+      // but for now, we'll keep it simple
+      if th_is_ctrl(insts[o - 1]) { break } else { o -= 1 }
+    }
+    let a = start_addr + (2 * o as u32);
+    gads.push(Clump { 
+      sp_delta   : clump.sp_delta,
+      ret_offset : clump.ret_offset,
+      words      : vec![a],
+      mode       : clump.mode,
+      exchange   : clump.exchange,
+    });
+  }
+  gads
+}
