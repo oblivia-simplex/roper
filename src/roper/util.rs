@@ -98,3 +98,70 @@ pub fn u8s_to_u16s (bytes: &Vec<u8>, endian: Endian) -> Vec<u16> {
   }
   out
 }
+
+/*
+type Mangler<'a> = std::iter::Cycle<'a, u32>;
+
+pub fn mangle (v: &Vec<u32>) -> Mangler {
+  /* what this needs to do:
+   * - take a vector of 'significant' u32s
+   * - create a swarm of variations off of them, by
+   *   performing common, elementary operations
+   *   (negating, 2's comping, adding, subtracting, masking, etc.)
+   * - shuffle 
+   *   (this can be done by maintaining a small delay stack, shuffling
+   *   it each tick, and stochastically popping it or pushing to it)
+   * - return an iterator looping over this mangling operation
+   */
+}
+*/
+
+fn mang (x: u32, rng: &mut Rng) -> u32 {
+  let die : u8 = rng.gen() % 40;
+  match die {
+    0  => x << 1,
+    1  => x << 2,
+    3  => x << 4,
+    4  => x.rotate_right(8),
+    5  => x & 0xFF,
+    6  => x & 0xFFFF0000,
+    7  => x & 0x0000FFFF,
+    8  => !x,
+    9  => x + 1,
+    10 => x + 2,
+    11 => x + 4,
+    12 => x + 8,
+    13 => x - 1,
+    14 => x - 2,
+    15 => x - 4,
+    16 => x - 8,
+    17 => x >> 1,
+    18 => x >> 2,
+    19 => x >> 4,
+    _  => x,
+  }
+}
+
+pub struct Mangler {
+  pub words: Vec<u32>,
+  pub rng:   rand::Rng,
+  cursor:    usize,
+}
+
+impl Mangler {
+  fn new(ws: &Vec<u32>) -> Mangler {
+    Mangler {
+      words  : ws.clone(),
+      rng    : rand::thread_rng(),
+    }
+  }
+}
+
+impl Iterator <Item:u32> for Mangler {
+  fn next(&mut self) -> Option<u32> {
+    Some(mang(self.words[self.rng.gen() % 
+              self.words.len()], self.rng))
+  }
+}
+
+

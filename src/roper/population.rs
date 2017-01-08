@@ -62,6 +62,7 @@ impl Gadget for Clump {
 // e.g. pop {r1,r2,r3,r4,r5}; bxr r3
 // has an sp_delta of +5, and a ret_offset of +3
 
+#[derive(Debug,Clone,PartialEq)]
 pub struct Chain {
   pub clumps: Vec<Clump>, 
   pub packed: Vec<u8>,
@@ -77,11 +78,15 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
   let s : usize = clumps.iter()
                         .map(|ref x| x.words.len())
                         .sum();
-  let mut c = Vec::with_capacity(s);
+  let mut c = vec![0; s];
+  println!("s = {}; c.len() = {}", s, c.len());
   let mut spd = 0;
   let mut rto = 0 as usize;
   let mut exchange = false;
   for ref gad in clumps {
+    /* for debugging */
+    println!("[{}] ==> {:?}",rto,gad);
+    /*****************/
     if !saturated(gad) {
       panic!("Attempting to concatenate unsaturated clumps");
     }
@@ -91,6 +96,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
     if exchange && (gad.mode == MachineMode::THUMB) {
       /* If we BX, the LSB of the addr decides machine mode */
       c[rto] |= 1;
+      println!("*** exchange: adding 1 mask ***");
     }
     rto += gad.ret_offset as usize;
     spd += gad.sp_delta as usize;
@@ -103,7 +109,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 
 pub fn mk_chain (clumps: &Vec<Clump>) -> Chain {
   let conc = concatenate(clumps);
-  let pack = pack_word32le_vec(conc);
+  let pack = pack_word32le_vec(&conc);
   Chain {
     clumps: (*clumps).clone(),
     packed: pack,

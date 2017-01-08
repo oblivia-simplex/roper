@@ -4,6 +4,7 @@ extern crate byteorder;
 extern crate unicorn;
 extern crate elf;
 extern crate capstone;
+extern crate rand;
 
 
 pub mod roper;

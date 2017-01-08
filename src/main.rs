@@ -99,7 +99,7 @@ fn main() {
   let sample_gba = "megaman_zero_4.gba";
   let sample_root = "/home/oblivia/Projects/roper/data/"
     .to_string();
-  let elf_path = sample_root.clone() + sample3;
+  let elf_path = sample_root.clone() + sample4;
   let gba_path = sample_root.clone() + sample_gba;
   let elf_addr_data = get_elf_addr_data(&elf_path,
                                         &vec![".text",".rodata"]);
@@ -134,13 +134,24 @@ fn main() {
   /** saturation time! **/
 
   let mut rng = rand::thread_rng();
-  let mut pool = rng.gen_iter::<u32>();
-  let sat_elf_clumps = saturate_clumps(&elf_clumps, &mut pool, 100); 
+  let mut r_pool = rng.gen_iter::<u32>();
+  let mut d_pool = 1..77;
+  let s_array = [10,20,30,40,50,60];
+  let mut s_pool = s_array.iter().cloned();
+  let mut c_pool = s_array.iter().cloned().cycle();
+  /** eventually, we'll use a pool of "useful" **
+   ** constants, drawn from the specification  **/
+  let sat_elf_clumps = saturate_clumps(&elf_clumps, 
+                                       &mut c_pool, 
+                                       20); // desired 
   
   println!("==================================================\n          SATURATED CLUMPS FROM ELF BINARY\n==================================================\n{:?}", sat_elf_clumps);
  
   /** make some chains **/
 
+  let elf_chain = mk_chain(&sat_elf_clumps);
+  
+  println!("============= SAMPLE CHAIN: ==============\n{:?}",elf_chain);
   return ();
   /*********
   let gba_clumps = reap_gadgets(gba_data,
