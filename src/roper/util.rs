@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 
 use roper::params::*;
+use rand::*;
 
 /*
 trait Maskable {
@@ -78,11 +79,15 @@ pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
 
 pub trait Indexable <T: PartialEq> {
   fn index (&self, t: T) -> usize;
+  fn index_opt (&self, t: T) -> Option<usize>;
 }
 
 impl <T: PartialEq> Indexable <T> for Vec<T> {
   fn index (&self, t: T) -> usize {
-    self.iter().position(|x| x == &t).unwrap()
+    self.index_opt(t).unwrap() 
+  }
+  fn index_opt (&self, t: T) -> Option<usize> {
+    self.iter().position(|x| x == &t)
   }
 }
 
@@ -114,10 +119,19 @@ pub fn mangle (v: &Vec<u32>) -> Mangler {
    * - return an iterator looping over this mangling operation
    */
 }
-*/
 
-fn mang (x: u32, rng: &mut Rng) -> u32 {
-  let die : u8 = rng.gen() % 40;
+*/
+pub fn deref_mang (x: u32, 
+                   data: &Vec<u32>, 
+                   offset: u32) -> u32 {
+  match data.index_opt(x) {
+    Some(p) => (p as u32 * 4 as u32) + offset,
+    None    => x,
+  }
+}
+
+pub fn mang (x: u32, rng: &mut ThreadRng) -> u32 {
+  let die : u8 = rng.gen::<u8>() % 40;
   match die {
     0  => x << 1,
     1  => x << 2,
@@ -142,6 +156,7 @@ fn mang (x: u32, rng: &mut Rng) -> u32 {
   }
 }
 
+/*
 pub struct Mangler {
   pub words: Vec<u32>,
   pub rng:   rand::Rng,
@@ -157,11 +172,13 @@ impl Mangler {
   }
 }
 
+
 impl Iterator <Item:u32> for Mangler {
   fn next(&mut self) -> Option<u32> {
     Some(mang(self.words[self.rng.gen() % 
               self.words.len()], self.rng))
   }
 }
+*/
 
 

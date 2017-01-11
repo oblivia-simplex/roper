@@ -6,6 +6,7 @@ dependencies = [
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "capstone 0.0.4 (git+https://github.com/oblivia-simplex/capstone-rs)",
  "elf 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazysort 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pcre 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicorn 0.3.0 (git+https://github.com/oblivia-simplex/unicorn-rs)",
@@ -77,6 +78,14 @@ dependencies = [
 name = "gcc"
 version = "0.3.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "lazysort"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "libc"
@@ -155,6 +164,7 @@ dependencies = [
 "checksum enum-set 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "e997f85125104c94b966e0a2a1d533b555d22dbcb4eff8a77ecaea70de8a2acf"
 "checksum filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "5363ab8e4139b8568a6237db5248646e5a8a2f89bd5ccb02092182b11fd3e922"
 "checksum gcc 0.3.40 (registry+https://github.com/rust-lang/crates.io-index)" = "872db9e59486ef2b14f8e8c10e9ef02de2bccef6363d7f34835dedb386b3d950"
+"checksum lazysort 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9ee054c4bd7fb801da8a7489e79af348e27c8ce95ec754875a80047f2b2600bb"
 "checksum libc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "a51822fc847e7a8101514d1d44e354ba2ffa7d4c194dcab48870740e327cac70"
 "checksum libpcre-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0ff3dd28ba96d6fe6752882f2f1b25ba8e1646448e79042442347cf3a92a6666"
 "checksum pcre 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8f2cf69d4d3e55fac13ccbbf142e650bccbcd9cd2e5b5b69033df9e97d190562"

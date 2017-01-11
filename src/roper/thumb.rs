@@ -149,6 +149,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
             ret_offset: rs.len() as i32,
             words:      vec![i as u32],
             mode:       MachineMode::THUMB,
+            ..Default::default()
           });//(rs.len(),i,0,false));
         } else {
           match bxr {
@@ -159,6 +160,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
                 ret_offset: (rs.index(r)+1) as i32,
                 words:      vec![o as u32],
                 mode:       MachineMode::THUMB,
+                ..Default::default()
               });
               /*(rs.len(), 
                          o, 
@@ -204,6 +206,7 @@ pub fn reap_thumb_gadgets (code: &Vec<u8>,
       words      : vec![a],
       mode       : clump.mode,
       exchange   : clump.exchange,
+      ..Default::default()
     });
   }
   gads

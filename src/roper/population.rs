@@ -3,12 +3,19 @@ use std::io::{BufReader,BufRead};
 use std::fs::File;
 use std::path::Path;
 
+use rand::distributions::*;
+use rand::Rng;
+use rand::ThreadRng;
+ 
+use std::cmp::*;
 
 use roper::params::*;
 
 use roper::util::{pack_word32le,
                   pack_word32le_vec,
-                  u8s_to_u16s};
+                  u8s_to_u16s,
+                  mang,
+                  deref_mang};
 
 use roper::thumb::{reap_thumb_gadgets};
 
@@ -28,19 +35,113 @@ fn str_gadkind (s: &str) -> GadKind {
 }
 */
 
+#[derive(Debug,Clone,PartialEq,Eq)]
+pub struct Chain {
+  pub clumps: Vec<Clump>, 
+  pub packed: Vec<u8>,
+  pub fitness: Option<i32>,
+  pub generation: u32,
+  pub ancestral_fitness: Vec<i32>,
+  // space-consuming, but it'll give us some useful data on
+  // the destructiveness of the crossover operator
+}
+impl Default for Chain {
+  fn default () -> Chain {
+    Chain {
+      clumps: Vec::new(),
+      packed: Vec::new(),
+      fitness: None,
+      generation: 0,
+      ancestral_fitness: Vec::new(),
+    }
+  } 
+}
+impl Chain {
+  fn new () -> Chain {
+    Chain {..Default::default()}
+  }
+  fn size (&self) -> usize {
+    self.clumps.len()
+  }
+}
+impl PartialOrd for Chain {
+  fn partial_cmp (&self, other: &Chain) -> Option<Ordering> {
+    match (self.fitness, other.fitness) {
+      (Some(a), Some(b)) => Some(b.cmp(&a)), // Note reversal
+      _                  => None,
+    }
+  }
+}
+impl Ord for Chain {
+  fn cmp (&self, other: &Chain) -> Ordering {
+    self.partial_cmp(other).unwrap_or(Ordering::Equal)
+  }
+}
 // tmp
-#[derive(PartialEq,Debug,Clone)]
+#[derive(Eq,PartialEq,Debug,Clone)]
 pub struct Clump {
   // pub kind:        GadKind,
   pub sp_delta:    i32, // how much does the sp change by?
   pub ret_offset:  i32, // how far down is the next address?
-  pub exchange:    bool, // are we returning with a BX instruction? can we change mode?
+  pub exchange:    bool, // BX instruction? can we change mode?
   pub mode:        MachineMode,
   pub words:       Vec<u32>,
+  pub viscosity:   i32,
+  pub link_age:    i32,
+  pub link_fit:    i32,
   // pub size:        usize,
   // consider adding operation field
 }
+impl Default for Clump {
+  fn default () -> Clump {
+    Clump {
+      sp_delta:   1,
+      ret_offset: 1,
+      exchange:   false,
+      mode:       MachineMode::THUMB,
+      words:      Vec::new(),
+      viscosity:  (MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
+      link_age:   0,
+      link_fit:   (MAX_FIT/2),
+    }
+  }
+}
+impl Clump {
+  fn new () -> Clump {
+    Clump {..Default::default()}
+  }
+  fn size (&self) -> usize {
+    self.words.len()
+  }
+}
 
+
+/* Viscosity measures the likelihood of a clump to "stick" to its
+ * successor in the chain. (We could look at a 2dim matrix of visc-
+ * osity measures, since the flow of execution in a chain is not
+ * necessarily one-dimensional, but this would complicate things.)
+ * That is, it is proportional to the likelihood for the link between
+ * the clump and its successor to be selected as a slice point for
+ * crossover. 
+ *
+ * There are a few different ways of parameterizing viscosity, but
+ * one interesting candidate is as follows: 
+ *
+ * viscosity := link_fit * link_age * C 
+ *
+ * where 
+ * link_fit = (a * max(parents' link_fit) + ((1-a) * chain fitness)
+ * if the link is inherited, and
+ * link_fit = N
+ * if the link is new, where N is some "neutral" value. We'll 
+ * probably set N to 0.5. 
+ *
+ * This is similar to the calculation of RTT in TCP, and is, of course
+ * open to other approaches.
+ *
+ * See section 6.5.5 of Banzhaf et al., Genetic Programming: An
+ * Introduction, for a discussion of similar strategies.
+ */
 pub trait Gadget {
   fn addr (&self) -> u32; 
   fn pack (&self) -> Vec<u8>;
@@ -62,12 +163,146 @@ impl Gadget for Clump {
 // e.g. pop {r1,r2,r3,r4,r5}; bxr r3
 // has an sp_delta of +5, and a ret_offset of +3
 
-#[derive(Debug,Clone,PartialEq)]
-pub struct Chain {
-  pub clumps: Vec<Clump>, 
-  pub packed: Vec<u8>,
-  pub fitness: Option<f32>,
-  pub generation: u32,
+ /* then in each child, all clumps at index < i have:
+ * fitness of their parent * alpha + child fitness * (1-alpha)
+ * similarly for all clumps at index > i. clump at index i
+ * is given a neutral fitness value. 
+ */
+fn calc_link_fit (p_fit: i32, c_fit: i32, alpha: i32) -> i32 {
+  (p_fit * alpha) + (c_fit * (MAX_FIT - alpha))
+}
+
+/* link age = parental link age + 1, or 0 if at splice index
+ */
+
+
+
+fn crossover (parents:    &Vec<Chain>, 
+              brood_size: usize,
+              rng:        &mut ThreadRng) -> Vec<Chain> {
+  let mut brood : Vec<Chain> = Vec::new();
+  for s in 0..brood_size {
+    let m_idx  : usize  = rng.gen::<usize>() % 2;
+    let mother : &Chain = &(parents[m_idx]);
+    let father : &Chain = &(parents[(m_idx+1) % 2]);
+    let mut child : Chain = Chain::new();
+    let m_i : usize = splice_point(&mother, rng);
+    let m_n : usize = mother.size() - m_i;
+    let f_i : usize = splice_point(&father, rng);
+    let f_n : usize = father.size() - f_i;
+    child.clumps = Vec::with_capacity(f_i+m_n);
+    for f in 0..f_i {
+      child.clumps.push(father.clumps[f].clone());
+      child.clumps[f].link_age += 1;
+    }
+    child.clumps.push(father.clumps[f_i].clone());
+    child.clumps[f_i].link_age = 0;
+    for m in (m_i+1)..m_n {
+      child.clumps.push(mother.clumps[m].clone());
+      child.clumps[m-m_i].link_age += 1;
+      /* adjust link_fit later, obviously */
+    }
+    brood.push(child);
+  }
+  brood
+}
+
+
+
+fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
+  /* mutations will only affect the immediate part of the clump */
+  /* we'll let crossover handle the rest. */
+  if rng.gen::<f32>() > params.mutation_rate { return };
+
+  let cl_idx     = rng.gen::<usize>() % chain.size();
+  let clump      = &mut (chain.clumps[cl_idx]);
+  let idx        = 1 + (rng.gen::<usize>() % (clump.size() - 1));
+  if rng.gen::<bool>() {
+    clump.words[idx] = mang(clump.words[idx].clone(), rng);
+  } else {
+    clump.words[idx] = deref_mang(clump.words[idx], 
+                                  &(params.ro_data_32), 
+                                  params.ro_data_addr);
+  }
+}
+
+fn mate (parents: &Vec<Chain>, 
+         params:  &Params, 
+         rng:     &mut ThreadRng) -> Vec<Chain> {
+  let mut brood = crossover(parents, params.brood_size, rng);
+  cull_brood(&mut brood, 2);
+  for s in brood.iter_mut() {
+    mutate(s, params, rng)
+  }
+  brood
+}
+
+fn evaluate_fitness (chain: &mut Chain) {
+ /* stub */  
+}
+
+
+
+
+fn tournement (population: &mut Population) {
+  /* randomly select contestants */
+  let t_size = population.params.t_size;
+  let mut rng = &mut population.rng;
+//  let p_chains = &(population.chains);
+  let mut contestants : Vec<Chain> = {
+    let mut tmp_vec = Vec::new();
+    let mut i = 0;
+    while i < t_size {
+      i += 1;
+      let c = rng.gen::<usize>() % population.chains.len();
+      let mut p = population.chains[c].clone();
+      /* fill in the hole from the end of the population */
+      let last = population.chains.pop().unwrap();
+      population.chains[c] = last;
+      /* ontogenesis step */
+      evaluate_fitness(&mut p);
+      tmp_vec.push(p); // inefficient. can we fix? 
+    }
+    tmp_vec
+  };
+  contestants.sort();
+  while contestants.len() > 2 {
+    contestants.pop();
+  };
+  let offspring = mate(&contestants,
+                       &population.params,
+                       rng);
+  contestants.extend_from_slice(&offspring);
+  population.chains.extend_from_slice(&contestants);
+}
+
+fn cull_brood (brood: &mut Vec<Chain>, n: usize) {
+  /* Sort by fitness - most to least */
+  brood.sort();
+  /* Now eliminate the least fit */
+  while brood.len() > n {
+    brood.pop();
+  }
+}
+  
+fn set_viscosity (clump: &mut Clump) -> i32 {
+  clump.viscosity = clump.link_fit * 
+    (min(clump.link_age * RIPENING_FACTOR, MAX_VISC));
+  clump.viscosity
+}
+
+fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
+  let mut wheel : Vec<Weighted<usize>> = Vec::new();
+  let mut i : usize = 0;
+  for clump in &(chain.clumps) {
+    i += 1;
+    assert!(clump.viscosity <= MAX_VISC);
+    let vw : u32 = (MAX_VISC - clump.viscosity) as u32;
+    wheel.push(Weighted { weight: vw,
+                          item: i });
+  }
+  let mut spin = WeightedChoice::new(&mut wheel);
+  spin.sample(rng)
 }
 
 fn saturated (gad: &Clump) -> bool {
@@ -115,12 +350,14 @@ pub fn mk_chain (clumps: &Vec<Clump>) -> Chain {
     packed: pack,
     fitness: None,
     generation: 0,
+    ..Default::default()
   }
 }
 
-pub struct Population {
+pub struct Population  {
   pub chains: Vec<Chain>,
   pub params: Params,
+  pub rng: ThreadRng,
 }
 
 
@@ -161,6 +398,7 @@ fn deserialize_clump(gad: &str) -> Clump {
     sp_delta   : fields[0].parse::<i32>().unwrap(),
     ret_offset : fields[1].parse::<i32>().unwrap(),
     words      : words,
+    ..Default::default()
   } 
   
 }
@@ -194,6 +432,7 @@ pub fn saturate_clumps <'a,I> (unsat: &Vec<Clump>,
       exchange   : unsat[u].exchange,
       mode       : unsat[u].mode,
       words      : w,
+      ..Default::default()
     });
     d += 1;
     u = d % unsat.len();

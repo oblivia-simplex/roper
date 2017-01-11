@@ -1,6 +1,7 @@
 /**
  * Constants and parameters
  */
+use rand::Rng;
 
 type dword = u32;
 type halfword = u16;
@@ -14,21 +15,21 @@ pub enum SelectionMethod {
 
 #[derive(PartialEq,Debug)]
 pub struct Params {
-  pub mutation_rates   : MutRates,
   pub population_size  : u32,
+  pub mutation_rate    : f32,
   pub max_generations  : u32,
   pub selection_method : SelectionMethod,
+  pub t_size           : usize,
   pub code             : Vec<u8>,
   pub data             : Vec<Vec<u8>>,
+  pub brood_size       : usize,
+  pub ro_data_32       : Vec<u32>,
+  pub ro_data_addr     : u32,
+  pub text_32          : Vec<u32>,
+  pub text_addr        : u32,
 }
 
 
-#[derive(PartialEq,Debug)]
-pub struct MutRates {
-  pub general : f32,
-  pub imm_mut : f32, // vs reg_mut
-  pub x_over  : f32, // vs mutation
-}
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Endian {
@@ -36,8 +37,15 @@ pub enum Endian {
   BIG,
 }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(Eq,PartialEq, Debug, Clone, Copy)]
 pub enum MachineMode {
   THUMB,
   ARM,
 }
+impl Default for MachineMode {
+  fn default() -> MachineMode { MachineMode::THUMB }
+}
+pub const MAX_VISC : i32 = 100;
+pub const MIN_VISC : i32 = 0;
+pub const RIPENING_FACTOR : i32 = 4;
+pub const MAX_FIT : i32 = 1000;
