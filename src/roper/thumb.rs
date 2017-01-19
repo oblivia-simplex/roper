@@ -4,6 +4,7 @@
 
 use roper::util::*;
 use roper::population::*;
+use roper::phylostructs::*;
 
 use roper::params::*;
 
@@ -12,7 +13,7 @@ static LR : usize = 14;
 static SP : usize = 13;
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-pub enum Lay {
+enum Lay {
   SWI,
   AOSP,
   ALU,
@@ -57,7 +58,7 @@ static MASK_VEC : &'static [(u16,u16,Lay)] = &[
     (0b1110000000000000,0b0000000000000000,Lay::MSR),
 ];
 
-pub fn what_layout (w: u16) -> Lay
+fn what_layout (w: u16) -> Lay
 {
   for &(mask,sig,lay) in MASK_VEC.iter() {
     if mask & w == sig { return lay }
@@ -65,7 +66,7 @@ pub fn what_layout (w: u16) -> Lay
   Lay::RAWDATA
 }
 
-pub fn ppr_rlist (w: u16) -> Vec<usize> {
+fn ppr_rlist (w: u16) -> Vec<usize> {
   (0..9).filter(|&i: &usize| w & (1 << i) != 0)
         .map(|x| match x == 8 {
                    false                 => x,
@@ -81,14 +82,14 @@ fn ppr_is_pop (w: u16) -> bool {
 /// Param:  instruction, as u16
 /// Returns Some(sp_delta:usize,  [regs:usize]) (-len for push, +len for pop)
 ///         None, otherwise
-pub fn sp_delta (w: u16) -> Option<(i32, Vec<usize>)> {
+fn sp_delta (w: u16) -> Option<(i32, Vec<usize>)> {
   match what_layout(w) {
     Lay::PPR  => Some(sp_delta_ppr(w)),
     _         => None,
   }
 }
 
-pub fn sp_delta_ppr (w: u16) -> (i32, Vec<usize>) {
+fn sp_delta_ppr (w: u16) -> (i32, Vec<usize>) {
   let rl = ppr_rlist(w);
   let de = if ppr_is_pop(w) {1} else {-1};
   (de * rl.len() as i32, rl)
@@ -99,7 +100,7 @@ pub fn sp_delta_ppr (w: u16) -> (i32, Vec<usize>) {
 // where there's a pop R, bx R sequence. if the value in R
 // is odd, the processor stays in thumb mode and rounds down
 // if even, it switches to arm.
-pub fn bx_reg (w: u16) -> Option<usize> {
+fn bx_reg (w: u16) -> Option<usize> {
   match what_layout(w) {
     Lay::HROB => Some(bx_reg_hrob(w)),
     _         => None,
@@ -119,12 +120,19 @@ fn bx_reg_hrob (w: u16) -> usize {
 // clump. Follow it up with an "expand clump" function, that
 // will do the backwards walk, and then a "saturate clump"
 // function that will populate words.
-pub fn th_is_ctrl (w: u16) -> bool {
+fn th_is_ctrl (w: u16) -> bool {
   // check for control-flow instructions
   // i.e. the kind we don't typically want in gadgets
   // at least not yet
     // stub
-  false
+  match what_layout(w) {
+    Lay::SWI  => true,
+    Lay::HROB => true,  // bit sloppy
+    Lay::PPR  => true,
+    Lay::UB   => true,
+    Lay::LBL  => true,
+    _         => false,
+  }
 }
 
 fn th_scan_for_rets (ws: &Vec<u16>) 
@@ -157,7 +165,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
               rets.push(Clump {
                 exchange:   true,
                 sp_delta:   rs.len() as i32,
-                ret_offset: (rs.index(r)+1) as i32,
+                ret_offset: (rs.index_of(r)+1) as i32,
                 words:      vec![o as u32],
                 mode:       MachineMode::THUMB,
                 ..Default::default()
