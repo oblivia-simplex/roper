@@ -1,3 +1,6 @@
+extern crate rand;
+extern crate unicorn;
+
 use std::cmp::*;
 use std::cell::*;
 use std::fmt::{Display,format,Formatter,Result};
@@ -5,11 +8,16 @@ use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
 use roper::params::*;
 use roper::util::*;
+use roper::population::*;
+use roper::hatchery::*;
+use unicorn::{CpuARM};
 
 pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
+pub const VISC_DROP_THRESH : i32 = 10;
 pub const RIPENING_FACTOR : i32 = 4;
 pub const MAX_FIT : i32 = 1000;
+const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
 #[derive(Clone,Debug)]
 pub struct Clump {
@@ -17,6 +25,7 @@ pub struct Clump {
   pub ret_offset:  i32, // how far down is the next address?
   pub exchange:    bool, // BX instruction? can we change mode?
   pub mode:        MachineMode,
+  pub ret_addr:    u32,
   pub words:       Vec<u32>,
   pub viscosity:   i32,
   pub link_age:    i32,
@@ -29,11 +38,12 @@ impl Display for Clump {
     let vp : f32 = self.viscosity as f32 / MAX_VISC as f32;
     s.push_str("CLUMP:\n");
     s.push_str(&format!("mode:       {:?}\n", self.mode));
-    s.push_str(&format!("sp_delta:   {}\n", self.sp_delta));
-    s.push_str(&format!("ret_offset: {}\n", self.ret_offset));
+    s.push_str(&format!("sp_delta:   0x{:x}\n", self.sp_delta));
+    s.push_str(&format!("ret_offset: 0x{:x}\n", self.ret_offset));
     s.push_str(&format!("viscosity:  %{}\n", vp * 100.0));
     s.push_str(&format!("link_age:   {}\n", self.link_age));
     s.push_str(&format!("link_fit:   {}\n", self.link_fit));
+    s.push_str(&format!("ret_addr:   {:08x}\n", self.ret_addr));
     s.push_str(         "words:     ");
     for w in &self.words {
       s.push_str(&format!(" {:08x}", w));
@@ -47,10 +57,11 @@ impl Default for Clump {
     Clump {
       sp_delta:   1,
       ret_offset: 1,
+      ret_addr:   0,
       exchange:   false,
       mode:       MachineMode::THUMB,
       words:      Vec::new(),
-      viscosity:  (MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
+      viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
       link_age:   0,
       link_fit:   (MAX_FIT/2),
     }
@@ -63,8 +74,17 @@ impl Clump {
   pub fn size (&self) -> usize {
     self.words.len()
   }
+  pub fn gadlen (&self) -> usize {
+    (self.ret_addr - self.words[0]) as usize
+  }
   pub fn visc (&self) -> i32 {
     self.viscosity
+  }
+  pub fn addr (&self) -> u32 {
+    self.words[0]
+  }
+  pub fn sicken (&mut self) {
+    self.viscosity = MIN_VISC;
   }
 }
 pub trait Stack <T> {
@@ -110,7 +130,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
                         .map(|ref x| x.words.len())
                         .sum();
   let mut c = vec![0; s];
-  println!("s = {}; c.len() = {}", s, c.len());
+  //println!("s = {}; c.len() = {}", s, c.len());
   //let mut spd = 0;
   let mut rto = 0 as usize;
   let mut exchange = false;
@@ -131,7 +151,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
     rto += gad.ret_offset as usize;
     //spd += gad.sp_delta as usize;
     exchange = gad.exchange;
-    println!("[{}] ==> {}",rto,gad);
+//    println!("[{}] ==> {}",rto,gad);
 
   }
   c[..rto].to_vec()
@@ -153,6 +173,10 @@ impl Display for Chain {
     s.push_str("==================================================\n");
     s.push_str(&format!("Fitness: {:?}\n", self.fitness));
     s.push_str(&format!("Generation: {}\n", self.generation));
+    s.push_str(&format!("Viscosities: {:?}\n", &self.clumps
+                                                  .iter()
+                                                  .map(|ref c| c.visc())
+                                                  .collect::<Vec<i32>>()));
     s.push_str("Packed:\n");
     let mut j = 0;
     for b in &self.packed {
@@ -210,41 +234,11 @@ impl IndexMut <usize> for Chain {
     &mut (self.clumps[index])
   }
 }
-/**** IN PROGRESS **
-impl <'a>  Iterator for &'a Chain {
-  type Item = &'a Clump;
-  fn next (&mut self) -> Option<&'a Clump> {
-    let n = self.i;
-    self.i += 1;
-    if n < self.clumps.len() {
-      Some(& self.clumps[n])
-    } else {
-      None
-    }
-  }
-}
-*/
-pub trait Gadget {
-  fn addr (&self) -> u32; 
-}
-
-impl Gadget for Clump {
-  fn addr (&self) -> u32 {
-    self.words[0]
-  }
-}
 
 impl Chain {
   /* NB: a Chain::new(c) takes ownership of its clump vec */
   pub fn new (clumps: Vec<Clump>) -> Chain {
     let conc = concatenate(&clumps);
-    /* debugging *
-    print!("|");
-    for c in &conc {
-      print!(" {:08x}",c);
-    }
-    println!("|");
-    */
     let pack = pack_word32le_vec(&conc);
     Chain {
       clumps: clumps,
@@ -252,8 +246,19 @@ impl Chain {
       ..Default::default()
     }
   }
+  pub fn pack (&mut self) {
+    let conc  = concatenate(&self.clumps);
+    self.packed = pack_word32le_vec(&conc);
+  }
   pub fn size (&self) -> usize {
     self.clumps.len()
+  }
+  pub fn set_fitness (&mut self, n: i32) {
+    self.fitness = Some(n);
+  }
+  pub fn excise (&mut self, idx: usize) {
+    self.clumps.remove(idx);
+    self.pack();
   }
 }
 
@@ -273,32 +278,67 @@ impl Ord for Chain {
 
 
 const POPSIZE : usize = 400;
+pub type Pod<T> = RwLock<T>;
+/*
+#[derive(Clone,Debug)]
+pub struct Pod<T> {
+  nucleus: T,
+}
+impl <T> Pod <T>{
+  pub fn new (t: T) -> Pod<T> {
+    Pod {nucleus: t}
+  }
+  pub fn open_r (&self) -> T {
+    self.nucleus
+  }
+  pub fn open_w (&mut self) -> T {
+    self.nucleus
+  }
+}
+*/
+#[derive(Debug)]
 pub struct Population  {
-  pub deme: Vec<RwLock<Chain>>,
+  pub deme: Vec<Pod<Chain>>,
  // pub chains: Vec<Chain>,
   pub params: Params,
   //pub rng: ThreadRng,
 }
+
 impl Population {
-  pub fn new (chains: &Vec<Chain>, params: Params) -> Population {
-    let mut d : Vec<RwLock<Chain>> = Vec::with_capacity(chains.len());
-    for c in chains {
-      d.push(RwLock::new(c.clone()));
+  pub fn new (params: &Params,
+              rng: &mut rand::ThreadRng) -> Population {
+    let mut clumps = reap_gadgets(&params.code, 
+                                  params.code_addr, 
+                                  DEFAULT_MODE);
+    let mut data_pool  = Mangler::new(&params.constants);
+    let mut deme : Vec<Pod<Chain>> = Vec::new();
+    for _ in 0..params.population_size{
+      deme.push(Pod::new(random_chain(&clumps,
+                                      params.min_start_len,
+                                      params.max_start_len,
+                                      &mut data_pool,
+                                      rng)));
     }
-    Population { deme: d, params: params }
+    Population {
+      deme: deme,
+      params: (*params).clone(),
+    }
   }
   pub fn size (&self) -> usize {
     self.deme.len()
   }
 }
+
+
+
 /*
-impl PartialOrd for RwLock<Chain> {
-  fn partial_cmp (&self, other: &RwLock<Chain>) -> Option<Ordering> {
+impl PartialOrd for Pod<Chain> {
+  fn partial_cmp (&self, other: &Pod<Chain>) -> Option<Ordering> {
     self.read().unwrap().partial_cmp(other.read().unwrap())
   }
 }
-impl Ord for RwLock<Chain> {
-  fn cmp (&self, other: &RwLock<Chain>) -> Option<Ordering> {
+impl Ord for Pod<Chain> {
+  fn cmp (&self, other: &Pod<Chain>) -> Option<Ordering> {
     self.read().unwrap().cmp(other.read().unwrap())
   }
 }

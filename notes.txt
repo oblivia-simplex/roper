@@ -20,3 +20,13 @@ SP_BASE_SUPERVISOR
 SP_BASE_SYSTEM
 
 sizeof(*gbacore) = 0x46d0
+
+
+----
+
+use clump.ret_addr fields to set callbacks in uc
+do this, maybe, from eval_fitness, just before calling hatch_chain
+(then remove those callbacks afterwards)
+this will let us know if all of the ret instructions are actually being
+reached. if not, there should be a penalty to fitness. 
+

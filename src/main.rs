@@ -19,43 +19,12 @@ use roper::thumb::*;
 use roper::util::*;
 use roper::params::*;
 use roper::population::*;
+use roper::hatchery::{add_hooks,Sec,HatchResult,hatch_chain};
 use roper::phylostructs::*;
-/*
-fn pretty (xs : &Vec<u16>) -> Vec<u16> {
-   xs.iter().map(|&x| {println!("{:016b}: {:?} -> {:?}",
-                       x, what_layout(x),
-                       ppr_rlist(x)); x})
-            .collect()
-}
+use roper::evolution::*;
+use roper::ontostructs::*;
 
-fn wordvec_analysis (wordvec : &Vec<u16>) {
 
-  let sp_delta_info : Vec<Option<(i32, Vec<usize>)>> 
-    = wordvec.iter()
-             .map(|&x| sp_delta(x))
-             .collect();
-  let mut j = 0;
-  let mut retcount = 0;
-  for s in sp_delta_info.iter() {
-    j += 1;
-    match *s {
-      None => (),
-      Some((ref n, ref rs)) if *n > 0 => {
-        if rs.contains(&15) { 
-          retcount += 1;
-          println!("[{}] RET! {:?}", j,rs)
-        } else {
-          println!("[{}] POP  {:?}",j,rs)
-        }
-      },
-      Some((ref n, ref rs)) if *n < 0 => println!("[{}] PUSH {:?}",j,rs),
-      Some(_) => (),
-    }
-  }
-  println!("{} RETs counted over {} instructions",
-           retcount, wordvec.len());
-}
-*/
 fn load_file (path: &str) -> Vec<u8>
 {
   let mut f = File::open(path)
@@ -67,19 +36,24 @@ fn load_file (path: &str) -> Vec<u8>
 
 fn get_elf_addr_data (path: &str, 
                       secs: &Vec<&str>) 
-                      -> Vec<(u64, Vec<u8>)> {
+                      -> Vec<Sec> {
   let path = PathBuf::from(path);
   let file = match elf::File::open_path(&path) {
     Ok(f) => f,
     Err(e) => panic!("Error: {:?}",e),
   };
-  let mut pairs : Vec<(u64, Vec<u8>)> = Vec::new();
+  let mut sections : Vec<Sec> = Vec::new();
   for sec_name in secs.iter() {
     let sec = file.get_section(sec_name)
                   .expect("Unable to fetch section from elf");
-    pairs.push((sec.shdr.addr, sec.data.clone()));
+    sections.push(Sec {
+      name: sec_name.to_string(),
+      addr: sec.shdr.addr,
+      data: sec.data.clone(),
+      perm: PROT_ALL, // Placeholder. Need to convert from elf
+    });
   }
-  pairs 
+  sections
 }
 
 fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
@@ -104,109 +78,88 @@ fn main() {
   let gba_path = sample_root.clone() + sample_gba;
   let elf_addr_data = get_elf_addr_data(&elf_path,
                                         &vec![".text",".rodata"]);
-  let gba_addr_data = get_gba_addr_data(&gba_path);
-
-  /* Testing out the decoder */
-  //let foo : Vec<u16> = (0..0x200).map(|x| x | 0xb400).collect();
-  //pretty(&foo);
   println!("****************** ELF {} **********************",
            elf_path);
-  let (text_addr, ref text_data) = elf_addr_data[0];
-  let (rodata_addr, ref rodata_data) = elf_addr_data[1];
+  let text_addr = elf_addr_data[0].addr;
+  let text_data = &elf_addr_data[0].data;
+  let rodata_addr = elf_addr_data[1].addr;
+  let rodata_data = &elf_addr_data[1].data;
   let wordvec_elf = u8s_to_u16s(&text_data, Endian::LITTLE);
-  //wordvec_analysis(&wordvec_elf);
-/*
-  println!("******************* GBA {} **********************",
-           gba_path);
-  let (gba_addr, ref gba_data) = gba_addr_data[0];
-  let wordvec_gba = u8s_to_u16s(gba_data, Endian::LITTLE);
-  // wordvec_analysis(&wordvec_gba);
-*/  
+  
   let mode = MachineMode::ARM;
+
+
+  for _ in 0..40 { print!("*"); }
+  println!("");
+
   let mut elf_clumps = reap_gadgets(text_data,
                                     text_addr as u32,
                                     mode);
 
-  
-  println!("==================================================\n          CLUMPS FROM ELF BINARY\n==================================================\n{:?}", elf_clumps);
-  
-  /** saturation time! **/
+  let mut params : Params = Params::new();
+  params.code = text_data.clone();
+  params.code_addr = text_addr as u32;
+  params.data = vec![rodata_data.clone()];
+  params.data_addrs = vec![rodata_addr as u32];
+  params.constants = vec![0xdeadbeef,
+                          0x00000001,
+                          0xabbabaab,
+                          0xffffffff,
+                          0x00000020,
+                          0xaaaaaaaa];
 
   let mut rng = rand::thread_rng();
-  let mut r_pool = rng.gen_iter::<u32>();
-  let s_array = [0xa0,0xb1,0xc2,0xd3];
-  let mut c_pool = s_array.iter().cloned().cycle();
-  /** eventually, we'll use a pool of "useful" **
-   ** constants, drawn from the specification  **/
-  saturate_clumps(&mut elf_clumps, 
-                  &mut c_pool);
-      
+  let population = Population::new(&params, &mut rng);
+
+/*  let mut mangler : Mangler = Mangler::new(&params.constants);
+  let mut machinery = Machinery { 
+                        rng: rand::thread_rng(),
+                        uc:  roper::init_engine(&elf_addr_data, mode),
+                        mangler: mangler,
+                      };
+                      */
+  let mut machinery = Machinery::new(&elf_path,
+                                     mode,
+                                     &params.constants);
+
+
+//  println!("POPULATION SIZE:\n{}", population.size());
+//* tournement broken 
+  //tournement(&population, &mut machinery);
+  let mut rchain0 = random_chain(&mut elf_clumps,
+                                 params.min_start_len,
+                                 params.max_start_len,
+                                 &mut machinery.mangler,
+                                 &mut machinery.rng);
+  let mut rchain1 = random_chain(&mut elf_clumps,
+                                 params.min_start_len,
+                                 params.max_start_len,
+                                 &mut machinery.mangler,
+                                 &mut machinery.rng); 
+  println!("rchain0:\n{}\n", rchain0);
+  println!("rchain1:\n{}\n", rchain1);
+  println!("about to eval fitness for r0");
+  add_hooks(&mut machinery.uc);
+  //tournement(&population, &mut machinery);
   
-  println!("==================================================\n          SATURATED CLUMPS FROM ELF BINARY\n==================================================\n");
-  for cl in &elf_clumps {
-    println!("{}",cl);
+  let r0 = evaluate_fitness(&mut machinery.uc,
+                            &mut rchain0, 
+                            &params.io_targets);
+  println!("evaluate_fitness for rchain0 -> {:?}", r0);
+  println!("rchain0:\n{}\n", rchain0);
+  let r1 = evaluate_fitness(&mut machinery.uc, 
+                            &mut rchain1, 
+                            &params.io_targets);
+  println!("evaluate_fitness for rchain1 -> {:?}", r1);
+  println!("rchain1:\n{}\n", rchain1);
+  println!("*** M A T I N G ***\n");
+  let spawn : Vec<Chain> = mate(&vec![&rchain0, &rchain1],
+                                &params,
+                                &mut machinery.rng,
+                                &mut machinery.uc);
+
+  for child in &spawn {
+    println!("child:\n{}", child);
   }
- 
-  /** make some chains **/
-
-  let elf_chain = Chain::new(elf_clumps[0..64].to_vec());
-  
-  //println!("{}",elf_chain);
-  println!("\nlen = {}", elf_chain.packed.len());
-  //return ();
-  /*********
-  let gba_clumps = reap_gadgets(gba_data,
-                                gba_addr as u32,
-                                MachineMode::THUMB);
-  println!("==================================================\n          CLUMPS FROM GBA BINARY\n==================================================\n{:?}", gba_clumps);
-  return (); 
-  */
-  /** Cut it off here for now **/
-  /* emulating elf code */
-  let mut uc = roper::init_engine(&elf_addr_data, mode);
-  roper::add_hooks(&mut uc);
-  
-  
-  let regions = uc.mem_regions()
-    .expect("failed to retrieve memory regions");
-  println!("Regions: {}", regions.len());
-  for region in &regions {
-    println!("> {:?}", region);
-  }
-
-  let pc = uc.reg_read(RegisterARM::PC)
-    .expect("Failed to read register");
-  println!("PC BEFORE >  {:08x}", pc);
-
-  let phony_stack : &Vec<u8> = &elf_chain.packed;
-  let ret : Vec<i32> = roper::hatch_chain(&mut uc, 
-                                          phony_stack);
-  println!("REGISTERS:\n{}", roper::hexvec(&ret));
-  let pc = uc.reg_read(RegisterARM::PC)
-    .expect("Failed to read register");
-  println!("PC AFTER >   {:08x}", pc);
-
-  for _ in 0..40 { print!("*"); }
-  
-  //println!("\n  Round Two");
-  //for _ in 0..40 { print!("*"); }
-  //println!("");
-  //let ret2 : Vec <i32> = roper::hatch_chain(&mut uc, &phony_stack);
-  //println!("REGISTERS:\n{}", roper::hexvec(&ret2));
-
- // println!("\n  Round Three");
-  //for _ in 0..40 { print!("*"); }
-  //println!("");
-  //let ret3 : Vec <i32> = roper::hatch_chain(&mut uc, &phony_stack);
-  //println!("REGISTERS:\n{}", roper::hexvec(&ret3));
-
-  let page_size = uc.query(unicorn::Query::PAGE_SIZE)
-    .expect("Failed to query page size");
-  let hardware_mode = uc.query(unicorn::Query::MODE)
-    .expect("Failed to query hardware mode");
-    println!(">> page size:     {}", page_size);
-    println!(">> hardware mode: {}", hardware_mode);
-
-  println!("None: {:?}", None as Option<i32>);
-  
+  /*****/
 }

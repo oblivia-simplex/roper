@@ -24,6 +24,11 @@ pub fn disas (insts: &Vec<u8>, mode: MachineMode) -> String {
   dissed.join("; ")      
 }
 
+pub fn disas32 (inst: u32, mode: MachineMode) -> String {
+  let v8 = pack_word32le(inst);
+  disas(&v8, mode)
+}
+
 pub fn get_word32le (a: &Vec<u8>, offset: usize) -> u32 {
   let mut s : u32 = 0;
  // print!("get_word32le called with offset = {:08x}", offset);
@@ -39,15 +44,15 @@ pub fn pack_word32le (n: u32) -> Vec<u8> {
   for i in 0..4 {
     v.push(((n & (0xFF << (i*8))) >> (i*8)) as u8);
   }
-  println!("## {:08x} --> {:02x} {:02x} {:02x} {:02x}",
-           n, v[0], v[1], v[2], v[3]);
+  //println!("## {:08x} --> {:02x} {:02x} {:02x} {:02x}",
+  //         n, v[0], v[1], v[2], v[3]);
   v
 }   
 
 pub fn pack_word32le_vec (v: &Vec<u32>) -> Vec<u8> {
   let mut p : Vec<u8> = Vec::new();
   for ref w in v {
-    println!("## p.len() == {}",p.len());
+   // println!("## p.len() == {}",p.len());
     p.extend(pack_word32le(**w).iter())
   }
   p
@@ -72,7 +77,7 @@ pub fn hexvec (v: &Vec<i32>) -> String{
 
 // can be used as part of a crude fitness function
 pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
-  assert_eq!(x.len(), y.len());
+  //assert_eq!(x.len(), y.len());
   x.iter().zip(y.iter()).fold(0_f32, |acc, (xx, yx)| {
     let diff = (xx - yx) as f32;
     acc + diff * diff
@@ -119,21 +124,6 @@ pub fn u8s_to_u32s (bytes: &Vec<u8>, endian: Endian) -> Vec<u32> {
   out
 }
 
-
-pub fn mangle (v: &Vec<u32>, rng: &mut ThreadRng) -> Mangler {
-  /* what this needs to do:
-   * - take a vector of 'significant' u32s
-   * - create a swarm of variations off of them, by
-   *   performing common, elementary operations
-   *   (negating, 2's comping, adding, subtracting, masking, etc.)
-   * - shuffle 
-   *   (this can be done by maintaining a small delay stack, shuffling
-   *   it each tick, and stochastically popping it or pushing to it)
-   * - return an iterator looping over this mangling operation
-   */
-  Mangler::new(v, rng)
-}
-
 pub fn deref_mang (x: u32, 
                    data: &Vec<u32>, 
                    offset: u32) -> u32 {
@@ -143,9 +133,10 @@ pub fn deref_mang (x: u32,
   }
 }
 
-pub fn mang (x: u32, rng: &mut ThreadRng) -> u32 {
+pub fn mang (ux: u32, rng: &mut ThreadRng) -> u32 {
+  let x = ux as i32;
   let die : u8 = rng.gen::<u8>() % 40;
-  match die {
+  let r = match die {
     0  => x << 1,
     1  => x << 2,
     3  => x << 4,
@@ -166,7 +157,8 @@ pub fn mang (x: u32, rng: &mut ThreadRng) -> u32 {
     18 => x >> 2,
     19 => x >> 4,
     _  => x,
-  }
+  };
+  r as u32
 }
 
 pub struct Mangler {
@@ -176,7 +168,7 @@ pub struct Mangler {
 }
 
 impl Mangler {
-  fn new (ws: &Vec<u32>) -> Mangler {
+  pub fn new (ws: &Vec<u32>) -> Mangler {
     Mangler {
       words  : ws.clone(),
       rng    : thread_rng(),
@@ -185,12 +177,11 @@ impl Mangler {
   }
 }
 
-
 impl Iterator for Mangler {
   type Item = u32;
   fn next(&mut self) -> Option<u32> {
-    Some(mang(self.words[self.rng.gen() % 
-              self.words.len()], self.rng))
+    Some(mang(self.words[self.rng.gen::<usize>() % 
+              self.words.len()], &mut self.rng))
   }
 }
 

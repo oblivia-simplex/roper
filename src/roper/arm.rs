@@ -3,6 +3,10 @@
 //
 // * copy of thumb.rs. Edit to match arm requirements. 
 // * shouldn't take long. an hour, tops?
+
+const _DEBUG : u8 = 2;
+const MIN_GAD_LEN : usize = 2;
+
 use roper::util::*;
 use roper::population::*;
 use roper::phylostructs::*;
@@ -34,8 +38,8 @@ enum Lay {
 }
 
 static MASK_VEC : &'static [(u32,u32,Lay)] = &[
-  (0b00001110000000000000000000000000,
-   0b00000010000000000000000000000000,
+  (0b00001100000000000000000000000000,
+   0b00000000000000000000000000000000,
    Lay::DP),
   (0b00001111110000000000000011110000,
    0b00000000000000000000000010010000,
@@ -83,9 +87,16 @@ static MASK_VEC : &'static [(u32,u32,Lay)] = &[
 
 fn what_layout (w: u32) -> Lay
 {
+  if _DEBUG >= 3 {
+    print!("what_layout >>> {} -> ", disas32(w, MachineMode::ARM));
+  };
   for &(mask,sig,lay) in MASK_VEC.iter() {
-    if mask & w == sig { return lay }
+    if mask & w == sig { 
+      if _DEBUG >= 3 { println!("{:?}",lay); }
+      return lay 
+    }
   }
+  println!("{:?}", Lay::RAWDATA);
   Lay::RAWDATA
 }
 
@@ -164,7 +175,7 @@ fn sp_delta_bdt (w: u32) -> (i32, Vec<usize>) {
 // function that will populate words.
 
 fn special_reg (r: usize) -> bool {
-  r == SP || r == LR || r == PC
+  r == SP || r == PC
 }
 
 fn dp_dst_reg (w: u32) -> usize {
@@ -175,7 +186,8 @@ pub fn is_ctrl (w: u32) -> bool {
   // check for control-flow instructions
   // this leaves out edge cases where PC is directly manipulated
   // but that's ok. we're not aiming for exactness.
-  match what_layout(w) {
+  // ** add disas hook for debugging
+  let res = match what_layout(w) {
     Lay::BX  => true,
     Lay::BR  => true,
     Lay::BDT => bdt_stack_direction(w) != 0,
@@ -184,7 +196,11 @@ pub fn is_ctrl (w: u32) -> bool {
     Lay::RAWDATA => true,
     Lay::DP  => special_reg(dp_dst_reg(w)),
     _ => false,
-  }
+  };
+  if _DEBUG >= 2 && res {
+    println!("is_ctrl >> {}", disas32(w,MachineMode::ARM));
+  };
+  res
 }
 
 fn arm_scan_for_rets (ws: &Vec<u32>) 
@@ -243,12 +259,13 @@ pub fn reap_arm_gadgets (code: &Vec<u8>,
       sp_delta   : clump.sp_delta,
       ret_offset : clump.ret_offset,
       words      : vec![a],
+      ret_addr   : start_addr + (4 * from),
       mode       : clump.mode,
       exchange   : clump.exchange,
       ..Default::default()
     };
     // println!("{:?}",c);
-    gads.push(c);
+    if (c.gadlen() >= MIN_GAD_LEN) { gads.push(c); }
   }
   gads
 }
