@@ -1,0 +1,6 @@
+* tournment is broken. poorly implemented parallelism hack.
+  try something simpler and single-threaded for now. consider islands
+  later. each island can have their own Machinery.
+
+* double check splice_point and crossover math. I thikn there's an 
+  off-by-one error there. Sometimes this results in an index error.
