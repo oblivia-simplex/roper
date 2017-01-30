@@ -52,4 +52,6 @@ A GENETIC ROP-CHAIN DEVELOPMENT TOOL
   '\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
   
 
-Genetic programming platform for evolving ROP-chain payloads.
+Genetic programming platform for evolving ROP-chain payloads,
+implemented in Rust. Under construction.
+
