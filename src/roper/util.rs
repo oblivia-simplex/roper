@@ -76,13 +76,24 @@ pub fn hexvec (v: &Vec<i32>) -> String{
 }
 
 // can be used as part of a crude fitness function
-pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
-  //assert_eq!(x.len(), y.len());
-  x.iter().zip(y.iter()).fold(0_f32, |acc, (xx, yx)| {
-    let diff = (xx - yx) as f32;
-    acc + diff * diff
-  }).sqrt()
+pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
+  assert_eq!(x.len(), y.len());
+  let n = x.len();
+  ((0..n).map(|i| {
+    let xx: i64;
+    let yy: i64;
+    if x[i] < y[i] { 
+      xx = x[i] as i64;
+      yy = y[i] as i64;
+    } else { 
+      xx = y[i] as i64;
+      yy = x[i] as i64;
+    };
+    min(0xFFFF, (xx - yy).abs())
+  }).sum::<i64>() & 0xEFFFFFFF) as i32
 }
+// this is bad. use a sigmoid/step function to flatten differences
+// beyond a certain threshold as "equally bad". avoid overflow. 
 
 pub trait Indexable <T: PartialEq> {
   fn index_of (&self, t: T) -> usize;

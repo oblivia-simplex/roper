@@ -16,8 +16,10 @@ pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
 pub const VISC_DROP_THRESH : i32 = 10;
 pub const RIPENING_FACTOR : i32 = 4;
-pub const MAX_FIT : i32 = 1000;
+pub const MAX_FIT : FIT_INT = 0xFFFFFFFF;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
+
+pub type FIT_INT = u32;
 
 #[derive(Clone,Debug)]
 pub struct Clump {
@@ -29,7 +31,7 @@ pub struct Clump {
   pub words:       Vec<u32>,
   pub viscosity:   i32,
   pub link_age:    i32,
-  pub link_fit:    i32,
+  pub link_fit:    FIT_INT,
 }
 
 impl Display for Clump {
@@ -84,7 +86,7 @@ impl Clump {
     self.words[0]
   }
   pub fn sicken (&mut self) {
-    self.viscosity = MIN_VISC;
+    self.viscosity /= 2;
   }
 }
 pub trait Stack <T> {
@@ -160,7 +162,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 pub struct Chain {
   pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
   pub packed: Vec<u8>,
-  pub fitness: Option<i32>,
+  pub fitness: Option<FIT_INT>,
   pub generation: u32,
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
@@ -253,7 +255,7 @@ impl Chain {
   pub fn size (&self) -> usize {
     self.clumps.len()
   }
-  pub fn set_fitness (&mut self, n: i32) {
+  pub fn set_fitness (&mut self, n: FIT_INT) {
     self.fitness = Some(n);
   }
   pub fn excise (&mut self, idx: usize) {
@@ -264,10 +266,15 @@ impl Chain {
 
 impl PartialOrd for Chain {
   fn partial_cmp (&self, other: &Chain) -> Option<Ordering> {
+    self.fitness.partial_cmp(&other.fitness)
+    /*
     match (self.fitness, other.fitness) {
-      (Some(a), Some(b)) => Some(b.cmp(&a)), // Note reversal
+      (Some(a), Some(b)) => Some(a.cmp(&b)), // Note reversal
+      (Some(_), None)    => Some(Ordering::Less),
+      (None, Some(_))    => Some(Ordering::Greater),
       _                  => None,
     }
+    */
   }
 }
 impl Ord for Chain {
@@ -298,10 +305,9 @@ impl <T> Pod <T>{
 */
 #[derive(Debug)]
 pub struct Population  {
-  pub deme: Vec<Pod<Chain>>,
- // pub chains: Vec<Chain>,
+  pub deme: Vec<Chain>,
+  pub best: Option<Chain>,
   pub params: Params,
-  //pub rng: ThreadRng,
 }
 
 impl Population {
@@ -311,21 +317,31 @@ impl Population {
                                   params.code_addr, 
                                   DEFAULT_MODE);
     let mut data_pool  = Mangler::new(&params.constants);
-    let mut deme : Vec<Pod<Chain>> = Vec::new();
+    let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
-      deme.push(Pod::new(random_chain(&clumps,
-                                      params.min_start_len,
-                                      params.max_start_len,
-                                      &mut data_pool,
-                                      rng)));
+      deme.push(random_chain(&clumps,
+                             params.min_start_len,
+                             params.max_start_len,
+                             &mut data_pool,
+                             rng));
     }
     Population {
       deme: deme,
+      best: None,
       params: (*params).clone(),
     }
   }
   pub fn size (&self) -> usize {
     self.deme.len()
+  }
+  pub fn best_fit (&self) -> Option<FIT_INT> {
+    match self.best {
+      Some(ref x) => x.fitness,
+      _           => None,
+    }
+  }
+  pub fn set_best (&mut self, i: usize) {
+    self.best = Some(self.deme[i].clone());
   }
 }
 

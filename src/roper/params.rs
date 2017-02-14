@@ -4,6 +4,8 @@
 use rand::Rng;
 use unicorn::Mode;
 use capstone::CsMode;
+use roper::util::{distance};
+use std::fmt::{Display,format,Formatter,Result};
 
 type dword = u32;
 type halfword = u16;
@@ -54,7 +56,11 @@ impl Default for Params {
       min_start_len:    2,
       max_start_len:    16,
       max_len:          256,
-      io_targets:       vec![(vec![0; 15], vec![1;15])], // junk
+      io_targets:       vec![(vec![0; 16], 
+                              RPattern { regvals: vec![(0,1),
+                                                       (3,0xdeadbeef),
+                                                       (7,0x0000baab)]
+                                       })], // junk
       constants:        Vec::new(),
     }
     // io_targets needs its own datatype. as it stands, it's kind
@@ -96,6 +102,45 @@ impl Default for MachineMode {
   fn default() -> MachineMode { MachineMode::THUMB }
 }
 
-pub type IoTargets = Vec<(Vec<i32>,Vec<i32>)>;
+pub type IoTargets = Vec<(Vec<i32>,RPattern)>;
 
-pub const WORST_FITNESS : i32 = 0;
+#[derive(Debug,Clone,PartialEq)]
+pub struct RPattern { regvals: Vec<(usize,i32)> }
+impl RPattern {
+  pub fn satisfy (&self, regs: &Vec<i32>) -> bool {
+    for &(idx,val) in &self.regvals {
+      if regs[idx] != val { return false };
+    }
+    true
+  }
+  fn vec_pair (&self, regs: &Vec<i32>) -> (Vec<i32>, Vec<i32>) {
+    let mut ivec = Vec::new();
+    let mut ovec = Vec::new();
+    for &(idx,val) in &self.regvals {
+      ivec.push(regs[idx]);
+      ovec.push(val);
+    }
+    (ivec, ovec)
+  }
+  pub fn distance (&self, regs: &Vec<i32>) -> i32 {
+    let (i, o) = self.vec_pair(&regs);
+    distance(&i, &o)
+  }
+}
+pub const MAXPATLEN : usize = 12;
+impl Display for RPattern {
+  fn fmt (&self, f: &mut Formatter) -> Result {
+    let blank = "________ ";
+    let mut s = String::new();
+    let mut i : usize = 0;
+    for &(idx,val) in &self.regvals {
+      while i < idx {
+        s.push_str(blank);
+        i += 1;
+      }
+      s.push_str(&format!("{:08x} ",val));
+      i += 1;
+    }
+    write!(f, "{}\n",s)
+  }
+}

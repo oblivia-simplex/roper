@@ -17,8 +17,7 @@ use std::cmp::*;
 
 use roper::params::*;
 use roper::phylostructs::*;
-use roper::hatchery::hatch_chain;
-use roper::hatchery::HatchResult;
+use roper::hatchery::*;
 use roper::util::{pack_word32le,
                   pack_word32le_vec,
                   u8s_to_u16s,
@@ -28,13 +27,13 @@ use roper::util::{pack_word32le,
                   Mangler,
                   Indexable,
                   deref_mang};
-use roper::hooks::*;
+//use roper::hooks::*;
 use roper::thumb::{reap_thumb_gadgets};
 use roper::arm::{reap_arm_gadgets};
 use roper::ontostructs::*;
 
 
-fn calc_link_fit (p_fit: i32, c_fit: i32, alpha: i32) -> i32 {
+fn calc_link_fit (p_fit: u32, c_fit: u32, alpha: u32) -> u32 {
   (p_fit * alpha) + (c_fit * (MAX_FIT - alpha))
 }
 /* Try dropping the splice-point clump. This will do two things:
@@ -47,17 +46,23 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* we'll let crossover handle the rest. */
   if rng.gen::<f32>() > params.mutation_rate { return };
   /* Add permutation operation, shuffling immeds */
-  let cl_idx     = rng.gen::<usize>() % chain.size();
-  let clump      = &mut (chain.clumps[cl_idx]);
+  if chain.size() == 0 {
+    panic!("chain.size() == 0. Why?");
+  }
+  let mut cl_idx : usize = rng.gen::<usize>() % chain.size();
+  let mut tries = 3;
+  while chain[cl_idx].size() == 1 {
+    if tries == 0 { return } else { tries -= 1 };
+    cl_idx = rng.gen::<usize>() % chain.size();
+  }
+  let mut clump = chain[cl_idx].clone();
+  if clump.size() == 0 {
+    panic!("Hit an empty clump! Why is that?");
+  }
   let idx        = 1 + (rng.gen::<usize>() % (clump.size() - 1));
   let mut_kind : u8 = rng.gen::<u8>() % 3;
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
-   /* 1 => clump.words[idx] = deref_mang(clump.words[idx], 
-                                  &(params.ro_data_32), 
-                                  params.ro_data_addr),
-   
-                                  */
     _ => { /* permutation */
       let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
       let tmp = clump.words[idx];
@@ -71,25 +76,31 @@ pub fn mate (parents: &Vec<&Chain>,
              params:  &Params, 
              rng:     &mut ThreadRng,
              uc:      &mut CpuARM) -> Vec<Chain> {
-  let mut brood = crossover(parents, params.brood_size, rng);
+  let mut brood = crossover(parents, 
+                            2, //params.brood_size, 
+                            params.max_len,
+                            rng);
   for s in brood.iter_mut() {
     mutate(s, params, rng)
   }
-  cull_brood(&mut brood, 2, uc, &params.io_targets);
+  //cull_brood(&mut brood, 2, uc, &params.io_targets);
   brood
 }
 
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &mut Chain, 
-                         io_targets: &Vec<(Vec<i32>,Vec<i32>)>) {
+                         io_targets: &IoTargets)
+                         -> Option<FIT_INT>
+{
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
-    chain.set_fitness(WORST_FITNESS);
-    return;
+    println!(">> EMPTY CHAIN");
+    return None;
   }
 
   /* Set hooks at return addresses */
   let mut hooks : Vec<uc_hook> = Vec::new();
+
   for clump in &chain.clumps {
     let r = uc.add_code_hook(CodeHookType::CODE,
                      clump.ret_addr as u64 ,
@@ -98,29 +109,29 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
       .expect("Error adding ret_addr hook.");
     hooks.push(r);
   }
+  
   let mut i : usize = 0;
-  let mut fit_vec : Vec<f32> = Vec::new();
+  let mut fit_vec : Vec<FIT_INT> = Vec::new();
   let mut counter_sum = 0;
   for &(ref input, ref target) in io_targets {
-                           /* stub */  
-    reset_counter(uc);
     let result : HatchResult = hatch_chain(uc, &chain.packed, &input);
-    let counter : usize = read_counter(uc);
-    println!("COUNTER >> {}", counter);
-    println!("RESULT  >> {:?}", result);
-
+    println!("\n{}", result);
+    let counter = result.counter;
+    //println!("\n{}", result);
     if (result.error != None && counter < chain.size()) {
       /* If the chain didn't execute to the end, we know where
        * the weak link is. Drop its viscosity to zero.
        */
-      counter_sum += counter;
       chain[counter].sicken();
     }
-
-    let output = result.registers;
-    //let error  = result.error;
-    /* add checks for error codes, etc */
-    fit_vec.push(distance(&output, &target));
+    counter_sum += counter;
+    let output = &result.registers;
+    let d = target.distance(output) as FIT_INT;
+    let ft = match result.error {
+      Some(_) => max(1_u32, (d*2) - counter as FIT_INT), 
+      None    => d as FIT_INT,
+    };
+    fit_vec.push(ft);
     i += 1;
   };
   let counter_avg = counter_sum as f32 / io_targets.len() as f32;
@@ -131,62 +142,83 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   //** error code
   //** and normalize somehow.
   //** also: assign link fitnesses for clumps < counter?
-  chain.fitness = Some((fit_vec.iter().map(|&x| x).sum::<f32>() 
-                   / io_targets.len() as f32) as i32);
-  println!("chain.fitness = {:?}", chain.fitness);
+  let fitness = (fit_vec.iter().map(|&x| x).sum::<FIT_INT>() 
+                   / io_targets.len() as FIT_INT) as FIT_INT;
+  chain.set_fitness(fitness as FIT_INT);
+  //println!("chain.fitness = {:x}", chain.fitness.unwrap());
+  Some(fitness)
 }
 
-pub fn tournement (population: &Population, 
+pub fn tournement (population: &mut Population,
                    machinery: &mut Machinery) {
-  /* randomly select contestants */
-  let mut rng = &mut machinery.rng;
-  let mut uc  = &mut machinery.uc;
-  let t_size  = population.params.t_size;
-  let targets = &population.params.io_targets; // set of i/o pairs
-  let mut contestants : Vec<& Pod<Chain>> = {
-    let mut tmp_vec = Vec::new();
-    let mut i = 0;
-    let mut c : usize = 0;
-    let mut used : Vec<usize> = vec![0];
-    while i < t_size {
-      i += 1;
-      /* Ensure that we pick *unique* contestants */
-      /* This matters more from a memory management point of 
-       * view than an evolutionary point of view. */
-      while used.contains(&c) {
-        c = rng.gen::<usize>() % population.size();
-        println!("RANDOM # c == {}", c);
-      } 
-      let mut egg = &population.deme[c];
-      /* ontogenesis step */
-      let mut larva = egg.write().unwrap();
-      evaluate_fitness(uc, 
-                       &mut larva,
-                       &targets);
-      tmp_vec.push(egg); // inefficient. can we fix? 
+  let mut lots : Vec<usize> = Vec::new();
+  let mut contestants : Vec<(Chain,usize)> = Vec::new();
+  let mut uc = &mut(machinery.uc);
+  let mut rng = &mut(machinery.rng);
+  if population.best == None {
+    population.best = Some(population.deme[0].clone());
+  }
+  let t_size = population.params.t_size;
+  let p_size = population.size();
+//  let io_targets = &(population.params.io_targets);
+  for _ in 0..t_size {
+    let mut l: usize = rng.gen::<usize>() % p_size;
+    while lots.contains(&l) {
+      l = rng.gen::<usize>() % p_size;
     }
-    tmp_vec
-  };
-  /* This sort will crash at runtime if any of the contestants
-   * are still being held by a write lock. But I think that
-   * those should have all fallen out of scope by now. 
-   */
-  contestants.sort_by(|a,b| a.read().unwrap()
-                             .cmp(&b.read().unwrap()));
-  // I need to make sure that the parents are non-identical. 
-  let mother = contestants[0].read().unwrap();
-  let father = contestants[1].read().unwrap();
-  let parents : Vec<&Chain> = vec![&*mother,&*father];
+    lots.push(l);
+    if (population.deme[l].fitness == None) {
+      evaluate_fitness(&mut uc, 
+                       &mut population.deme[l], 
+                       &population.params.io_targets);
+    }
+    if population.best_fit() == None ||
+      population.best_fit() > population.deme[l].fitness {
+      println!(">> updating best. from: {:?}, to: {:?}",
+               population.best_fit(), population.deme[l].fitness);
+      if population.deme[l].fitness == None {
+        panic!("fitness of population.deme[l] is None!");
+      }
+      population.set_best(l);
+    }
+    //println!(">> l = {}", l);
+    contestants.push(((population.deme[l]).clone(),l));
+  }
+  contestants.sort();
+  /*
+  println!(">> t_size = {}; contestants.len() = {}",
+           t_size, contestants.len());
+  println!(">> BEST CONTESTANT FITNESS:  {:?}",
+           &contestants[0].0.fitness);
+  println!(">> WORST CONTESTANT FITNESS: {:?}",
+           &contestants[3].0.fitness);
+  */
+  if (&contestants[3].0.clumps == &contestants[0].0.clumps) {
+    println!(">> BEST == WORST!");
+  }
+  // i don't like these gratuitous clones
+  // but let's get it working first, and optimise later
+  let (mother,_) = contestants[0].clone();
+  let (father,_) = contestants[1].clone();
+  let (_,grave0) = contestants[2];
+  let (_,grave1) = contestants[3];
+  let parents : Vec<&Chain> = vec![&mother,&father];
   let offspring = mate(&parents,
                        &population.params,
                        rng,
                        uc);
-  let mut grave1 = contestants[t_size-1].write().unwrap();
-  let mut grave2 = contestants[t_size-2].write().unwrap();    
-
-  *grave1 = offspring[1].clone();
-  *grave2 = offspring[2].clone();
+  /*
+  for i in 0..4 {
+    println!(">> contestant {}\n{}", i, &contestants[i].0);
+  }
+  for i in 0..2 {
+    println!(">> offspring {}\n{}", i, &offspring[i]);
+  }
+  */
+  population.deme[grave0] = offspring[0].clone();
+  population.deme[grave1] = offspring[1].clone();
 }
+
 
 fn cull_brood (brood: &mut Vec<Chain>, 
                n: usize,
@@ -195,7 +227,7 @@ fn cull_brood (brood: &mut Vec<Chain>,
   /* Sort by fitness - most to least */
   let mut i = 0;
   for spawn in brood.iter_mut() {
-    println!("[*] Evaluating spawn #{}...", i);
+    // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
     evaluate_fitness(uc, &mut *spawn, io_targets); 
   }
@@ -207,7 +239,7 @@ fn cull_brood (brood: &mut Vec<Chain>,
 }
   
 fn set_viscosity (clump: &mut Clump) -> i32 {
-  clump.viscosity = clump.link_fit * 
+  clump.viscosity = clump.link_fit as i32 * 
     (min(clump.link_age * RIPENING_FACTOR, MAX_VISC));
   clump.viscosity
 }
@@ -215,6 +247,9 @@ fn set_viscosity (clump: &mut Clump) -> i32 {
 fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
   let mut wheel : Vec<Weighted<usize>> = Vec::new();
   let mut i : usize = 0;
+  if chain.size() == 0 {
+    panic!("Empty chain in splice_point(). Why?");
+  }
   for clump in &chain.clumps {
     assert!(clump.visc() <= MAX_VISC);
     let vw : u32 = 1 + (MAX_VISC - clump.visc()) as u32;
@@ -223,47 +258,63 @@ fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
     i += 1;
   }
   let mut spin = WeightedChoice::new(&mut wheel);
-  spin.sample(rng)
+  spin.sample(rng) 
 }
 
 fn crossover (parents:    &Vec<&Chain>, 
               brood_size: usize,
+              max_len:    usize,
               rng:        &mut ThreadRng) -> Vec<Chain> {
   let mut brood : Vec<Chain> = Vec::new();
-  for _ in 0..brood_size {
-    let m_idx  : usize  = rng.gen::<usize>() % 2;
+  for i in 0..brood_size {
+    let m_idx  : usize  = i % 2;
     let mother : &Chain = &(parents[m_idx]);
     let father : &Chain = &(parents[(m_idx+1) % 2]);
     let m_i : usize = splice_point(&mother, rng);
-    let m_n : usize = mother.size() - m_i;
+    let m_n : usize = mother.size() - (m_i+1);
     let f_i : usize = splice_point(&father, rng);
-    println!("[*] mother.size() = {}, father.size() = {}",
-      mother.size(), father.size());
-    println!("[*] Splicing father at {}, mother at {}", f_i, m_i);
+
+    /*
+     * println!("==> m viscosity at splice point: {}",
+             mother[m_i].viscosity);
+             */
+    assert!(m_i < mother.size());
+    assert!(f_i < father.size());
+
+    // println!("[*] mother.size() = {}, father.size() = {}",
+    // mother.size(), father.size());
+    //println!("[*] Splicing father at {}, mother at {}", f_i, m_i);
+    //println!("[*] m_n = {}", m_n);
+    
     let mut child_clumps : Vec<Clump> = Vec::new();
     let mut i = 0;
     // let f_n : usize = father.size() - f_i;
     for f in 0..f_i {
-      //println!("[+] f = {}",f);
+      // println!("[+] f = {}",f);
       child_clumps.push(father.clumps[f].clone());
       child_clumps[i].link_age += 1;
       i += 1;
     }
     /* By omitting the following lines, we drop the splicepoint */
-    if father.clumps[f_i].visc() >= VISC_DROP_THRESH {
+    if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
       //println!("[+] splice point over VISC_DROP_THRESH. copying.");
       child_clumps.push(father.clumps[f_i].clone());
-      child_clumps[i].link_age = 0;
       i += 1;
-    }
+    } 
+    if i > 0 { child_clumps[i-1].link_age = 0 };
     /***********************************************************/
     for m in m_n..mother.size() {
-      //println!("[+] m = {}",m);
+      if i >= max_len { break };
+      // println!("[+] m = {}",m);
       child_clumps.push(mother.clumps[m].clone());
       //println!("[+] child_clumps.len() = {}",child_clumps.len());
       child_clumps[i].link_age += 1;
       i += 1;
       /* adjust link_fit later, obviously */
+    }
+    //println!("%%% child_clumps.len() == {}", child_clumps.len());
+    if (child_clumps.len() == 0) {
+      panic!("child_clumps.len() == 0. Stopping.");
     }
     let child : Chain = Chain::new(child_clumps);
     brood.push(child);

@@ -6,8 +6,9 @@ use elf::*;
 use unicorn::*; //{Cpu, CpuARM, uc_handle};
 use roper::util::{disas,get_word32le, get_word16le, hexvec};
 use roper::params::MachineMode;
-use roper::hooks::*;
-use roper::unitools::*;
+use std::fmt::{Display,format,Formatter,Result};
+//use roper::hooks::*;
+//use roper::unitools::*;
 
 static _DEBUG : bool = true; //true;
 
@@ -49,6 +50,36 @@ impl Sec {
   }
 }
 
+pub static REGISTERS : [RegisterARM; 16] = [RegisterARM::R0,
+                                            RegisterARM::R1,
+                                            RegisterARM::R2,
+                                            RegisterARM::R3,
+                                            RegisterARM::R4,
+                                            RegisterARM::R5,
+                                            RegisterARM::R6,
+                                            RegisterARM::R7,
+                       /****************/   RegisterARM::R8,
+                       /****************/   RegisterARM::SB,
+                       /* Not used in  */   RegisterARM::SL,
+                       /* Thumb Mode   */   RegisterARM::FP,
+                       /****************/   RegisterARM::IP,
+                       /****************/   RegisterARM::SP,
+                                            RegisterARM::LR,
+                                            RegisterARM::PC];
+
+pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<i32> {
+  REGISTERS.iter().map(|&x| uc.reg_read_i32(x.to_i32())
+                              .expect("Error reading reg"))
+                  .collect()
+}
+
+pub fn set_registers (uc: &unicorn::Unicorn, regs: &Vec<i32>) {
+  let n : usize = regs.len();
+  assert!(n <= REGISTERS.len());
+  for i in 0..n {
+    uc.reg_write_i32(REGISTERS[i].to_i32(), regs[i]);
+  }
+}
 /**
  * Initializes the engine. Anchors the engine to the
  * lifetime of the text section, since text will be
@@ -91,25 +122,6 @@ pub fn add_hooks (uc: &mut unicorn::CpuARM) {
   if _DEBUG {
     println!("Adding hooks...");
     let callback_c = 
-     /* move |u: &unicorn::Unicorn, addr: u64, size: u32| {
-        let sp : u64 = u.reg_read(RegisterARM::SP.to_i32())
-                        .expect("Error reading SP");
-        let instv : Vec<u8> = u.mem_read(addr, size as usize)
-                              .expect("Error reading inst.");
-        let mut inst_str = String::new();
-        for i in &instv {
-          inst_str.push_str(&format!("{:02x} ",i));
-        }
-        //let inst = get_word32le(&instv);
-        let mo = u.query(unicorn::Query::MODE).unwrap();
-        let mmo = if mo == 0 {MachineMode::ARM} 
-                  else {MachineMode::THUMB};
-        let dis = disas(&instv, mmo);
-        let regs = hexvec(&read_registers(u));
-        println!("[{:08x}] {} ({}) SP: {:08x} | MODE: {:?} | {}\n    {}", 
-                 addr, inst_str, size, sp, mo, dis, regs);
-      };
-      */
     // add some hooks if in debugging mode
     uc.add_code_hook(CodeHookType::CODE,
                      BASE_ADDR,
@@ -121,9 +133,8 @@ pub fn add_hooks (uc: &mut unicorn::CpuARM) {
 
 
 fn err_encode (e: Error) -> ErrorCode {
-  // return a vector that gives details on the error/
   // if you need to ask for a ref to the engine, go ahead.
-  println!("**** There has been an error: {:?} ****", e);
+  println!("**** ERROR IN EMULATION ****\n");
   1 // placeholder. assign int to each error?
 }
 
@@ -135,6 +146,7 @@ fn mk_zerostack(n: usize) -> Vec<u8>
   }
   z
 }
+
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
                             stack: &Vec<u8>,
                             reg_vec: &Vec<i32>) 
@@ -142,8 +154,9 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
-  println!("In hatch_chain...");
   let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
+  set_registers(uc.emu(), &reg_vec);
+  reset_counter(uc);
   uc.mem_write(BASE_STACK, &zerostack)
     .expect("Error zeroing out stack");
   uc.mem_write(STACK_INIT, stack)
@@ -151,16 +164,6 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop
     .expect("Error writing SP register");
   let start_addr : u64 = get_word32le(stack, 0) as u64 ; //| 1;
-  // return err, registers
-  // most of the time, when we get an error, we can learn how
-  // many of our gadgets have executed by looking at the sp.
-  /*
-  if let Err(e) = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS) {
-    err_encode(e)
-  } else {
-    read_registers(&(uc.emu()))
-  }
-  */
   let ee = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS);
   let e = match ee {
     Err(e) => Some(err_encode(e)),
@@ -168,6 +171,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   };
   HatchResult { registers: read_registers(&(uc.emu())),
                 error: e,
+                counter: read_counter(uc),
   }
 }
 
@@ -176,5 +180,68 @@ type ErrorCode = i32;
 pub struct HatchResult {
   pub registers : Vec<i32>,
   pub error     : Option<ErrorCode>,
+  pub counter   : usize,
+}
+impl Display for HatchResult {
+  fn fmt (&self, f: &mut Formatter) -> Result {
+    let mut s = String::new();
+    s.push_str("REG: ");
+    s.push_str(&hexvec(&self.registers));
+    s.push_str(&format!("\nCNT: {}", self.counter));
+    s.push_str(&format!("\nERR: {:?}", self.error));
+    write!(f, "{}\n", s)
+  }
+}
+// *** HOOKS ***
+
+pub const COUNTER_ADDR : u64 = 0x124;
+
+/* Increments a counter located at COUNTER_ADDR, which point to
+ * a location in writeable/readable memory that's unlikely to be
+ * overwritten.
+ */
+pub fn counter_hook (u: &Unicorn, addr: u64, size: u32) {
+  let n : usize = read_counter_u(u) + 1;
+  let v : Vec<u8> = vec![(n & 0xFF) as u8, ((n & 0xFF00)>>8) as u8];
+  // println!(":::: counter {} :::: {:?}", n, v);
+  u.mem_write(COUNTER_ADDR, &v)
+   .expect("Error incrementing counter with mem_write.");
+}
+
+/* make generic */
+pub fn read_counter_u (u: &Unicorn) -> usize {
+  let v = u.mem_read(COUNTER_ADDR, 2).unwrap();
+  let n : u16 = v[0] as u16; // | ((v[1] as u16) << 8);
+  n as usize
+}
+
+pub fn read_counter (u: &CpuARM) -> usize {
+  let v = u.mem_read(COUNTER_ADDR, 2).unwrap();
+  let n : u16 = v[0] as u16; //| ((v[1] as u16) << 8);
+  n as usize
+}
+
+pub fn reset_counter (u: &CpuARM) {
+  u.mem_write(COUNTER_ADDR, &[0,0,0,0]);
+//  println!(">>>> Reset counter: {}", read_counter(u));
+}
+
+pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
+  let sp : u64 = u.reg_read(RegisterARM::SP.to_i32())
+                  .expect("Error reading SP");
+  let instv : Vec<u8> = u.mem_read(addr, size as usize)
+                        .expect("Error reading inst.");
+  let mut inst_str = String::new();
+  for i in &instv {
+    inst_str.push_str(&format!("{:02x} ",i));
+  }
+  //let inst = get_word32le(&instv);
+  let mo = u.query(unicorn::Query::MODE).unwrap();
+  let mmo = if mo == 0 {MachineMode::ARM} 
+            else {MachineMode::THUMB};
+  let dis = disas(&instv, mmo);
+  let regs = hexvec(&read_registers(u));
+  println!("({:02x})-[{:08x}] {} ({}) SP: {:08x} | MODE: {:?} | {}\n    {}", 
+           read_counter_u(u), addr, inst_str, size, sp, mo, dis, regs);
 }
 

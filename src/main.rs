@@ -12,8 +12,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use unicorn::*;
 // use std::io;
-use capstone::instruction::Instructions;
-use capstone::constants::{CsMode,CsArch};
 //use roper::dis::{disas_sec,Inst};
 use roper::thumb::*;
 use roper::util::*;
@@ -88,7 +86,6 @@ fn main() {
   
   let mode = MachineMode::ARM;
 
-
   for _ in 0..40 { print!("*"); }
   println!("");
 
@@ -101,7 +98,8 @@ fn main() {
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
   params.data_addrs = vec![rodata_addr as u32];
-  params.constants = vec![0xdeadbeef,
+  params.constants = vec![0x00000000,
+                          0xdeadbeef,
                           0x00000001,
                           0xabbabaab,
                           0xffffffff,
@@ -109,7 +107,7 @@ fn main() {
                           0xaaaaaaaa];
 
   let mut rng = rand::thread_rng();
-  let population = Population::new(&params, &mut rng);
+  let mut population = Population::new(&params, &mut rng);
 
 /*  let mut mangler : Mangler = Mangler::new(&params.constants);
   let mut machinery = Machinery { 
@@ -124,8 +122,7 @@ fn main() {
 
 
 //  println!("POPULATION SIZE:\n{}", population.size());
-//* tournement broken 
-  //tournement(&population, &mut machinery);
+/* tournement broken 
   let mut rchain0 = random_chain(&mut elf_clumps,
                                  params.min_start_len,
                                  params.max_start_len,
@@ -139,9 +136,23 @@ fn main() {
   println!("rchain0:\n{}\n", rchain0);
   println!("rchain1:\n{}\n", rchain1);
   println!("about to eval fitness for r0");
+  */
+  for i in 0..1000 {
+    tournement(&mut population, &mut machinery);
+    //let b = &(population.best).clone().unwrap();
+    //println!("\nTOURNEMENT {} COMPLETE. BEST:\n{}",
+    //         i, b);
+  }
+  println!("=> BEST FIT: {:?}", population.best_fit());
+  println!("=> RUNNING BEST:\n");
+           
   add_hooks(&mut machinery.uc);
-  //tournement(&population, &mut machinery);
-  
+  let r = evaluate_fitness(&mut machinery.uc,
+                           &mut (population.best).unwrap(),
+                           &population.params.io_targets);
+  println!("rpattern: {}", population.params.io_targets[0].1);
+  println!("rpattern: {:?}", population.params.io_targets[0].1);
+  /* 
   let r0 = evaluate_fitness(&mut machinery.uc,
                             &mut rchain0, 
                             &params.io_targets);
@@ -161,5 +172,5 @@ fn main() {
   for child in &spawn {
     println!("child:\n{}", child);
   }
-  /*****/
+  *****/
 }
