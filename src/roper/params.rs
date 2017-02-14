@@ -43,7 +43,7 @@ pub struct Params {
 impl Default for Params {
   fn default () -> Params {
     Params {
-      population_size:  20,
+      population_size:  2000,
       mutation_rate:    0.10,
       max_generations:  2000,
       selection_method: SelectionMethod::Tournement,

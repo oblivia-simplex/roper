@@ -128,7 +128,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let output = &result.registers;
     let d = target.distance(output) as FIT_INT;
     let ft = match result.error {
-      Some(_) => max(1_u32, (d*2) - counter as FIT_INT), 
+      Some(_) => (d*2) - min(d, counter as FIT_INT), 
       None    => d as FIT_INT,
     };
     fit_vec.push(ft);

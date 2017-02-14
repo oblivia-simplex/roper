@@ -137,7 +137,7 @@ fn main() {
   println!("rchain1:\n{}\n", rchain1);
   println!("about to eval fitness for r0");
   */
-  for i in 0..1000 {
+  for i in 0..9000 {
     tournement(&mut population, &mut machinery);
     //let b = &(population.best).clone().unwrap();
     //println!("\nTOURNEMENT {} COMPLETE. BEST:\n{}",
