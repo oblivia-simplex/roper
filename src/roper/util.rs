@@ -167,6 +167,7 @@ pub fn mang (ux: u32, rng: &mut ThreadRng) -> u32 {
     17 => x >> 1,
     18 => x >> 2,
     19 => x >> 4,
+    20 => rng.gen::<i32>(),
     _  => x,
   };
   r as u32

@@ -43,8 +43,8 @@ pub struct Params {
 impl Default for Params {
   fn default () -> Params {
     Params {
-      population_size:  2000,
-      mutation_rate:    0.10,
+      population_size:  3000,
+      mutation_rate:    0.30,
       max_generations:  2000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,
@@ -52,7 +52,7 @@ impl Default for Params {
       code_addr:        0,
       data:             Vec::new(),
       data_addrs:       Vec::new(),
-      brood_size:       8,
+      brood_size:       2,
       min_start_len:    2,
       max_start_len:    16,
       max_len:          256,
@@ -60,7 +60,9 @@ impl Default for Params {
                               RPattern { regvals: vec![(0,1),
                                                        (3,0xdeadbeef),
                                                        (7,0x0000baab)]
-                                       })], // junk
+                                       })],
+    //                         (vec![1; 16],
+      //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
     }
     // io_targets needs its own datatype. as it stands, it's kind
@@ -107,6 +109,31 @@ pub type IoTargets = Vec<(Vec<i32>,RPattern)>;
 #[derive(Debug,Clone,PartialEq)]
 pub struct RPattern { regvals: Vec<(usize,i32)> }
 impl RPattern {
+  pub fn new (s: &str) -> RPattern {
+    let mut parts = s.split_whitespace();
+    let mut rp : RPattern = RPattern {
+      regvals: Vec::new(),
+    };
+    let mut i : usize = 0;
+    for part in parts {
+      if !part.starts_with("_") {
+        rp.push((i,u32::from_str_radix(part, 16)
+                  .expect("Failed to parse RPattern")
+                  as i32));
+      }
+      i += 1;
+    }
+    rp
+  }
+  pub fn push (&mut self, x: (usize, i32)) {
+    self.regvals.push(x);
+  }
+  pub fn constants (&self) -> Vec<u32> {
+    self.regvals
+        .iter()
+        .map(|&p| p.1 as u32)
+        .collect()
+  }
   pub fn satisfy (&self, regs: &Vec<i32>) -> bool {
     for &(idx,val) in &self.regvals {
       if regs[idx] != val { return false };

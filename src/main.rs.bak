@@ -3,11 +3,6 @@ extern crate elf;
 extern crate unicorn;
 extern crate capstone;
 extern crate rand;
-extern crate getopts;
-
-use getopts::Options;
-use std::env;
-
 mod roper;
 
 use rand::{Rng,Generator};
@@ -17,6 +12,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use unicorn::*;
 // use std::io;
+use capstone::instruction::Instructions;
+use capstone::constants::{CsMode,CsArch};
 //use roper::dis::{disas_sec,Inst};
 use roper::thumb::*;
 use roper::util::*;
@@ -27,11 +24,6 @@ use roper::phylostructs::*;
 use roper::evolution::*;
 use roper::ontostructs::*;
 
-
-fn print_usage (program: &str, opts: Options) {
-  let brief = format!("Usage: {} [options]", program);
-  print!("{}", opts.usage(&brief));
-}
 
 fn load_file (path: &str) -> Vec<u8>
 {
@@ -75,30 +67,6 @@ const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
 /* Just a debugging stub */
 fn main() {
-  
-  let args: Vec<String> = env::args().collect();
-  let program = args[0].clone();
-
-  let mut opts = Options::new();
-  opts.optopt("p", "", "set target pattern", "PATTERN");
-  opts.optopt("h", "help", "print this help menu", "");
-  let matches = match opts.parse(&args[1..]) {
-    Ok(m)  => { m },
-    Err(f) => { panic!(f.to_string()) },
-  };
-  if matches.opt_present("h") {
-    print_usage(&program, opts);
-    return;
-  }
-  let rpattern_str = match matches.opt_str("p") {
-    Some(s) => s,
-    None    => "1 _ deba5e12 _ _ 0".to_string(),
-  };
-  let rpattern : RPattern = RPattern::new(&rpattern_str);
-
-  println!("{:?} => {}", rpattern_str, rpattern);
- 
-  /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
   let sample2 = "tomato-RT-N18U-httpd";
   let sample3 = "openssl";
@@ -123,17 +91,21 @@ fn main() {
   for _ in 0..40 { print!("*"); }
   println!("");
 
-  let elf_clumps = reap_gadgets(text_data,
-                                text_addr as u32,
-                                mode);
+  let mut elf_clumps = reap_gadgets(text_data,
+                                    text_addr as u32,
+                                    mode);
 
   let mut params : Params = Params::new();
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
   params.data_addrs = vec![rodata_addr as u32];
-  params.constants  = rpattern.constants();
-  params.io_targets = vec![(vec![0; 16], rpattern)];
+  params.constants = vec![0xdeadbeef,
+                          0x00000001,
+                          0xabbabaab,
+                          0xffffffff,
+                          0x00000020,
+                          0xaaaaaaaa];
 
   let mut rng = rand::thread_rng();
   let mut population = Population::new(&params, &mut rng);
@@ -166,24 +138,16 @@ fn main() {
   println!("rchain1:\n{}\n", rchain1);
   println!("about to eval fitness for r0");
   */
-  let mut i : usize = 0;
-  while population.best_fit() != Some(0) {
+  for i in 0..5000 {
     tournement(&mut population, &mut machinery);
-    i += 1;
+    println!("\nTOURNEMENT {} COMPLETE. BEST:\n{}",
+             i, &(population.best).clone().unwrap());
   }
-  println!("=> {} GENERATIONS", i);
-  println!("=> BEST FIT: {:?}", population.best_fit());
   println!("=> RUNNING BEST:\n");
-           
   add_hooks(&mut machinery.uc);
-  let mut bclone = population.best.unwrap().clone();
-  evaluate_fitness(&mut machinery.uc,
-                   &mut bclone,
-                   &population.params.io_targets);
-  for p in population.params.io_targets.iter() {
-    println!("{}", p.1);
-  }
-  println!("\n{}", &bclone);
+  let r = evaluate_fitness(&mut machinery.uc,
+                           &mut (population.best).unwrap(),
+                           &population.params.io_targets);
   /* 
   let r0 = evaluate_fitness(&mut machinery.uc,
                             &mut rchain0, 

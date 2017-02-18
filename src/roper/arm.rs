@@ -4,7 +4,7 @@
 // * copy of thumb.rs. Edit to match arm requirements. 
 // * shouldn't take long. an hour, tops?
 
-const _DEBUG : u8 = 2;
+const _DEBUG : u8 = 1;
 const MIN_GAD_LEN : usize = 2;
 
 use roper::util::*;
@@ -187,6 +187,7 @@ pub fn is_ctrl (w: u32) -> bool {
   // this leaves out edge cases where PC is directly manipulated
   // but that's ok. we're not aiming for exactness.
   // ** add disas hook for debugging
+  //return false; // let's see what this does
   let res = match what_layout(w) {
     Lay::BX  => true,
     Lay::BR  => true,

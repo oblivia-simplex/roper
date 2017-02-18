@@ -135,7 +135,7 @@ pub fn add_hooks (uc: &mut unicorn::CpuARM) {
 fn err_encode (e: Error) -> ErrorCode {
   // if you need to ask for a ref to the engine, go ahead.
   println!("**** ERROR IN EMULATION ****\n");
-  1 // placeholder. assign int to each error?
+  0x100 // placeholder. assign int to each error?
 }
 
 fn mk_zerostack(n: usize) -> Vec<u8> 
@@ -175,7 +175,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   }
 }
 
-type ErrorCode = i32;
+type ErrorCode = u32;
 #[derive(Debug,Clone)]
 pub struct HatchResult {
   pub registers : Vec<i32>,

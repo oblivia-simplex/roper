@@ -164,6 +164,7 @@ pub struct Chain {
   pub packed: Vec<u8>,
   pub fitness: Option<FIT_INT>,
   pub generation: u32,
+  pub verbose_tag: bool,
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
@@ -175,10 +176,23 @@ impl Display for Chain {
     s.push_str("==================================================\n");
     s.push_str(&format!("Fitness: {:?}\n", self.fitness));
     s.push_str(&format!("Generation: {}\n", self.generation));
-    s.push_str(&format!("Viscosities: {:?}\n", &self.clumps
-                                                  .iter()
-                                                  .map(|ref c| c.visc())
-                                                  .collect::<Vec<i32>>()));
+    s.push_str(&format!("Link ages: {:?}\n", 
+                        &self.clumps
+                             .iter()
+                             .map(|ref c| c.link_age)
+                             .collect::<Vec<i32>>()));
+    s.push_str(&format!("Viscosities: {:?}\n", 
+                        &self.clumps
+                             .iter()
+                             .map(|ref c| c.visc())
+                             .collect::<Vec<i32>>()));
+    s.push_str("Clumps:\n");
+    for clump in &self.clumps {
+      for word in &clump.words {
+        s.push_str(&format!("{:08x} ",word));
+      }
+      s.push_str("\n");
+    }
     s.push_str("Packed:\n");
     let mut j = 0;
     for b in &self.packed {
@@ -199,6 +213,7 @@ impl Default for Chain {
       packed: Vec::new(),
       fitness: None,
       generation: 0,
+      verbose_tag: false,
       i: 0,
     //  ancestral_fitness: Vec::new(),
     }

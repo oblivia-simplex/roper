@@ -45,6 +45,7 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* mutations will only affect the immediate part of the clump */
   /* we'll let crossover handle the rest. */
   if rng.gen::<f32>() > params.mutation_rate { return };
+  println!("*** mutating ***");
   /* Add permutation operation, shuffling immeds */
   if chain.size() == 0 {
     panic!("chain.size() == 0. Why?");
@@ -56,11 +57,9 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
     cl_idx = rng.gen::<usize>() % chain.size();
   }
   let mut clump = chain[cl_idx].clone();
-  if clump.size() == 0 {
-    panic!("Hit an empty clump! Why is that?");
-  }
-  let idx        = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-  let mut_kind : u8 = rng.gen::<u8>() % 3;
+  assert!(clump.size() > 0);
+  let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
+  let mut_kind : u8 = rng.gen::<u8>() % 2;
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
     _ => { /* permutation */
@@ -77,13 +76,13 @@ pub fn mate (parents: &Vec<&Chain>,
              rng:     &mut ThreadRng,
              uc:      &mut CpuARM) -> Vec<Chain> {
   let mut brood = crossover(parents, 
-                            2, //params.brood_size, 
+                            params.brood_size, 
                             params.max_len,
                             rng);
   for s in brood.iter_mut() {
     mutate(s, params, rng)
   }
-  //cull_brood(&mut brood, 2, uc, &params.io_targets);
+  cull_brood(&mut brood, 2, uc, &params.io_targets);
   brood
 }
 
@@ -114,10 +113,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   let mut fit_vec : Vec<FIT_INT> = Vec::new();
   let mut counter_sum = 0;
   for &(ref input, ref target) in io_targets {
-    let result : HatchResult = hatch_chain(uc, &chain.packed, &input);
+    let result : HatchResult = hatch_chain(uc, 
+                                           &chain.packed, 
+                                           &input);
     println!("\n{}", result);
     let counter = result.counter;
-    //println!("\n{}", result);
     if (result.error != None && counter < chain.size()) {
       /* If the chain didn't execute to the end, we know where
        * the weak link is. Drop its viscosity to zero.
@@ -127,10 +127,13 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     counter_sum += counter;
     let output = &result.registers;
     let d = target.distance(output) as FIT_INT;
+    let percent_run = 100.00 * counter as f32 / chain.size() as f32;
     let ft = match result.error {
-      Some(_) => (d*2) - min(d, counter as FIT_INT), 
+      Some(e) => e as FIT_INT + ((d*2) - min(d, counter as FIT_INT)), 
       None    => d as FIT_INT,
     };
+    println!("[*] %{:2.2} run", percent_run);
+    println!("[*] fitness: 0x{:x}",ft);
     fit_vec.push(ft);
     i += 1;
   };
@@ -316,7 +319,8 @@ fn crossover (parents:    &Vec<&Chain>,
     if (child_clumps.len() == 0) {
       panic!("child_clumps.len() == 0. Stopping.");
     }
-    let child : Chain = Chain::new(child_clumps);
+    let mut child : Chain = Chain::new(child_clumps);
+    child.generation = max(mother.generation, father.generation)+1;
     brood.push(child);
   }
   brood
