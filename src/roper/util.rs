@@ -99,8 +99,6 @@ pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
   (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 8.0).tanh())
          .sum::<f32>() / n as f32
 }
-// this is bad. use a sigmoid/step function to flatten differences
-// beyond a certain threshold as "equally bad". avoid overflow. 
 
 pub trait Indexable <T: PartialEq> {
   fn index_of (&self, t: T) -> usize;
@@ -205,6 +203,24 @@ impl Iterator for Mangler {
     Some(self.words[self.rng.gen::<usize>() % self.words.len()]) 
   }
 }
+
+/*
+pub fn ranked_ballot (bins: &Vec<i32>, correct: usize) -> f32 {
+  let s : f32 = 
+    bins.iter()
+        .enumerate()
+        .collect::<(usize,&i32)>()
+        .sort_by_key(|p| p.1) // reverse it tho
+        .iter()
+        .position(|&x| x.0 == correct) as f32 
+      / bins.len() as f32;
+  if s == bins.len() as f32 - 1.0 / bins.len() as f32 {
+    1.0
+  } else {
+    s
+  }
+}
+*/
 
 pub fn max_bin (bins: &Vec<i32>) -> usize {
   let mut mb : usize = 0;

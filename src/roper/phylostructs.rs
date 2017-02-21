@@ -332,6 +332,7 @@ impl <T> Pod <T>{
 pub struct Population  {
   pub deme: Vec<Chain>,
   pub best: Option<Chain>,
+  pub generation: usize,
   pub params: Params,
 }
 
@@ -356,6 +357,7 @@ impl Population {
     Population {
       deme: deme,
       best: None,
+      generation: 0,
       params: (*params).clone(),
     }
   }

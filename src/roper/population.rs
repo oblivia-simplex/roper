@@ -129,6 +129,9 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let result : HatchResult = hatch_chain(uc, 
                                            &chain.packed, 
                                            &input);
+    // need to let hatch_chain choose *which* registers to preload.
+    // input should be a vec of ordered pairs: (reg,value)
+
     //println!("\n{}", result);
     let counter = result.counter;
     if (result.error != None && counter < chain.size()) {
@@ -169,7 +172,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   //** also: assign link fitnesses for clumps < counter?
   let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
                    / fit_vec.len() as f32) as f32;
-  println!("==> FITNESS FOR ALL TARGETS: {}", fitness);
+  //print!("==> FITNESS FOR ALL TARGETS: {}", fitness);
   /* Set link fitness values */
   let counter_avg = counter_sum as f32 / io_targets.len() as f32;
   let c = counter_avg as usize;
@@ -210,13 +213,14 @@ pub fn tournement (population: &mut Population,
     }
     if population.best_fit() == None ||
       population.best_fit() > population.deme[l].fitness {
-      println!(">> updating best. from: {:?}, to: {:?}",
-               population.best_fit(), population.deme[l].fitness);
+      //println!(">> updating best. from: {:?}, to: {:?}",
+      //         population.best_fit(), population.deme[l].fitness);
       if population.deme[l].fitness == None {
         panic!("fitness of population.deme[l] is None!");
       }
       population.set_best(l);
     }
+    //println!("; BEST: {}", population.best_fit().unwrap());
     //println!(">> l = {}", l);
     contestants.push(((population.deme[l]).clone(),l));
   }
@@ -224,14 +228,26 @@ pub fn tournement (population: &mut Population,
   /*
   println!(">> t_size = {}; contestants.len() = {}",
            t_size, contestants.len());
-  println!(">> BEST CONTESTANT FITNESS:  {:?}",
-           &contestants[0].0.fitness);
-  println!(">> WORST CONTESTANT FITNESS: {:?}",
-           &contestants[3].0.fitness);
+  *
+  println!("[{:05}]  {:01.8} | {:01.8} | {:01.8} | {:01.8}  ({:01.8})",
+           population.generation,
+           &contestants[0].0.fitness.unwrap(),
+           &contestants[1].0.fitness.unwrap(),
+           &contestants[2].0.fitness.unwrap(),
+           &contestants[3].0.fitness.unwrap(),
+           population.best_fit().unwrap());
   */
-  if (&contestants[3].0.clumps == &contestants[0].0.clumps) {
-    println!(">> BEST == WORST!");
+  print!("[{:05}] ", population.generation);
+  let mut i = 0;
+  for contestant in contestants.iter() {
+    print!(" {:01.8} ", contestant.0.fitness.unwrap());
+    i += 1;
+    if i < contestants.len() { print!("|") };
+    if i == 2 { print!("|") };
   }
+  println!("  ({:01.8})", population.best_fit().unwrap());
+  population.generation += 1;
+  
   // i don't like these gratuitous clones
   // but let's get it working first, and optimise later
   let (mother,_) = contestants[0].clone();
@@ -243,14 +259,6 @@ pub fn tournement (population: &mut Population,
                        &population.params,
                        rng,
                        uc);
-  /*
-  for i in 0..4 {
-    println!(">> contestant {}\n{}", i, &contestants[i].0);
-  }
-  for i in 0..2 {
-    println!(">> offspring {}\n{}", i, &offspring[i]);
-  }
-  */
   population.deme[grave0] = offspring[0].clone();
   population.deme[grave1] = offspring[1].clone();
 }

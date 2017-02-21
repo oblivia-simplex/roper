@@ -23,7 +23,7 @@ pub enum SelectionMethod {
 pub struct Params {
   pub population_size  : u32,
   pub mutation_rate    : f32,
-  pub max_generations  : u32,
+  pub max_generations  : usize,
   pub selection_method : SelectionMethod,
   pub t_size           : usize,
   pub code             : Vec<u8>,
@@ -47,7 +47,7 @@ pub struct Params {
 impl Default for Params {
   fn default () -> Params {
     Params {
-      population_size:  3000,
+      population_size:  2000,
       mutation_rate:    0.30,
       max_generations:  2000,
       selection_method: SelectionMethod::Tournement,
@@ -111,7 +111,7 @@ pub type IoTargets = Vec<(Vec<i32>,Target)>;
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
   let mut cons : Vec<u32> = Vec::new();
   for &(ref i, ref o) in iot {
-    cons.extend_from_slice(&o.suggest_constants());
+    cons.extend_from_slice(&o.suggest_constants(i));
   }
   cons
 }
@@ -132,13 +132,13 @@ impl Display for Target {
 }
 
 impl Target {
-  pub fn suggest_constants (&self) -> Vec<u32> {
+  pub fn suggest_constants (&self, input: &Vec<i32>) -> Vec<u32> {
     match self {
       &Target::Vote(_) => {
-        let mut rng = rand::thread_rng();
         let mut cons : Vec<u32> = Vec::new();
-        for i in 0..8 {
-          cons.push(rng.gen::<u32>()); 
+        let mut rng = rand::thread_rng();
+        for ut in input {
+          cons.push(rng.gen::<u32>() % (2 * *ut as u32));
         }
         cons
       },
