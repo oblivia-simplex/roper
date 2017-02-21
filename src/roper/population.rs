@@ -350,7 +350,10 @@ fn crossover (parents:    &Vec<&Chain>,
       child_clumps.push(father.clumps[f_i].clone());
       i += 1;
     } 
-    if i > 0 { child_clumps[i-1].link_age = 0 };
+    if i > 0 { 
+      child_clumps[i-1].link_age = 0;
+      child_clumps[i-1].link_fit = None;
+    };
     /***********************************************************/
     for m in m_n..mother.size() {
       if i >= max_len { break };
