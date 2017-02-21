@@ -26,7 +26,7 @@ use roper::hatchery::{add_hooks,Sec,HatchResult,hatch_chain};
 use roper::phylostructs::*;
 use roper::evolution::*;
 use roper::ontostructs::*;
-
+use roper::csv_reader::*;
 
 fn print_usage (program: &str, opts: Options) {
   let brief = format!("Usage: {} [options]", program);
@@ -81,6 +81,8 @@ fn main() {
 
   let mut opts = Options::new();
   opts.optopt("p", "", "set target pattern", "PATTERN");
+  opts.optopt("d", "", "set data path", "PATH");
+  opts.optopt("g", "", "set fitness goal (default 0)", "POSITIVE FLOAT <= 1");
   opts.optopt("h", "help", "print this help menu", "");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
@@ -90,13 +92,27 @@ fn main() {
     print_usage(&program, opts);
     return;
   }
-  let rpattern_str = match matches.opt_str("p") {
-    Some(s) => s,
-    None    => "1 _ deba5e12 _ _ 0".to_string(),
+  let rpattern_str = matches.opt_str("p");
+  let data_path    = matches.opt_str("d");
+  let goal : f32 = match matches.opt_str("g") {
+    None => 0.0,
+    Some(s) => s.parse::<f32>()
+                .expect("Error parsing fitness goal"),
   };
-  let rpattern : RPattern = RPattern::new(&rpattern_str);
-
-  println!("{:?} => {}", rpattern_str, rpattern);
+  println!(">> goal = {}", goal);
+  let io_targets : IoTargets =
+    match (rpattern_str, data_path) {
+      (Some(s),None) => vec![(vec![1;16], 
+                              Target::Exact(
+                                RPattern::new(&s)
+                                ))],
+      (None,Some(s)) => process_data2(&s,4), // don't hardcode numfields. infer by analysing lines. 
+      _              => {
+        print_usage(&program, opts);
+        return;
+      },
+    };
+  
  
   /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
@@ -120,54 +136,32 @@ fn main() {
   
   let mode = MachineMode::ARM;
 
-  for _ in 0..40 { print!("*"); }
-  println!("");
+  let iris_data = sample_root.clone() + "/iris.data";
 
   let elf_clumps = reap_gadgets(text_data,
                                 text_addr as u32,
                                 mode);
 
+  let constants = suggest_constants(&io_targets);
   let mut params : Params = Params::new();
+
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
-  params.data_addrs = vec![rodata_addr as u32];
-  params.constants  = rpattern.constants();
-  params.io_targets = vec![(vec![0; 16], rpattern)];
+  params.data_addrs   = vec![rodata_addr as u32];
+  params.constants    = constants;
+  params.io_targets   = io_targets;
+  params.fit_goal     = goal;
 
   let mut rng = rand::thread_rng();
   let mut population = Population::new(&params, &mut rng);
 
-/*  let mut mangler : Mangler = Mangler::new(&params.constants);
-  let mut machinery = Machinery { 
-                        rng: rand::thread_rng(),
-                        uc:  roper::init_engine(&elf_addr_data, mode),
-                        mangler: mangler,
-                      };
-                      */
   let mut machinery = Machinery::new(&elf_path,
                                      mode,
                                      &params.constants);
 
-
-//  println!("POPULATION SIZE:\n{}", population.size());
-/* tournement broken 
-  let mut rchain0 = random_chain(&mut elf_clumps,
-                                 params.min_start_len,
-                                 params.max_start_len,
-                                 &mut machinery.mangler,
-                                 &mut machinery.rng);
-  let mut rchain1 = random_chain(&mut elf_clumps,
-                                 params.min_start_len,
-                                 params.max_start_len,
-                                 &mut machinery.mangler,
-                                 &mut machinery.rng); 
-  println!("rchain0:\n{}\n", rchain0);
-  println!("rchain1:\n{}\n", rchain1);
-  println!("about to eval fitness for r0");
-  */
   let mut i : usize = 0;
-  while population.best_fit() != Some(0) {
+  while population.best_fit() == None || population.best_fit() > Some(params.fit_goal) {
     tournement(&mut population, &mut machinery);
     i += 1;
   }
@@ -184,25 +178,4 @@ fn main() {
     println!("{}", p.1);
   }
   println!("\n{}", &bclone);
-  /* 
-  let r0 = evaluate_fitness(&mut machinery.uc,
-                            &mut rchain0, 
-                            &params.io_targets);
-  println!("evaluate_fitness for rchain0 -> {:?}", r0);
-  println!("rchain0:\n{}\n", rchain0);
-  let r1 = evaluate_fitness(&mut machinery.uc, 
-                            &mut rchain1, 
-                            &params.io_targets);
-  println!("evaluate_fitness for rchain1 -> {:?}", r1);
-  println!("rchain1:\n{}\n", rchain1);
-  println!("*** M A T I N G ***\n");
-  let spawn : Vec<Chain> = mate(&vec![&rchain0, &rchain1],
-                                &params,
-                                &mut machinery.rng,
-                                &mut machinery.uc);
-
-  for child in &spawn {
-    println!("child:\n{}", child);
-  }
-  *****/
 }

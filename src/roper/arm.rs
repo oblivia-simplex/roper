@@ -92,7 +92,7 @@ fn what_layout (w: u32) -> Lay
   };
   for &(mask,sig,lay) in MASK_VEC.iter() {
     if mask & w == sig { 
-      if _DEBUG >= 3 { println!("{:?}",lay); }
+      if _DEBUG >= 3 || lay == Lay::SWI { println!("{:08x} -> {:?}", w, lay); }
       return lay 
     }
   }
@@ -190,10 +190,10 @@ pub fn is_ctrl (w: u32) -> bool {
   //return false; // let's see what this does
   let res = match what_layout(w) {
     Lay::BX  => true,
-    Lay::BR  => true,
-    Lay::BDT => bdt_stack_direction(w) != 0,
+    //Lay::BR  => true,
+    //Lay::BDT => bdt_stack_direction(w) != 0,
     Lay::SWI => true,
-    Lay::UNDEF => true,
+    //Lay::UNDEF => true,
     Lay::RAWDATA => true,
     Lay::DP  => special_reg(dp_dst_reg(w)),
     _ => false,

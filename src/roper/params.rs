@@ -1,11 +1,13 @@
 /**
  * Constants and parameters
  */
-use rand::Rng;
+extern crate rand;
+use rand::*;
 use unicorn::Mode;
 use capstone::CsMode;
 use roper::util::{distance};
 use std::fmt::{Display,format,Formatter,Result};
+use std::collections::HashMap;
 
 type dword = u32;
 type halfword = u16;
@@ -33,6 +35,8 @@ pub struct Params {
   pub max_start_len    : usize,
   pub max_len          : usize,
   pub constants        : Vec<u32>,
+  pub training_ht      : HashMap<Vec<i32>,usize>,
+  pub fit_goal         : f32,
 /*  pub ro_data_data     : Vec<u8>,
   pub ro_data_addr     : u32,
   pub text_data        : Vec<u8>,
@@ -56,11 +60,9 @@ impl Default for Params {
       min_start_len:    2,
       max_start_len:    16,
       max_len:          256,
-      io_targets:       vec![(vec![0; 16], 
-                              RPattern { regvals: vec![(0,1),
-                                                       (3,0xdeadbeef),
-                                                       (7,0x0000baab)]
-                                       })],
+      training_ht:      HashMap::new(),
+      io_targets:       Vec::new(),
+      fit_goal:         0.0,  
     //                         (vec![1; 16],
       //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
@@ -104,9 +106,49 @@ impl Default for MachineMode {
   fn default() -> MachineMode { MachineMode::THUMB }
 }
 
-pub type IoTargets = Vec<(Vec<i32>,RPattern)>;
+pub type IoTargets = Vec<(Vec<i32>,Target)>;
 
-#[derive(Debug,Clone,PartialEq)]
+pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
+  let mut cons : Vec<u32> = Vec::new();
+  for &(ref i, ref o) in iot {
+    cons.extend_from_slice(&o.suggest_constants());
+  }
+  cons
+}
+
+#[derive(Eq,PartialEq,Debug,Clone)]
+pub enum Target {
+  Exact(RPattern),
+  Vote(usize),
+}
+
+impl Display for Target {
+  fn fmt (&self, f: &mut Formatter) -> Result {
+    match self {
+      &Target::Exact(ref rp) => rp.fmt(f),
+      &Target::Vote(i)   => i.fmt(f),
+    }
+  }
+}
+
+impl Target {
+  pub fn suggest_constants (&self) -> Vec<u32> {
+    match self {
+      &Target::Vote(_) => {
+        let mut rng = rand::thread_rng();
+        let mut cons : Vec<u32> = Vec::new();
+        for i in 0..8 {
+          cons.push(rng.gen::<u32>()); 
+        }
+        cons
+      },
+      &Target::Exact(ref r) => r.constants(),
+    }
+  }
+}
+
+
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct RPattern { regvals: Vec<(usize,i32)> }
 impl RPattern {
   pub fn new (s: &str) -> RPattern {
@@ -149,7 +191,7 @@ impl RPattern {
     }
     (ivec, ovec)
   }
-  pub fn distance (&self, regs: &Vec<i32>) -> i32 {
+  pub fn distance (&self, regs: &Vec<i32>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
     distance(&i, &o)
   }

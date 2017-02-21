@@ -76,7 +76,7 @@ pub fn hexvec (v: &Vec<i32>) -> String{
 }
 
 // can be used as part of a crude fitness function
-pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
+pub fn distance2 (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
   assert_eq!(x.len(), y.len());
   let n = x.len();
   ((0..n).map(|i| {
@@ -91,6 +91,13 @@ pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
     };
     min(0xFFFF, (xx - yy).abs())
   }).sum::<i64>() & 0xEFFFFFFF) as i32
+}
+
+pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+  assert_eq!(x.len(), y.len());
+  let n = x.len();
+  (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 8.0).tanh())
+         .sum::<f32>() / n as f32
 }
 // this is bad. use a sigmoid/step function to flatten differences
 // beyond a certain threshold as "equally bad". avoid overflow. 
@@ -192,8 +199,24 @@ impl Mangler {
 impl Iterator for Mangler {
   type Item = u32;
   fn next(&mut self) -> Option<u32> {
-    Some(mang(self.words[self.rng.gen::<usize>() % 
+    /*Some(mang(self.words[self.rng.gen::<usize>() % 
               self.words.len()], &mut self.rng))
+              */
+    Some(self.words[self.rng.gen::<usize>() % self.words.len()]) 
   }
 }
+
+pub fn max_bin (bins: &Vec<i32>) -> usize {
+  let mut mb : usize = 0;
+  let mut mx : i32 = bins[0];
+  for i in 0..bins.len() {
+    if bins[i] > mx { 
+      mx = bins[i];
+      mb = i;
+    }
+  }
+//  println!(">> in max_bin(), mb = {}", mb);
+  mb
+}
+
 

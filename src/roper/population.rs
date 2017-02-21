@@ -23,6 +23,7 @@ use roper::util::{pack_word32le,
                   u8s_to_u16s,
                   u8s_to_u32s,
                   distance,
+                  max_bin,
                   mang,
                   Mangler,
                   Indexable,
@@ -32,9 +33,16 @@ use roper::thumb::{reap_thumb_gadgets};
 use roper::arm::{reap_arm_gadgets};
 use roper::ontostructs::*;
 
+const LINK_FIT_ALPHA : f32 = 0.4;
 
-fn calc_link_fit (p_fit: u32, c_fit: u32, alpha: u32) -> u32 {
-  (p_fit * alpha) + (c_fit * (MAX_FIT - alpha))
+fn calc_link_fit (clump: &Clump, c_fit: f32) -> Option<f32>{
+  Some(match clump.link_fit {
+    Some(p_fit) => {
+      let alpha = LINK_FIT_ALPHA;
+      MAX_FIT * (p_fit * alpha) + (c_fit * (1.0 - alpha)) 
+    },
+    None => c_fit,
+  })
 }
 /* Try dropping the splice-point clump. This will do two things:
  * 1. provide a mechanism for ridding ourselves of bad clumps
@@ -45,7 +53,7 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* mutations will only affect the immediate part of the clump */
   /* we'll let crossover handle the rest. */
   if rng.gen::<f32>() > params.mutation_rate { return };
-  println!("*** mutating ***");
+//  println!("*** mutating ***");
   /* Add permutation operation, shuffling immeds */
   if chain.size() == 0 {
     panic!("chain.size() == 0. Why?");
@@ -89,13 +97,15 @@ pub fn mate (parents: &Vec<&Chain>,
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &mut Chain, 
                          io_targets: &IoTargets)
-                         -> Option<FIT_INT>
+                         -> Option<f32>
 {
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
     println!(">> EMPTY CHAIN");
     return None;
   }
+
+  let outregs = 3; // don't hardcode this! 
 
   /* Set hooks at return addresses */
   let mut hooks : Vec<uc_hook> = Vec::new();
@@ -110,13 +120,16 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   }
   
   let mut i : usize = 0;
-  let mut fit_vec : Vec<FIT_INT> = Vec::new();
+  let mut fit_vec : Vec<f32> = Vec::new();
   let mut counter_sum = 0;
+  /* This loop would probably be easy to parallelize */
+  /* So long as each thread can be provided with its */
+  /* own instance of the emulator.                   */
   for &(ref input, ref target) in io_targets {
     let result : HatchResult = hatch_chain(uc, 
                                            &chain.packed, 
                                            &input);
-    println!("\n{}", result);
+    //println!("\n{}", result);
     let counter = result.counter;
     if (result.error != None && counter < chain.size()) {
       /* If the chain didn't execute to the end, we know where
@@ -126,18 +139,27 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     }
     counter_sum += counter;
     let output = &result.registers;
-    let d = target.distance(output) as FIT_INT;
-    let percent_run = 100.00 * counter as f32 / chain.size() as f32;
-    let ft = match result.error {
-      Some(e) => e as FIT_INT + ((d*2) - min(d, counter as FIT_INT)), 
-      None    => d as FIT_INT,
+    let d : f32 = match target {
+      &Target::Exact(ref t) => t.distance(output),
+      &Target::Vote(t)  => if t == max_bin(&(output[4..outregs+4].to_vec())) {
+        0.0 
+      } else {
+        1.0
+      },
     };
-    println!("[*] %{:2.2} run", percent_run);
-    println!("[*] fitness: 0x{:x}",ft);
+    //println!("**** d = {} ",d);
+    let ratio_run = f32::min(1.0, counter as f32 / chain.size() as f32);
+    let p = if ratio_run > 1.0 {1.0} else {ratio_run};
+    let ft = match result.error {
+      Some(e) => f32::min(1.0, (d + (1.0 - ratio_run)/2.0)),
+      None    => d,
+    };
+    //println!("[*] target {}/{}", i, io_targets.len());
+    //println!("[*] %{:2.2} run", ratio_run * 100.0);
+    //println!("[*] fitness for target: {}",ft);
     fit_vec.push(ft);
     i += 1;
   };
-  let counter_avg = counter_sum as f32 / io_targets.len() as f32;
   for hook in &hooks { uc.remove_hook(*hook); }
 
   //** improve the fitness calculation. take into consideration:
@@ -145,9 +167,20 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   //** error code
   //** and normalize somehow.
   //** also: assign link fitnesses for clumps < counter?
-  let fitness = (fit_vec.iter().map(|&x| x).sum::<FIT_INT>() 
-                   / io_targets.len() as FIT_INT) as FIT_INT;
-  chain.set_fitness(fitness as FIT_INT);
+  let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
+                   / fit_vec.len() as f32) as f32;
+  println!("==> FITNESS FOR ALL TARGETS: {}", fitness);
+  /* Set link fitness values */
+  let counter_avg = counter_sum as f32 / io_targets.len() as f32;
+  let c = counter_avg as usize;
+  let mut i = 0;
+  for clump in &mut chain.clumps {
+    if i > c { break };
+    clump.link_fit  = calc_link_fit(clump, fitness);
+    clump.viscosity = calc_viscosity(clump);
+    i += 1;
+  }
+  chain.set_fitness(fitness);
   //println!("chain.fitness = {:x}", chain.fitness.unwrap());
   Some(fitness)
 }
@@ -241,10 +274,15 @@ fn cull_brood (brood: &mut Vec<Chain>,
   }
 }
   
-fn set_viscosity (clump: &mut Clump) -> i32 {
-  clump.viscosity = clump.link_fit as i32 * 
-    (min(clump.link_age * RIPENING_FACTOR, MAX_VISC));
-  clump.viscosity
+fn calc_viscosity (clump: &Clump) -> i32 {
+  match clump.link_fit {
+    Some(x) => {
+      assert!(x <= 1.0);
+      assert!(x >= 0.0);
+      MAX_VISC - (MAX_VISC as f32 * x) as i32
+    },
+    None    => MAX_VISC/2,
+  }
 }
 
 fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {

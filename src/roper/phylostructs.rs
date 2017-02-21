@@ -16,7 +16,7 @@ pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
 pub const VISC_DROP_THRESH : i32 = 10;
 pub const RIPENING_FACTOR : i32 = 4;
-pub const MAX_FIT : FIT_INT = 0xFFFFFFFF;
+pub const MAX_FIT : f32 = 1.0;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
 pub type FIT_INT = u32;
@@ -31,7 +31,7 @@ pub struct Clump {
   pub words:       Vec<u32>,
   pub viscosity:   i32,
   pub link_age:    i32,
-  pub link_fit:    FIT_INT,
+  pub link_fit:    Option<f32>,
 }
 
 impl Display for Clump {
@@ -44,7 +44,7 @@ impl Display for Clump {
     s.push_str(&format!("ret_offset: 0x{:x}\n", self.ret_offset));
     s.push_str(&format!("viscosity:  %{}\n", vp * 100.0));
     s.push_str(&format!("link_age:   {}\n", self.link_age));
-    s.push_str(&format!("link_fit:   {}\n", self.link_fit));
+    s.push_str(&format!("link_fit:   {:?}\n", self.link_fit));
     s.push_str(&format!("ret_addr:   {:08x}\n", self.ret_addr));
     s.push_str(         "words:     ");
     for w in &self.words {
@@ -65,7 +65,7 @@ impl Default for Clump {
       words:      Vec::new(),
       viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
       link_age:   0,
-      link_fit:   (MAX_FIT/2),
+      link_fit:   None, // (MAX_FIT/2),
     }
   }
 }
@@ -86,7 +86,7 @@ impl Clump {
     self.words[0]
   }
   pub fn sicken (&mut self) {
-    self.viscosity /= 2;
+    self.link_fit = Some(MAX_FIT);
   }
 }
 pub trait Stack <T> {
@@ -162,7 +162,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 pub struct Chain {
   pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
   pub packed: Vec<u8>,
-  pub fitness: Option<FIT_INT>,
+  pub fitness: Option<f32>,
   pub generation: u32,
   pub verbose_tag: bool,
   i: usize,
@@ -181,6 +181,16 @@ impl Display for Chain {
                              .iter()
                              .map(|ref c| c.link_age)
                              .collect::<Vec<i32>>()));
+    s.push_str(&format!("Link fitnesses: {:?}\n", 
+                        &self.clumps
+                             .iter()
+                             .map(|ref c| {
+                                   match c.link_fit {
+                                     Some(x) => x,
+                                     None    => 1.0,
+                                   }
+                              })
+                              .collect::<Vec<f32>>()));
     s.push_str(&format!("Viscosities: {:?}\n", 
                         &self.clumps
                              .iter()
@@ -270,7 +280,7 @@ impl Chain {
   pub fn size (&self) -> usize {
     self.clumps.len()
   }
-  pub fn set_fitness (&mut self, n: FIT_INT) {
+  pub fn set_fitness (&mut self, n: f32) {
     self.fitness = Some(n);
   }
   pub fn excise (&mut self, idx: usize) {
@@ -330,7 +340,10 @@ impl Population {
               rng: &mut rand::ThreadRng) -> Population {
     let mut clumps = reap_gadgets(&params.code, 
                                   params.code_addr, 
-                                  DEFAULT_MODE);
+                                  MachineMode::ARM);
+    clumps.extend_from_slice(&reap_gadgets(&params.code,
+                                           params.code_addr,
+                                           MachineMode::THUMB));
     let mut data_pool  = Mangler::new(&params.constants);
     let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
@@ -349,7 +362,7 @@ impl Population {
   pub fn size (&self) -> usize {
     self.deme.len()
   }
-  pub fn best_fit (&self) -> Option<FIT_INT> {
+  pub fn best_fit (&self) -> Option<f32> {
     match self.best {
       Some(ref x) => x.fitness,
       _           => None,
