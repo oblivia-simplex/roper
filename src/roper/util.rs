@@ -181,6 +181,16 @@ pub fn mang (ux: u32, rng: &mut ThreadRng) -> u32 {
     18 => x >> 2,
     19 => x >> 4,
     20 => rng.gen::<i32>(),
+    21 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    22 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    23 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    24 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    25 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    26 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    27 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    28 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    29 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
+    30 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
     _  => x,
   };
   r as u32
