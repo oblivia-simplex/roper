@@ -251,7 +251,6 @@ pub fn tournement (population: &mut Population,
   // but let's get it working first, and optimise later
   let (mother,_) = contestants[0].clone();
   let (father,_) = if rng.gen::<f32>() < population.params.cuck_rate {
-    println!("** CUCKOO! **");
     (random_chain(&population.primordial_ooze,
                   population.params.min_start_len,
                   population.params.max_start_len,
