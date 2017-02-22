@@ -168,7 +168,7 @@ pub struct Chain {
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
-  // the destructiveness of the crossover operator
+  // the destructiveness of the shufflefuck operator
 }
 impl Display for Chain {
   fn fmt (&self, f: &mut Formatter) -> Result {
@@ -328,12 +328,13 @@ impl <T> Pod <T>{
   }
 }
 */
-#[derive(Debug)]
 pub struct Population  {
   pub deme: Vec<Chain>,
   pub best: Option<Chain>,
   pub generation: usize,
   pub params: Params,
+  pub constants_pool: Mangler,
+  pub primordial_ooze: Vec<Clump>,
 }
 
 impl Population {
@@ -359,6 +360,8 @@ impl Population {
       best: None,
       generation: 0,
       params: (*params).clone(),
+      primordial_ooze: clumps,
+      constants_pool: data_pool,
     }
   }
   pub fn size (&self) -> usize {

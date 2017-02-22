@@ -92,7 +92,7 @@ fn what_layout (w: u32) -> Lay
   };
   for &(mask,sig,lay) in MASK_VEC.iter() {
     if mask & w == sig { 
-      if _DEBUG >= 3 || lay == Lay::SWI { println!("{:08x} -> {:?}", w, lay); }
+      if _DEBUG >= 3 { println!("{:08x} -> {:?}", w, lay); }
       return lay 
     }
   }

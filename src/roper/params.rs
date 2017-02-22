@@ -5,7 +5,8 @@ extern crate rand;
 use rand::*;
 use unicorn::Mode;
 use capstone::CsMode;
-use roper::util::{distance};
+use roper::util::{arith_distance,
+                  hamming_distance};
 use std::fmt::{Display,format,Formatter,Result};
 use std::collections::HashMap;
 
@@ -43,6 +44,7 @@ pub struct Params {
   pub text_addr        : u32,
   */
   pub io_targets       : IoTargets,
+  pub cuck_rate      : f32,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -66,6 +68,7 @@ impl Default for Params {
     //                         (vec![1; 16],
       //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
+      cuck_rate:      0.15,
     }
     // io_targets needs its own datatype. as it stands, it's kind
     // of awkward. 
@@ -193,7 +196,7 @@ impl RPattern {
   }
   pub fn distance (&self, regs: &Vec<i32>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
-    distance(&i, &o)
+    hamming_distance(&i, &o)
   }
 }
 pub const MAXPATLEN : usize = 12;

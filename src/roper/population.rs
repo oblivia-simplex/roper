@@ -22,7 +22,6 @@ use roper::util::{pack_word32le,
                   pack_word32le_vec,
                   u8s_to_u16s,
                   u8s_to_u32s,
-                  distance,
                   max_bin,
                   mang,
                   Mangler,
@@ -51,7 +50,7 @@ fn calc_link_fit (clump: &Clump, c_fit: f32) -> Option<f32>{
 
 fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* mutations will only affect the immediate part of the clump */
-  /* we'll let crossover handle the rest. */
+  /* we'll let shufflefuck handle the rest. */
   if rng.gen::<f32>() > params.mutation_rate { return };
 //  println!("*** mutating ***");
   /* Add permutation operation, shuffling immeds */
@@ -83,7 +82,7 @@ pub fn mate (parents: &Vec<&Chain>,
              params:  &Params, 
              rng:     &mut ThreadRng,
              uc:      &mut CpuARM) -> Vec<Chain> {
-  let mut brood = crossover(parents, 
+  let mut brood = shufflefuck(parents, 
                             params.brood_size, 
                             params.max_len,
                             rng);
@@ -251,7 +250,16 @@ pub fn tournement (population: &mut Population,
   // i don't like these gratuitous clones
   // but let's get it working first, and optimise later
   let (mother,_) = contestants[0].clone();
-  let (father,_) = contestants[1].clone();
+  let (father,_) = if rng.gen::<f32>() < population.params.cuck_rate {
+    println!("** CUCKOO! **");
+    (random_chain(&population.primordial_ooze,
+                  population.params.min_start_len,
+                  population.params.max_start_len,
+                  &mut population.constants_pool,
+                  &mut rng), 0)
+  } else { 
+    contestants[1].clone()
+  };
   let (_,grave0) = contestants[2];
   let (_,grave1) = contestants[3];
   let parents : Vec<&Chain> = vec![&mother,&father];
@@ -262,7 +270,6 @@ pub fn tournement (population: &mut Population,
   population.deme[grave0] = offspring[0].clone();
   population.deme[grave1] = offspring[1].clone();
 }
-
 
 fn cull_brood (brood: &mut Vec<Chain>, 
                n: usize,
@@ -310,7 +317,7 @@ fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
   spin.sample(rng) 
 }
 
-fn crossover (parents:    &Vec<&Chain>, 
+fn shufflefuck (parents:    &Vec<&Chain>, 
               brood_size: usize,
               max_len:    usize,
               rng:        &mut ThreadRng) -> Vec<Chain> {

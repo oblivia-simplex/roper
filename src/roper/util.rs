@@ -93,10 +93,18 @@ pub fn distance2 (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
   }).sum::<i64>() & 0xEFFFFFFF) as i32
 }
 
-pub fn distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+pub fn hamming_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
   assert_eq!(x.len(), y.len());
   let n = x.len();
-  (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 8.0).tanh())
+  (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 16.0).tanh())
+         .sum::<f32>() / n as f32
+}
+
+pub fn arith_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+  assert_eq!(x.len(), y.len());
+  let n = x.len();
+  (0..n).map(|i| ((x[i].abs() - y[i].abs()) as f32 
+                  / 4096 as f32).abs().tanh())
          .sum::<f32>() / n as f32
 }
 
