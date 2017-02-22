@@ -236,10 +236,27 @@ pub fn tournement (population: &mut Population,
            &contestants[3].0.fitness.unwrap(),
            population.best_fit().unwrap());
   */
+  let mut cflag = false;
+  let (mother,_) = contestants[0].clone();
+  let (father,_) = if rng.gen::<f32>() < population.params.cuck_rate {
+    cflag = true;
+    (random_chain(&population.primordial_ooze,
+                  population.params.min_start_len,
+                  population.params.max_start_len,
+                  &mut population.constants_pool,
+                  &mut rng), 0)
+  } else { 
+    contestants[1].clone()
+  };
+
   print!("[{:05}] ", population.generation);
   let mut i = 0;
   for contestant in contestants.iter() {
-    print!(" {:01.8} ", contestant.0.fitness.unwrap());
+    if (i == 1 && cflag) { 
+      print!(" ?????????? ");
+    } else {
+      print!(" {:01.8} ", contestant.0.fitness.unwrap());
+    }
     i += 1;
     if i < contestants.len() { print!("|") };
     if i == 2 { print!("|") };
@@ -249,16 +266,6 @@ pub fn tournement (population: &mut Population,
   
   // i don't like these gratuitous clones
   // but let's get it working first, and optimise later
-  let (mother,_) = contestants[0].clone();
-  let (father,_) = if rng.gen::<f32>() < population.params.cuck_rate {
-    (random_chain(&population.primordial_ooze,
-                  population.params.min_start_len,
-                  population.params.max_start_len,
-                  &mut population.constants_pool,
-                  &mut rng), 0)
-  } else { 
-    contestants[1].clone()
-  };
   let (_,grave0) = contestants[2];
   let (_,grave1) = contestants[3];
   let parents : Vec<&Chain> = vec![&mother,&father];
