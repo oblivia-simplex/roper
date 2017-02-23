@@ -76,8 +76,9 @@ pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<i32> {
 pub fn set_registers (uc: &unicorn::Unicorn, regs: &Vec<i32>) {
   let n : usize = regs.len();
   assert!(n <= REGISTERS.len());
-  for i in 0..n {
-    uc.reg_write_i32(REGISTERS[i].to_i32(), regs[i]);
+  for i in 0..REGISTERS.len() {
+    let val = if i < n { regs[i] } else { 0 };
+    uc.reg_write_i32(REGISTERS[i].to_i32(), val);
   }
 }
 /**
