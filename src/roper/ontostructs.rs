@@ -2,7 +2,7 @@ extern crate unicorn;
 extern crate rand;
 extern crate elf;
 
-use elf::*;
+//use elf::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
