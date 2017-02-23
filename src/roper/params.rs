@@ -44,7 +44,8 @@ pub struct Params {
   pub text_addr        : u32,
   */
   pub io_targets       : IoTargets,
-  pub cuck_rate      : f32,
+  pub cuck_rate        : f32,
+  pub verbose          : bool,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -68,7 +69,8 @@ impl Default for Params {
     //                         (vec![1; 16],
       //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
-      cuck_rate:      0.15,
+      cuck_rate:        0.15,
+      verbose:          false,
     }
     // io_targets needs its own datatype. as it stands, it's kind
     // of awkward. 

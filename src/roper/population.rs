@@ -95,7 +95,8 @@ pub fn mate (parents: &Vec<&Chain>,
 
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &mut Chain, 
-                         io_targets: &IoTargets)
+                         io_targets: &IoTargets,
+                         verbose: bool)
                          -> Option<f32>
 {
   /* Empty chains can be discarded immediately */
@@ -125,11 +126,17 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
   for &(ref input, ref target) in io_targets {
+    if verbose {
+      print!("\n");
+      for _ in 0..80 { print!("="); };
+      println!("\n==> Evaluating {:?}", input);
+    };
     let result : HatchResult = hatch_chain(uc, 
                                            &chain.packed, 
                                            &input);
     // need to let hatch_chain choose *which* registers to preload.
     // input should be a vec of ordered pairs: (reg,value)
+    if verbose { print!("\n{}", result); }
 
     //println!("\n{}", result);
     let counter = result.counter;
@@ -140,21 +147,29 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
       chain[counter].sicken();
     }
     counter_sum += counter;
-    let output = &result.registers;
+    let output   = &result.registers;
+    let final_pc = result.registers[15];
     let d : f32 = match target {
       &Target::Exact(ref t) => t.distance(output),
-      &Target::Vote(t)  => if t == max_bin(&(output[4..outregs+4].to_vec())) {
-        0.0 
-      } else {
-        1.0
+      &Target::Vote(t)  => {
+        let b = max_bin(&(output[4..outregs+4].to_vec()));
+        if verbose {
+          println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
+        };
+        if t == b {
+          0.0 
+        } else {
+          1.0
+        }
       },
-    };
+    } + if final_pc == 0 { 0.0 } else { 0.1 };
+    // penalty for not landing on address 0
     //println!("**** d = {} ",d);
     let ratio_run = f32::min(1.0, counter as f32 / chain.size() as f32);
     let p = if ratio_run > 1.0 {1.0} else {ratio_run};
     let ft = match result.error {
       Some(e) => f32::min(1.0, (d + (1.0 - ratio_run)/2.0)),
-      None    => d,
+      None    => f32::min(1.0, d),
     };
     //println!("[*] target {}/{}", i, io_targets.len());
     //println!("[*] %{:2.2} run", ratio_run * 100.0);
@@ -208,7 +223,8 @@ pub fn tournement (population: &mut Population,
     if (population.deme[l].fitness == None) {
       evaluate_fitness(&mut uc, 
                        &mut population.deme[l], 
-                       &population.params.io_targets);
+                       &population.params.io_targets,
+                       population.params.verbose);
     }
     if population.best_fit() == None ||
       population.best_fit() > population.deme[l].fitness {
@@ -286,7 +302,7 @@ fn cull_brood (brood: &mut Vec<Chain>,
   for spawn in brood.iter_mut() {
     // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
-    evaluate_fitness(uc, &mut *spawn, io_targets); 
+    evaluate_fitness(uc, &mut *spawn, io_targets, false); 
   }
   brood.sort();
   /* Now eliminate the least fit */

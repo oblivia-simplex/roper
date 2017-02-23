@@ -171,9 +171,11 @@ fn main() {
            
   add_hooks(&mut machinery.uc);
   let mut bclone = population.best.unwrap().clone();
+  population.params.verbose = true;
   evaluate_fitness(&mut machinery.uc,
                    &mut bclone,
-                   &population.params.io_targets);
+                   &population.params.io_targets,
+                   population.params.verbose);
   for p in population.params.io_targets.iter() {
     println!("{}", p.1);
   }
