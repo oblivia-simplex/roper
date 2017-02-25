@@ -5,7 +5,7 @@ extern crate elf;
 use elf::*;
 use unicorn::*; //{Cpu, CpuARM, uc_handle};
 use roper::util::{disas,get_word32le, get_word16le, hexvec};
-use roper::params::MachineMode;
+use roper::phylostructs::MachineMode;
 use std::fmt::{Display,format,Formatter,Result};
 //use roper::hooks::*;
 //use roper::unitools::*;

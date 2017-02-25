@@ -7,6 +7,9 @@ use std::io::{BufReader,BufRead};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{RwLock,RwLockReadGuard};
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+
 
 use rand::distributions::*;
 use rand::Rng;
@@ -15,7 +18,6 @@ use unicorn::*;
  
 use std::cmp::*;
 
-use roper::params::*;
 use roper::phylostructs::*;
 use roper::hatchery::*;
 use roper::util::{pack_word32le,
@@ -202,6 +204,17 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   Some(fitness)
 }
 
+pub fn append_to_csv(path: &str, gen: usize, fit: f32) {
+  let row = format!("{},{}\n", gen, fit);
+  let mut file = OpenOptions::new()
+                            .append(true)
+                            .create(true)
+                            .open(path)
+                            .unwrap();
+  file.write(row.as_bytes());
+  file.flush();
+}
+
 pub fn tournement (population: &mut Population,
                    machinery: &mut Machinery) {
   let mut lots : Vec<usize> = Vec::new();
@@ -211,9 +224,14 @@ pub fn tournement (population: &mut Population,
   if population.best == None {
     population.best = Some(population.deme[0].clone());
   }
-  let t_size = population.params.t_size;
+  let mut t_size = population.params.t_size;
   let p_size = population.size();
+  let mut cflag = false;
 //  let io_targets = &(population.params.io_targets);
+  if rng.gen::<f32>() < population.params.cuck_rate {
+    cflag = true;
+    t_size -= 1;
+  }
   for _ in 0..t_size {
     let mut l: usize = rng.gen::<usize>() % p_size;
     while lots.contains(&l) {
@@ -234,28 +252,18 @@ pub fn tournement (population: &mut Population,
         panic!("fitness of population.deme[l] is None!");
       }
       population.set_best(l);
+      append_to_csv(&population.params.csv_path,
+                     population.generation,
+                     population.deme[l].fitness.unwrap());
     }
     //println!("; BEST: {}", population.best_fit().unwrap());
     //println!(">> l = {}", l);
     contestants.push(((population.deme[l]).clone(),l));
   }
   contestants.sort();
-  /*
-  println!(">> t_size = {}; contestants.len() = {}",
-           t_size, contestants.len());
-  *
-  println!("[{:05}]  {:01.8} | {:01.8} | {:01.8} | {:01.8}  ({:01.8})",
-           population.generation,
-           &contestants[0].0.fitness.unwrap(),
-           &contestants[1].0.fitness.unwrap(),
-           &contestants[2].0.fitness.unwrap(),
-           &contestants[3].0.fitness.unwrap(),
-           population.best_fit().unwrap());
-  */
-  let mut cflag = false;
+  
   let (mother,_) = contestants[0].clone();
-  let (father,_) = if rng.gen::<f32>() < population.params.cuck_rate {
-    cflag = true;
+  let (father,_) = if cflag {
     (random_chain(&population.primordial_ooze,
                   population.params.min_start_len,
                   population.params.max_start_len,
@@ -268,22 +276,22 @@ pub fn tournement (population: &mut Population,
   print!("[{:05}] ", population.generation);
   let mut i = 0;
   for contestant in contestants.iter() {
-    if (i == 1 && cflag) { 
-      print!(" ?????????? ");
-    } else {
-      print!(" {:01.8} ", contestant.0.fitness.unwrap());
+    if i == 1 && cflag { 
+      print!(" ?????????? ||");
     }
+    print!(" {:01.8} ", contestant.0.fitness.unwrap());
+    
     i += 1;
     if i < contestants.len() { print!("|") };
-    if i == 2 { print!("|") };
+    if !cflag && i == 2 { print!("|") };
   }
   println!("  ({:01.8})", population.best_fit().unwrap());
   population.generation += 1;
   
   // i don't like these gratuitous clones
   // but let's get it working first, and optimise later
-  let (_,grave0) = contestants[2];
-  let (_,grave1) = contestants[3];
+  let (_,grave0) = contestants[t_size-2];
+  let (_,grave1) = contestants[t_size-1];
   let parents : Vec<&Chain> = vec![&mother,&father];
   let offspring = mate(&parents,
                        &population.params,

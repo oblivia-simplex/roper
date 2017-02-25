@@ -9,7 +9,6 @@ use roper::ontostructs::*;
 use roper::phylostructs::*;
 use roper::population::*;
 use roper::util::*;
-use roper::params::*;
 use roper::hatchery::*;
 
 

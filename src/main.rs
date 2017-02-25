@@ -20,7 +20,6 @@ use unicorn::*;
 //use roper::dis::{disas_sec,Inst};
 use roper::thumb::*;
 use roper::util::*;
-use roper::params::*;
 use roper::population::*;
 use roper::hatchery::{add_hooks,Sec,HatchResult,hatch_chain};
 use roper::phylostructs::*;

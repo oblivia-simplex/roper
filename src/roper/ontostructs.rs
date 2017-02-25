@@ -8,7 +8,7 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use roper::hatchery::*;
 use roper::util::*;
-use roper::params::*;
+use roper::phylostructs::*;
 
 const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 

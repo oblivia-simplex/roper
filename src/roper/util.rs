@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 
-use roper::params::*;
+use roper::phylostructs::*;
 use rand::*;
 use std::cmp::*;
 use capstone::*;

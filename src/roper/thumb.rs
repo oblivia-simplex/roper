@@ -6,7 +6,6 @@ use roper::util::*;
 use roper::population::*;
 use roper::phylostructs::*;
 
-use roper::params::*;
 
 static PC : usize = 15;
 static LR : usize = 14;

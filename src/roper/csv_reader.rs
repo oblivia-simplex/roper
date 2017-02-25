@@ -3,7 +3,7 @@ use std::io::{self,BufReader};
 use std::io::prelude::*;
 use std::fs::File;
 use roper::util::{Indexable};
-use roper::params::*;
+use roper::phylostructs::*;
 
 
 pub fn process_data (path: &str, numfields: usize) -> HashMap<Vec<i32>,usize> {

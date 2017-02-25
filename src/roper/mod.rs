@@ -4,7 +4,6 @@ pub mod util;
 pub mod hatchery;
 pub mod thumb;
 pub mod population;
-pub mod params;
 pub mod phylostructs;
 pub mod arm;
 //pub mod hooks;
@@ -15,7 +14,6 @@ pub mod csv_reader;
 
 pub use self::ontostructs::*;
 pub use self::evolution::*;
-pub use self::params::*;
 pub use self::util::*;
 pub use self::hatchery::*;
 pub use self::thumb::*;
