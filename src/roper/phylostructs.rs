@@ -11,6 +11,8 @@ use std::cmp::*;
 use std::cell::*;
 use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
+use std::fs::{File,OpenOptions};
+use std::io::prelude::*;
 use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
@@ -623,6 +625,17 @@ impl Default for Params {
 impl Params {
   pub fn new () -> Params {
     Default::default()
+  }
+  pub fn set_csv_dir (&mut self, dir: &str) {
+    self.csv_path = format!("{}/{}", dir, self.csv_path);
+    let row = format!("ITERATION,FITNESS,GENERATION,LENGTH\n");
+    let mut file = OpenOptions::new()
+                              .write(true)
+                              .create(true)
+                              .open(&self.csv_path)
+                              .unwrap();
+    file.write(row.as_bytes());
+    file.flush();
   }
 }
 

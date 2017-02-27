@@ -12,7 +12,7 @@ mod roper;
 
 use rand::{Rng,Generator};
 
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
 use unicorn::*;
@@ -82,6 +82,7 @@ fn main() {
   opts.optopt("p", "", "set target pattern", "PATTERN");
   opts.optopt("d", "", "set data path", "PATH");
   opts.optopt("g", "", "set fitness goal (default 0)", "POSITIVE FLOAT <= 1");
+  opts.optopt("o", "", "set log directory", "DIRECTORY");
   opts.optopt("h", "help", "print this help menu", "");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
@@ -93,6 +94,17 @@ fn main() {
   }
   let rpattern_str = matches.opt_str("p");
   let data_path    = matches.opt_str("d");
+  let log_dir      = match matches.opt_str("o") {
+    None    => {
+      let p = Path::new("./logs/");
+      if p.is_dir() { 
+        p.to_str().unwrap().to_string() 
+      } else { 
+      "./".to_string()
+      }
+    },
+    Some(p) => p,
+  };
   let goal : f32 = match matches.opt_str("g") {
     None => 0.0,
     Some(s) => s.parse::<f32>()
@@ -151,6 +163,7 @@ fn main() {
   params.constants    = constants;
   params.io_targets   = io_targets;
   params.fit_goal     = goal;
+  params.set_csv_dir(&log_dir);
 
   let mut rng = rand::thread_rng();
   let mut population = Population::new(&params, &mut rng);

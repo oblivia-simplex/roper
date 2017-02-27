@@ -7,6 +7,7 @@ extern crate capstone;
 extern crate rand;
 extern crate lazysort;
 extern crate getopts;
+extern crate scoped_pool;
 
 
 pub mod roper;

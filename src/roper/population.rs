@@ -4,10 +4,9 @@ extern crate unicorn;
 
 use std::cell::*;
 use std::io::{BufReader,BufRead};
-use std::fs::File;
 use std::path::Path;
 use std::sync::{RwLock,RwLockReadGuard};
-use std::fs::OpenOptions;
+use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 
 
@@ -95,17 +94,22 @@ pub fn mate (parents: &Vec<&Chain>,
   brood
 }
 
+pub const VARIABLE_FITNESS : bool = false;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &mut Chain, 
                          io_targets: &IoTargets,
                          verbose: bool)
                          -> Option<f32>
 {
+//  if !VARIABLE_FITNESS && chain.fitness != None {
+//    return chain.fitness;
+//  }
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
     println!(">> EMPTY CHAIN");
     return None;
   }
+
 
   let outregs = 3; // don't hardcode this! 
 
@@ -204,8 +208,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   Some(fitness)
 }
 
-pub fn append_to_csv(path: &str, gen: usize, fit: f32) {
-  let row = format!("{},{}\n", gen, fit);
+pub fn append_to_csv(path: &str, gen: usize, best: &Chain) {
+  let fit  = best.fitness.unwrap();
+  let bgen = best.generation;
+  let len  = best.clumps.len();
+  let row  = format!("{},{},{},{}\n", gen, fit, bgen, len);
   let mut file = OpenOptions::new()
                             .append(true)
                             .create(true)
@@ -238,7 +245,8 @@ pub fn tournement (population: &mut Population,
       l = rng.gen::<usize>() % p_size;
     }
     lots.push(l);
-    if (population.deme[l].fitness == None) {
+    if (population.deme[l].fitness == None || 
+        VARIABLE_FITNESS) {
       evaluate_fitness(&mut uc, 
                        &mut population.deme[l], 
                        &population.params.io_targets,
@@ -254,7 +262,7 @@ pub fn tournement (population: &mut Population,
       population.set_best(l);
       append_to_csv(&population.params.csv_path,
                      population.generation,
-                     population.deme[l].fitness.unwrap());
+                    &population.deme[l]); //deme[l].fitness.unwrap());
     }
     //println!("; BEST: {}", population.best_fit().unwrap());
     //println!(">> l = {}", l);
