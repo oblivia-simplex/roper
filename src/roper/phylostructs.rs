@@ -170,6 +170,7 @@ pub struct Chain {
   pub fitness: Option<f32>,
   pub generation: u32,
   pub verbose_tag: bool,
+  pub crashes: Option<bool>,
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
@@ -229,6 +230,7 @@ impl Default for Chain {
       fitness: None,
       generation: 0,
       verbose_tag: false,
+      crashes: None,
       i: 0,
     //  ancestral_fitness: Vec::new(),
     }
@@ -340,6 +342,7 @@ pub struct Population  {
   pub params: Params,
   pub constants_pool: Mangler,
   pub primordial_ooze: Vec<Clump>,
+  pub avg_fit: RunningAvg,
 }
 
 impl Population {
@@ -367,6 +370,7 @@ impl Population {
       params: (*params).clone(),
       primordial_ooze: clumps,
       constants_pool: data_pool,
+      avg_fit: RunningAvg::new(),
     }
   }
   pub fn size (&self) -> usize {
@@ -375,6 +379,12 @@ impl Population {
   pub fn best_fit (&self) -> Option<f32> {
     match self.best {
       Some(ref x) => x.fitness,
+      _           => None,
+    }
+  }
+  pub fn best_crashes (&self) -> Option<bool> {
+    match self.best {
+      Some(ref x) => x.crashes,
       _           => None,
     }
   }
@@ -628,7 +638,7 @@ impl Params {
   }
   pub fn set_csv_dir (&mut self, dir: &str) {
     self.csv_path = format!("{}/{}", dir, self.csv_path);
-    let row = format!("ITERATION,FITNESS,GENERATION,LENGTH\n");
+    let row = format!("ITERATION,GENERATION,FITNESS,CRASH,LENGTH\n");
     let mut file = OpenOptions::new()
                               .write(true)
                               .create(true)
@@ -773,5 +783,27 @@ impl Display for RPattern {
       i += 1;
     }
     write!(f, "{}\n",s)
+  }
+}
+
+
+pub struct RunningAvg {
+  sum: f64,
+  count: f64,
+}
+
+impl RunningAvg {
+  pub fn new () -> RunningAvg {
+    RunningAvg {
+      sum:   0.0,
+      count: 0.0,
+    }
+  }
+  pub fn avg (&self) -> f32 {
+    if self.count == 0.0 {1.0} else {(self.sum/self.count) as f32}
+  }
+  pub fn inc (&mut self, val: f32) {
+    self.count += 1.0;
+    self.sum   += val as f64;
   }
 }

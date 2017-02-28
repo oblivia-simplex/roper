@@ -173,7 +173,9 @@ fn main() {
                                      &params.constants);
 
   let mut i : usize = 0;
-  while population.best_fit() == None || population.best_fit() > Some(params.fit_goal) {
+  while population.best_fit() == None 
+    || population.best_crashes() == Some(true)
+    || population.best_fit() > Some(params.fit_goal) {
     tournement(&mut population, &mut machinery);
     i += 1;
   }

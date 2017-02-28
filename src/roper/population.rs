@@ -94,6 +94,57 @@ pub fn mate (parents: &Vec<&Chain>,
   brood
 }
 
+fn eval_case (uc: &mut CpuARM,
+              chain: &Chain,
+              input: &Vec<i32>, // may revise
+              target: &Target,
+              outregs: usize, // need a better system
+              verbose: bool) -> (f32, usize, bool) {
+  
+  if verbose {
+    print!("\n");
+    for _ in 0..80 { print!("="); };
+    println!("\n==> Evaluating {:?}", input);
+  };
+
+  let result : HatchResult = hatch_chain(uc, 
+                                         &chain.packed, 
+                                         &input);
+  // need to let hatch_chain choose *which* registers to preload.
+  // input should be a vec of ordered pairs: (reg,value)
+  if verbose { print!("\n{}", result); }
+  let counter = result.counter;
+  let mut crash = false;
+  let output   = &result.registers;
+  let final_pc = result.registers[15];
+  let d : f32 = match target {
+    &Target::Exact(ref t) => t.distance(output),
+    &Target::Vote(t)  => {
+      let b = max_bin(&(output[4..outregs+4].to_vec()));
+      if verbose {
+        println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
+      };
+      if t == b {
+        0.0 
+      } else {
+        1.0
+      }
+    },
+  } + if final_pc == 0 { 0.0 } else { 0.1 };
+  let ratio_run = f32::min(1.0, counter as f32 / chain.size() as f32);
+  let p = if ratio_run > 1.0 {1.0} else {ratio_run};
+  let ft = match result.error {
+    Some(e) => {
+      crash = true;
+      f32::min(1.0, (d + (1.0 - ratio_run)/2.0))
+    },
+    None    => {
+      f32::min(1.0, d)
+    },
+  };
+  (ft, counter, crash)
+}
+
 pub const VARIABLE_FITNESS : bool = false;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &mut Chain, 
@@ -110,7 +161,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     return None;
   }
 
-
+  let verbose = verbose || chain.verbose_tag;
   let outregs = 3; // don't hardcode this! 
 
   /* Set hooks at return addresses */
@@ -125,94 +176,54 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     hooks.push(r);
   }
   
-  let mut i : usize = 0;
   let mut fit_vec : Vec<f32> = Vec::new();
-  let mut counter_sum = 0;
+  //let mut crashes = 0;
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
   for &(ref input, ref target) in io_targets {
-    if verbose {
-      print!("\n");
-      for _ in 0..80 { print!("="); };
-      println!("\n==> Evaluating {:?}", input);
-    };
-    let result : HatchResult = hatch_chain(uc, 
-                                           &chain.packed, 
-                                           &input);
-    // need to let hatch_chain choose *which* registers to preload.
-    // input should be a vec of ordered pairs: (reg,value)
-    if verbose { print!("\n{}", result); }
-
-    //println!("\n{}", result);
-    let counter = result.counter;
-    if (result.error != None && counter < chain.size()) {
-      /* If the chain didn't execute to the end, we know where
-       * the weak link is. Drop its viscosity to zero.
-       */
-      chain[counter].sicken();
+    let (ft,counter,crash) = eval_case(uc,
+                                       chain,
+                                       &input,
+                                       &target,
+                                       outregs,
+                                       verbose);
+    let counter = min(counter, chain.size()-1);
+    if crash {
+      chain.crashes = Some(true);
+      //crashes += 1;
+      chain[counter].sicken();        /* mut */
+    } else {
+      chain.crashes = Some(false);
     }
-    counter_sum += counter;
-    let output   = &result.registers;
-    let final_pc = result.registers[15];
-    let d : f32 = match target {
-      &Target::Exact(ref t) => t.distance(output),
-      &Target::Vote(t)  => {
-        let b = max_bin(&(output[4..outregs+4].to_vec()));
-        if verbose {
-          println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
-        };
-        if t == b {
-          0.0 
-        } else {
-          1.0
-        }
-      },
-    } + if final_pc == 0 { 0.0 } else { 0.1 };
-    // penalty for not landing on address 0
-    //println!("**** d = {} ",d);
-    let ratio_run = f32::min(1.0, counter as f32 / chain.size() as f32);
-    let p = if ratio_run > 1.0 {1.0} else {ratio_run};
-    let ft = match result.error {
-      Some(e) => f32::min(1.0, (d + (1.0 - ratio_run)/2.0)),
-      None    => f32::min(1.0, d),
-    };
-    //println!("[*] target {}/{}", i, io_targets.len());
-    //println!("[*] %{:2.2} run", ratio_run * 100.0);
-    //println!("[*] fitness for target: {}",ft);
     fit_vec.push(ft);
-    i += 1;
   };
+  /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
-  //** improve the fitness calculation. take into consideration:
-  //** counter_avg
-  //** error code
-  //** and normalize somehow.
-  //** also: assign link fitnesses for clumps < counter?
   let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
                    / fit_vec.len() as f32) as f32;
-  //print!("==> FITNESS FOR ALL TARGETS: {}", fitness);
+  
+  /* Chain needs to be mutable for the following */
   /* Set link fitness values */
-  let counter_avg = counter_sum as f32 / io_targets.len() as f32;
-  let c = counter_avg as usize;
-  let mut i = 0;
   for clump in &mut chain.clumps {
-    if i > c { break };
     clump.link_fit  = calc_link_fit(clump, fitness);
     clump.viscosity = calc_viscosity(clump);
-    i += 1;
   }
   chain.set_fitness(fitness);
-  //println!("chain.fitness = {:x}", chain.fitness.unwrap());
   Some(fitness)
 }
 
-pub fn append_to_csv(path: &str, gen: usize, best: &Chain) {
+fn append_to_csv(path: &str, iter: usize, best: &Chain) {
   let fit  = best.fitness.unwrap();
-  let bgen = best.generation;
+  let gen = best.generation;
   let len  = best.clumps.len();
-  let row  = format!("{},{},{},{}\n", gen, fit, bgen, len);
+  let crash = match best.crashes {
+    None => 0,
+    Some(false) => 0,
+    Some(true)  => 1,
+  };
+  let row  = format!("{},{},{},{},{}\n", iter, gen, fit, crash, len);
   let mut file = OpenOptions::new()
                             .append(true)
                             .create(true)
@@ -220,6 +231,18 @@ pub fn append_to_csv(path: &str, gen: usize, best: &Chain) {
                             .unwrap();
   file.write(row.as_bytes());
   file.flush();
+}
+
+fn update_best (population: &mut Population, idx: usize) {
+  let ref chain = population.deme[idx];
+  if chain.fitness != None 
+    && (population.best_fit() == None
+    || population.best_fit() > chain.fitness) {
+    population.best = Some(chain.clone());
+    append_to_csv(&population.params.csv_path,
+                   population.generation,
+                  &chain); //deme[l].fitness.unwrap());
+  } 
 }
 
 pub fn tournement (population: &mut Population,
@@ -252,20 +275,7 @@ pub fn tournement (population: &mut Population,
                        &population.params.io_targets,
                        population.params.verbose);
     }
-    if population.best_fit() == None ||
-      population.best_fit() > population.deme[l].fitness {
-      //println!(">> updating best. from: {:?}, to: {:?}",
-      //         population.best_fit(), population.deme[l].fitness);
-      if population.deme[l].fitness == None {
-        panic!("fitness of population.deme[l] is None!");
-      }
-      population.set_best(l);
-      append_to_csv(&population.params.csv_path,
-                     population.generation,
-                    &population.deme[l]); //deme[l].fitness.unwrap());
-    }
-    //println!("; BEST: {}", population.best_fit().unwrap());
-    //println!(">> l = {}", l);
+    update_best(population, l);
     contestants.push(((population.deme[l]).clone(),l));
   }
   contestants.sort();
@@ -281,23 +291,25 @@ pub fn tournement (population: &mut Population,
     contestants[1].clone()
   };
 
+  /* This little print job should be factored out into a fn */
   print!("[{:05}] ", population.generation);
   let mut i = 0;
   for contestant in contestants.iter() {
     if i == 1 && cflag { 
       print!(" ?????????? ||");
     }
-    print!(" {:01.8} ", contestant.0.fitness.unwrap());
-    
+    print!(" {:01.8}{}", contestant.0.fitness.unwrap(),
+      if contestant.0.crashes == Some(true) {'*'} else {' '});
     i += 1;
     if i < contestants.len() { print!("|") };
     if !cflag && i == 2 { print!("|") };
   }
-  println!("  ({:01.8})", population.best_fit().unwrap());
+  println!(" ({:01.8}{})", population.best_fit().unwrap(),
+    if population.best_crashes() == Some(true) {'*'} else {''});
+  /* End of little print job */
+
   population.generation += 1;
   
-  // i don't like these gratuitous clones
-  // but let's get it working first, and optimise later
   let (_,grave0) = contestants[t_size-2];
   let (_,grave1) = contestants[t_size-1];
   let parents : Vec<&Chain> = vec![&mother,&father];
@@ -307,6 +319,8 @@ pub fn tournement (population: &mut Population,
                        uc);
   population.deme[grave0] = offspring[0].clone();
   population.deme[grave1] = offspring[1].clone();
+  update_best(population, grave0);
+  update_best(population, grave1);
 }
 
 fn cull_brood (brood: &mut Vec<Chain>, 
