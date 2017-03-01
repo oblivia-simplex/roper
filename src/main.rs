@@ -21,7 +21,7 @@ use unicorn::*;
 use roper::thumb::*;
 use roper::util::*;
 use roper::population::*;
-use roper::hatchery::{add_hooks,Sec,HatchResult,hatch_chain};
+use roper::hatchery::{counter_hook,add_hooks,Sec,HatchResult,hatch_chain};
 use roper::phylostructs::*;
 use roper::evolution::*;
 use roper::ontostructs::*;
@@ -155,7 +155,7 @@ fn main() {
 
   let constants = suggest_constants(&io_targets);
   let mut params : Params = Params::new();
-
+  let num_targets = io_targets.len();
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
@@ -170,7 +170,28 @@ fn main() {
 
   let mut machinery = Machinery::new(&elf_path,
                                      mode,
-                                     &params.constants);
+                                     &params.constants,
+                                     params.t_size);
+
+  /* Save some time by setting all the return hooks here,
+   * once and for all.
+   *
+   * This is actually verrry slow...
+  print!("Adding hooks");
+  let mut hooks = Vec::new();
+  for ret in population.ret_addrs() {
+    for uc in &mut machinery.cluster {
+      print!(".");
+      let r = uc.add_code_hook(CodeHookType::CODE,
+                               ret as u64,
+                               ret as u64,
+                               counter_hook)
+        .expect("Error adding ret_addr hook.");
+      hooks.push(r)
+    }
+  }
+  println!("");
+ */ 
 
   let mut i : usize = 0;
   while population.best_fit() == None 
@@ -183,10 +204,10 @@ fn main() {
   println!("=> BEST FIT: {:?}", population.best_fit());
   println!("=> RUNNING BEST:\n");
            
-  add_hooks(&mut machinery.uc);
+  add_hooks(&mut machinery.cluster[0]);
   let mut bclone = population.best.unwrap().clone();
   population.params.verbose = true;
-  evaluate_fitness(&mut machinery.uc,
+  evaluate_fitness(&mut machinery.cluster[0],
                    &mut bclone,
                    &population.params.io_targets,
                    population.params.verbose);

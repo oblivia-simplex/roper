@@ -147,10 +147,10 @@ fn eval_case (uc: &mut CpuARM,
 
 pub const VARIABLE_FITNESS : bool = false;
 pub fn evaluate_fitness (uc: &mut CpuARM,
-                         chain: &mut Chain, 
+                         chain: &Chain, 
                          io_targets: &IoTargets,
                          verbose: bool)
-                         -> Option<f32>
+                         -> (f32,Option<usize>)
 {
 //  if !VARIABLE_FITNESS && chain.fitness != None {
 //    return chain.fitness;
@@ -158,7 +158,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
     println!(">> EMPTY CHAIN");
-    return None;
+    return (1.0, None);
   }
 
   let verbose = verbose || chain.verbose_tag;
@@ -181,6 +181,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
+  let mut counter_sum = 0;
   for &(ref input, ref target) in io_targets {
     let (ft,counter,crash) = eval_case(uc,
                                        chain,
@@ -189,13 +190,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                                        outregs,
                                        verbose);
     let counter = min(counter, chain.size()-1);
-    if crash {
-      chain.crashes = Some(true);
-      //crashes += 1;
-      chain[counter].sicken();        /* mut */
-    } else {
-      chain.crashes = Some(false);
-    }
+    counter_sum += counter;
     fit_vec.push(ft);
   };
   /* clean up hooks */
@@ -204,14 +199,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
                    / fit_vec.len() as f32) as f32;
   
-  /* Chain needs to be mutable for the following */
-  /* Set link fitness values */
-  for clump in &mut chain.clumps {
-    clump.link_fit  = calc_link_fit(clump, fitness);
-    clump.viscosity = calc_viscosity(clump);
-  }
-  chain.set_fitness(fitness);
-  Some(fitness)
+  (fitness, Some(counter_sum / io_targets.len()))
 }
 
 fn append_to_csv(path: &str, iter: usize, best: &Chain) {
@@ -249,7 +237,7 @@ pub fn tournement (population: &mut Population,
                    machinery: &mut Machinery) {
   let mut lots : Vec<usize> = Vec::new();
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
-  let mut uc = &mut(machinery.uc);
+  let mut uc = &mut(machinery.cluster[0]); // bandaid
   let mut rng = &mut(machinery.rng);
   if population.best == None {
     population.best = Some(population.deme[0].clone());
@@ -270,10 +258,26 @@ pub fn tournement (population: &mut Population,
     lots.push(l);
     if (population.deme[l].fitness == None || 
         VARIABLE_FITNESS) {
-      evaluate_fitness(&mut uc, 
+      let (fitness,crash) = evaluate_fitness(&mut uc, 
                        &mut population.deme[l], 
                        &population.params.io_targets,
                        population.params.verbose);
+      
+      match crash {
+        Some(counter) => {
+          population.deme[l].crashes = Some(true);
+          population.deme[l][counter].sicken(); 
+        },
+        None => {
+          population.deme[l].crashes = Some(false);
+        },
+      } 
+      /* Set link fitness values */
+      for clump in &mut population.deme[l].clumps {
+        clump.link_fit  = calc_link_fit(clump, fitness);
+        clump.viscosity = calc_viscosity(clump);
+      }
+      population.deme[l].set_fitness(fitness);
     }
     update_best(population, l);
     contestants.push(((population.deme[l]).clone(),l));
@@ -305,7 +309,7 @@ pub fn tournement (population: &mut Population,
     if !cflag && i == 2 { print!("|") };
   }
   println!(" ({:01.8}{})", population.best_fit().unwrap(),
-    if population.best_crashes() == Some(true) {'*'} else {''});
+    if population.best_crashes() == Some(true) {"*"} else {""});
   /* End of little print job */
 
   population.generation += 1;

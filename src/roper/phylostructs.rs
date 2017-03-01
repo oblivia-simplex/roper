@@ -373,6 +373,15 @@ impl Population {
       avg_fit: RunningAvg::new(),
     }
   }
+  pub fn ret_addrs (&self) -> Vec<u32> {
+    let mut addrs = Vec::new();
+    for chain in &self.deme {
+      for clump in &chain.clumps {
+        addrs.push(clump.ret_addr);
+      }
+    }
+    addrs
+  }
   pub fn size (&self) -> usize {
     self.deme.len()
   }

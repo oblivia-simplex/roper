@@ -45,20 +45,26 @@ fn get_elf_addr_data (path: &str,
  */
 pub struct Machinery {
   pub rng: rand::ThreadRng,
-  pub uc:  unicorn::CpuARM,
+  pub cluster:  Vec<unicorn::CpuARM>,
   pub mangler: Mangler,
 }
 impl Machinery {
   pub fn new (elf_path: &str, 
               mode: MachineMode,
-              constants: &Vec<u32>) -> Machinery {
+              constants: &Vec<u32>,
+              uc_num: usize) -> Machinery {
     let elf_addr_data = get_elf_addr_data(elf_path,
                                           &vec![".text", ".rodata"]);
-    let mut uc = init_engine(&elf_addr_data, mode);
+    let mut cluster = Vec::new();
+    for i in 0..uc_num {
+      println!("spinning up engine #{}",i);
+      cluster.push(init_engine(&elf_addr_data, mode));
+    }
+    //let mut uc = init_engine(&elf_addr_data, mode);
     //add_hooks(&mut uc);
     let rng = rand::thread_rng();
     Machinery { 
-      uc: uc, 
+      cluster: cluster, 
       rng: rng,
       mangler: Mangler::new(&constants),
     }
