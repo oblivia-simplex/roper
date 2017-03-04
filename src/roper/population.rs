@@ -182,6 +182,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
   let mut counter_sum = 0;
+  let mut anycrash = false;
   for &(ref input, ref target) in io_targets {
     let (ft,counter,crash) = eval_case(uc,
                                        chain,
@@ -191,6 +192,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                                        verbose);
     let counter = min(counter, chain.size()-1);
     counter_sum += counter;
+    anycrash = anycrash || crash;
     fit_vec.push(ft);
   };
   /* clean up hooks */
@@ -199,7 +201,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
                    / fit_vec.len() as f32) as f32;
   
-  (fitness, Some(counter_sum / io_targets.len()))
+  (fitness, if anycrash {
+    Some(counter_sum / io_targets.len())
+  } else {
+    None
+  })
 }
 
 fn append_to_csv(path: &str, iter: usize, best: &Chain) {

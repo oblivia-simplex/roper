@@ -187,7 +187,7 @@ pub fn is_ctrl (w: u32) -> bool {
   // ** add disas hook for debugging
   //return false; // let's see what this does
   let res = match what_layout(w) {
-    Lay::BX  => true,
+    //Lay::BX  => true,
     //Lay::BR  => true,
     //Lay::BDT => bdt_stack_direction(w) != 0,
     Lay::SWI => true,
