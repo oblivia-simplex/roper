@@ -239,15 +239,36 @@ fn update_best (population: &mut Population, idx: usize) {
   } 
 }
 
-pub fn tournement (population: &mut Population,
-                   machinery: &mut Machinery) {
+#[derive(Debug,Clone)]
+pub struct TournementResult {
+  graves: Vec<usize>,
+  spawn:  Vec<Chain>,
+  best:   Chain,
+}
+
+pub fn patch_population (tr: TournementResult,
+                         population: &mut Population) {
+  assert_eq!(tr.graves.len(), tr.spawn.len());
+  population.generation += 1;
+  for i in 0..tr.graves.len() {
+    population.deme[tr.graves[i]] = tr.spawn[i].clone();
+  }
+  if population.best == None || 
+    tr.best.fitness < population.best_fit() {
+    append_to_csv(&population.params.csv_path,
+                  population.generation,
+                  &tr.best);
+    population.best = Some(tr.best);
+  }
+}
+
+pub fn tournement (population: &Population,
+                   machinery: &mut Machinery)
+                  -> TournementResult {
   let mut lots : Vec<usize> = Vec::new();
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
   let mut uc = &mut(machinery.cluster[0]); // bandaid
   let mut rng = &mut(machinery.rng);
-  if population.best == None {
-    population.best = Some(population.deme[0].clone());
-  }
   let mut t_size = population.params.t_size;
   let p_size = population.size();
   let mut cflag = false;
@@ -256,81 +277,95 @@ pub fn tournement (population: &mut Population,
     cflag = true;
     t_size -= 1;
   }
+
+  let mut specimens = Vec::new();
+
   for _ in 0..t_size {
     let mut l: usize = rng.gen::<usize>() % p_size;
     while lots.contains(&l) {
       l = rng.gen::<usize>() % p_size;
     }
-    lots.push(l);
-    if (population.deme[l].fitness == None || 
+    specimens.push((population.deme[l].clone(),l));
+  }
+
+  let mut fit_vec = Vec::new();
+  for &(ref specimen,_) in specimens.iter() {
+    if (specimen.fitness == None || 
         VARIABLE_FITNESS) {
       let (fitness,crash) = evaluate_fitness(&mut uc, 
-                       &mut population.deme[l], 
-                       &population.params.io_targets,
-                       population.params.verbose);
-      
-      match crash {
-        Some(counter) => {
-          population.deme[l].crashes = Some(true);
-          population.deme[l][counter].sicken(); 
-        },
-        None => {
-          population.deme[l].crashes = Some(false);
-        },
-      } 
-      /* Set link fitness values */
-      for clump in &mut population.deme[l].clumps {
-        clump.link_fit  = calc_link_fit(clump, fitness);
-        clump.viscosity = calc_viscosity(clump);
-      }
-      population.deme[l].set_fitness(fitness);
+                                             &specimen,
+                                             &population.params
+                                                        .io_targets,
+                                             population.params
+                                                       .verbose);
+      fit_vec.push((fitness,crash));
     }
-    update_best(population, l);
-    contestants.push(((population.deme[l]).clone(),l));
   }
-  contestants.sort();
+   
+  for (&mut (ref mut specimen,lot), (fitness, crash)) 
+    in specimens.iter_mut()
+                .zip(fit_vec) {
+    match crash {
+      Some(counter) => {
+        specimen.crashes = Some(true);
+        specimen[counter].sicken(); 
+      },
+      None => {
+        specimen.crashes = Some(false);
+      },
+    } 
+      /* Set link fitness values */
+    for clump in &mut specimen.clumps {
+      clump.link_fit  = calc_link_fit(clump, fitness);
+      clump.viscosity = calc_viscosity(clump);
+    }
+    specimen.set_fitness(fitness);
+  }
   
-  let (mother,_) = contestants[0].clone();
+  specimens.sort();
+  
+  let (mother,_) = specimens[0].clone();
   let (father,_) = if cflag {
-    (random_chain(&population.primordial_ooze,
-                  population.params.min_start_len,
-                  population.params.max_start_len,
-                  &mut population.constants_pool,
-                  &mut rng), 0)
+    // make this a separate method of population
+    (population.random_spawn(), 0)
   } else { 
-    contestants[1].clone()
+    specimens[1].clone()
   };
 
   /* This little print job should be factored out into a fn */
   print!("[{:05}] ", population.generation);
   let mut i = 0;
-  for contestant in contestants.iter() {
+  for &(ref specimen,_) in specimens.iter() {
     if i == 1 && cflag { 
       print!(" ?????????? ||");
     }
-    print!(" {:01.8}{}", contestant.0.fitness.unwrap(),
-      if contestant.0.crashes == Some(true) {'*'} else {' '});
+    print!(" {:01.8}{}", specimen.fitness.unwrap(),
+      if specimen.crashes == Some(true) {'*'} else {' '});
     i += 1;
-    if i < contestants.len() { print!("|") };
+    if i < specimens.len() { print!("|") };
     if !cflag && i == 2 { print!("|") };
   }
-  println!(" ({:01.8}{})", population.best_fit().unwrap(),
-    if population.best_crashes() == Some(true) {"*"} else {""});
+  if population.best_fit() != None {
+    println!(" ({:01.8}{})", population.best_fit().unwrap(),
+      if population.best_crashes() == Some(true) {"*"} else {""});
+  } else {
+    println!(" (----------)");
+  }
   /* End of little print job */
 
-  population.generation += 1;
-  
-  let (_,grave0) = contestants[t_size-2];
-  let (_,grave1) = contestants[t_size-1];
+  let (_,grave0) = specimens[t_size-2];
+  let (_,grave1) = specimens[t_size-1];
   let parents : Vec<&Chain> = vec![&mother,&father];
   let offspring = mate(&parents,
                        &population.params,
                        rng,
                        uc);
-  population.deme[grave0] = offspring[0].clone();
-  population.deme[grave1] = offspring[1].clone();
-  update_best(population, grave0);
-  update_best(population, grave1);
+  let t_best = specimens[0].0.clone();
+  TournementResult {
+    graves: vec![grave0, grave1],
+    spawn:  offspring,
+    best:   t_best,
+  }
 }
 
 fn cull_brood (brood: &mut Vec<Chain>, 

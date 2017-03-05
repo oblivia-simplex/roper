@@ -340,14 +340,13 @@ pub struct Population  {
   pub best: Option<Chain>,
   pub generation: usize,
   pub params: Params,
-  pub constants_pool: Mangler,
   pub primordial_ooze: Vec<Clump>,
   pub avg_fit: RunningAvg,
 }
 
 impl Population {
   pub fn new (params: &Params,
-              rng: &mut rand::ThreadRng) -> Population {
+              ) -> Population {
     let mut clumps = reap_gadgets(&params.code, 
                                   params.code_addr, 
                                   MachineMode::ARM);
@@ -361,7 +360,7 @@ impl Population {
                              params.min_start_len,
                              params.max_start_len,
                              &mut data_pool,
-                             rng));
+                             &mut rand::thread_rng()));
     }
     Population {
       deme: deme,
@@ -369,9 +368,16 @@ impl Population {
       generation: 0,
       params: (*params).clone(),
       primordial_ooze: clumps,
-      constants_pool: data_pool,
       avg_fit: RunningAvg::new(),
     }
+  }
+  pub fn random_spawn (&self) -> Chain {
+    let mut mangler = Mangler::new(&self.params.constants);
+    random_chain(&self.primordial_ooze,
+                 self.params.min_start_len,
+                 self.params.max_start_len,
+                 &mut mangler,
+                 &mut thread_rng())
   }
   pub fn ret_addrs (&self) -> Vec<u32> {
     let mut addrs = Vec::new();

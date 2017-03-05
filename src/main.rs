@@ -166,7 +166,7 @@ fn main() {
   params.set_csv_dir(&log_dir);
 
   let mut rng = rand::thread_rng();
-  let mut population = Population::new(&params, &mut rng);
+  let mut population = Population::new(&params);
 
   let mut machinery = Machinery::new(&elf_path,
                                      mode,
@@ -197,7 +197,8 @@ fn main() {
   while population.best_fit() == None 
     || population.best_crashes() == Some(true)
     || population.best_fit() > Some(params.fit_goal) {
-    tournement(&mut population, &mut machinery);
+    let tr = tournement(&population, &mut machinery);
+    patch_population(tr, &mut population);
     i += 1;
   }
   println!("=> {} GENERATIONS", i);
