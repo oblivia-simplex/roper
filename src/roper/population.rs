@@ -267,7 +267,7 @@ pub fn tournement (population: &Population,
                   -> TournementResult {
   let mut lots : Vec<usize> = Vec::new();
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
-  let mut uc = &mut(machinery.cluster[0]); // bandaid
+  let mut uc = (machinery.cluster[0].unwrap_mut()); // bandaid
   let mut rng = &mut(machinery.rng);
   let mut t_size = population.params.t_size;
   let p_size = population.size();

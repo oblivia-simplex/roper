@@ -9,6 +9,8 @@ use std::path::PathBuf;
 use roper::hatchery::*;
 use roper::util::*;
 use roper::phylostructs::*;
+use unicorn::*;
+use std::thread;
 
 const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
@@ -45,9 +47,24 @@ fn get_elf_addr_data (path: &str,
  */
 pub struct Machinery {
   pub rng: rand::ThreadRng,
-  pub cluster:  Vec<unicorn::CpuARM>,
-  pub mangler: Mangler,
+  pub cluster:  Vec<Engine>,
+  //pub mangler: Mangler,
 }
+
+pub struct Engine (CpuARM);
+unsafe impl Send for Engine {}
+impl Engine {
+  pub fn new (uc: CpuARM) -> Engine {
+    Engine(uc)
+  }
+  pub fn unwrap (&self) -> &CpuARM {
+    &self.0
+  }
+  pub fn unwrap_mut (&mut self) -> &mut CpuARM {
+    &mut self.0
+  }
+}
+
 impl Machinery {
   pub fn new (elf_path: &str, 
               mode: MachineMode,
@@ -58,15 +75,12 @@ impl Machinery {
     let mut cluster = Vec::new();
     for i in 0..uc_num {
       println!("spinning up engine #{}",i);
-      cluster.push(init_engine(&elf_addr_data, mode));
+      cluster.push(Engine::new(init_engine(&elf_addr_data, mode)));
     }
-    //let mut uc = init_engine(&elf_addr_data, mode);
-    //add_hooks(&mut uc);
     let rng = rand::thread_rng();
     Machinery { 
       cluster: cluster, 
       rng: rng,
-      mangler: Mangler::new(&constants),
     }
   }
 }

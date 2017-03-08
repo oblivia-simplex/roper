@@ -205,10 +205,10 @@ fn main() {
   println!("=> BEST FIT: {:?}", population.best_fit());
   println!("=> RUNNING BEST:\n");
            
-  add_hooks(&mut machinery.cluster[0]);
+  add_hooks(machinery.cluster[0].unwrap_mut());
   let mut bclone = population.best.unwrap().clone();
   population.params.verbose = true;
-  evaluate_fitness(&mut machinery.cluster[0],
+  evaluate_fitness(machinery.cluster[0].unwrap_mut(),
                    &mut bclone,
                    &population.params.io_targets,
                    population.params.verbose);
