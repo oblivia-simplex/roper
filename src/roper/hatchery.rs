@@ -232,17 +232,17 @@ pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
                   .expect("Error reading SP");
   let instv : Vec<u8> = u.mem_read(addr, size as usize)
                         .expect("Error reading inst.");
-  let mut inst_str = String::new();
-  for i in &instv {
-    inst_str.push_str(&format!("{:02x} ",i));
-  }
+//  let mut inst_str = String::new();
+//  for i in &instv {
+//    inst_str.push_str(&format!("{:02x} ",i));
+//  }
   //let inst = get_word32le(&instv);
   let mo = u.query(unicorn::Query::MODE).unwrap();
   let mmo = if mo == 0 {MachineMode::ARM} 
             else {MachineMode::THUMB};
   let dis = disas(&instv, mmo);
   let regs = hexvec(&read_registers(u));
-  println!("({:02x})-[{:08x}] {} ({}) SP: {:08x} | MODE: {:?} | {}\n    {}", 
-           read_counter_u(u), addr, inst_str, size, sp, mo, dis, regs);
+  println!("({:02x})-[{:08x}] | {:?} | {}\n    {}", 
+           read_counter_u(u), addr, mmo, dis, regs);
 }
 

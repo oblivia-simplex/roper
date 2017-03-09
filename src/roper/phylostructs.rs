@@ -8,11 +8,11 @@ use capstone::CsMode;
 use std::fmt::{Display,format,Formatter,Result};
 use std::collections::HashMap;
 use std::cmp::*;
-use std::cell::*;
 use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
+use std::slice::Iter;
 use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
@@ -153,7 +153,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
     if exchange && (gad.mode == MachineMode::THUMB) {
       /* If we BX, the LSB of the addr decides machine mode */
       c[rto] |= 1;
-      println!("*** exchange: adding 1 mask ***");
+//      println!("*** exchange: adding 1 mask ***");
     }
     rto += gad.ret_offset as usize;
     //spd += gad.sp_delta as usize;
@@ -335,14 +335,16 @@ impl <T> Pod <T>{
   }
 }
 */
+#[derive(Clone)]
 pub struct Population  {
   pub deme: Vec<Chain>,
   pub best: Option<Chain>,
   pub generation: usize,
   pub params: Params,
   pub primordial_ooze: Vec<Clump>,
-  pub avg_fit: RunningAvg,
 }
+unsafe impl Send for Population {}
+//unsafe impl Sync for Population {}
 
 impl Population {
   pub fn new (params: &Params,
@@ -368,7 +370,6 @@ impl Population {
       generation: 0,
       params: (*params).clone(),
       primordial_ooze: clumps,
-      avg_fit: RunningAvg::new(),
     }
   }
   pub fn random_spawn (&self) -> Chain {
@@ -378,6 +379,24 @@ impl Population {
                  self.params.max_start_len,
                  &mut mangler,
                  &mut thread_rng())
+  }
+  pub fn avg_gen (&self) -> f32 {
+   self.deme
+       .iter()
+       .map(|ref c| c.generation.clone())
+       .sum::<u32>() as f32 / 
+          self.params.population_size as f32
+  }
+  pub fn avg_fit (&self) -> f32 {
+    let cand = self.deme.iter()
+                   .filter(|ref c| c.fitness != None)
+                   .count();
+    self.deme
+        .iter()
+        .filter(|ref c| c.fitness != None)
+        .map(|ref c| c.fitness.clone().unwrap())
+        .sum::<f32>() / 
+          cand as f32
   }
   pub fn ret_addrs (&self) -> Vec<u32> {
     let mut addrs = Vec::new();
@@ -405,6 +424,29 @@ impl Population {
   }
   pub fn set_best (&mut self, i: usize) {
     self.best = Some(self.deme[i].clone());
+  }
+  pub fn log (&self) {
+    if self.best == None {
+      return;
+    }
+    let best = self.best.clone().unwrap();
+    if best.fitness == None {
+      return;
+    }
+    let row = format!("{},{},{},{},{},{},{}\n",
+                      self.generation.clone(),
+                      self.avg_gen(),
+                      self.avg_fit(),
+                      best.generation,
+                      best.fitness.unwrap(),
+                      if best.crashes == Some(true) { 1 } else { 0 },
+                      best.size());
+    let mut file = OpenOptions::new().append(true)
+                                     .create(true)
+                                     .open(&self.params.csv_path)
+                                     .unwrap();
+    file.write(row.as_bytes());
+    file.flush();
   }
 }
 
@@ -613,6 +655,7 @@ pub struct Params {
   pub text_addr        : u32,
   */
   pub io_targets       : IoTargets,
+  pub test_targets     : IoTargets,
   pub cuck_rate        : f32,
   pub verbose          : bool,
   pub csv_path         : String,
@@ -634,7 +677,8 @@ impl Default for Params {
       max_start_len:    16,
       max_len:          256,
       training_ht:      HashMap::new(),
-      io_targets:       Vec::new(),
+      io_targets:       IoTargets::new(),
+      test_targets:     IoTargets::new(),
       fit_goal:         0.0,  
     //                         (vec![1; 16],
       //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
@@ -653,7 +697,7 @@ impl Params {
   }
   pub fn set_csv_dir (&mut self, dir: &str) {
     self.csv_path = format!("{}/{}", dir, self.csv_path);
-    let row = format!("ITERATION,GENERATION,FITNESS,CRASH,LENGTH\n");
+    let row = format!("ITERATION,AVG_GEN,AVG_FIT,BEST_GEN,BEST_FIT,BEST_CRASH,BEST_LENGTH\n");
     let mut file = OpenOptions::new()
                               .write(true)
                               .create(true)
@@ -693,14 +737,50 @@ impl Default for MachineMode {
   fn default() -> MachineMode { MachineMode::THUMB }
 }
 
-pub type IoTargets = Vec<(Vec<i32>,Target)>;
+#[derive(Debug,Clone,Eq,PartialEq)]
+pub struct IoTargets {
+  v: Vec<(Vec<i32>,Target)>,
+}
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
   let mut cons : Vec<u32> = Vec::new();
-  for &(ref i, ref o) in iot {
+  for &(ref i, ref o) in iot.v.iter() {
     cons.extend_from_slice(&o.suggest_constants(i));
   }
   cons
+}
+
+#[derive(Copy,Clone,Eq,PartialEq,Debug)]
+pub enum Batch {
+  TRAINING,
+  TESTING,
+}
+
+impl IoTargets {
+  pub fn shuffle (&self) -> IoTargets {
+    let mut c = self.v.clone();
+    thread_rng().shuffle(&mut c);
+    IoTargets{v:c}
+  }
+  pub fn push (&mut self, t: (Vec<i32>,Target)) {
+    self.v.push(t);
+  }
+  pub fn split_at (&self, i: usize) -> (IoTargets,IoTargets) {
+    let (a,b) = self.v.split_at(i);
+    (IoTargets::from_vec(a.to_vec()),IoTargets::from_vec(b.to_vec()))
+  }
+  pub fn new () -> IoTargets {
+    IoTargets{v:Vec::new()}
+  }
+  pub fn from_vec (v: Vec<(Vec<i32>,Target)>) -> IoTargets {
+    IoTargets{v:v}
+  }
+  pub fn len (&self) -> usize {
+    self.v.len()
+  }
+  pub fn iter (&self) -> Iter<(Vec<i32>, Target)> {
+    self.v.iter()
+  }
 }
 
 #[derive(Eq,PartialEq,Debug,Clone)]
@@ -801,7 +881,7 @@ impl Display for RPattern {
   }
 }
 
-
+#[derive(PartialEq,Clone,Debug)]
 pub struct RunningAvg {
   sum: f64,
   count: f64,

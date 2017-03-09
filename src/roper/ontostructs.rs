@@ -11,6 +11,7 @@ use roper::util::*;
 use roper::phylostructs::*;
 use unicorn::*;
 use std::thread;
+use rand::thread_rng;
 
 const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
@@ -46,22 +47,22 @@ fn get_elf_addr_data (path: &str,
  * Each thread should have its own instance.
  */
 pub struct Machinery {
-  pub rng: rand::ThreadRng,
+//  pub rng: rand::ThreadRng,
   pub cluster:  Vec<Engine>,
   //pub mangler: Mangler,
 }
 
-pub struct Engine (CpuARM);
+pub struct Engine (Box<CpuARM>);
 unsafe impl Send for Engine {}
 impl Engine {
   pub fn new (uc: CpuARM) -> Engine {
-    Engine(uc)
+    Engine(Box::new(uc))
   }
   pub fn unwrap (&self) -> &CpuARM {
-    &self.0
+    &(*self.0)
   }
   pub fn unwrap_mut (&mut self) -> &mut CpuARM {
-    &mut self.0
+    &mut (*self.0)
   }
 }
 
@@ -77,10 +78,10 @@ impl Machinery {
       println!("spinning up engine #{}",i);
       cluster.push(Engine::new(init_engine(&elf_addr_data, mode)));
     }
-    let rng = rand::thread_rng();
+    let rng = thread_rng();
     Machinery { 
       cluster: cluster, 
-      rng: rng,
+//      rng: rng,
     }
   }
 }

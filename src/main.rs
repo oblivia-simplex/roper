@@ -4,7 +4,10 @@ extern crate unicorn;
 extern crate capstone;
 extern crate rand;
 extern crate getopts;
+extern crate scoped_threadpool;
 
+use scoped_threadpool::Pool;
+use std::sync::mpsc::channel;
 use getopts::Options;
 use std::env;
 
@@ -15,6 +18,8 @@ use rand::{Rng,Generator};
 use std::path::{Path,PathBuf};
 use std::fs::File;
 use std::io::prelude::*;
+use std::sync::{Mutex,Arc,RwLock};
+use std::cmp::Ordering;
 use unicorn::*;
 // use std::io;
 //use roper::dis::{disas_sec,Inst};
@@ -79,11 +84,13 @@ fn main() {
   let program = args[0].clone();
 
   let mut opts = Options::new();
+  let verbose = true;
   opts.optopt("p", "", "set target pattern", "PATTERN");
   opts.optopt("d", "", "set data path", "PATH");
   opts.optopt("g", "", "set fitness goal (default 0)", "POSITIVE FLOAT <= 1");
   opts.optopt("o", "", "set log directory", "DIRECTORY");
   opts.optopt("h", "help", "print this help menu", "");
+  opts.optopt("t", "threads", "set number of threads", "");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
     Err(f) => { panic!(f.to_string()) },
@@ -94,6 +101,10 @@ fn main() {
   }
   let rpattern_str = matches.opt_str("p");
   let data_path    = matches.opt_str("d");
+  let threads      = match matches.opt_str("t") {
+    None => 8,
+    Some(n) => n.parse::<usize>().unwrap(),
+  };
   let log_dir      = match matches.opt_str("o") {
     None    => {
       let p = Path::new("./logs/");
@@ -113,18 +124,18 @@ fn main() {
   println!(">> goal = {}", goal);
   let io_targets : IoTargets =
     match (rpattern_str, data_path) {
-      (Some(s),None) => vec![(vec![1;16], 
+      (Some(s),None) => IoTargets::from_vec(vec![(vec![1;16], 
                               Target::Exact(
                                 RPattern::new(&s)
-                                ))],
-      (None,Some(s)) => process_data2(&s,4), // don't hardcode numfields. infer by analysing lines. 
+                                ))]),
+      (None,Some(s)) => process_data2(&s,4).shuffle(), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);
         return;
       },
     };
   
- 
+  let (testing,training) = io_targets.split_at(io_targets.len()/3);
   /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
   let sample2 = "tomato-RT-N18U-httpd";
@@ -161,17 +172,20 @@ fn main() {
   params.data = vec![rodata_data.clone()];
   params.data_addrs   = vec![rodata_addr as u32];
   params.constants    = constants;
-  params.io_targets   = io_targets;
+  params.io_targets   = training;
+  params.test_targets = testing;
   params.fit_goal     = goal;
+  params.verbose      = verbose;
   params.set_csv_dir(&log_dir);
 
   let mut rng = rand::thread_rng();
   let mut population = Population::new(&params);
 
-  let mut machinery = Machinery::new(&elf_path,
-                                     mode,
-                                     &params.constants,
-                                     params.t_size);
+  let mut machinery : Machinery
+    = Machinery::new(&elf_path,
+                     mode,
+                     &params.constants,
+                     threads);
 
   /* Save some time by setting all the return hooks here,
    * once and for all.
@@ -193,27 +207,78 @@ fn main() {
   println!("");
  */ 
 
-  let mut i : usize = 0;
-  while population.best_fit() == None 
-    || population.best_crashes() == Some(true)
-    || population.best_fit() > Some(params.fit_goal) {
-    let tr = tournement(&population, &mut machinery);
-    patch_population(tr, &mut population);
-    i += 1;
+  let pop_rw  = RwLock::new(population);
+  let pop_arc = Arc::new(pop_rw); 
+  let pop_local = pop_arc.clone();
+  while pop_local.read().unwrap().best_fit() == None 
+    || pop_local.read().unwrap().best_crashes() == Some(true)
+    || pop_local.read().unwrap().best_fit() > Some(params.fit_goal) {
+    
+    let (tx, rx) = channel();
+    let n_workers = 8;
+    let n_jobs    = machinery.cluster.len();
+    let mut pool = Pool::new(n_workers);
+    pool.scoped(|scope| {
+      for e in machinery.cluster.iter_mut() {
+        let tx = tx.clone();
+        let p = pop_arc.clone();
+        scope.execute(move || {
+          let t = tournement(&p.read().unwrap(), e, Batch::TRAINING);
+          tx.send(t).unwrap();
+        });
+      }
+      let mut trs : Vec<TournementResult> = rx.iter().take(n_jobs).collect();
+      println!("");
+      trs.sort_by(|a,b| b.best.fitness
+                         .partial_cmp(&a.best.fitness)
+                         .unwrap_or(Ordering::Equal));
+      for tr in trs {
+        //println!("{:?}",tr);
+        patch_population(tr, &mut pop_local.write().unwrap());
+      }
+      let avg_pop_gen = pop_local.read()
+                                 .unwrap()
+                                 .avg_gen();
+      let avg_pop_fit = pop_local.read()
+                                 .unwrap()
+                                 .avg_fit();
+
+                                 /*.deme
+                                 .iter()
+                                 .map(|ref c| c.generation.clone())
+                                 .sum::<u32>() as f32 / 
+                                    params.population_size as f32;
+                                    */
+      println!("==> AVG POP GEN: {}", avg_pop_gen);
+      println!("==> AVG POP FIT: {}", avg_pop_fit);
+
+    }); // END POOL SCOPE
   }
-  println!("=> {} GENERATIONS", i);
-  println!("=> BEST FIT: {:?}", population.best_fit());
+//} // FOR DEBUGGING
+  
+  println!("=> {} GENERATIONS", pop_local.read().unwrap().generation);
+  println!("=> BEST FIT: {:?}", pop_local.read().unwrap().best_fit());
   println!("=> RUNNING BEST:\n");
            
   add_hooks(machinery.cluster[0].unwrap_mut());
-  let mut bclone = population.best.unwrap().clone();
-  population.params.verbose = true;
+//  let mut bclone = (&pop_local.read().unwrap().best.unwrap()).clone();
+//  population.params.verbose = true;
+  let targets = pop_local.read().unwrap().params.test_targets.clone();
   evaluate_fitness(machinery.cluster[0].unwrap_mut(),
-                   &mut bclone,
-                   &population.params.io_targets,
-                   population.params.verbose);
-  for p in population.params.io_targets.iter() {
-    println!("{}", p.1);
-  }
-  println!("\n{}", &bclone);
+                   &mut (*pop_local.write().unwrap()).best.clone().unwrap(),
+                   &targets,
+                   true);
+  println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
+  
 }
+    //let mut engine = &mut machinery.cluster[i % 4];
+    //let tr = tournement(&population, engine);
+   /* 
+     * let mut trs = 
+      machinery.cluster
+               .iter_mut()
+               .map(|ref mut e| tournement(&population, e,
+                                           Batch::TRAINING))
+               .collect::<Vec<TournementResult>>();
+  */
+

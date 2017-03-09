@@ -13,6 +13,7 @@ use std::io::prelude::*;
 use rand::distributions::*;
 use rand::Rng;
 use rand::ThreadRng;
+use rand::thread_rng;
 use unicorn::*;
  
 use std::cmp::*;
@@ -183,7 +184,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* own instance of the emulator.                   */
   let mut counter_sum = 0;
   let mut anycrash = false;
-  for &(ref input, ref target) in io_targets {
+  for &(ref input, ref target) in io_targets.iter() {
     let (ft,counter,crash) = eval_case(uc,
                                        chain,
                                        &input,
@@ -208,7 +209,14 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   })
 }
 
-fn append_to_csv(path: &str, iter: usize, best: &Chain) {
+fn append_to_csv(path: &str, iter: usize,
+                 avg_gen: f32, 
+                 avg_fit: f32,
+                 best: &Chain) {
+  if best.fitness == None {
+    println!("*** best.fitness is None in append_to_csv?! ***");
+    return;
+  }
   let fit  = best.fitness.unwrap();
   let gen = best.generation;
   let len  = best.clumps.len();
@@ -217,7 +225,14 @@ fn append_to_csv(path: &str, iter: usize, best: &Chain) {
     Some(false) => 0,
     Some(true)  => 1,
   };
-  let row  = format!("{},{},{},{},{}\n", iter, gen, fit, crash, len);
+  let row  = format!("{},{},{},{},{},{},{}\n", 
+                     iter, 
+                     avg_gen,
+                     avg_fit,
+                     gen,
+                     fit,
+                     crash,
+                     len);
   let mut file = OpenOptions::new()
                             .append(true)
                             .create(true)
@@ -225,50 +240,54 @@ fn append_to_csv(path: &str, iter: usize, best: &Chain) {
                             .unwrap();
   file.write(row.as_bytes());
   file.flush();
+//  println!(">> {}",row);
 }
 
-fn update_best (population: &mut Population, idx: usize) {
-  let ref chain = population.deme[idx];
-  if chain.fitness != None 
-    && (population.best_fit() == None
-    || population.best_fit() > chain.fitness) {
-    population.best = Some(chain.clone());
-    append_to_csv(&population.params.csv_path,
-                   population.generation,
-                  &chain); //deme[l].fitness.unwrap());
-  } 
-}
 
 #[derive(Debug,Clone)]
 pub struct TournementResult {
-  graves: Vec<usize>,
-  spawn:  Vec<Chain>,
-  best:   Chain,
+  pub graves: Vec<usize>,
+  pub spawn:  Vec<Chain>,
+  pub best:   Chain,
+  pub display: String,
+  pub fit_updates: Vec<(usize,Option<f32>)>,
 }
+unsafe impl Send for TournementResult {}
 
 pub fn patch_population (tr: TournementResult,
                          population: &mut Population) {
   assert_eq!(tr.graves.len(), tr.spawn.len());
   population.generation += 1;
   for i in 0..tr.graves.len() {
+//    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
   }
-  if population.best == None || 
-    tr.best.fitness < population.best_fit() {
-    append_to_csv(&population.params.csv_path,
-                  population.generation,
-                  &tr.best);
-    population.best = Some(tr.best);
+  for (i,f) in tr.fit_updates {
+    if f != None {
+      population.deme[i].fitness = f;
+    }
   }
+  if population.best == None || 
+    population.params.verbose ||
+    tr.best.fitness < population.best_fit() {
+    population.best = Some(tr.best);
+    population.log();
+  }
+  println!("{}",tr.display);
 }
 
 pub fn tournement (population: &Population,
-                   machinery: &mut Machinery)
+                   engine: &mut Engine,
+                   batch: Batch)
                   -> TournementResult {
   let mut lots : Vec<usize> = Vec::new();
+  let io_targets = match batch {
+    Batch::TRAINING => &population.params.io_targets,
+    Batch::TESTING  => &population.params.test_targets,
+  };
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
-  let mut uc = (machinery.cluster[0].unwrap_mut()); // bandaid
-  let mut rng = &mut(machinery.rng);
+  let mut uc = engine.unwrap_mut(); //(machinery.cluster[0].unwrap_mut()); // bandaid
+  let mut rng = thread_rng(); //&mut(machinery.rng);
   let mut t_size = population.params.t_size;
   let p_size = population.size();
   let mut cflag = false;
@@ -294,11 +313,11 @@ pub fn tournement (population: &Population,
         VARIABLE_FITNESS) {
       let (fitness,crash) = evaluate_fitness(&mut uc, 
                                              &specimen,
-                                             &population.params
-                                                        .io_targets,
-                                             population.params
-                                                       .verbose);
+                                             io_targets,
+                                             false); // verbose
       fit_vec.push((fitness,crash));
+    } else {
+      fit_vec.push((specimen.fitness.unwrap(),None));
     }
   }
    
@@ -308,7 +327,7 @@ pub fn tournement (population: &Population,
     match crash {
       Some(counter) => {
         specimen.crashes = Some(true);
-        specimen[counter].sicken(); 
+        //specimen[counter].sicken(); 
       },
       None => {
         specimen.crashes = Some(false);
@@ -319,37 +338,53 @@ pub fn tournement (population: &Population,
       clump.link_fit  = calc_link_fit(clump, fitness);
       clump.viscosity = calc_viscosity(clump);
     }
+    //println!("## Setting fitness for lot #{} to {}",lot,fitness);
     specimen.set_fitness(fitness);
   }
   
   specimens.sort();
   
-  let (mother,_) = specimens[0].clone();
-  let (father,_) = if cflag {
+  let (mother,m_idx) = specimens[0].clone();
+  let (father,f_idx) = if cflag {
     // make this a separate method of population
     (population.random_spawn(), 0)
   } else { 
     specimens[1].clone()
   };
+  let mut fit_updates = vec![(m_idx, mother.fitness)];
+  if !cflag {
+    fit_updates.push((f_idx, father.fitness));
+  }
 
   /* This little print job should be factored out into a fn */
-  print!("[{:05}] ", population.generation);
+  let mut display : String = String::new();
+  display.push_str(&format!("[{:05}] ", population.generation));
   let mut i = 0;
   for &(ref specimen,_) in specimens.iter() {
     if i == 1 && cflag { 
-      print!(" ?????????? ||");
+      display.push_str(" ???????? ||");
     }
-    print!(" {:01.8}{}", specimen.fitness.unwrap(),
-      if specimen.crashes == Some(true) {'*'} else {' '});
+    if specimen.fitness == None {
+      display.push_str(" ~~~~~~~~ ");
+    } else {
+      let f = specimen.fitness.unwrap();
+      display.push_str(&format!(" {:01.6}{}", f,
+                         if specimen.crashes == Some(true) {
+                           '*'
+                         } else {
+                           ' '
+                         }));
+    }
     i += 1;
-    if i < specimens.len() { print!("|") };
-    if !cflag && i == 2 { print!("|") };
+    if i < specimens.len() { display.push_str("|") };
+    if !cflag && i == 2 { display.push_str("|") };
   }
   if population.best_fit() != None {
-    println!(" ({:01.8}{})", population.best_fit().unwrap(),
-      if population.best_crashes() == Some(true) {"*"} else {""});
+    display.push_str(&format!(" ({:01.6}{})", 
+                              population.best_fit().unwrap(),
+      if population.best_crashes() == Some(true) {"*"} else {""}));
   } else {
-    println!(" (----------)");
+    display.push_str(" (----------)");
   }
   /* End of little print job */
 
@@ -358,13 +393,18 @@ pub fn tournement (population: &Population,
   let parents : Vec<&Chain> = vec![&mother,&father];
   let offspring = mate(&parents,
                        &population.params,
-                       rng,
+                       &mut rng,
                        uc);
   let t_best = specimens[0].0.clone();
+  if t_best.fitness == None {
+    panic!("t_best.fitness is None!");
+  }
   TournementResult {
-    graves: vec![grave0, grave1],
-    spawn:  offspring,
-    best:   t_best,
+    graves:      vec![grave0, grave1],
+    spawn:       offspring,
+    best:        t_best,
+    display:     display,
+    fit_updates: fit_updates,
   }
 }
 
