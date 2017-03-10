@@ -660,7 +660,7 @@ pub enum SelectionMethod {
 
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
-  pub population_size  : u32,
+  pub population_size  : usize,
   pub mutation_rate    : f32,
   pub max_generations  : usize,
   pub selection_method : SelectionMethod,
@@ -686,6 +686,8 @@ pub struct Params {
   pub cuck_rate        : f32,
   pub verbose          : bool,
   pub csv_path         : String,
+  pub threads          : usize,
+  pub migration        : f32,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -710,9 +712,11 @@ impl Default for Params {
     //                         (vec![1; 16],
       //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
-      cuck_rate:        0.15,
+      cuck_rate:        0.10,
       verbose:          false,
       csv_path:         format!("roper_{:08x}.csv", time::get_time().sec),
+      threads:          4,
+      migration:        0.15,
     }
     // io_targets needs its own datatype. as it stands, it's kind
     // of awkward. 

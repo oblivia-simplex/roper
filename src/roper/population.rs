@@ -280,7 +280,8 @@ pub fn patch_population (tr: TournementResult,
 
 pub fn tournement (population: &Population,
                    engine: &mut Engine,
-                   batch: Batch)
+                   batch: Batch,
+                   vdeme: usize)
                   -> TournementResult {
   let mut lots : Vec<usize> = Vec::new();
   let io_targets = match batch {
@@ -300,12 +301,32 @@ pub fn tournement (population: &Population,
   }
 
   let mut specimens = Vec::new();
-
+  
+  // Virtual demes: segment of the population from which specimens
+  // will be drawn.
+  /*let lotdraw = if rng.gen::<f32>() < population.params.migration {
+    Box::new(|| rng.gen::<usize>() % 
+             population.params.population_size)
+  } else {
+    Box::new(|| rng.gen::<usize>() % r + (r * vdeme))
+  };
+  */
+  let r = p_size / population.params.threads;
+  let migrating = rng.gen::<f32>() < population.params.migration;
   for _ in 0..t_size {
-    let mut l: usize = rng.gen::<usize>() % p_size;
+    let mut l: usize = if migrating {
+      rng.gen::<usize>() % r + (r * vdeme)
+    } else {
+      rng.gen::<usize>() % population.params.population_size
+    };
     while lots.contains(&l) {
-      l = rng.gen::<usize>() % p_size;
+      l = if migrating {
+        rng.gen::<usize>() % r + (r * vdeme)
+      } else {
+        rng.gen::<usize>() % population.params.population_size
+      };
     }
+    lots.push(l);
     specimens.push((population.deme[l].clone(),l));
   }
 
@@ -360,7 +381,9 @@ pub fn tournement (population: &Population,
 
   /* This little print job should be factored out into a fn */
   let mut display : String = String::new();
-  display.push_str(&format!("[{:05}] ", population.generation));
+  display.push_str(&format!("[{:05}:{:02}] ", 
+                            population.generation,
+                            vdeme));
   let mut i = 0;
   for &(ref specimen,_) in specimens.iter() {
     if i == 1 && cflag { 

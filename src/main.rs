@@ -176,6 +176,7 @@ fn main() {
   params.test_targets = testing;
   params.fit_goal     = goal;
   params.verbose      = verbose;
+  params.threads      = threads;
   params.set_csv_dir(&log_dir);
 
   let mut rng = rand::thread_rng();
@@ -219,13 +220,15 @@ fn main() {
     let n_jobs    = machinery.cluster.len();
     let mut pool = Pool::new(n_workers);
     pool.scoped(|scope| {
+      let mut vdeme = 0;
       for e in machinery.cluster.iter_mut() {
         let tx = tx.clone();
         let p = pop_arc.clone();
         scope.execute(move || {
-          let t = tournement(&p.read().unwrap(), e, Batch::TRAINING);
+          let t = tournement(&p.read().unwrap(), e, Batch::TRAINING, vdeme);
           tx.send(t).unwrap();
         });
+        vdeme = (vdeme + 1) % threads;
       }
       let mut trs : Vec<TournementResult> = rx.iter().take(n_jobs).collect();
       println!("");
