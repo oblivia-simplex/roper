@@ -387,6 +387,27 @@ impl Population {
        .sum::<u32>() as f32 / 
           self.params.population_size as f32
   }
+  pub fn avg_len (&self) -> f32 {
+    self.deme
+        .iter()
+        .map(|ref c| c.size() as f32)
+        .sum::<f32>() / 
+          self.params.population_size as f32
+  }
+  pub fn avg_crash (&self) -> f32 {
+    let cand = self.deme
+                   .iter()
+                   .filter(|ref c| c.crashes != None)
+                   .count();
+    if cand == 0 { return 0.0 }
+    self.deme
+        .iter()
+        .filter(|ref c| c.crashes != None)
+        .map(|ref c| if c.crashes.clone().unwrap() {1.0} else {0.0})
+        .sum::<f32>() /
+          cand as f32
+  }
+        
   pub fn avg_fit (&self) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.fitness != None)
@@ -433,14 +454,20 @@ impl Population {
     if best.fitness == None {
       return;
     }
-    let row = format!("{},{},{},{},{},{},{}\n",
+    let row = if self.generation == 1 {
+      format!("ITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH\n")
+    } else {
+      format!("{},{},{},{},{},{},{},{},{}\n",
                       self.generation.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
+                      self.avg_crash(),
                       best.generation,
                       best.fitness.unwrap(),
                       if best.crashes == Some(true) { 1 } else { 0 },
-                      best.size());
+                      self.avg_len(),
+                      best.size())
+    };
     let mut file = OpenOptions::new().append(true)
                                      .create(true)
                                      .open(&self.params.csv_path)
@@ -697,14 +724,6 @@ impl Params {
   }
   pub fn set_csv_dir (&mut self, dir: &str) {
     self.csv_path = format!("{}/{}", dir, self.csv_path);
-    let row = format!("ITERATION,AVG_GEN,AVG_FIT,BEST_GEN,BEST_FIT,BEST_CRASH,BEST_LENGTH\n");
-    let mut file = OpenOptions::new()
-                              .write(true)
-                              .create(true)
-                              .open(&self.csv_path)
-                              .unwrap();
-    file.write(row.as_bytes());
-    file.flush();
   }
 }
 

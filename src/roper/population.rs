@@ -250,7 +250,7 @@ pub struct TournementResult {
   pub spawn:  Vec<Chain>,
   pub best:   Chain,
   pub display: String,
-  pub fit_updates: Vec<(usize,Option<f32>)>,
+  pub fit_updates: Vec<(usize,(Option<f32>,Option<bool>))>,
 }
 unsafe impl Send for TournementResult {}
 
@@ -262,15 +262,17 @@ pub fn patch_population (tr: TournementResult,
 //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
   }
-  for (i,f) in tr.fit_updates {
+  for (i,(f,c)) in tr.fit_updates {
     if f != None {
       population.deme[i].fitness = f;
+      population.deme[i].crashes = c;
     }
   }
   if population.best == None || 
-    population.params.verbose ||
     tr.best.fitness < population.best_fit() {
     population.best = Some(tr.best);
+    population.log();
+  } else if population.params.verbose {
     population.log();
   }
   println!("{}",tr.display);
@@ -351,9 +353,9 @@ pub fn tournement (population: &Population,
   } else { 
     specimens[1].clone()
   };
-  let mut fit_updates = vec![(m_idx, mother.fitness)];
+  let mut fit_updates = vec![(m_idx, (mother.fitness,mother.crashes))];
   if !cflag {
-    fit_updates.push((f_idx, father.fitness));
+    fit_updates.push((f_idx, (father.fitness,father.crashes)));
   }
 
   /* This little print job should be factored out into a fn */
