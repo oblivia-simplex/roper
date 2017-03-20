@@ -69,19 +69,21 @@ impl Engine {
 impl Machinery {
   pub fn new (elf_path: &str, 
               mode: MachineMode,
-              constants: &Vec<u32>,
-              uc_num: usize) -> Machinery {
+              uc_num: usize,
+              debug: bool) -> Machinery {
     let elf_addr_data = get_elf_addr_data(elf_path,
                                           &vec![".text", ".rodata"]);
     let mut cluster = Vec::new();
     for i in 0..uc_num {
       println!("spinning up engine #{}",i);
-      cluster.push(Engine::new(init_engine(&elf_addr_data, mode)));
+      let mut uc = init_engine(&elf_addr_data, mode);
+      //if debug {
+      //  add_debug_hooks(&mut uc);
+      //}
+      cluster.push(Engine::new(uc));
     }
-    let rng = thread_rng();
     Machinery { 
       cluster: cluster, 
-//      rng: rng,
     }
   }
 }

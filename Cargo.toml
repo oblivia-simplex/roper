@@ -16,3 +16,4 @@ getopts = "0.2.14"
 time = "0.1.36"
 scoped_threadpool = "0.1.7"
 
+rustc-serialize = "0.3.22"

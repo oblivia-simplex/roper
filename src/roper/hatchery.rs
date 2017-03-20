@@ -2,6 +2,8 @@
 extern crate unicorn;
 extern crate elf;
 
+use std::fs::{File,OpenOptions};
+use std::io::prelude::*;
 use elf::*;
 use unicorn::*; //{Cpu, CpuARM, uc_handle};
 use roper::util::{disas,get_word32le, get_word16le, hexvec};
@@ -119,7 +121,7 @@ pub fn init_engine <'a,'b> (addr_data_vec: &Vec<Sec>,//<(u64, Vec<u8>)>,
   uc
 }
 
-pub fn add_hooks (uc: &mut unicorn::CpuARM) {
+pub fn add_debug_hooks (uc: &mut unicorn::CpuARM) {
   if _DEBUG {
     println!("Adding hooks...");
     let callback_c = 
@@ -242,7 +244,18 @@ pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
             else {MachineMode::THUMB};
   let dis = disas(&instv, mmo);
   let regs = hexvec(&read_registers(u));
-  println!("({:02x})-[{:08x}] | {:?} | {}\n    {}", 
-           read_counter_u(u), addr, mmo, dis, regs);
+  // write to file instead. single name. but have wrapper
+  // script rename it afterwards, as a silly kludge.
+  let path = "/tmp/roper_disassembly.txt";
+  
+  let mut dfile = OpenOptions::new()
+                              .append(true)
+                              .write(true)
+                              .create(true)
+                              .open(&path)
+                              .unwrap();
+  let row = format!("({:02x})-[{:08x}] | {:?} | {}\n    {}\n", read_counter_u(u), addr, mmo, dis, regs);
+//  println!("{}",row);
+  dfile.write(&row.as_bytes()).unwrap();
 }
 

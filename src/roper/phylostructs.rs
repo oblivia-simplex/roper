@@ -1,7 +1,10 @@
 extern crate rand;
 extern crate unicorn;
 extern crate time;
+extern crate rustc_serialize;
 
+use std::collections::BTreeMap;
+use self::rustc_serialize::json::{self, Json, ToJson};
 use rand::*;
 use unicorn::*;
 use capstone::CsMode;
@@ -39,6 +42,22 @@ pub struct Clump {
   pub link_fit:    Option<f32>,
 }
 
+// JClumps are just a transitional data structure, used in the JSON
+impl ToJson for Clump {
+  fn to_json(&self) -> Json {
+    let mut b = BTreeMap::new();
+    b.insert("sp_delta".to_string(), self.sp_delta.to_json());
+    b.insert("ret_offset".to_string(), self.ret_offset.to_json());
+    b.insert("exchange".to_string(), self.exchange.to_json()); 
+    b.insert("mode".to_string(),format!("{:?}",self.mode).to_json());
+    b.insert("ret_addr".to_string(),self.ret_addr.to_json());
+    b.insert("words".to_string(), self.words.to_json());
+    b.insert("viscosity".to_string(), self.viscosity.to_json());
+    b.insert("link_fit".to_string(),
+      format!("{:?}",self.link_fit).to_json());
+    Json::Object(b)
+  }
+}
 impl Display for Clump {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();
@@ -141,6 +160,8 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
   //let mut spd = 0;
   let mut rto = 0 as usize;
   let mut exchange = false;
+  let mut i = 0;
+  //let last = clumps.len()-1;
   for ref gad in clumps {
     /* for debugging */
     /*****************/
@@ -148,8 +169,13 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
       panic!("Attempting to concatenate unsaturated clumps");
     }
     assert!(gad.sp_delta >= 0);
+    //if i == last { 
+   //   c[rto] = gad.words[0].clone();
+   //   //
+   // } else {
     let t : usize = rto + gad.sp_delta as usize;
     &c[rto..t].clone_from_slice(&(gad.words));
+   // }
     if exchange && (gad.mode == MachineMode::THUMB) {
       /* If we BX, the LSB of the addr decides machine mode */
       c[rto] |= 1;
@@ -159,7 +185,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
     //spd += gad.sp_delta as usize;
     exchange = gad.exchange;
 //    println!("[{}] ==> {}",rto,gad);
-
+    i += 1;
   }
   c[..rto].to_vec()
 }
@@ -175,6 +201,17 @@ pub struct Chain {
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
   // the destructiveness of the shufflefuck operator
+}
+impl ToJson for Chain {
+  fn to_json (&self) -> Json {
+    let mut b = BTreeMap::new();
+    b.insert("clumps".to_string(), self.clumps.to_json());
+    b.insert("fitness".to_string(), 
+             format!("{:?}", self.fitness).to_json());
+    b.insert("generation".to_string(), self.generation.to_json());
+    b.insert("crashes".to_string(), self.crashes.to_json());
+    Json::Object(b)
+  }
 }
 impl Display for Chain {
   fn fmt (&self, f: &mut Formatter) -> Result {
@@ -347,8 +384,7 @@ unsafe impl Send for Population {}
 //unsafe impl Sync for Population {}
 
 impl Population {
-  pub fn new (params: &Params,
-              ) -> Population {
+  pub fn new (params: &Params) -> Population {
     let mut clumps = reap_gadgets(&params.code, 
                                   params.code_addr, 
                                   MachineMode::ARM);
@@ -392,6 +428,13 @@ impl Population {
         .iter()
         .map(|ref c| c.size() as f32)
         .sum::<f32>() / 
+          self.params.population_size as f32
+  }
+  pub fn proportion_unseen (&self) -> f32 {
+    self.deme
+        .iter()
+        .filter(|ref c| c.fitness == None)
+        .count() as f32 / 
           self.params.population_size as f32
   }
   pub fn avg_crash (&self) -> f32 {
@@ -446,6 +489,23 @@ impl Population {
   pub fn set_best (&mut self, i: usize) {
     self.best = Some(self.deme[i].clone());
   }
+  pub fn periodic_save (&self) {
+    if self.generation % self.params.save_period == 0 {
+      println!("[*] Saving population to {}", &self.params.pop_path);
+      self.save();
+    }
+  }
+  pub fn save (&self) {
+    let mut json_file = OpenOptions::new()
+                                    .truncate(true)
+                                    .write(true)
+                                    .create(true)
+                                    .open(&self.params.pop_path)
+                                    .unwrap();
+    let json_string = format!("{}\n",self.deme.to_json());
+    json_file.write(json_string.as_bytes());
+    json_file.flush();
+  }
   pub fn log (&self) {
     if self.best == None {
       return;
@@ -455,9 +515,10 @@ impl Population {
       return;
     }
     let row = if self.generation == 1 {
-      format!("ITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH\n")
-    } else {
-      format!("{},{},{},{},{},{},{},{},{}\n",
+      format!("ITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n")
+    } else { "".to_string() };
+    let row = format!("{}{},{},{},{},{},{},{},{},{},{}\n",
+                      row,
                       self.generation.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
@@ -466,184 +527,18 @@ impl Population {
                       best.fitness.unwrap(),
                       if best.crashes == Some(true) { 1 } else { 0 },
                       self.avg_len(),
-                      best.size())
-    };
-    let mut file = OpenOptions::new().append(true)
-                                     .create(true)
-                                     .open(&self.params.csv_path)
-                                     .unwrap();
-    file.write(row.as_bytes());
-    file.flush();
+                      best.size(),
+                      self.proportion_unseen());
+    let mut csv_file = OpenOptions::new()
+                                   .append(true)
+                                   .create(true)
+                                   .open(&self.params.csv_path)
+                                   .unwrap();
+    csv_file.write(row.as_bytes());
+    csv_file.flush();
   }
 }
 
-
-
-/*
-impl PartialOrd for Pod<Chain> {
-  fn partial_cmp (&self, other: &Pod<Chain>) -> Option<Ordering> {
-    self.read().unwrap().partial_cmp(other.read().unwrap())
-  }
-}
-impl Ord for Pod<Chain> {
-  fn cmp (&self, other: &Pod<Chain>) -> Option<Ordering> {
-    self.read().unwrap().cmp(other.read().unwrap())
-  }
-}
-*/
-/**** EXPERIMENTAL (but isn't everything?) *****
-
-#[derive(Copy)]
-struct Arr1K <T: Copy> {
-  elems: [Option<T>; 1024],
-  ptr:   usize,
-  counter: usize,
-}
-impl <T: Copy> Clone for Arr1K <T> {
-  fn clone (&self) -> Arr1K <T> {
-    *self
-  }
-}
-#[derive(Copy)]
-struct Arr16 <T: Copy> {
-  elems: [Option<T>; 16],
-  ptr:   usize,
-  counter: usize,
-}
-impl <T: Copy> Clone for Arr16 <T> {
-  fn clone (&self) -> Arr16 <T> {
-    *self
-  }
-}
-
-trait Arr <T> {
-  fn len (&self) -> usize;
-  fn get (&self, i: usize) -> T;
-  fn get_opt (&self, i: usize) -> Option<T>; 
-}
-
-impl <T: Copy> Arr1K <T> {
-  fn new () -> Arr1K<T> {
-    Arr1K {
-      elems:   [None; 1024],
-      ptr:     0,
-      counter: 0,
-    }
-  }
-}
-impl <T: Copy> Arr16 <T> {
-  fn new () -> Arr16<T> {
-    Arr16 {
-      elems:   [None; 16],
-      ptr:     0,
-      counter: 0,
-    }
-  }
-}
-
-impl <T: Copy> Stack <T> for Arr1K <T> {
-  fn push (&mut self, t: T) {
-    self.ptr += 1;
-    self.elems[self.ptr] = Some(t);
-  }
-  fn pop (&mut self) -> T {
-    let p = self.ptr;
-    self.ptr -= 1;
-    match self.elems[p] {
-      Some(e) => e,
-      None    => panic!("Nothing left to pop."),
-    }
-  }
-}
-impl <T: Copy> Arr <T> for Arr1K <T> {
-  fn get_opt (&self, i: usize) -> Option<T> {
-    self.elems[i]
-  }
-  fn get (&self, i: usize) -> T {
-    match self.get_opt(i) {
-      Some(x) => x,
-      None    => panic!("Bad index."),
-    }
-  }
-  fn len (&self) -> usize {
-    self.elems.len()
-  }
-}
-
-impl <T: Copy> Iterator for Arr1K <T> {
-  type Item = T;
-  
-  fn next (&mut self) -> Option<T> {
-    let c = self.counter;
-    self.counter += 1;
-    self.elems[c]
-  }
-
-}
-impl <T: Copy> Index <usize> for Arr1K <T> {
-  type Output = T;
-  fn index(&self, index: usize) -> &T {
-    &(self.get(index))
-  }
-}
-impl <T: Copy> IndexMut <usize> for Arr1K <T> {
-  fn index_mut(&mut self, index: usize) -> &mut T {
-    &mut (self.get(index))
-  }
-}
-/*** There must be a better way that cut-and-pasta! ***/
-impl <T: Copy> Stack <T> for Arr16 <T> {
-  fn push (&mut self, t: T) {
-    self.ptr += 1;
-    self.elems[self.ptr] = Some(t);
-  }
-  fn pop (&mut self) -> T {
-    let p = self.ptr;
-    self.ptr -= 1;
-    match self.elems[p] {
-      Some(e) => e,
-      None    => panic!("Nothing left to pop."),
-    }
-  }
-}
-
-impl <T: Copy> Arr <T> for Arr16 <T> {
-  fn get_opt (&self, i: usize) -> Option<T> {
-    self.elems[i]
-  }
-  fn get (&self, i: usize) -> T {
-    match self.get_opt(i) {
-      Some(x) => x,
-      None    => panic!("Bad index."),
-    }
-  }
-  fn len (&self) -> usize {
-    self.elems.len()
-  }
-}
-
-impl <T: Copy> Iterator for Arr16 <T> {
-  type Item = T;
-  
-  fn next (&mut self) -> Option<T> {
-    let c = self.counter;
-    self.counter += 1;
-    self.elems[c]
-  }
-
-}
-impl <T: Copy> Index <usize> for Arr16 <T> {
-  type Output = T;
-  fn index(&self, index: usize) -> &T {
-    & (self.get(index))
-  }
-}
-impl <T: Copy> IndexMut <usize> for Arr16 <T> {
-  fn index_mut(&mut self, index: usize) -> &mut T {
-    &mut (self.get(index))
-  }
-}
-******************************************************/
 /**
  * Constants and parameters
  */
@@ -686,11 +581,16 @@ pub struct Params {
   pub cuck_rate        : f32,
   pub verbose          : bool,
   pub csv_path         : String,
+  pub pop_path         : String,
   pub threads          : usize,
+  pub num_demes        : usize,
   pub migration        : f32,
+  pub save_period      : usize, 
+  pub use_viscosity    : bool,
 }
 impl Default for Params {
   fn default () -> Params {
+    let timestamp = time::get_time().sec;
     Params {
       population_size:  2000,
       mutation_rate:    0.30,
@@ -714,9 +614,13 @@ impl Default for Params {
       constants:        Vec::new(),
       cuck_rate:        0.10,
       verbose:          false,
-      csv_path:         format!("roper_{:08x}.csv", time::get_time().sec),
+      csv_path:         format!("roper_{:08x}.csv", timestamp),
+      pop_path:         format!("roper_{:08x}_pop.json", timestamp),
+      save_period:      256,
       threads:          4,
+      num_demes:        1,
       migration:        0.15,
+      use_viscosity:    true,
     }
     // io_targets needs its own datatype. as it stands, it's kind
     // of awkward. 
@@ -726,8 +630,9 @@ impl Params {
   pub fn new () -> Params {
     Default::default()
   }
-  pub fn set_csv_dir (&mut self, dir: &str) {
-    self.csv_path = format!("{}/{}", dir, self.csv_path);
+  pub fn set_log_dir (&mut self, dir: &str) {
+    self.csv_path  = format!("{}/{}", dir, self.csv_path);
+    self.pop_path = format!("{}/{}", dir, self.pop_path); 
   }
 }
 

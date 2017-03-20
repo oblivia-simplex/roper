@@ -50,6 +50,26 @@ fn calc_link_fit (clump: &Clump, c_fit: f32) -> Option<f32>{
  * 2. offset bloat (or encourage bloat! we'll see...)
  */
 
+fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
+  if (clump.ret_addr < clump.words[0]) {
+    println!("[WARNING] clump.ret_addr = {:08x}\nclump.words[0] = {:08x}",
+             clump.ret_addr, clump.words[0]);
+    return;
+  }
+
+  let d = (clump.ret_addr - clump.words[0]);
+  let inst_size = if clump.mode == MachineMode::ARM {
+    4
+  } else {
+    2
+  };
+  if d > 1 || rng.gen::<bool>() {
+    clump.words[0] += inst_size;
+  } else {
+    clump.words[0] -= inst_size;
+  }
+}
+
 fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* mutations will only affect the immediate part of the clump */
   /* we'll let shufflefuck handle the rest. */
@@ -68,9 +88,10 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   let mut clump = chain[cl_idx].clone();
   assert!(clump.size() > 0);
   let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-  let mut_kind : u8 = rng.gen::<u8>() % 2;
+  let mut_kind : u8 = rng.gen::<u8>() % 3;
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
+    1 => mutate_addr(&mut clump, rng),
     _ => { /* permutation */
       let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
       let tmp = clump.words[idx];
@@ -85,9 +106,8 @@ pub fn mate (parents: &Vec<&Chain>,
              rng:     &mut ThreadRng,
              uc:      &mut CpuARM) -> Vec<Chain> {
   let mut brood = shufflefuck(parents, 
-                            params.brood_size, 
-                            params.max_len,
-                            rng);
+                              params,
+                              rng);
   for s in brood.iter_mut() {
     mutate(s, params, rng)
   }
@@ -255,7 +275,8 @@ pub struct TournementResult {
 unsafe impl Send for TournementResult {}
 
 pub fn patch_population (tr: TournementResult,
-                         population: &mut Population) {
+                         population: &mut Population) 
+                        -> Option<Chain> {
   assert_eq!(tr.graves.len(), tr.spawn.len());
   population.generation += 1;
   for i in 0..tr.graves.len() {
@@ -268,15 +289,20 @@ pub fn patch_population (tr: TournementResult,
       population.deme[i].crashes = c;
     }
   }
+  println!("{}",tr.display);
   if population.best == None || 
     tr.best.fitness < population.best_fit() {
-    population.best = Some(tr.best);
+    population.best = Some(tr.best.clone());
     population.log();
-  } else if population.params.verbose {
-    population.log();
+    Some(tr.best)
+  } else {
+    if population.params.verbose {
+      population.log();
+    }
+    None
   }
-  println!("{}",tr.display);
 }
+// returns a clone of the best if the best is new
 
 pub fn tournement (population: &Population,
                    engine: &mut Engine,
@@ -292,7 +318,6 @@ pub fn tournement (population: &Population,
   let mut uc = engine.unwrap_mut(); //(machinery.cluster[0].unwrap_mut()); // bandaid
   let mut rng = thread_rng(); //&mut(machinery.rng);
   let mut t_size = population.params.t_size;
-  let p_size = population.size();
   let mut cflag = false;
 //  let io_targets = &(population.params.io_targets);
   if rng.gen::<f32>() < population.params.cuck_rate {
@@ -311,10 +336,10 @@ pub fn tournement (population: &Population,
     Box::new(|| rng.gen::<usize>() % r + (r * vdeme))
   };
   */
-  let r = p_size / population.params.threads;
+  let r = population.params.population_size / population.params.num_demes;
   let migrating = rng.gen::<f32>() < population.params.migration;
   for _ in 0..t_size {
-    let mut l: usize = if migrating {
+    let mut l: usize = if !migrating {
       rng.gen::<usize>() % r + (r * vdeme)
     } else {
       rng.gen::<usize>() % population.params.population_size
@@ -462,7 +487,9 @@ fn calc_viscosity (clump: &Clump) -> i32 {
   }
 }
 
-fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
+fn splice_point (chain: &Chain, 
+                 rng: &mut ThreadRng,
+                 use_viscosity: bool) -> usize {
   let mut wheel : Vec<Weighted<usize>> = Vec::new();
   let mut i : usize = 0;
   if chain.size() == 0 {
@@ -470,7 +497,11 @@ fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
   }
   for clump in &chain.clumps {
     assert!(clump.visc() <= MAX_VISC);
-    let vw : u32 = 1 + (MAX_VISC - clump.visc()) as u32;
+    let vw : u32 = if use_viscosity {
+      1 + (MAX_VISC - clump.visc()) as u32
+    } else {
+      50
+    };
     wheel.push(Weighted { weight: vw,
                           item: i });
     i += 1;
@@ -480,17 +511,19 @@ fn splice_point (chain: &Chain, rng: &mut ThreadRng) -> usize {
 }
 
 fn shufflefuck (parents:    &Vec<&Chain>, 
-              brood_size: usize,
-              max_len:    usize,
-              rng:        &mut ThreadRng) -> Vec<Chain> {
+                params:     &Params,
+                rng:        &mut ThreadRng) -> Vec<Chain> {
+  let brood_size = params.brood_size;
+  let max_len    = params.max_len;
+  let use_viscosity = params.use_viscosity;
   let mut brood : Vec<Chain> = Vec::new();
   for i in 0..brood_size {
     let m_idx  : usize  = i % 2;
     let mother : &Chain = &(parents[m_idx]);
     let father : &Chain = &(parents[(m_idx+1) % 2]);
-    let m_i : usize = splice_point(&mother, rng);
+    let m_i : usize = splice_point(&mother, rng, use_viscosity);
     let m_n : usize = mother.size() - (m_i+1);
-    let f_i : usize = splice_point(&father, rng);
+    let f_i : usize = splice_point(&father, rng, use_viscosity);
 
     /*
      * println!("==> m viscosity at splice point: {}",

@@ -2,7 +2,7 @@
 PROJECT_ROOT=`pwd`
 DATAFILE=${PROJECT_ROOT}/data/iris.small
 GOAL="0.10"
-OUTFILE="${PROJECT_ROOT}/data/roper.out"
+OUTFILE="${PROJECT_ROOT}/logs/roper.out"
 
 mkdir -p $PROJECT_ROOT/logs
 
@@ -15,6 +15,7 @@ BEST_FIT=6
 BEST_CRASH=7
 AVG_LEN=8
 BEST_LEN=9
+UNSEEN=10
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -34,7 +35,8 @@ set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "logs/recent.csv" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${AVG_CRASH} w lines, \
-  "" u ${X0}:${BEST_FIT} w lines
+  "" u ${X0}:${BEST_FIT} w lines, \
+  "" u ${X0}:${UNSEEN} w lines
 plot "logs/recent.csv" u ${X1}:${AVG_GEN} w lines, \
   "" u ${X1}:${AVG_LEN} w lines, \
   "" u ${X1}:${BEST_GEN} w lines, \
@@ -46,26 +48,40 @@ EOF
 # "logs/recent.csv" u $AVG_GEN:$AVG_LEN w lines, \
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 ERRORFILE=$PROJECT_ROOT/logs/roper.err
+echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
-cargo build 2> $ERRORFILE || \
+cargo build | tee -a $ERRORFILE || \
   (cat $ERRORFILE && exit)
 echo "[+] roper has been successfully compiled"
-rm -f /tmp/.roper_starting
-touch /tmp/.roper_starting
+STAMPFILE="/tmp/.roper_starting"
+rm -f $STAMPFILE
+touch $STAMPFILE
+DISASFILE="/tmp/roper_disassembly.txt" 
+[ -f "$DISASFILE" ] && mv $DISASFILE \
+  $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
-  RUST_BACKTRACE=1 cargo run -- -d $DATAFILE -o $PROJECT_ROOT/logs -g $GOAL -t 4
+  RUST_BACKTRACE=1 cargo run -- -d $DATAFILE \
+                                -o $PROJECT_ROOT/logs \
+                                -g $GOAL \
+                                -t 4 \ 
+                                -P 3200 \
+                                -D 4 \
+                                -V
 }
 echo "[+] launching roper"
 run > $OUTFILE 2>> $ERRORFILE &
 roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
-gzip roper*.csv 2>> $ERRORFILE
+gzip roper*.{csv,json} 2>> $ERRORFILE
 recent=""
+echo -n "[+] looking for log output"
 while ! [ -n "$recent" ]; do
+  echo -n "."
   sleep 0.5
-  recent=`find ./ -name "roper*csv" -anewer /tmp/.starting | tail -n1`
+  recent=`find ./ -name "roper*csv" -anewer $STAMPFILE | tail -n1`
 done
+echo
 ln -sf $recent recent.csv
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"
