@@ -2,7 +2,12 @@
 PROJECT_ROOT=`pwd`
 DATAFILE=${PROJECT_ROOT}/data/iris.data
 GOAL="0.10"
-OUTFILE="${PROJECT_ROOT}/logs/roper.out"
+
+LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
+mkdir -p $LOGDIR
+OUTFILE="${LOGDIR}/roper_`date +%H-%M-%S`.out"
+ERRORFILE=${LOGDIR}/roper_`date +%H-%M-%S`.err
+PLOTFILE=${LOGDIR}/plot_`date +%H-%M-%S`.gnu
 
 mkdir -p $PROJECT_ROOT/logs
 gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
@@ -21,7 +26,7 @@ X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
 X1_AXIS_TITLE="TOURNEMENT ITERATION"
 
-cat > plot.gnu << EOF
+cat > $PLOTFILE << EOF
 set terminal x11 background rgb 'black'
 set datafile commentschars "%"
 set multiplot layout 1, 2 title "ROPER on $DATAFILE"
@@ -48,7 +53,6 @@ reread
 EOF
 # "logs/recent.csv" u $AVG_GEN:$AVG_LEN w lines, \
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
-ERRORFILE=$PROJECT_ROOT/logs/roper.err
 echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
 cargo build | tee -a $ERRORFILE || \
@@ -90,7 +94,7 @@ ln -sf $recent recent.csv
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"
 sleep 1
-( [ -n "$DISPLAY" ] && gnuplot plot.gnu) &
+( [ -n "$DISPLAY" ] && gnuplot $PLOTFILE) &
 gnuplot_pid=$!
 echo "[+] gnuplot PID is $gnuplot_pid"
 for i in {0..70}; do echo -n "="; done; echo

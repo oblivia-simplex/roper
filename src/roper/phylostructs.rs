@@ -632,8 +632,8 @@ impl Default for Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![0,2,4,6],
-      outregs:          vec![1,3,5],
+      inregs:           vec![1,3,5,7],
+      outregs:          vec![0,2,4],
     }
   }
 }
