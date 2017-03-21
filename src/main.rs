@@ -114,7 +114,7 @@ fn main() {
     Some(n) => n.parse::<usize>().unwrap(),
   };
   let num_demes = match matches.opt_str("D") {
-    None => 1,
+    None => 4,
     Some(n) => n.parse::<usize>().unwrap(),
   };
   let rpattern_str = matches.opt_str("p");
@@ -203,7 +203,8 @@ fn main() {
   // add string search function
   // find string addresses in rodata
   // pass these addresses to the mangler in population building
-  
+  //println!("params: {:?}",params); 
+
   let mut rng = rand::thread_rng();
   let mut population = Population::new(&params);
 

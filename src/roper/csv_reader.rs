@@ -19,6 +19,7 @@ pub fn process_data2 (path: &str,
       Ok(l)  => l,
       Err(_) => break,
     };
+    if line.chars().nth(0).unwrap() == '%' { continue };
     if line == "" { break };
     let sp   = line.split(",");
     let v    = sp.last()

@@ -609,21 +609,17 @@ impl Default for Params {
       io_targets:       IoTargets::new(),
       test_targets:     IoTargets::new(),
       fit_goal:         0.0,  
-    //                         (vec![1; 16],
-      //                        RPattern { regvals: vec![(0,0xdead)]})], // junk
       constants:        Vec::new(),
-      cuck_rate:        0.10,
+      cuck_rate:        0.15,
       verbose:          false,
       csv_path:         format!("roper_{:08x}.csv", timestamp),
       pop_path:         format!("roper_{:08x}_pop.json", timestamp),
       save_period:      256,
       threads:          4,
       num_demes:        1,
-      migration:        0.15,
+      migration:        0.10,
       use_viscosity:    true,
     }
-    // io_targets needs its own datatype. as it stands, it's kind
-    // of awkward. 
   }
 }
 impl Params {

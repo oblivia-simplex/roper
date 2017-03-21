@@ -1,6 +1,6 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
-DATAFILE=${PROJECT_ROOT}/data/iris.small
+DATAFILE=${PROJECT_ROOT}/data/iris.data
 GOAL="0.10"
 OUTFILE="${PROJECT_ROOT}/logs/roper.out"
 
@@ -23,6 +23,7 @@ X1_AXIS_TITLE="TOURNEMENT ITERATION"
 
 cat > plot.gnu << EOF
 set terminal x11 background rgb 'black'
+set datafile commentschars "%"
 set multiplot layout 1, 2 title "ROPER on $DATAFILE"
 set xlabel 'ylabel' tc rgb 'red'
 set ylabel 'xlabel' tc rgb 'red'

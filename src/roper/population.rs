@@ -63,9 +63,9 @@ fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
   } else {
     2
   };
-  if d > 1 || rng.gen::<bool>() {
+  if d > inst_size || rng.gen::<bool>() {
     clump.words[0] += inst_size;
-  } else {
+  } else if d < (inst_size * 8) {
     clump.words[0] -= inst_size;
   }
 }
