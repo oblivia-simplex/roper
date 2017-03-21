@@ -26,31 +26,6 @@ X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
 X1_AXIS_TITLE="TOURNEMENT ITERATION"
 
-cat > $PLOTFILE << EOF
-set terminal x11 background rgb 'black'
-set datafile commentschars "%"
-set multiplot layout 1, 2 title "ROPER on $DATAFILE"
-set xlabel 'ylabel' tc rgb 'red'
-set ylabel 'xlabel' tc rgb 'red'
-set border lc rgb 'red'
-set key tc rgb 'red'
-set key autotitle columnhead
-set datafile separator ","
-set autoscale
-set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
-set ylabel "POPULATION FEATURES"
-plot "logs/recent.csv" u ${X0}:${AVG_FIT} w lines, \
-  "" u ${X0}:${AVG_CRASH} w lines, \
-  "" u ${X0}:${BEST_FIT} w lines, \
-  "" u ${X0}:${UNSEEN} w lines
-plot "logs/recent.csv" u ${X1}:${AVG_GEN} w lines, \
-  "" u ${X1}:${AVG_LEN} w lines, \
-  "" u ${X1}:${BEST_GEN} w lines, \
-  "" u ${X1}:${BEST_LEN} w lines
-pause 1 
-unset multiplot
-reread
-EOF
 # "logs/recent.csv" u $AVG_GEN:$AVG_LEN w lines, \
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 echo "[+] compiling roper..."
@@ -89,7 +64,32 @@ while ! [ -n "$recent" ]; do
   sleep 0.5
   recent=`find ./ -name "roper*csv" -anewer $STAMPFILE | tail -n1`
 done
-echo
+echo "*** recent csv -> $recent"
+cat > $PLOTFILE << EOF
+set terminal x11 background rgb 'black'
+set datafile commentschars "%"
+set multiplot layout 1, 2 title "ROPER on $recent"
+set xlabel 'ylabel' tc rgb 'red'
+set ylabel 'xlabel' tc rgb 'red'
+set border lc rgb 'red'
+set key tc rgb 'red'
+set key autotitle columnhead
+set datafile separator ","
+set autoscale
+set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
+set ylabel "POPULATION FEATURES"
+plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
+  "" u ${X0}:${AVG_CRASH} w lines, \
+  "" u ${X0}:${BEST_FIT} w lines, \
+  "" u ${X0}:${UNSEEN} w lines
+plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
+  "" u ${X1}:${AVG_LEN} w lines, \
+  "" u ${X1}:${BEST_GEN} w lines, \
+  "" u ${X1}:${BEST_LEN} w lines
+pause 1 
+unset multiplot
+reread
+EOF
 ln -sf $recent recent.csv
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"

@@ -207,6 +207,7 @@ fn main() {
   params.use_viscosity = use_viscosity;
   params.set_log_dir(&log_dir);
   params.population_size = popsize;
+  params.binary_path = elf_path.clone();
   // add string search function
   // find string addresses in rodata
   // pass these addresses to the mangler in population building
@@ -232,9 +233,10 @@ fn main() {
   let pop_arc = Arc::new(pop_rw); 
   let pop_local = pop_arc.clone();
   let mut i = 0; 
-  while pop_local.read().unwrap().best_fit() == None 
+  while pop_local.read().unwrap().generation < pop_local.read().unwrap().params.max_generations &&
+    (pop_local.read().unwrap().best_fit() == None 
     || pop_local.read().unwrap().best_crashes() == Some(true)
-    || pop_local.read().unwrap().best_fit() > Some(params.fit_goal) {
+    || pop_local.read().unwrap().best_fit() > Some(params.fit_goal)){
     
     let (tx, rx)  = channel();
     let n_workers = threads as u32;

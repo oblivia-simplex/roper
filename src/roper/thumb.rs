@@ -188,7 +188,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
 // will do the backwards walk, and then a "saturate clump"
 // function that will populate words.
 pub fn reap_thumb_gadgets (code: &Vec<u8>, 
-                            start_addr: u32) 
+                           start_addr: u32) 
                            -> Vec<Clump> {
   let mut gads : Vec<Clump> = Vec::new();
   let insts : Vec<u16>      = u8s_to_u16s(code, Endian::LITTLE);
@@ -211,6 +211,7 @@ pub fn reap_thumb_gadgets (code: &Vec<u8>,
       sp_delta   : clump.sp_delta,
       ret_offset : clump.ret_offset,
       words      : vec![a],
+      ret_addr   : start_addr + (4 * from),
       mode       : clump.mode,
       exchange   : clump.exchange,
       ..Default::default()

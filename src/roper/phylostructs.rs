@@ -518,7 +518,8 @@ impl Population {
       return;
     }
     let row = if self.generation == 1 {
-      format!("ITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n")
+      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+              self.params)
     } else { "".to_string() };
     let row = format!("{}{},{},{},{},{},{},{},{},{},{}\n",
                       row,
@@ -593,6 +594,7 @@ pub struct Params {
   pub use_viscosity    : bool,
   pub outregs          : Vec<usize>,
   pub inregs           : Vec<usize>,
+  pub binary_path      : String,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -602,7 +604,7 @@ impl Default for Params {
     Params {
       population_size:  2000,
       mutation_rate:    0.35,
-      max_generations:  200000,
+      max_generations:  100000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,
       code:             Vec::new(),
@@ -632,10 +634,55 @@ impl Default for Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![1,3,5,7],
-      outregs:          vec![0,2,4],
+      inregs:           vec![0,1,2,3],
+      outregs:          vec![4,5,6],
+      binary_path:      "".to_string(),
     }
   }
+}
+impl Display for Params {
+  fn fmt (&self, f: &mut Formatter) -> Result {
+    let rem = "% ";
+    let mut s = String::new(); 
+    s.push_str(&format!("{} population_size: {}\n",
+                        rem, self.population_size));
+    s.push_str(&format!("{} mutation_rate: {}\n",
+                        rem, self.mutation_rate));
+    s.push_str(&format!("{} max_generations: {}\n",
+                        rem, self.max_generations));
+    s.push_str(&format!("{} selection_method: {:?}\n",
+                        rem, self.selection_method));
+    s.push_str(&format!("{} t_size: {}\n",
+                        rem, self.t_size));
+    s.push_str(&format!("{} brood_size: {}\n",
+                        rem, self.brood_size));
+    s.push_str(&format!("{} min_start_len: {}\n",
+                        rem, self.min_start_len));
+    s.push_str(&format!("{} max_start_len: {}\n",
+                        rem, self.max_start_len));
+    s.push_str(&format!("{} max_len: {}\n",
+                        rem, self.max_len));
+    s.push_str(&format!("{} fit_goal: {}\n",
+                        rem, self.fit_goal));
+    s.push_str(&format!("{} cuck_rate: {}\n",
+                        rem, self.cuck_rate));
+    s.push_str(&format!("{} threads: {}\n",
+                        rem, self.threads));
+    s.push_str(&format!("{} num_demes: {}\n",
+                        rem, self.num_demes));
+    s.push_str(&format!("{} migration: {}\n",
+                        rem, self.migration));
+    s.push_str(&format!("{} use_viscosity: {}\n",
+                        rem, self.use_viscosity));
+    s.push_str(&format!("{} outregs: {:?}\n",
+                        rem, self.outregs));
+    s.push_str(&format!("{} inregs: {:?}\n",
+                        rem, self.inregs));
+    s.push_str(&format!("{} binary_path: {}\n",
+                        rem, self.binary_path));
+    write!(f, "{}",s)
+  }
+    
 }
 impl Params {
   pub fn new () -> Params {
