@@ -13,7 +13,7 @@ pub fn process_data2 (path: &str,
   let file = File::open(path).unwrap();
   let mut rdr = BufReader::new(file);
   let mut ids : Vec<String> = Vec::new();
-  let mut io_targets : IoTargets = IoTargets::new();
+  let mut io_targets : IoTargets = IoTargets::new(TargetKind::Classification);
   for line in rdr.lines() {
     let line = match line {
       Ok(l)  => l,

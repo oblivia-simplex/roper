@@ -255,14 +255,15 @@ pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
   // script rename it afterwards, as a silly kludge.
   let path = "/tmp/roper_disassembly.txt";
   
-  let mut dfile = OpenOptions::new()
+  /*let mut dfile = OpenOptions::new()
                               .append(true)
                               .write(true)
                               .create(true)
                               .open(&path)
                               .unwrap();
+                              */
   let row = format!("({:02x})-[{:08x}] | {:?} | {}\n    {}\n", read_counter_u(u), addr, mmo, dis, regs);
-//  println!("{}",row);
-  dfile.write(&row.as_bytes()).unwrap();
+  println!("{}",row);
+  //dfile.write(&row.as_bytes()).unwrap();
 }
 

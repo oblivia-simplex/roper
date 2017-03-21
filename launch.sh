@@ -7,7 +7,6 @@ LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
 mkdir -p $LOGDIR
 OUTFILE="${LOGDIR}/roper_`date +%H-%M-%S`.out"
 ERRORFILE=${LOGDIR}/roper_`date +%H-%M-%S`.err
-PLOTFILE=${LOGDIR}/plot_`date +%H-%M-%S`.gnu
 
 mkdir -p $PROJECT_ROOT/logs
 gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
@@ -65,6 +64,10 @@ while ! [ -n "$recent" ]; do
   recent=`find ./ -name "roper*csv" -anewer $STAMPFILE | tail -n1`
 done
 echo "*** recent csv -> $recent"
+TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
+ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.out
+ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.err
+PLOTFILE=${LOGDIR}/plot_${TIMESTAMP}.gnu
 cat > $PLOTFILE << EOF
 set terminal x11 background rgb 'black'
 set datafile commentschars "%"
@@ -101,6 +104,7 @@ for i in {0..70}; do echo -n "="; done; echo
 tail -n 4096 -f $OUTFILE
 kill $roper_pid
 [ -n "$DISPLAY" ] && kill $gnuplot_pid
-
+rm $OUTFILE
+rm $ERRORFILE
 
 

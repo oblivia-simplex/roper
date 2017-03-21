@@ -616,8 +616,8 @@ impl Default for Params {
       max_start_len:    32,
       max_len:          256,
       training_ht:      HashMap::new(),
-      io_targets:       IoTargets::new(),
-      test_targets:     IoTargets::new(),
+      io_targets:       IoTargets::new(TargetKind::PatternMatch),
+      test_targets:     IoTargets::new(TargetKind::PatternMatch),
       fit_goal:         0.1,  
       constants:        Vec::new(),
       cuck_rate:        0.15,
@@ -728,9 +728,16 @@ impl Default for MachineMode {
   fn default() -> MachineMode { MachineMode::THUMB }
 }
 
+#[derive(Copy,Debug,Clone,Eq,PartialEq)]
+pub enum TargetKind {
+  PatternMatch,
+  Classification,
+}
+
 #[derive(Debug,Clone,Eq,PartialEq)]
 pub struct IoTargets {
   v: Vec<(Vec<i32>,Target)>,
+  k: TargetKind, 
 }
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
@@ -751,20 +758,24 @@ impl IoTargets {
   pub fn shuffle (&self) -> IoTargets {
     let mut c = self.v.clone();
     thread_rng().shuffle(&mut c);
-    IoTargets{v:c}
+    IoTargets{v:c, k: self.k}
   }
   pub fn push (&mut self, t: (Vec<i32>,Target)) {
     self.v.push(t);
   }
   pub fn split_at (&self, i: usize) -> (IoTargets,IoTargets) {
-    let (a,b) = self.v.split_at(i);
-    (IoTargets::from_vec(a.to_vec()),IoTargets::from_vec(b.to_vec()))
+    if self.k == TargetKind::PatternMatch {
+      (self.clone(),self.clone())
+    } else {
+      let (a,b) = self.v.split_at(i);
+      (IoTargets::from_vec(self.k, a.to_vec()),IoTargets::from_vec(self.k, b.to_vec()))
+    }
   }
-  pub fn new () -> IoTargets {
-    IoTargets{v:Vec::new()}
+  pub fn new (k: TargetKind) -> IoTargets {
+    IoTargets{v:Vec::new(), k:k}
   }
-  pub fn from_vec (v: Vec<(Vec<i32>,Target)>) -> IoTargets {
-    IoTargets{v:v}
+  pub fn from_vec (k: TargetKind, v: Vec<(Vec<i32>,Target)>) -> IoTargets {
+    IoTargets{v:v, k:k}
   }
   pub fn len (&self) -> usize {
     self.v.len()

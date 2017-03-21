@@ -146,10 +146,12 @@ fn main() {
   // ugly kludge here
   let (io_targets, pattern_matching) : (IoTargets,bool) =
     match (rpattern_str, data_path) {
-      (Some(s),None) => (IoTargets::from_vec(vec![(vec![1;16], 
-                              Target::Exact(
-                                RPattern::new(&s)
-                                ))]),true),
+      (Some(s),None) => (IoTargets::from_vec(TargetKind::PatternMatch,
+                                             vec![(vec![1;16], 
+                                                  Target::Exact(
+                                                  RPattern::new(&s)
+                                                  ))]
+                                             ),true),
       (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);
@@ -266,8 +268,10 @@ fn main() {
       for tr in trs {
         //println!("{:?}",tr);
         let updated = patch_population(tr, &mut pop_local.write().unwrap());
-        if false && updated != None  { // DISABLED FOR NOW
+        if updated != None {
           champion = updated.clone();
+        }
+        if false && updated != None  { // DISABLED FOR NOW
           println!("[*] Running best with disassembly on...");
           debug_samples.shuffle();
           let targets = debug_samples.split_at(2).0;
@@ -304,6 +308,10 @@ fn main() {
   println!("=> BEST FIT: {:?}", pop_local.read().unwrap().best_fit());
   println!("=> RUNNING BEST:\n");
   let targets = pop_local.read().unwrap().params.test_targets.clone();
+  println!("ok, got targets...");
+  if champion == None {
+    panic!("Champion is none!");
+  }
   evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                    &mut champion.unwrap(),
                    &pop_local.read().unwrap().params,
