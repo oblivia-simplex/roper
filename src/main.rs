@@ -103,12 +103,15 @@ fn main() {
     print_usage(&program, opts);
     return;
   }
-  let use_viscosity = 
+  let use_viscosity = true;
+  /*
     if matches.opt_present("V") {
       true
     } else {
       false
     };
+    */
+  println!(">> use_viscosity = {}", use_viscosity);
   let popsize = match matches.opt_str("P") {
     None => 2000,
     Some(n) => n.parse::<usize>().unwrap(),
@@ -265,7 +268,7 @@ fn main() {
           champion = updated.clone();
           println!("[*] Running best with disassembly on...");
           debug_samples.shuffle();
-          let targets = debug_samples.split_at(1).0;
+          let targets = debug_samples.split_at(2).0;
           evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                            &mut updated.unwrap(),
                            &pop_local.read().unwrap().params,
