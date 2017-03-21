@@ -587,6 +587,8 @@ pub struct Params {
   pub migration        : f32,
   pub save_period      : usize, 
   pub use_viscosity    : bool,
+  pub outregs          : Vec<usize>,
+  pub inregs           : Vec<usize>,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -619,6 +621,10 @@ impl Default for Params {
       num_demes:        4,
       migration:        0.05,
       use_viscosity:    true,
+      // don't hardcode size and numbers of in/out regs.
+      // make this dependent on the data
+      inregs:           vec![4,5,6,7],
+      outregs:          vec![0,1,2,3],
     }
   }
 }

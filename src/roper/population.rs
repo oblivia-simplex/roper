@@ -111,7 +111,7 @@ pub fn mate (parents: &Vec<&Chain>,
   for s in brood.iter_mut() {
     mutate(s, params, rng)
   }
-  cull_brood(&mut brood, 2, uc, &params.io_targets);
+  cull_brood(&mut brood, 2, uc, &params);
   brood
 }
 
@@ -119,29 +119,36 @@ fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               input: &Vec<i32>, // may revise
               target: &Target,
-              outregs: usize, // need a better system
+              inregs:  &Vec<usize>,
+              outregs: &Vec<usize>, // need a better system
               verbose: bool) -> (f32, usize, bool) {
   
   if verbose {
     print!("\n");
-    for _ in 0..80 { print!("="); };
+    for _ in 0..60 { print!("="); };
     println!("\n==> Evaluating {:?}", input);
   };
 
   let result : HatchResult = hatch_chain(uc, 
                                          &chain.packed, 
-                                         &input);
+                                         &input,
+                                         &inregs);
   // need to let hatch_chain choose *which* registers to preload.
   // input should be a vec of ordered pairs: (reg,value)
   if verbose { print!("\n{}", result); }
   let counter = result.counter;
   let mut crash = false;
-  let output   = &result.registers;
+  //let output   = &result.registers;
+  let mut output : Vec<i32> = Vec::new();
+  for idx in outregs {
+    output.push(result.registers[*idx]);
+  }
   let final_pc = result.registers[15];
   let d : f32 = match target {
-    &Target::Exact(ref t) => t.distance(output),
+    &Target::Exact(ref t) => t.distance(&output),
     &Target::Vote(t)  => {
-      let b = max_bin(&(output[4..outregs+4].to_vec()));
+      // hardcoded shortcut
+      let b = max_bin(&(output.to_vec()));
       if verbose {
         println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
       };
@@ -169,7 +176,7 @@ fn eval_case (uc: &mut CpuARM,
 pub const VARIABLE_FITNESS : bool = false;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
-                         io_targets: &IoTargets,
+                         params: &Params,
                          verbose: bool)
                          -> (f32,Option<usize>)
 {
@@ -181,9 +188,10 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     println!(">> EMPTY CHAIN");
     return (1.0, None);
   }
-
+  let io_targets = &params.io_targets;
+  let outregs    = &params.outregs;
+  let inregs     = &params.inregs;
   let verbose = verbose || chain.verbose_tag;
-  let outregs = 3; // don't hardcode this! 
 
   /* Set hooks at return addresses */
   let mut hooks : Vec<uc_hook> = Vec::new();
@@ -209,7 +217,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                                        chain,
                                        &input,
                                        &target,
-                                       outregs,
+                                       &inregs,
+                                       &outregs,
                                        verbose);
     let counter = min(counter, chain.size()-1);
     counter_sum += counter;
@@ -361,7 +370,7 @@ pub fn tournement (population: &Population,
         VARIABLE_FITNESS) {
       let (fitness,crash) = evaluate_fitness(&mut uc, 
                                              &specimen,
-                                             io_targets,
+                                             &population.params,
                                              false); // verbose
       fit_vec.push((fitness,crash));
     } else {
@@ -461,13 +470,13 @@ pub fn tournement (population: &Population,
 fn cull_brood (brood: &mut Vec<Chain>, 
                n: usize,
                uc: &mut CpuARM,
-               io_targets: &IoTargets) {
+               params: &Params) {
   /* Sort by fitness - most to least */
   let mut i = 0;
   for spawn in brood.iter_mut() {
     // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
-    evaluate_fitness(uc, &mut *spawn, io_targets, false); 
+    evaluate_fitness(uc, &mut *spawn, &params, false); 
   }
   brood.sort();
   /* Now eliminate the least fit */

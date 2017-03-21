@@ -140,13 +140,14 @@ fn main() {
                 .expect("Error parsing fitness goal"),
   };
   println!(">> goal = {}", goal);
-  let io_targets : IoTargets =
+  // ugly kludge here
+  let (io_targets, pattern_matching) : (IoTargets,bool) =
     match (rpattern_str, data_path) {
-      (Some(s),None) => IoTargets::from_vec(vec![(vec![1;16], 
+      (Some(s),None) => (IoTargets::from_vec(vec![(vec![1;16], 
                               Target::Exact(
                                 RPattern::new(&s)
-                                ))]),
-      (None,Some(s)) => process_data2(&s,4).shuffle(), // don't hardcode numfields. infer by analysing lines. 
+                                ))]),true),
+      (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);
         return;
@@ -186,6 +187,9 @@ fn main() {
   let constants = suggest_constants(&io_targets);
   let mut params : Params = Params::new();
   let num_targets = io_targets.len();
+  if pattern_matching {
+    params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+  }
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
@@ -264,7 +268,7 @@ fn main() {
           let targets = debug_samples.split_at(1).0;
           evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                            &mut updated.unwrap(),
-                           &targets,
+                           &pop_local.read().unwrap().params,
                            true);
           
           let mut dfile = OpenOptions::new()
@@ -297,7 +301,7 @@ fn main() {
   let targets = pop_local.read().unwrap().params.test_targets.clone();
   evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                    &mut champion.unwrap(),
-                   &targets,
+                   &pop_local.read().unwrap().params,
                    true);
   println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
   
