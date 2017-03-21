@@ -9,18 +9,10 @@ use unicorn::*; //{Cpu, CpuARM, uc_handle};
 use roper::util::{disas,get_word32le, get_word16le, hexvec};
 use roper::phylostructs::MachineMode;
 use std::fmt::{Display,format,Formatter,Result};
+use roper::ontostructs::*;
 //use roper::hooks::*;
 //use roper::unitools::*;
 
-static _DEBUG : bool = true; //true;
-
-const BASE_ADDR  : u64   = 0x000004000;
-const MEM_SIZE   : usize = 0x010000000;
-const BASE_STACK : u64   = 0x000000000;
-const STACK_SIZE : usize = 0x000004000;
-const STACK_INIT : u64   = 0x000001000; //0x0E0000000;
-const MAX_STEPS  : usize = 0x1000;
-const STOP_ADDR  : u64   = 0x000000000;
 
 /*
 fn elf_perm_to_uc (elf_perm: ProgFlag) -> unicorn::Protection {
@@ -33,42 +25,6 @@ fn elf_perm_to_uc (elf_perm: ProgFlag) -> unicorn::Protection {
   }
 }
 */
-#[derive(Debug,Clone)]
-pub struct Sec {
-  pub name: String,
-  pub addr: u64,
-  pub data: Vec<u8>,
-  pub perm: unicorn::Protection,
-}
-impl Sec {
-  fn floor (&self) -> u64 {
-    self.addr & 0xFFFFF000
-  }
-  fn ceil (&self) -> u64 {
-    (self.addr + (self.data.len() as u64) + 0x1000) & 0xFFFFF000
-  }
-  fn size (&self) -> usize {
-    ((self.addr as usize & 0xFFF) + self.data.len() + 0x1000) & 0xFFFFF000
-  }
-}
-
-pub static REGISTERS : [RegisterARM; 16] = [RegisterARM::R0,
-                                            RegisterARM::R1,
-                                            RegisterARM::R2,
-                                            RegisterARM::R3,
-                                            RegisterARM::R4,
-                                            RegisterARM::R5,
-                                            RegisterARM::R6,
-                                            RegisterARM::R7,
-                       /****************/   RegisterARM::R8,
-                       /****************/   RegisterARM::SB,
-                       /* Not used in  */   RegisterARM::SL,
-                       /* Thumb Mode   */   RegisterARM::FP,
-                       /****************/   RegisterARM::IP,
-                       /****************/   RegisterARM::SP,
-                                            RegisterARM::LR,
-                                            RegisterARM::PC];
-
 pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<i32> {
   REGISTERS.iter().map(|&x| uc.reg_read_i32(x.to_i32())
                               .expect("Error reading reg"))
@@ -94,34 +50,32 @@ pub fn set_registers (uc: &unicorn::Unicorn,
  * lifetime of the text section, since text will be
  * used throughout (generation of gadgets, etc.).
  */
-pub fn init_engine <'a,'b> (addr_data_vec: &Vec<Sec>,//<(u64, Vec<u8>)>,
+pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
+                            segments: &Vec<Seg>,
                             mode: MachineMode)
                            -> unicorn::CpuARM {
   let uc = CpuARM::new(mode.uc())
     .expect("failed to create emulator engine");
   
   let mo = uc.query(unicorn::Query::MODE).unwrap();
-  println!("Initialized. Mode: {:?}, {:?}: {:?}",
+  println!("[*] Initialized. Mode: {:?}, {:?}: {:?}",
            mode, mode.uc(), mo);
   // next: map text and rodata separately
   // we need a smoother interface between the elf module and unicorn
   uc.mem_map(BASE_STACK, STACK_SIZE, PROT_READ|PROT_WRITE)
     .expect("Failed to map stack memory");
-  
-  for ref sec in addr_data_vec.iter() {
+ 
+  for ref seg in segments.iter() {
+    println!("[*] Mapping segment with size {:x}, addr {:x}, perm {:?}", seg.memsz, seg.addr, seg.perm);
+    uc.mem_map(seg.floor(), seg.size(), seg.perm)
+      .expect(&format!("Failed to map segment. Size: {:x}; Addr: {:x}, Perm: {:?}", seg.memsz, seg.addr, seg.perm));
+  }
+  for ref sec in sections.iter() {
     //let &(addr, ref data) = pair
-    println!("sec.name = {}, sec.floor() = {:08x}, sec.addr = {:08x}, sec.size() = {:08x}",
-      sec.name, sec.floor(), sec.addr, sec.size());
-    let perms = match sec.name.as_ref() {
-      ".text"   => PROT_READ | PROT_EXEC,
-      ".rodata" => PROT_READ,
-      ".bss"    => PROT_READ | PROT_WRITE,
-      _         => PROT_ALL,
-    }; // KLUDGE
-    uc.mem_map(sec.floor(), sec.size(), perms)
-      .expect(&format!("Failed to map section {}", sec.name));
+    println!("[*] Writing section named {}, from address {:08x}, with size of {:08x} bytes",
+      sec.name, sec.addr, sec.size());
     uc.mem_write(sec.addr, &sec.data)
-      .expect("Error writing .text section to memory.");
+      .expect(&format!("Error writing {} section to memory", sec.name));
   }
   println!("ok, engine initialized");
   uc

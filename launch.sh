@@ -1,7 +1,10 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 DATAFILE=${PROJECT_ROOT}/data/iris.data
+BINARY=${PROJECT_ROOT}/data/openssl
 GOAL="0.10"
+
+[ -n "$1" ] && LABEL="-L $1"
 
 LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
 mkdir -p $LOGDIR
@@ -40,12 +43,14 @@ DISASFILE="/tmp/roper_disassembly.txt"
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
   RUST_BACKTRACE=1 cargo run -- -d $DATAFILE \
+                                -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
                                 -t 4 \ 
                                 -P 3200 \
                                 -D 4 \
-                                -V
+                                -V \
+                                $LABEL
 }
 echo "[+] launching roper"
 run > $OUTFILE 2>> $ERRORFILE &

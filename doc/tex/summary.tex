@@ -1,0 +1,64 @@
+\documentclass[9pt]{beamer}
+
+\usepackage[utf8x]{inputenc}
+
+%\usetheme{Ampang}
+%\usecolortheme{ampangcolor}
+%\usecolortheme{warna}
+
+%%% XeLaTeX engine for Ubuntu Font support
+%\usepackage{xltxtra}
+%\setsansfont[
+%BoldFont=Ubuntu-Bold.ttf,
+%ItalicFont=Ubuntu-Italic.ttf,
+%BoldItalicFont=Ubuntu-BoldItalic.ttf
+%%%]
+%{Ubuntu-Regular.ttf}
+%\setmonofont{UbuntuMono-Regular.ttf}
+
+%%
+\title{ROPER:\\A Genetic ROP-Chain Compiler Targetting Embedded
+Devices}
+\author{Olivia Lucca Fraser}
+
+\institute{NIMS Lab, Dalhousie University}
+
+
+\begin{document}
+\begin{frame}{Summary}
+\textsc{roper} is an genetic \textsc{rop}-chain compiler. It uses evolutionary
+methods (natural selection) to develop specially
+crafted payloads called `\textsc{rop}-chains', which are used in
+cyber-attacks. These permit the attacker to gain control of a
+target process's execution, while leveraging that process's
+privileges. 
+
+\vspace{4pt}
+A \textsc{rop}-chain differs from a traditional shellcode attack
+in that it introduces no foreign code to the target process, and
+does not rely on being able to write to executable memory. 
+
+\vspace{4pt}
+Instead, it hops around memory segments that have 
+already been mapped as executable, assembling them into a
+sort of mosaic. This mosaic performs operations that the original
+program's author never intended. 
+
+\vspace{4pt}
+\textsc{roper} spawns an entire population of such mosaics, randomly at
+first, and then uses the principles of natural selection 
+to breed one that accomplishes \emph{precisely} what the
+attacker desires, but using means the attacker, being human,
+would not have herself anticipated. 
+
+\vspace{4pt}
+In fact, \textsc{roper} has already shown itself capable of
+performing subtle, adaptive tasks that \textsc{rop}-chains --
+whether handmade or deterministically compiled -- have never
+before been capable of, achieving over 95\,\% accuracy even when
+asked to classify Iris flowers, for example. This gives us a
+glimpse of the \textsc{roper}'s capacity to dynamically adapt to
+problems for which it was not designed. 
+\end{frame}
+\end{document}
+

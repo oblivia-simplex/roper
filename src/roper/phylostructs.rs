@@ -391,9 +391,14 @@ impl Population {
     let mut clumps = reap_gadgets(&params.code, 
                                   params.code_addr, 
                                   MachineMode::ARM);
-    clumps.extend_from_slice(&reap_gadgets(&params.code,
-                                           params.code_addr,
-                                           MachineMode::THUMB));
+    println!("[*] Harvested {} ARM gadgets from {}",
+             clumps.len(), params.binary_path);
+    let thumb_clumps = (&reap_gadgets(&params.code,
+                                       params.code_addr,
+                                       MachineMode::THUMB));
+    println!("[*] Harvested {} THUMB gadgets from {}",
+             thumb_clumps.len(), params.binary_path);
+    clumps.extend_from_slice(&thumb_clumps);
     let mut data_pool  = Mangler::new(&params.constants);
     let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
@@ -559,6 +564,7 @@ pub enum SelectionMethod {
 
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
+  pub label            : String,
   pub population_size  : usize,
   pub mutation_rate    : f32,
   pub max_generations  : usize,
@@ -602,6 +608,7 @@ impl Default for Params {
     let datepath  = t.format("%y/%m/%d").to_string();
     let timestamp = t.format("%H-%M-%S").to_string();
     Params {
+      label:            format!("Unnamed trial, {} {}", &datepath, &timestamp),
       population_size:  2000,
       mutation_rate:    0.35,
       max_generations:  100000,
@@ -644,6 +651,8 @@ impl Display for Params {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let rem = "% ";
     let mut s = String::new(); 
+    s.push_str(&format!("{} label: {}\n",
+                        rem, self.label));
     s.push_str(&format!("{} population_size: {}\n",
                         rem, self.population_size));
     s.push_str(&format!("{} mutation_rate: {}\n",

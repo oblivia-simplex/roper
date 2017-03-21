@@ -95,6 +95,7 @@ fn main() {
   opts.optflag("V", "viscosity", "use viscosity modulations to encourage gene linkage");
   opts.optopt("D", "demes", "set number of demes", "");
   opts.optopt("b", "binary", "select binary file to search for gadgets", "");
+  opts.optopt("L", "label", "set a label for the trial", "");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
     Err(f) => { panic!(f.to_string()) },
@@ -120,6 +121,7 @@ fn main() {
     None => 4,
     Some(n) => n.parse::<usize>().unwrap(),
   };
+  let label = matches.opt_str("L");
   let rpattern_str = matches.opt_str("p");
   let data_path    = matches.opt_str("d");
   let threads : usize = match matches.opt_str("t") {
@@ -171,6 +173,15 @@ fn main() {
     .to_string();
   let elf_path = sample_root.clone() + sample4;
   let gba_path = sample_root.clone() + sample_gba;
+  
+  
+  
+  let elf_path = match matches.opt_str("b") {
+    None    => elf_path,
+    Some(p) => p,
+  };
+  
+  
   let elf_addr_data = get_elf_addr_data(&elf_path,
                                         &vec![".text",".rodata"]);
   println!("****************** ELF {} **********************",
@@ -194,6 +205,9 @@ fn main() {
   let num_targets = io_targets.len();
   if pattern_matching {
     params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+  }
+  if label != None {
+    params.label = label.unwrap();
   }
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;

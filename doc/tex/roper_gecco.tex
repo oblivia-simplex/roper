@@ -1,0 +1,397 @@
+%
+\section{Introduction}
+
+\textsc{Roper} is a genetic compiler that evolves payloads for
+return-oriented programming (\textsc{rop}) attacks. These are
+attacks that manipulate their host's control flow in subtle and
+fine-grained ways, and, unlike traditional shellcode attacks,
+they do this without at any point introducing foreign code,
+or writing to executable memory. Since it is becoming
+increasingly rare for processes to map \emph{any} segment of
+memory as both writeable and executable -- due to a defensive
+measure called `Data Execution Prevention' (\textsc{dep}) when
+implemented on Windows, or `Write xor Execute'
+%% mention also harvard bus architectures, etc. 
+($W \oplus X$), when implemented in a Unix environment --
+return-oriented programming (or \textsc{rop}) has become the
+industry standard approach to payloads in binary exploit
+development. 
+
+ROP works by sifting through the host process's executable memory
+-- its \texttt{.text} segment, if we're dealing with
+\textsc{elf} binaries -- and finding chunks of code that can be
+rearranged in such a way that they carry out the attacker's
+wishes, rather than their intended design. For these chunks to be
+usable in an attack, however, it must be possible to jump from
+one to the other in a predetermined sequence. This is where the
+`return-oriented' nature of the attack comes in: most
+architectures implement subroutine or function calls by first
+pushing the address of the instruction \emph{after} the call to
+the stack, and then jumping to the first instruction of a
+subroutine that, itself, ends by popping the bookmarked `return
+address' from the stack. In a \textsc{rop} attack, we exploit
+this manner of implementing returns. We set things up so that
+the `return address' popped from the stack at the end of each
+`gadget' is just a pointer to the next gadget we wish to execute.
+This lets us chain together indefinitely many \textsc{rop}
+gadgets in sequence, and it is, in principle, possible to
+implement complex attacks in this fashion, without ever needing
+to use any executable code that isn't already there, waiting for
+us in the process's executable memory segment.%
+\footnote{\textbf{Cite that research paper that describes an
+  entire rootkit written in rop chains}}
+
+These are the kinds of chains that our engine evolves. The
+genetic material consists of the set of gadgets extracted from
+a target executable binary -- we focus for now on \textsc{elf}
+binaries compiled for 32-bit \textsc{arm} processors. The
+individual genotypes are \textsc{rop}-chains, formed from this
+material. The phenotype, on which selection pressures are brought
+to bear, is the behaviour these genotypes exhibit when executed
+in a virtual (but realistic) \textsc{cpu}. The entire set up
+resembles a variation on linear genetic programming, but with a
+few key differences, required by the nature of the problem at
+hand. The goal is to not simply automate the somewhat tricky and
+time-consuming human task of assembling \textsc{rop}-chain
+payloads -- though \textsc{roper} does that quite well -- but to
+explore an entirely novel class of payloads: \textsc{rop}-chains
+that exhibit the sort of subtle and adaptive behaviour for which
+we normally turn to machine learning. 
+
+As a proof of concept, here, I will show how we succeeded in
+evolving \textsc{rop}-chain payloads that cannibalize arbitrary
+binaries into mosaics capable of solving a few traditional
+benchmark classification problems with high degrees of accuracy,
+beginning with the famous Iris dataset. Without injecting a
+single foreign instruction, we will coax system and backend
+binaries into tasks that resemble nothing they were designed to
+do, and nothing that has previously been attempted in low-level
+binary exploitation: we'll have them sort flowers.
+\section{Background}
+
+\subsection{Return-Oriented Programming}
+
+%\subsection{Linear Genetic Programming}
+% maybe move that other bit up here
+\subsection{Prior Research and Development}
+
+% Stephanie Forrest
+% Bill Langdon (sp?) (UK)
+
+\subsubsection{ROP-Chain Compilers}
+
+A handful of technologies have already been developed for the
+automatic generation of \textsc{rop}-chains. These range from tools that
+use one of several determinate recipes for assembling a chain --
+such as the {Corelan Team}'s extraordinarily useful
+\texttt{mona.py} -- to tools which approach the problem through
+the lens of compiler design, grasping the set of gadgets
+extracted from a binary as the instruction set of a baroque and
+supervenient virtual machine. %% Maybe add a quote or two. 
+
+We're aware of two such projects at the moment. The first, named
+\emph{Q}, is described in [CITE]. 
+%%% figure out citation standards for this. 
+
+The second, \textsc{ropc}, grew out of its authors' attempts to
+reverse engineer $Q$ from its desrciption in [CITE], and extend
+its capabilities to the point where it could compile \textsc{rop}-chains
+for scripts written in a Turing-complete programming language. 
+
+The project has since inspired a fork that aims to use
+\textsc{ropc}'s own intermediate language as an \textsc{llvm}
+backend, which, if successful, would let programmes written in
+any language that compiles to \textsc{llvm}'s intermediate
+language, compile to \textsc{ropc}-generated \textsc{rop}-chains
+as well.  
+
+Another, particularly interesting contribution in the field of
+automated ROP-chain generation is \emph{Braille}, by Andrea
+Bittau \emph{et al.}%
+\footnote{CITE THIS}
+which automates an attack that its developers term "Blind
+Return-Oriented Programming", or \textsc{brop}. \textsc{brop}
+solves the problem of developing \textsc{rop}-chain attacks
+against processes where not only the source code but the binary
+itself in unknown. %% Perhaps add more details
+\emph{Braille} first uses a stack-reading technique to probe a
+vulnerable process (one that is subject to a buffer overflow and
+which automatically restarts after crashing), to find enough
+gadgets, through trial and error, for a simple \textsc{rop} chain
+whose purpose will be to write the process's executable memory
+segment to a socket, sending that segment's data back to the
+attacker -- data that is then used, in conjunction with address
+information obtained through stack-reading, to construct a
+more elaborate \textsc{rop}-chain the old-fashioned way. It is an
+extremely interesting and clever technique, which could, perhaps,
+be fruitfully combined with the genetic techniques we will
+outline here. 
+
+\subsubsection{Evolutionary Computation in Offensive Security}
+% kayacik
+% that defcon presentation
+% maybe port scanning?
+\paragraph{Prior research at NIMS Laboratory}
+This is not the first exploration that our lab
+has made in applying evolutionary computation to the domain of
+offensive cybersecurity. Gunes Kayacik ...
+
+Patrick LaRoche [port scans]...
+
+\paragraph{Other applications}
+Other applications of evolutionary methods in offensive security:
+lcamtuf AFL
+
+\section{Methodology}
+
+\subsection{Genotype Representation}
+
+ 
+\subsubsection{Gadgets, Clumps, and Chains}
+
+Individuals, here, are essentially vectors of 32-bit words, which
+may be either pointers into executable memory addresses, intended
+to be popped into the program counter, or other values, intended
+to be popped into the \textsc{cpu}'s other registers. 
+
+Returns, in ARM machine code, are frequently implemented as
+multi-pop instructions -- which pop an address from the stack
+while simultaneously popping a variable number of additional
+words into the other registers. Depending on the problem we're
+dealing with, the range of values that could potentially be
+made use of in the general purpose registers might be very
+different from the range of values where we find pointers into
+executable memory, so it makes sense to interleaf address
+pointers and other values in a controlled fashion, when
+constructing our initial population. 
+% also other pops
+
+To do this, we calculate the distance the stack pointer will shift
+when each gadget executes, $\Delta_{SP}(g)$, and then clump
+together each gadget pointer $g$ with a vector of
+$\Delta_{SP}(g)-1$ non-gadget values.%
+\footnote{The pop instruction, \texttt{LDMIA! sp, \{r0, r7, 
+  r9, pc\}},
+  for example, has an $\Delta_{SP}$ of 4. If it's the only
+  instruction that moves the stack pointer in gadget $g$, then
+  $\Delta_{SP}(g) = 4$, and we will append 3 words to the clump
+  that begins with a pointer to $g$.}
+These values will populate
+the \textsc{cpu}'s registers when the final, multipop instruction of the
+gadget is executed. The program counter (\texttt{PC}) is always
+the final register populated through a multipop, and so the
+address of the next gadget $g'$ should be found exactly
+$\Delta_{SP}(g)$ slots up from $g$.%
+\footnote{\textsc{rop}ER also handles gadgets that end in a different
+  form of return: a pair of instructions that populates a series
+  of registers from the stack, followed by an instruction that
+  copies that address from one of those registers to \texttt{PC}.
+  In these instances, $\Delta{SP}(g)$ and the offset of the next
+  gadget from $g$ are distinct. But this is a complication that
+  we don't need to dwell on here.}
+
+\subsubsection{Variation Operators}
+\paragraph{Mutation}
+Structuring the basic units of our genotypes in this way also
+lets us apply variation operators more intelligently. The
+genotype is much more tolerant of mutations to the non-gadget
+values in each clump than to the gadget address itself. The
+gadget address \emph{may} be safe to increment or decrement by a
+word or two, but negating, multiplying, or masking it would
+almost certainly result in a crash. The rest of the words in the
+clump can be mutated much more freely, either arithmetically, or
+by indirection/dereference (we can replace a value with a pointer
+to that value, if one is available, or if a value can already be
+read as a valid pointer, we can replace it with its referent).
+
+\paragraph{Crossover}
+Our second variation operator is single-point crossover, which
+operates at the level of `clumps', not words. We chose
+single-point crossover over two-point or uniform crossover
+% check terminology
+to favour the most likely form gene linkage would take in this
+context. A single \textsc{rop}-gadget can transform the \textsc{cpu} context in
+fairly complex ways, and, combined with multipop instructions,
+the odds that the work performed by a gadget $g$ will be
+clobbered by a subsequent gadget $g'$ increases greatly with the
+distance of $g'$ from $g$. This means that adjacent gadgets are
+more likely to achieve a combined, fitness-relevant effect, than
+non-adjacent gadgets. 
+
+In single-point crossover between two specimens, $A$ and $B$, we
+randomly select a link index $i$ where $i < |A|$, and $j$ where $j
+< |B|$. We then form one child whose first $i$ genes are taken
+from the the beginning of $A$, and whose next $j$ genes are taken
+from the end of $B$, and another child using the complimentary
+choice of genes. 
+%% Diagram would be handy here
+
+\subsubsection{Viscosity and Gene Linkage}
+As a way of encouraging the formation of complex `building
+blocks' -- sequences of clumps that tend to improve fitness when
+occurring together in a chain -- we weight the random choice of
+the crossover points $i$ and $j$, instead of letting them be
+simply uniform. The weight, or \emph{viscosity}, of each
+link in chain $A$ is derived from the running average of fitness
+scores of unbroken series of ancestors of $A$ in which that same link
+has occurred. Following a fitness evaluation of $A$, the
+link-fitness of each clump $f(A[i])$ (implicitly, between each
+clump and its successor) is calculated on the basis of the
+fitness of $A$, $F(A)$, as follows: 
+  $$ f(A[i]) = F(A)$$
+if the prior link fitness $f'(A[i])$ of $A[i]$ is \texttt{None},
+and 
+  $$ f(A[i]) = \alpha * F(A) + (1-\alpha) * f'(A[i]) $$
+otherwise. The prior link-fitness value $f'(A[i])$ is inherited
+from the parent from which the child child receives the link in
+question. If the child $A$ receives its $i^{th}$ clump from one
+parent and its $(i+1)^{th}$ clump from another, or if $i$ is the
+final clump in the chain, then $f'(A[i])$ is initialized to
+\texttt{None}.
+
+Viscosity is calculated from link-fitness simply by substituting
+a default value ($50\,\%$) for \texttt{None}, or taking the
+complement of the link-fitness. This value is the probability at
+which a link $i..i+1$ will be selected as the splice point in a
+crossover event. 
+
+In the event of a crash, the link-fitness of the clump
+responsible for the crash-event is worsened to a maximum degree,
+and the viscosity adjusted accordingly. The crossover algorithm
+is set up in such a way that crash-provoking clumps have a
+disproportionately high chance of being selected as
+splice-points, and are likely to simply be dropped from the gene
+pool, and elided in the splice. This has the effect of weeding
+particularly hazardous genes out of the genepool fairly quickly,
+as we will see. 
+
+%\subsubsection{Variation on Linear GP}
+
+%In many respects, the approach that \textsc{roper} takes is a
+%variation on linear \textsc{gp}\@. Corresponding to
+%\emph{instructions}, here, we have \emph{gadgets}, which form the
+%instruction set of a second-order virtual machine, supervening on
+%the virtual \textsc{arm cpu} where the chains will be evaluated.
+%Like register-based linear \textsc{gp}, the execution of a chain
+%should be understood as imperative and stateful. The
+%`instructions' they make up are not strictly functional, unless
+%we view the entire \textsc{cpu} context as its argument, and the
+%resulting register vector as its return value.% 
+%\footnote{The clump-structure that we use here, incidentally,
+%  means that each gadget gets its stack arguments from the clump
+%  that precedes it.}
+% Is this a good thing? Should I structure clumps the other way
+% around?  well, the thing is, we wouldn't know how many items to
+% prepend a given gadget with. inverting the clump structure
+% would be rather complicated. 
+
+
+
+
+\subsection{Phenotype Evaluation}
+The phenotype, here, is the \textsc{cpu} context resulting from the execution of the genotype (the \textsc{rop}-chain) in a virtual machine, passed through one of a handful of `fitness functions'. Let's look at these factors one at a time. 
+\subsubsection{Execution Environment}
+% unicorn vm
+The transformation of the genotype into its corresponding phenotype -- its `ontogenesis' -- takes place in one of a cluster of virtual machines set up for this purpose, using Nguyen Anh Quynh's superb Unicorn Engine emulation library.
+
+In order to map the genotype -- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process -- into its resulting \textsc{cpu} context, the following steps are taken:
+
+\begin{enumerate} 
+  \item serialize the individual's clumps into a sequence of bytes
+  \item copy this sequence over to the process's stack, followed by a long sequence of zeroes
+  \item pop the first word on the stack into the program counter register (\texttt{R15} or \texttt{PC} on ARM)
+  \item activate the machine
+  \item execution stops when the program counter hits zero -- as will happen when it exhausts the addresses we wrote to its stack, when execution crashes, or when a predetermined number of steps have elapsed
+  \item we then read the values in the VM's register vector, and pass this vector to one of our fitness functions
+\end{enumerate}
+
+The reason a \textsc{rop}-chain controls the execution path,
+remember, is that each of the snippets of code (`gadgets') that
+its pointers refer to ends with a return instruction, which pops
+an address into the program counter from the stack. In ordinary,
+non-pathological cases, this address points to the instruction in
+the code that comes immediately after a function call -- it's a
+bookmark that lets the \textsc{cpu} pick up where it left off,
+after returning from a function. The cases we're interested in --
+and engineering -- of course, \emph{are} pathological: here, the
+address that the return instruction pops from the stack doesn't
+point to the place the function was called from, but to the next
+gadget that we want the machine to execute. This gadget, in turn,
+will end by popping the stack into the program counter, and so
+on, until the stack is exhausted, and a zero is popped into
+\texttt{PC}. So long as a specimen controls the stack, it's able
+to maintain control of the program counter. 
+
+
+All that's necessary to initiate the process, therefore, is to
+pop the first address in the chain into the program counter --
+the resulting cascade of returns will handle the rest. In the
+wild, this fatal first step is usually accomplished by means of
+some form of memory corruption -- using a buffer overflow or,
+more common nowadays, a use-after-free vulnerability, to
+overwrite a saved return address or a vtable pointer,
+respectively.  The attacker leverages one of these
+vulnerabilities in order to write the first pointer in the chain
+to an address that will be unwittingly `returned to' or `called'
+by the process. In our set-up, this step is merely simulated. The
+rest, however, unfolds \emph{exactly} as it would in an actual
+attack.
+
+%% Some of this stuff on how \textsc{rop} chains work might be better to
+%% have in the BACKGROUND section. Then again, a bit of
+%% repetition never hurt anybody. 
+\subsubsection{Fitness Functions}
+
+Two different fitness functions have been studied, so far, with
+this setup. The first, and more immediately utilitarian, of the
+two is simply to converge on a precisely specified \textsc{cpu}
+context. A pattern consisting of 32-bit integers and wildcards is
+supplied to the engine, and the task is to evolve a
+\textsc{rop}-chain that brings the register vector to a state
+that matches the pattern in question. The fitness of a chain's
+phenotype is defined as the average hamming distance between the
+non-wildcard target registers in the patter, and the actual
+register values resulting from the chain's execution. 
+
+This is a fairly simple task, but one that has immediate
+application in \textsc{rop}-chain development, where the goal is
+often simply to set up the desired parameters for a system call
+-- an \texttt{execve} call to open a shell, for example. Such
+rudimentary chains can be easily generated by \textsc{roper}. 
+In this capacity, \textsc{roper} can be seen as an automation
+tool, accomplishing with greater ease and speed what a might take
+a human programmer a few hours to accomplish, unaided. 
+
+But \textsc{roper} is also capable of more complex and subtle
+tasks, which set it at some distance from deterministic
+\textsc{rop}-chain compilers like $Q$. As an initial foray in
+this direction, I set \textsc{roper} the task of attempting some
+standard, benchmark classification problems, commonly used in
+machine learning. The first of these is the classification of the
+well-known Iris dataset. 
+
+% you should at least have a second
+
+\section{Empirical Study}
+
+%% start generating graphs for these. have the graph script also
+% output latex, please. 
+
+\section{Conclusions}
+
+
+
+\begin{acks}
+  The authors would like to thank Dr. Yuhua Li for providing the
+  matlab code of  the \textit{BEPS} method. 
+
+  The authors would also like to thank the anonymous referees for
+  their valuable comments and helpful suggestions. The work is
+  supported by the \grantsponsor{GS501100001809}{National Natural
+    Science Foundation of
+    China}{http://dx.doi.org/10.13039/501100001809} under Grant
+  No.:~\grantnum{GS501100001809}{61273304}
+  and~\grantnum[http://www.nnsf.cn/youngscientsts]{GS501100001809}{Young
+    Scientsts' Support Program}.
+
+\end{acks}
