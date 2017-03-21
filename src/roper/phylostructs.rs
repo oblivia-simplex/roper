@@ -1,8 +1,11 @@
 extern crate rand;
 extern crate unicorn;
 extern crate time;
+extern crate chrono;
 extern crate rustc_serialize;
 
+use self::chrono::prelude::*;
+use self::chrono::offset::LocalResult;
 use std::collections::BTreeMap;
 use self::rustc_serialize::json::{self, Json, ToJson};
 use rand::*;
@@ -13,7 +16,7 @@ use std::collections::HashMap;
 use std::cmp::*;
 use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
-use std::fs::{File,OpenOptions};
+use std::fs::{DirBuilder,File,OpenOptions};
 use std::io::prelude::*;
 use std::slice::Iter;
 use roper::util::*;
@@ -580,6 +583,7 @@ pub struct Params {
   pub test_targets     : IoTargets,
   pub cuck_rate        : f32,
   pub verbose          : bool,
+  pub date_dir         : String,
   pub csv_path         : String,
   pub pop_path         : String,
   pub threads          : usize,
@@ -592,7 +596,9 @@ pub struct Params {
 }
 impl Default for Params {
   fn default () -> Params {
-    let timestamp = time::get_time().sec;
+    let t = Local::now();
+    let datepath  = t.format("%y/%m/%d").to_string();
+    let timestamp = t.format("%H-%M-%S").to_string();
     Params {
       population_size:  2000,
       mutation_rate:    0.35,
@@ -614,8 +620,11 @@ impl Default for Params {
       constants:        Vec::new(),
       cuck_rate:        0.15,
       verbose:          false,
-      csv_path:         format!("roper_{:08x}.csv", timestamp),
-      pop_path:         format!("roper_{:08x}_pop.json", timestamp),
+      date_dir:         datepath.clone(),
+      csv_path:         format!("{}/roper_{}.csv", 
+                                &datepath, &timestamp),
+      pop_path:         format!("{}/roper_pop_{}.json", 
+                                &datepath, &timestamp),
       save_period:      256,
       threads:          4,
       num_demes:        4,
@@ -633,7 +642,12 @@ impl Params {
     Default::default()
   }
   pub fn set_log_dir (&mut self, dir: &str) {
-    self.csv_path  = format!("{}/{}", dir, self.csv_path);
+    let ddir = format!("{}/{}",dir, self.date_dir);
+    let d = DirBuilder::new()
+                      .recursive(true)
+                      .create(ddir)
+                      .unwrap();
+    self.csv_path = format!("{}/{}", dir, self.csv_path);
     self.pop_path = format!("{}/{}", dir, self.pop_path); 
   }
 }

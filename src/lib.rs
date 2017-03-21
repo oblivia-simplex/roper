@@ -6,6 +6,7 @@ extern crate elf;
 extern crate capstone;
 extern crate rand;
 extern crate getopts;
+extern crate chrono;
 
 
 pub mod roper;
