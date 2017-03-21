@@ -593,8 +593,8 @@ impl Default for Params {
     let timestamp = time::get_time().sec;
     Params {
       population_size:  2000,
-      mutation_rate:    0.30,
-      max_generations:  2000,
+      mutation_rate:    0.35,
+      max_generations:  200000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,
       code:             Vec::new(),
@@ -603,12 +603,12 @@ impl Default for Params {
       data_addrs:       Vec::new(),
       brood_size:       2,
       min_start_len:    2,
-      max_start_len:    16,
+      max_start_len:    32,
       max_len:          256,
       training_ht:      HashMap::new(),
       io_targets:       IoTargets::new(),
       test_targets:     IoTargets::new(),
-      fit_goal:         0.0,  
+      fit_goal:         0.1,  
       constants:        Vec::new(),
       cuck_rate:        0.15,
       verbose:          false,
@@ -616,8 +616,8 @@ impl Default for Params {
       pop_path:         format!("roper_{:08x}_pop.json", timestamp),
       save_period:      256,
       threads:          4,
-      num_demes:        1,
-      migration:        0.10,
+      num_demes:        4,
+      migration:        0.05,
       use_viscosity:    true,
     }
   }

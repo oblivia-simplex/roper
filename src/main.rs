@@ -261,7 +261,7 @@ fn main() {
           champion = updated.clone();
           println!("[*] Running best with disassembly on...");
           debug_samples.shuffle();
-          let targets = debug_samples.split_at(8).0;
+          let targets = debug_samples.split_at(1).0;
           evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                            &mut updated.unwrap(),
                            &targets,

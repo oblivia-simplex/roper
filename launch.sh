@@ -5,7 +5,7 @@ GOAL="0.10"
 OUTFILE="${PROJECT_ROOT}/logs/roper.out"
 
 mkdir -p $PROJECT_ROOT/logs
-
+gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
 ITERATION=1
 AVG_GEN=2
 AVG_FIT=3
@@ -74,10 +74,13 @@ run > $OUTFILE 2>> $ERRORFILE &
 roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
-gzip roper*.{csv,json} 2>> $ERRORFILE
 recent=""
 echo -n "[+] looking for log output"
 while ! [ -n "$recent" ]; do
+  if ! kill -0 $roper_pid; then
+    echo "ROPER instance with PID $roper_pid is dead"
+    exit
+  fi
   echo -n "."
   sleep 0.5
   recent=`find ./ -name "roper*csv" -anewer $STAMPFILE | tail -n1`
