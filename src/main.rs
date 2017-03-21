@@ -264,7 +264,7 @@ fn main() {
       for tr in trs {
         //println!("{:?}",tr);
         let updated = patch_population(tr, &mut pop_local.write().unwrap());
-        if updated != None  {
+        if false && updated != None  { // DISABLED FOR NOW
           champion = updated.clone();
           println!("[*] Running best with disassembly on...");
           debug_samples.shuffle();
