@@ -88,10 +88,10 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   let mut clump = chain[cl_idx].clone();
   assert!(clump.size() > 0);
   let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-  let mut_kind : u8 = rng.gen::<u8>() % 3;
+  let mut_kind : u8 = rng.gen::<u8>() % 2;
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
-    1 => mutate_addr(&mut clump, rng),
+    //1 => mutate_addr(&mut clump, rng),
     _ => { /* permutation */
       let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
       let tmp = clump.words[idx];
@@ -490,7 +490,7 @@ fn cull_brood (brood: &mut Vec<Chain>,
     // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
     evaluate_fitness(uc, 
-                     &mut *spawn, 
+                     &spawn, 
                      &params, 
                      Batch::TRAINING,
                      0.1,

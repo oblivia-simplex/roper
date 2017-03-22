@@ -259,7 +259,7 @@ fn main() {
     let n_jobs    = machinery.cluster.len();
     let mut pool  = Pool::new(n_workers);
     pool.scoped(|scope| {
-      let mut vdeme = 0;
+      let mut vdeme = thread_rng().gen::<usize>() % num_demes;
       for e in machinery.cluster.iter_mut() {
         let tx = tx.clone();
         let p = pop_arc.clone();

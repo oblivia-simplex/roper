@@ -193,7 +193,7 @@ pub fn is_ctrl (w: u32) -> bool {
     Lay::SWI => true,
     //Lay::UNDEF => true,
     Lay::RAWDATA => true,
-    Lay::DP  => special_reg(dp_dst_reg(w)),
+    //Lay::DP  => special_reg(dp_dst_reg(w)),
     _ => false,
   };
   if _DEBUG >= 2 && res {
