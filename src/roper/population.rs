@@ -178,6 +178,8 @@ pub const VARIABLE_FITNESS : bool = false;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
                          params: &Params,
+                         batch: Batch,
+                         sample_ratio: f32,
                          verbose: bool)
                          -> (f32,Option<usize>)
 {
@@ -189,7 +191,19 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     println!(">> EMPTY CHAIN");
     return (1.0, None);
   }
-  let io_targets = &params.io_targets;
+  let io = match batch {
+    Batch::TRAINING => &params.io_targets,
+    Batch::TESTING  => &params.test_targets,
+  };
+  let io2 : IoTargets;
+  let io_targets = if sample_ratio == 1.0 {
+    io
+  } else {
+    io2 = io.shuffle()
+      .split_at((io.len() as f32 * sample_ratio).ceil() as usize)
+      .0;
+    &io2
+  };
   let outregs    = &params.outregs;
   let inregs     = &params.inregs;
   let verbose = verbose || chain.verbose_tag;
@@ -320,10 +334,6 @@ pub fn tournement (population: &Population,
                    vdeme: usize)
                   -> TournementResult {
   let mut lots : Vec<usize> = Vec::new();
-  let io_targets = match batch {
-    Batch::TRAINING => &population.params.io_targets,
-    Batch::TESTING  => &population.params.test_targets,
-  };
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
   let mut uc = engine.unwrap_mut(); //(machinery.cluster[0].unwrap_mut()); // bandaid
   let mut rng = thread_rng(); //&mut(machinery.rng);
@@ -372,6 +382,8 @@ pub fn tournement (population: &Population,
       let (fitness,crash) = evaluate_fitness(&mut uc, 
                                              &specimen,
                                              &population.params,
+                                             batch,
+                                             1.0,
                                              false); // verbose
       fit_vec.push((fitness,crash));
     } else {
@@ -477,7 +489,12 @@ fn cull_brood (brood: &mut Vec<Chain>,
   for spawn in brood.iter_mut() {
     // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
-    evaluate_fitness(uc, &mut *spawn, &params, false); 
+    evaluate_fitness(uc, 
+                     &mut *spawn, 
+                     &params, 
+                     Batch::TRAINING,
+                     0.1,
+                     false); 
   }
   brood.sort();
   /* Now eliminate the least fit */

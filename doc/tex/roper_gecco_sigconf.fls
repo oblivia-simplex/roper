@@ -187,6 +187,8 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmss9.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmssi9.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
+INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
+INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 OUTPUT comment.cut
 INPUT comment.cut
 INPUT comment.cut

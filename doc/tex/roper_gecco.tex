@@ -41,7 +41,7 @@ us in the process's executable memory segment.%
 \footnote{\textbf{Cite that research paper that describes an
   entire rootkit written in rop chains}}
 
-These are the kinds of chains that our engine evolves. The
+These chains are the kind of entities that our engine evolves. The
 genetic material consists of the set of gadgets extracted from
 a target executable binary -- we focus for now on \textsc{elf}
 binaries compiled for 32-bit \textsc{arm} processors. The
@@ -81,9 +81,9 @@ binary exploitation: we'll have them sort flowers.
 \subsubsection{ROP-Chain Compilers}
 
 A handful of technologies have already been developed for the
-automatic generation of \textsc{rop}-chains. These range from tools that
-use one of several determinate recipes for assembling a chain --
-such as the {Corelan Team}'s extraordinarily useful
+automatic generation of \textsc{rop}-chains. These range from
+tools that use one of several determinate recipes for assembling
+a chain -- such as the {Corelan Team}'s extraordinarily useful
 \texttt{mona.py} -- to tools which approach the problem through
 the lens of compiler design, grasping the set of gadgets
 extracted from a binary as the instruction set of a baroque and
@@ -95,8 +95,9 @@ We're aware of two such projects at the moment. The first, named
 
 The second, \textsc{ropc}, grew out of its authors' attempts to
 reverse engineer $Q$ from its desrciption in [CITE], and extend
-its capabilities to the point where it could compile \textsc{rop}-chains
-for scripts written in a Turing-complete programming language. 
+its capabilities to the point where it could compile
+\textsc{rop}-chains for scripts written in a Turing-complete
+programming language. 
 
 The project has since inspired a fork that aims to use
 \textsc{ropc}'s own intermediate language as an \textsc{llvm}
@@ -256,7 +257,7 @@ which a link $i..i+1$ will be selected as the splice point in a
 crossover event. 
 
 In the event of a crash, the link-fitness of the clump
-responsible for the crash-event is worsened to a maximum degree,
+responsible for the crash-event is severely worsened
 and the viscosity adjusted accordingly. The crossover algorithm
 is set up in such a way that crash-provoking clumps have a
 disproportionately high chance of being selected as
@@ -292,7 +293,29 @@ as we will see.
 The phenotype, here, is the \textsc{cpu} context resulting from the execution of the genotype (the \textsc{rop}-chain) in a virtual machine, passed through one of a handful of `fitness functions'. Let's look at these factors one at a time. 
 \subsubsection{Execution Environment}
 % unicorn vm
-The transformation of the genotype into its corresponding phenotype -- its `ontogenesis' -- takes place in one of a cluster of virtual machines set up for this purpose, using Nguyen Anh Quynh's superb Unicorn Engine emulation library.
+The transformation of the genotype into its corresponding
+phenotype -- its `ontogenesis' -- takes place in one of a cluster
+of virtual machines set up for this purpose, using Nguyen Anh
+Quynh's superb Unicorn Engine emulation library. A cluster of
+emulator instances is initialized at the beginning of each run,
+and the binary that we wish to exploit is loaded into its memory.
+We enforce non-writeability for the process's entire memory, with
+the sole exception of the stack, where we will be writing our
+\textsc{rop}-chains. There are two reasons for this: first, since
+the task is to evolve pure \textsc{rop}-chain payloads, we might
+as well enforce $W \oplus X$ as rigorously as possible -- the
+very defensive measure that \textsc{rop} was invented to subvert.
+Second, it makes things far more reliable and efficient if we
+don't have to worry about any of our chains corrupting their
+shared execution environment by, say, overwriting instructions in
+executable memory. This lets us treat each chain as strictly
+functional: the environment being stable, the output of a chain
+is uniquely determined by its composition and its inputs.%
+\footnote{Neglecting to enforce this in early experiments led to
+  interesting circumstances where a chain would score remarkably
+  well on a given run, but under conditions that were nearly
+  impossible to reconstruct or repeat, since its success had
+  depended on some ephemeral corruption of its environment.}
 
 In order to map the genotype -- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process -- into its resulting \textsc{cpu} context, the following steps are taken:
 
@@ -334,7 +357,7 @@ respectively.  The attacker leverages one of these
 vulnerabilities in order to write the first pointer in the chain
 to an address that will be unwittingly `returned to' or `called'
 by the process. In our set-up, this step is merely simulated. The
-rest, however, unfolds \emph{exactly} as it would in an actual
+rest, however, unfolds precisely as it would in an actual
 attack.
 
 %% Some of this stuff on how \textsc{rop} chains work might be better to
@@ -343,15 +366,17 @@ attack.
 \subsubsection{Fitness Functions}
 
 Two different fitness functions have been studied, so far, with
-this setup. The first, and more immediately utilitarian, of the
-two is simply to converge on a precisely specified \textsc{cpu}
-context. A pattern consisting of 32-bit integers and wildcards is
-supplied to the engine, and the task is to evolve a
-\textsc{rop}-chain that brings the register vector to a state
-that matches the pattern in question. The fitness of a chain's
-phenotype is defined as the average hamming distance between the
-non-wildcard target registers in the patter, and the actual
-register values resulting from the chain's execution. 
+this setup. 
+
+\paragraph{Pattern matching.} The first, and more immediately
+utilitarian, of the two is simply to converge on a precisely
+specified \textsc{cpu} context. A pattern consisting of 32-bit
+integers and wildcards is supplied to the engine, and the task is
+to evolve a \textsc{rop}-chain that brings the register vector to
+a state that matches the pattern in question. The fitness of a
+chain's phenotype is defined as the average hamming distance
+between the non-wildcard target registers in the patter, and the
+actual register values resulting from the chain's execution. 
 
 This is a fairly simple task, but one that has immediate
 application in \textsc{rop}-chain development, where the goal is
@@ -362,17 +387,91 @@ In this capacity, \textsc{roper} can be seen as an automation
 tool, accomplishing with greater ease and speed what a might take
 a human programmer a few hours to accomplish, unaided. 
 
-But \textsc{roper} is also capable of more complex and subtle
-tasks, which set it at some distance from deterministic
-\textsc{rop}-chain compilers like $Q$. As an initial foray in
-this direction, I set \textsc{roper} the task of attempting some
-standard, benchmark classification problems, commonly used in
-machine learning. The first of these is the classification of the
-well-known Iris dataset. 
+\paragraph{Classification.} But \textsc{roper} is capable of
+more complex and subtle tasks than this, and these set it at some
+distance from deterministic \textsc{rop}-chain compilers like
+$Q$. As an initial foray in this direction, we set \textsc{roper}
+the task of attempting some standard, benchmark classification
+problems, commonly used in machine learning, beginning with some
+well-known, balanced datasets. In this context, \textsc{roper}'s
+task is to evolve a \textsc{rop}-chain that correctly classifies
+a given specimen when its $n$ attributes, normalized as integers,
+are loaded into $n$ of the virtual \textsc{cpu}'s registers
+(which we will term the `input registers') prior to launching the
+chain. $m$ separate registers are specified as `output
+registers', where $m$ is the number of classes that
+\textsc{roper} must decide between. Whichever output register
+contains the greatest signed value after the attack has run its
+course is interpreted as the classification of the specimen in
+question. 
+
+The basis of the fitness function used for these tasks
+is just the detection rate. %% use something more sophisticated?
+We will look at the results of these classification experiments
+in the next section. 
+
+\paragraph{Crash rate.} Our population of random
+\textsc{rop}-chains begins its life as an extraordinarily noisy
+and error-prone species, and so it is fairly common, at the
+beginning of a run, that a chain will not have all of its gadgets
+executed before crashing, for one reason or another. Crashing,
+for both tasks (pattern matching and classification),
+carries with it a penalty to fitness that is relative to the
+proportion of gadgets in the chain whose return instructions have
+not been reached. (This is measured by placing soft breakpoints at
+each gadget's return instruction, and incrementing a counter when
+each return is executed.) By not simply disqualifying chains that
+crash, or prohibiting instructions that are highly likely to
+result in a crash, we provide our population with a much richer
+array of materials to work with, and, in certain circumstances,
+dictated by competition with other chains, room to experiment
+with riskier tactics when it comes to control flow. At the same
+time, the moderate selective pressure that pushes \emph{against}
+crashes is typically enough to steer the population towards
+more stable solutions. 
+
+\subsection{Selection scheme}
+
+The selection method used in these experiments is a fairly simple
+tournement scheme: \texttt{t\_size} specimens are selected randomly from a
+subpopulation or \emph{deme} and evaluated. The
+$\texttt{t\_size}-2$ worst
+performers are culled, and the two best become the parents of
+\texttt{brood\_size} offspring, via single-point crossover. This
+brood is evaluated on a small random sample of the training data,
+and the best $\texttt{t\_size} - 2$ children are kept, replacing
+their fallen counterparts. 
+
+With each random choice of tournement contestants, there is some
+probability, \texttt{migration\_rate}, that contestants may be
+drawn from the entire population, rather than just the active
+deme. This is to allow genetic material to flow from one
+subpopulation to another at a controlled rate. The hope is to
+inject diversity from one deme into another, without simply
+homogenizing the entire population. 
+
+In the interest of preserving diversity, we have kept
+\texttt{brood\_size} relatively low. Crossover tends to be fairly
+destructive, and so applying overly harsh selective pressures to
+the brood has a tendency to filter out offspring that have lesser
+resemblance to their parents (whose fitness, at least with
+respect to the contestants chosen for the tournement) has already
+been established. 
+
+There is also a certain probability, in each tournement, that
+only $\texttt{t\_size} - 1$ contestants will be chosen, and that
+instead of being the second-best performer in the tournement, the
+second parent will be a new chain, randomly generated from
+scratch. This provides a constant trickle of fresh blood into the
+gene pool, and helps stave off stagnation.
+
+%The first of these is the classification of the well-known Iris dataset, and in the next section we'll look at how \textsc{roper} performed there.  
 
 % you should at least have a second
 
 \section{Empirical Study}
+
+
 
 %% start generating graphs for these. have the graph script also
 % output latex, please. 

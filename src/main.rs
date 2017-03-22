@@ -162,7 +162,7 @@ fn main() {
     };
   
   let (testing,training) = io_targets.split_at(io_targets.len()/3);
-  let mut debug_samples = training.clone();
+  let debug_samples = training.clone();
   /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
   let sample2 = "tomato-RT-N18U-httpd";
@@ -229,8 +229,8 @@ fn main() {
   // pass these addresses to the mangler in population building
   //println!("params: {:?}",params); 
 
-  let mut rng = rand::thread_rng();
-  let mut population = Population::new(&params);
+  let rng = rand::thread_rng();
+  let population = Population::new(&params);
 
   let mut machinery : Machinery
     = Machinery::new(&elf_path,
@@ -287,11 +287,11 @@ fn main() {
         }
         if false && updated != None  { // DISABLED FOR NOW
           println!("[*] Running best with disassembly on...");
-          debug_samples.shuffle();
-          let targets = debug_samples.split_at(2).0;
           evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                            &mut updated.unwrap(),
                            &pop_local.read().unwrap().params,
+                           Batch::TRAINING,
+                           0.1,
                            true);
           
           let mut dfile = OpenOptions::new()
@@ -313,8 +313,12 @@ fn main() {
       let avg_pop_fit = pop_local.read()
                                  .unwrap()
                                  .avg_fit();
+      let avg_crash = pop_local.read()
+                               .unwrap()
+                               .avg_crash();
       println!("==> AVG POP GEN: {}", avg_pop_gen);
       println!("==> AVG POP FIT: {}", avg_pop_fit);
+      println!("==> CRASH RATE:  {}", avg_crash);
     }); // END POOL SCOPE
     i += 1;
   }
@@ -329,6 +333,8 @@ fn main() {
   evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                    &mut champion.unwrap(),
                    &pop_local.read().unwrap().params,
+                   Batch::TESTING,
+                   1.0,
                    true);
   println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
   

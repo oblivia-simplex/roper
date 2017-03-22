@@ -20,7 +20,7 @@ pub const MEM_SIZE   : usize = 0x010000000;
 pub const BASE_STACK : u64   = 0x000000000;
 pub const STACK_SIZE : usize = 0x000004000;
 pub const STACK_INIT : u64   = 0x000001000; //0x0E0000000;
-pub const MAX_STEPS  : usize = 0x1000;
+pub const MAX_STEPS  : usize = 0x800;
 pub const STOP_ADDR  : u64   = 0x000000000;
 
 pub trait PageAligned {
@@ -105,8 +105,10 @@ fn get_elf_addr_data (path: &str,
     let seg = Seg {
       addr: phdr.vaddr,
       memsz: phdr.memsz as usize,
+      // let's make the segments unwriteable by default
+      // to add to the challenge, and ensure fast fails
       perm: unicorn::Protection::from_bits(phdr.flags.0)
-        .expect("Failed to convert permission flags"), //unicorn::PROT_ALL, // { phdr.flags.0 },
+        .expect("Failed to convert permission flags") ^ unicorn::PROT_WRITE, //unicorn::PROT_ALL, // { phdr.flags.0 },
     };
     segments.push(seg);
   }

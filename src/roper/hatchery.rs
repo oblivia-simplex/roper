@@ -69,6 +69,13 @@ pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
     println!("[*] Mapping segment with size {:x}, addr {:x}, perm {:?}", seg.memsz, seg.addr, seg.perm);
     uc.mem_map(seg.floor(), seg.size(), seg.perm)
       .expect(&format!("Failed to map segment. Size: {:x}; Addr: {:x}, Perm: {:?}", seg.memsz, seg.addr, seg.perm));
+    // paint unused memory with breakpoints
+    let breakpoint : Vec<u8> = vec![0xFE, 0xDE, 0xFF, 0xE7];
+    let mut i = seg.floor();
+    while i < seg.size() as u64 {
+      uc.mem_write(i, &breakpoint);
+      i += 4;
+    }
   }
   for ref sec in sections.iter() {
     //let &(addr, ref data) = pair

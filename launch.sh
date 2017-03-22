@@ -1,7 +1,7 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
-DATAFILE=${PROJECT_ROOT}/data/iris.data
-BINARY=${PROJECT_ROOT}/data/openssl
+DATAFILE=${PROJECT_ROOT}/data/iris.small
+BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 GOAL="0.10"
 
 [ -n "$1" ] && LABEL="-L $1"
@@ -46,7 +46,7 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                -t 4 \ 
+                                -t 5 \ 
                                 -P 3200 \
                                 -D 4 \
                                 -V \
