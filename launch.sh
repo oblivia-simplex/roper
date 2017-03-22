@@ -1,7 +1,7 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 DATAFILE=${PROJECT_ROOT}/data/iris.small
-BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
+BINARY=${PROJECT_ROOT}/data/ldconfig.real
 GOAL="0.10"
 
 [ -n "$1" ] && LABEL="-L $1"
@@ -16,13 +16,15 @@ gzip -f $PROJECT_ROOT/logs/roper*.{csv,json}
 ITERATION=1
 AVG_GEN=2
 AVG_FIT=3
-AVG_CRASH=4
-BEST_GEN=5
-BEST_FIT=6
-BEST_CRASH=7
-AVG_LEN=8
-BEST_LEN=9
-UNSEEN=10
+AVG_ABFIT=4
+AVG_CRASH=5
+BEST_GEN=6
+BEST_FIT=7
+BEST_ABFIT=8
+BEST_CRASH=9
+AVG_LEN=10
+BEST_LEN=11
+UNSEEN=12
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -47,9 +49,9 @@ function run () {
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
                                 -t 5 \ 
-                                -P 3200 \
-                                -D 4 \
-                                -m 1.0 \
+                                -P 4000 \
+                                -D 2 \
+                                -m 0.0 \
                                 -V \
                                 $LABEL
 }
@@ -88,8 +90,10 @@ set autoscale
 set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
+  "" u ${X0}:${AVG_ABFIT} w lines, \
   "" u ${X0}:${AVG_CRASH} w lines, \
   "" u ${X0}:${BEST_FIT} w lines, \
+  "" u ${X0}:${BEST_ABFIT} w lines, \
   "" u ${X0}:${UNSEEN} w lines
 plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
   "" u ${X1}:${AVG_LEN} w lines, \

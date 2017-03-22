@@ -145,7 +145,7 @@ fn bdt_stack_direction (w: u32) -> i32 {
   } else {
     let writeback  = ((w & (1 << 21)) >> 21) as i32;
     let updown_bit = ((w & (1 << 23)) >> 23) as i32;
-    writeback * if (updown_bit == 0) {-1} else {1}
+    writeback * if updown_bit == 0 {-1} else {1}
   }
 }
 // I don't think we need to worry too much about the pre/post
@@ -264,7 +264,7 @@ pub fn reap_arm_gadgets (code: &Vec<u8>,
       ..Default::default()
     };
     // println!("{:?}",c);
-    if (c.gadlen() >= MIN_GAD_LEN) { gads.push(c); }
+    if c.gadlen() >= MIN_GAD_LEN { gads.push(c); }
   }
   gads
 }

@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::{RwLock,RwLockReadGuard};
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
-
+use std::collections::HashMap;
 
 use rand::distributions::*;
 use rand::Rng;
@@ -51,13 +51,13 @@ fn calc_link_fit (clump: &Clump, c_fit: f32) -> Option<f32>{
  */
 
 fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
-  if (clump.ret_addr < clump.words[0]) {
+  if clump.ret_addr < clump.words[0] {
     println!("[WARNING] clump.ret_addr = {:08x}\nclump.words[0] = {:08x}",
              clump.ret_addr, clump.words[0]);
     return;
   }
 
-  let d = (clump.ret_addr - clump.words[0]);
+  let d = clump.ret_addr - clump.words[0];
   let inst_size = if clump.mode == MachineMode::ARM {
     4
   } else {
@@ -115,13 +115,21 @@ pub fn mate (parents: &Vec<&Chain>,
   brood
 }
 
+pub struct EvalResult {
+  pub fitness : f32,
+  pub ab_fitness : f32,
+  pub counter : usize,
+  pub crashes : bool,
+  pub difficulties : Option<HashMap<Vec<i32>, f32>>,
+}
+
 fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               input: &Vec<i32>, // may revise
               target: &Target,
               inregs:  &Vec<usize>,
               outregs: &Vec<usize>, // need a better system
-              verbose: bool) -> (f32, usize, bool) {
+              verbose: bool) -> EvalResult{ //(f32, usize, bool) {
   
   if verbose {
     print!("\n");
@@ -171,25 +179,41 @@ fn eval_case (uc: &mut CpuARM,
       f32::min(1.0, d)
     },
   };
-  (ft, counter, crash)
+  EvalResult {
+    fitness: ft,
+    ab_fitness: ft,
+    counter: counter,
+    crashes: crash,
+    difficulties: None,
+  }
 }
 
-pub const VARIABLE_FITNESS : bool = false;
+fn adjust_for_difficulty (fitness: f32, difficulty: f32) -> f32 {
+  // Double check this with fitness sharing formula(e)
+  // difficulty = the running average of fitness scores that other
+  // specimens have scored on this problem (the lower, the better)
+  // so, the lower the difficulty, the 'easier' the exemplar, by the
+  // standards current in the population. 
+  fitness * (1.0 - difficulty)
+}
+
+pub const VARIABLE_FITNESS : bool = true;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
                          params: &Params,
                          batch: Batch,
                          sample_ratio: f32,
                          verbose: bool)
-                         -> (f32,Option<usize>)
+  // refactor return type for this and eval_case. might as well
+  // use the same kind of struct. (EvalResult). 
+                         -> EvalResult //(f32,Option<usize>)
 {
 //  if !VARIABLE_FITNESS && chain.fitness != None {
 //    return chain.fitness;
 //  }
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
-    println!(">> EMPTY CHAIN");
-    return (1.0, None);
+    panic!("EMPTY CHAIN IN evaluate_fitness");
   }
   let io = match batch {
     Batch::TRAINING => &params.io_targets,
@@ -221,36 +245,63 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   }
   
   let mut fit_vec : Vec<f32> = Vec::new();
+  let mut abfit_vec : Vec<f32> = Vec::new();
   //let mut crashes = 0;
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
   let mut counter_sum = 0;
   let mut anycrash = false;
-  for &(ref input, ref target) in io_targets.iter() {
-    let (ft,counter,crash) = eval_case(uc,
-                                       chain,
-                                       &input,
-                                       &target,
-                                       &inregs,
-                                       &outregs,
-                                       verbose);
+  // let mut target_difficulty : HashTable<Target,f32> = HashTable::new();
+  let mut difficulties : HashMap<Vec<i32>,f32> = HashMap::new();
+  for &(ref problem, ref target) in io_targets.iter() {
+    // don't destructure io_target. refactor into struct in
+    // struct IoTargets, and then pull out input, target, 
+    // and difficulty. factor in difficulty only after eval_case
+    // difficulty begins at some medium value, and is adjusted
+    // in the tr patch loop after each tournement pool concludes
+    let res = eval_case(uc,
+                        chain,
+                        &problem.input,
+                        &target,
+                        &inregs,
+                        &outregs,
+                        verbose);
+    let counter = res.counter;
+    difficulties.insert(problem.input.clone(), res.fitness);
+    let ft = adjust_for_difficulty(res.ab_fitness,
+                                   problem.difficulty);
+    // let difficulty = io_target.difficulty
+    // target_difficulty.insert(io_target, ft);
+    // now modulate ft by target's difficulty
+    let crash = res.crashes; 
     let counter = min(counter, chain.size()-1);
     counter_sum += counter;
     anycrash = anycrash || crash;
     fit_vec.push(ft);
+    abfit_vec.push(res.ab_fitness);
   };
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
   let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
                    / fit_vec.len() as f32) as f32;
+  let ab_fitness = (abfit_vec.iter().map(|&x| x).sum::<f32>() 
+                   / abfit_vec.len() as f32) as f32;
   
-  (fitness, if anycrash {
+/*  (fitness, if anycrash {
     Some(counter_sum / io_targets.len())
   } else {
     None
   })
+  */
+  EvalResult {
+    fitness: fitness,
+    ab_fitness: ab_fitness,
+    counter: counter_sum / io_targets.len(),
+    crashes: anycrash,
+    difficulties: Some(difficulties),
+  }
 }
 
 fn append_to_csv(path: &str, iter: usize,
@@ -287,6 +338,12 @@ fn append_to_csv(path: &str, iter: usize,
 //  println!(">> {}",row);
 }
 
+#[derive(Clone,Debug,PartialEq)]
+pub struct FitUpdate {
+  pub fitness : Option<f32>,
+  pub ab_fitness : Option<f32>,
+  pub crashes : Option<bool>,
+}
 
 #[derive(Debug,Clone)]
 pub struct TournementResult {
@@ -294,31 +351,69 @@ pub struct TournementResult {
   pub spawn:  Vec<Chain>,
   pub best:   Chain,
   pub display: String,
-  pub fit_updates: Vec<(usize,(Option<f32>,Option<bool>))>,
+  pub fit_updates: Vec<(usize,FitUpdate)>,
+  pub difficulty_update: HashMap <Vec<i32>, Vec<f32>>, // or avg f32
 }
 unsafe impl Send for TournementResult {}
 
-pub fn patch_population (tr: TournementResult,
-                         population: &mut Population) 
-                        -> Option<Chain> {
+fn update_difficulty (d_vec: &Vec<f32>,
+                      p_size: usize,
+                      t_size: usize,
+                      p_diff: f32) -> f32
+{
+  let p_size : f32 = p_size as f32;
+  let t_size : f32 = t_size as f32;
+  let n : f32 = p_size / t_size;
+  let a : f32 = d_vec.iter().sum::<f32>() / d_vec.len() as f32;
+  (p_diff - (p_diff / n)) + (a / n)
+}
+
+pub fn patch_io_targets (tr: &TournementResult,
+                         params: &mut Params)
+{
+  let mut io_targets = &mut params.io_targets;
+  for &mut (ref mut problem, _) in io_targets.iter_mut() {
+    let p_diff : f32 = problem.difficulty.clone();
+    match tr.difficulty_update.get(&problem.input) {
+      None => (),
+      Some(d_vec) => {
+        //println!(">> old difficulty for {:?}: {}",
+        //         &problem.input, problem.difficulty);
+        problem.difficulty = update_difficulty(&d_vec,
+                                               params.population_size,
+                                               params.t_size,
+                                               p_diff);
+        //println!(">> new difficulty for {:?}: {}",
+        //         &problem.input, problem.difficulty);
+      },
+    }
+  }
+}
+
+
+pub fn patch_population (tr: &TournementResult,
+                        population: &mut Population) 
+                        -> Option<Chain> 
+{
   assert_eq!(tr.graves.len(), tr.spawn.len());
   population.generation += 1;
   for i in 0..tr.graves.len() {
-//    println!(">> filling grave #{}",tr.graves[i]);
+  //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
   }
-  for (i,(f,c)) in tr.fit_updates {
-    if f != None {
-      population.deme[i].fitness = f;
-      population.deme[i].crashes = c;
+  for &(i, ref fit_up) in tr.fit_updates.iter() {
+    if fit_up.fitness != None {
+      population.deme[i].fitness = fit_up.fitness.clone();
+      population.deme[i].crashes = fit_up.crashes.clone();
+      population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
     }
   }
   println!("{}",tr.display);
   if population.best == None || 
-    tr.best.fitness < population.best_fit() {
+    tr.best.ab_fitness < population.best_fit() {
     population.best = Some(tr.best.clone());
     population.log();
-    Some(tr.best)
+    Some(tr.best.clone())
   } else {
     if population.params.verbose {
       population.log();
@@ -332,34 +427,29 @@ pub fn tournement (population: &Population,
                    engine: &mut Engine,
                    batch: Batch,
                    vdeme: usize)
-                  -> TournementResult {
+                  -> TournementResult 
+{
   let mut lots : Vec<usize> = Vec::new();
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
   let mut uc = engine.unwrap_mut(); //(machinery.cluster[0].unwrap_mut()); // bandaid
   let mut rng = thread_rng(); //&mut(machinery.rng);
   let mut t_size = population.params.t_size;
   let mut cflag = false;
-//  let io_targets = &(population.params.io_targets);
-  if rng.gen::<f32>() < population.params.cuck_rate {
+  //  let io_targets = &(population.params.io_targets);
+  if rng.gen::<f32>() < population.params.cuck_rate 
+  {
     cflag = true;
     t_size -= 1;
   }
 
   let mut specimens = Vec::new();
-  
-  // Virtual demes: segment of the population from which specimens
-  // will be drawn.
-  /*let lotdraw = if rng.gen::<f32>() < population.params.migration {
-    Box::new(|| rng.gen::<usize>() % 
-             population.params.population_size)
-  } else {
-    Box::new(|| rng.gen::<usize>() % r + (r * vdeme))
-  };
-  */
+
   let r = population.params.population_size / population.params.num_demes;
   let migrating = rng.gen::<f32>() < population.params.migration;
-  for _ in 0..t_size {
-    let mut l: usize = if !migrating {
+  for _ in 0..t_size 
+  {
+    let mut l: usize = if !migrating 
+    {
       rng.gen::<usize>() % r + (r * vdeme)
     } else {
       rng.gen::<usize>() % population.params.population_size
@@ -376,44 +466,62 @@ pub fn tournement (population: &Population,
   }
 
   let mut fit_vec = Vec::new();
-  for &(ref specimen,_) in specimens.iter() {
-    if (specimen.fitness == None || 
-        VARIABLE_FITNESS) {
-      let (fitness,crash) = evaluate_fitness(&mut uc, 
-                                             &specimen,
-                                             &population.params,
-                                             batch,
-                                             1.0,
-                                             false); // verbose
-      fit_vec.push((fitness,crash));
+  let mut difficulty_update = HashMap::new();
+  for &(ref specimen,_) in specimens.iter() 
+  {
+    if specimen.fitness == None || VARIABLE_FITNESS {
+      let res = evaluate_fitness(&mut uc, 
+                                 &specimen,
+                                 &population.params,
+                                 batch,
+                                 1.0,
+                                 false); // verbose
+      let fitness = res.fitness;
+      let crash   = Some(res.crashes);
+      for (input, difficulty) in &res.difficulties.unwrap() {
+        match difficulty_update.get(input) {
+          None    => {
+            difficulty_update.insert(input.clone(), 
+                                     vec![*difficulty]);
+          },
+          Some(_) => {
+            difficulty_update.get_mut(input).unwrap().push(*difficulty);
+          }
+        };
+      }
+      fit_vec.push(FitUpdate {
+        fitness: Some(fitness),
+        ab_fitness: Some(res.ab_fitness.clone()),
+        crashes: crash,
+        });
     } else {
-      fit_vec.push((specimen.fitness.unwrap(),None));
+      fit_vec.push(FitUpdate {
+        fitness: specimen.fitness.clone(),
+        ab_fitness: specimen.ab_fitness.clone(),
+        crashes: specimen.crashes,
+      });
     }
-  }
+  } 
    
-  for (&mut (ref mut specimen,lot), (fitness, crash)) 
+  for (&mut (ref mut specimen,lot), ref fit_up) 
     in specimens.iter_mut()
-                .zip(fit_vec) {
-    match crash {
-      Some(counter) => {
-        specimen.crashes = Some(true);
-        //specimen[counter].sicken(); 
-      },
-      None => {
-        specimen.crashes = Some(false);
-      },
-    } 
+                .zip(fit_vec) 
+    {
+      specimen.crashes = fit_up.crashes;
+      specimen.fitness = fit_up.fitness;
+      specimen.ab_fitness = fit_up.ab_fitness;
       /* Set link fitness values */
-    for clump in &mut specimen.clumps {
-      clump.link_fit  = calc_link_fit(clump, fitness);
-      clump.viscosity = calc_viscosity(clump);
+      for clump in &mut specimen.clumps {
+        clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
+        clump.viscosity = calc_viscosity(clump);
+      }
+      //println!("## Setting fitness for lot #{} to {}",lot,fitness);
+  //    specimen.set_fitness(fitness);
+    //  specimen.set_ab_fitness(ab_fitness);
     }
-    //println!("## Setting fitness for lot #{} to {}",lot,fitness);
-    specimen.set_fitness(fitness);
-  }
-  
+
   specimens.sort();
-  
+
   let (mother,m_idx) = specimens[0].clone();
   let (father,f_idx) = if cflag {
     // make this a separate method of population
@@ -421,9 +529,19 @@ pub fn tournement (population: &Population,
   } else { 
     specimens[1].clone()
   };
-  let mut fit_updates = vec![(m_idx, (mother.fitness,mother.crashes))];
+  let mut fit_updates = vec![(m_idx, 
+                              FitUpdate {
+                                fitness: mother.fitness,
+                                ab_fitness: mother.ab_fitness,
+                                crashes:mother.crashes,
+                              })];
   if !cflag {
-    fit_updates.push((f_idx, (father.fitness,father.crashes)));
+    fit_updates.push((f_idx, 
+                      FitUpdate { 
+                        fitness: father.fitness,
+                        ab_fitness: father.ab_fitness,
+                        crashes: father.crashes,
+                      })); // (father.fitness,father.crashes)));
   }
 
   /* This little print job should be factored out into a fn */
@@ -477,159 +595,161 @@ pub fn tournement (population: &Population,
     best:        t_best,
     display:     display,
     fit_updates: fit_updates,
-  }
+    difficulty_update: difficulty_update,
+  }  
 }
 
+
 fn cull_brood (brood: &mut Vec<Chain>, 
-               n: usize,
-               uc: &mut CpuARM,
-               params: &Params) {
-  /* Sort by fitness - most to least */
-  let mut i = 0;
-  for spawn in brood.iter_mut() {
-    // println!("[*] Evaluating spawn #{}...", i);
-    i += 1;
-    evaluate_fitness(uc, 
-                     &spawn, 
-                     &params, 
-                     Batch::TRAINING,
-                     0.1,
-                     false); 
-  }
-  brood.sort();
-  /* Now eliminate the least fit */
-  while brood.len() > n {
-    brood.pop();
-  }
+             n: usize,
+             uc: &mut CpuARM,
+             params: &Params) {
+/* Sort by fitness - most to least */
+let mut i = 0;
+for spawn in brood.iter_mut() {
+  // println!("[*] Evaluating spawn #{}...", i);
+  i += 1;
+  evaluate_fitness(uc, 
+                   &spawn, 
+                   &params, 
+                   Batch::TRAINING,
+                   0.1,
+                   false); 
 }
-  
+brood.sort();
+/* Now eliminate the least fit */
+while brood.len() > n {
+  brood.pop();
+}
+}
+
 fn calc_viscosity (clump: &Clump) -> i32 {
-  match clump.link_fit {
-    Some(x) => {
-      assert!(x <= 1.0);
-      assert!(x >= 0.0);
-      MAX_VISC - (MAX_VISC as f32 * x) as i32
-    },
-    None    => MAX_VISC/2,
-  }
+match clump.link_fit {
+  Some(x) => {
+    assert!(x <= 1.0);
+    assert!(x >= 0.0);
+    MAX_VISC - (MAX_VISC as f32 * x) as i32
+  },
+  None    => MAX_VISC/2,
+}
 }
 
 fn splice_point (chain: &Chain, 
-                 rng: &mut ThreadRng,
-                 use_viscosity: bool) -> usize {
-  let mut wheel : Vec<Weighted<usize>> = Vec::new();
-  let mut i : usize = 0;
-  if chain.size() == 0 {
-    panic!("Empty chain in splice_point(). Why?");
-  }
-  for clump in &chain.clumps {
-    assert!(clump.visc() <= MAX_VISC);
-    let vw : u32 = if use_viscosity {
-      1 + (MAX_VISC - clump.visc()) as u32
-    } else {
-      50
-    };
-    wheel.push(Weighted { weight: vw,
-                          item: i });
-    i += 1;
-  }
-  let mut spin = WeightedChoice::new(&mut wheel);
-  spin.sample(rng) 
+               rng: &mut ThreadRng,
+               use_viscosity: bool) -> usize {
+let mut wheel : Vec<Weighted<usize>> = Vec::new();
+let mut i : usize = 0;
+if chain.size() == 0 {
+  panic!("Empty chain in splice_point(). Why?");
+}
+for clump in &chain.clumps {
+  assert!(clump.visc() <= MAX_VISC);
+  let vw : u32 = if use_viscosity {
+    1 + (MAX_VISC - clump.visc()) as u32
+  } else {
+    50
+  };
+  wheel.push(Weighted { weight: vw,
+                        item: i });
+  i += 1;
+}
+let mut spin = WeightedChoice::new(&mut wheel);
+spin.sample(rng) 
 }
 
 fn shufflefuck (parents:    &Vec<&Chain>, 
-                params:     &Params,
-                rng:        &mut ThreadRng) -> Vec<Chain> {
-  let brood_size = params.brood_size;
-  let max_len    = params.max_len;
-  let use_viscosity = params.use_viscosity;
-  let mut brood : Vec<Chain> = Vec::new();
-  for i in 0..brood_size {
-    let m_idx  : usize  = i % 2;
-    let mother : &Chain = &(parents[m_idx]);
-    let father : &Chain = &(parents[(m_idx+1) % 2]);
-    let m_i : usize = splice_point(&mother, rng, use_viscosity);
-    let m_n : usize = mother.size() - (m_i+1);
-    let f_i : usize = splice_point(&father, rng, use_viscosity);
+              params:     &Params,
+              rng:        &mut ThreadRng) -> Vec<Chain> {
+let brood_size = params.brood_size;
+let max_len    = params.max_len;
+let use_viscosity = params.use_viscosity;
+let mut brood : Vec<Chain> = Vec::new();
+for i in 0..brood_size {
+  let m_idx  : usize  = i % 2;
+  let mother : &Chain = &(parents[m_idx]);
+  let father : &Chain = &(parents[(m_idx+1) % 2]);
+  let m_i : usize = splice_point(&mother, rng, use_viscosity);
+  let m_n : usize = mother.size() - (m_i+1);
+  let f_i : usize = splice_point(&father, rng, use_viscosity);
 
-    /*
-     * println!("==> m viscosity at splice point: {}",
-             mother[m_i].viscosity);
-             */
-    assert!(m_i < mother.size());
-    assert!(f_i < father.size());
+  /*
+   * println!("==> m viscosity at splice point: {}",
+           mother[m_i].viscosity);
+           */
+  assert!(m_i < mother.size());
+  assert!(f_i < father.size());
 
-    // println!("[*] mother.size() = {}, father.size() = {}",
-    // mother.size(), father.size());
-    //println!("[*] Splicing father at {}, mother at {}", f_i, m_i);
-    //println!("[*] m_n = {}", m_n);
-    
-    let mut child_clumps : Vec<Clump> = Vec::new();
-    let mut i = 0;
-    // let f_n : usize = father.size() - f_i;
-    for f in 0..f_i {
-      // println!("[+] f = {}",f);
-      child_clumps.push(father.clumps[f].clone());
-      child_clumps[i].link_age += 1;
-      i += 1;
-    }
-    /* By omitting the following lines, we drop the splicepoint */
-    if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
-      //println!("[+] splice point over VISC_DROP_THRESH. copying.");
-      child_clumps.push(father.clumps[f_i].clone());
-      i += 1;
-    } 
-    if i > 0 { 
-      child_clumps[i-1].link_age = 0;
-      child_clumps[i-1].link_fit = None;
-    };
-    /***********************************************************/
-    for m in m_n..mother.size() {
-      if i >= max_len { break };
-      // println!("[+] m = {}",m);
-      child_clumps.push(mother.clumps[m].clone());
-      //println!("[+] child_clumps.len() = {}",child_clumps.len());
-      child_clumps[i].link_age += 1;
-      i += 1;
-      /* adjust link_fit later, obviously */
-    }
-    //println!("%%% child_clumps.len() == {}", child_clumps.len());
-    if (child_clumps.len() == 0) {
-      panic!("child_clumps.len() == 0. Stopping.");
-    }
-    let mut child : Chain = Chain::new(child_clumps);
-    child.generation = max(mother.generation, father.generation)+1;
-    brood.push(child);
+  // println!("[*] mother.size() = {}, father.size() = {}",
+  // mother.size(), father.size());
+  //println!("[*] Splicing father at {}, mother at {}", f_i, m_i);
+  //println!("[*] m_n = {}", m_n);
+  
+  let mut child_clumps : Vec<Clump> = Vec::new();
+  let mut i = 0;
+  // let f_n : usize = father.size() - f_i;
+  for f in 0..f_i {
+    // println!("[+] f = {}",f);
+    child_clumps.push(father.clumps[f].clone());
+    child_clumps[i].link_age += 1;
+    i += 1;
   }
-  brood
+  /* By omitting the following lines, we drop the splicepoint */
+  if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
+    //println!("[+] splice point over VISC_DROP_THRESH. copying.");
+    child_clumps.push(father.clumps[f_i].clone());
+    i += 1;
+  } 
+  if i > 0 { 
+    child_clumps[i-1].link_age = 0;
+    child_clumps[i-1].link_fit = None;
+  };
+  /***********************************************************/
+  for m in m_n..mother.size() {
+    if i >= max_len { break };
+    // println!("[+] m = {}",m);
+    child_clumps.push(mother.clumps[m].clone());
+    //println!("[+] child_clumps.len() = {}",child_clumps.len());
+    child_clumps[i].link_age += 1;
+    i += 1;
+    /* adjust link_fit later, obviously */
+  }
+  //println!("%%% child_clumps.len() == {}", child_clumps.len());
+  if child_clumps.len() == 0 {
+    panic!("child_clumps.len() == 0. Stopping.");
+  }
+  let mut child : Chain = Chain::new(child_clumps);
+  child.generation = max(mother.generation, father.generation)+1;
+  brood.push(child);
+}
+brood
 }
 
 pub fn saturate_clumps <'a,I> (unsat: &mut Vec<Clump>,
-                               pool:  &mut I)  //Vec<u32>,
-    where I: Iterator <Item=u32> {
-  let mut u : usize = 0;
-  //let mut sat: Vec<Clump> = Vec::new();
-  while u < unsat.len() {
-    let mut c = &mut unsat[u];
-    let needs = (c.sp_delta-1) as usize;
-    // slow way. optimize later:
-    for _ in 0..needs {
-      match pool.next() {
-        Some(x) => c.push(x),
-        _       => break 
-      }
+                             pool:  &mut I)  //Vec<u32>,
+  where I: Iterator <Item=u32> {
+let mut u : usize = 0;
+//let mut sat: Vec<Clump> = Vec::new();
+while u < unsat.len() {
+  let mut c = &mut unsat[u];
+  let needs = (c.sp_delta-1) as usize;
+  // slow way. optimize later:
+  for _ in 0..needs {
+    match pool.next() {
+      Some(x) => c.push(x),
+      _       => break 
     }
-   // println!("c.sp_delta == {}, cp.words.len() == {}",
-   //   c.sp_delta, c.words.len());
-    u += 1;
   }
-  
+ // println!("c.sp_delta == {}, cp.words.len() == {}",
+ //   c.sp_delta, c.words.len());
+  u += 1;
+}
+
 }
 
 pub fn saturate_clump <'a,I> (unsat: &mut Clump,
-                              pool:  &mut I)  //Vec<u32>,
-    where I: Iterator <Item=u32> {
-  let needs = (unsat.sp_delta-1) as usize;
+                            pool:  &mut I)  //Vec<u32>,
+  where I: Iterator <Item=u32> {
+let needs = (unsat.sp_delta-1) as usize;
   for _ in 0..needs {
     match pool.next() {
       Some(x) => unsat.push(x),

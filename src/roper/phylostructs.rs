@@ -7,6 +7,7 @@ extern crate rustc_serialize;
 use self::chrono::prelude::*;
 use self::chrono::offset::LocalResult;
 use std::collections::BTreeMap;
+use std::iter::repeat;
 use self::rustc_serialize::json::{self, Json, ToJson};
 use rand::*;
 use unicorn::*;
@@ -18,7 +19,7 @@ use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
 use std::fs::{DirBuilder,File,OpenOptions};
 use std::io::prelude::*;
-use std::slice::Iter;
+use std::slice::{Iter,IterMut};
 use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
@@ -197,6 +198,7 @@ pub struct Chain {
   pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
   pub packed: Vec<u8>,
   pub fitness: Option<f32>,
+  pub ab_fitness: Option<f32>, // unshared
   pub generation: u32,
   pub verbose_tag: bool,
   pub crashes: Option<bool>,
@@ -268,6 +270,7 @@ impl Default for Chain {
       clumps: Vec::new(),
       packed: Vec::new(),
       fitness: None,
+      ab_fitness: None,
       generation: 0,
       verbose_tag: false,
       crashes: None,
@@ -393,9 +396,9 @@ impl Population {
                                   MachineMode::ARM);
     println!("[*] Harvested {} ARM gadgets from {}",
              clumps.len(), params.binary_path);
-    let thumb_clumps = (&reap_gadgets(&params.code,
-                                       params.code_addr,
-                                       MachineMode::THUMB));
+    let thumb_clumps = &reap_gadgets(&params.code,
+                                     params.code_addr,
+                                     MachineMode::THUMB);
     println!("[*] Harvested {} THUMB gadgets from {}",
              thumb_clumps.len(), params.binary_path);
     clumps.extend_from_slice(&thumb_clumps);
@@ -470,6 +473,17 @@ impl Population {
         .sum::<f32>() / 
           cand as f32
   }
+  pub fn avg_abfit (&self) -> f32 {
+    let cand = self.deme.iter()
+                   .filter(|ref c| c.ab_fitness != None)
+                   .count();
+    self.deme
+        .iter()
+        .filter(|ref c| c.ab_fitness != None)
+        .map(|ref c| c.ab_fitness.clone().unwrap())
+        .sum::<f32>() / 
+          cand as f32
+  }
   pub fn ret_addrs (&self) -> Vec<u32> {
     let mut addrs = Vec::new();
     for chain in &self.deme {
@@ -484,7 +498,7 @@ impl Population {
   }
   pub fn best_fit (&self) -> Option<f32> {
     match self.best {
-      Some(ref x) => x.fitness,
+      Some(ref x) => x.ab_fitness,
       _           => None,
     }
   }
@@ -523,17 +537,19 @@ impl Population {
       return;
     }
     let row = if self.generation == 1 {
-      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
-    let row = format!("{}{},{},{},{},{},{},{},{},{},{}\n",
+    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{}\n",
                       row,
                       self.generation.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
+                      self.avg_abfit(),
                       self.avg_crash(),
                       best.generation,
                       best.fitness.unwrap(),
+                      best.ab_fitness.unwrap(),
                       if best.crashes == Some(true) { 1 } else { 0 },
                       self.avg_len(),
                       best.size(),
@@ -608,7 +624,7 @@ impl Default for Params {
     let datepath  = t.format("%y/%m/%d").to_string();
     let timestamp = t.format("%H-%M-%S").to_string();
     Params {
-      label:            format!("Unnamed trial, {} {}", &datepath, &timestamp),
+      label:            format!("Fitness-sharing, {} {}", &datepath, &timestamp),
       population_size:  8000,
       mutation_rate:    0.45,
       max_generations:  800000,
@@ -745,14 +761,36 @@ pub enum TargetKind {
 
 #[derive(Debug,Clone,Eq,PartialEq)]
 pub struct IoTargets {
-  v: Vec<(Vec<i32>,Target)>,
+  v: Vec<(Problem,Target)>,
   k: TargetKind, 
 }
+
+#[derive(Debug,Clone)]
+pub struct Problem {
+  pub input: Vec<i32>,
+  pub difficulty: f32,
+}
+impl Problem {
+  pub fn new (input: Vec<i32>) -> Problem {
+    Problem { 
+      input: input, 
+      difficulty: DEFAULT_DIFFICULTY,
+    }
+  }
+}
+impl PartialEq for Problem {
+  fn eq (&self, other: &Problem) -> bool {
+    self.input == other.input
+  }
+}
+impl Eq for Problem {}
+
+pub static DEFAULT_DIFFICULTY : f32 = 3.33; // don't hardcode
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
   let mut cons : Vec<u32> = Vec::new();
   for &(ref i, ref o) in iot.v.iter() {
-    cons.extend_from_slice(&o.suggest_constants(i));
+    cons.extend_from_slice(&o.suggest_constants(&i.input));
   }
   cons
 }
@@ -769,7 +807,8 @@ impl IoTargets {
     thread_rng().shuffle(&mut c);
     IoTargets{v:c, k: self.k}
   }
-  pub fn push (&mut self, t: (Vec<i32>,Target)) {
+  // this might be confusing later.
+  pub fn push (&mut self, t: (Problem,Target)) {
     self.v.push(t);
   }
   pub fn split_at (&self, i: usize) -> (IoTargets,IoTargets) {
@@ -783,14 +822,17 @@ impl IoTargets {
   pub fn new (k: TargetKind) -> IoTargets {
     IoTargets{v:Vec::new(), k:k}
   }
-  pub fn from_vec (k: TargetKind, v: Vec<(Vec<i32>,Target)>) -> IoTargets {
+  pub fn from_vec (k: TargetKind, v: Vec<(Problem,Target)>) -> IoTargets {
     IoTargets{v:v, k:k}
   }
   pub fn len (&self) -> usize {
     self.v.len()
   }
-  pub fn iter (&self) -> Iter<(Vec<i32>, Target)> {
+  pub fn iter (&self) -> Iter<(Problem, Target)> {
     self.v.iter()
+  }
+  pub fn iter_mut (&mut self) -> IterMut<(Problem, Target)> {
+    self.v.iter_mut()
   }
 }
 
@@ -916,3 +958,33 @@ impl RunningAvg {
     self.sum   += val as f64;
   }
 }
+
+
+pub fn test_clump (uc: &mut unicorn::CpuARM,
+                   clump: &Clump) -> usize {
+  let input = vec![2,2,2,2,
+                   2,2,2,2,
+                   2,2,2,2,
+                   2,2,2,2];
+  let inregs = vec![ 0, 1, 2, 3,
+                     4, 5, 6, 7,
+                     8, 9,10,11,
+                    12,13,14,15];
+  let mut twos = repeat(2);
+  let mut cl = clump.clone();
+  saturate_clump(&mut cl, &mut twos);
+  let vanilla = Chain::new(vec![cl]);
+  let res = hatch_chain(uc, &vanilla.packed, &input, &inregs);
+  let mut differ = 0;
+  for r in res.registers {
+    if r != 2 {
+      differ = 1;
+      break;
+    }
+  }
+  let smooth = if res.error == None {2} else {0};
+  differ | smooth
+}
+
+
+

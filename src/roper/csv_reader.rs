@@ -37,9 +37,12 @@ pub fn process_data2 (path: &str,
       ids.push(v.clone()); 
     }
     let val = ids.index_of(v);
-    io_targets.push((key.clone(), Target::Vote(val)));
-    println!("Inserted {:?} -> {:?}", key, val);
+    io_targets.push((Problem::new(key.clone()), Target::Vote(val)));
+    //println!("Inserted {:?} -> {:?}", key, val);
   }
+  io_targets.iter_mut()
+            .map(|ref mut x| x.0.difficulty = 1.0 / ids.len() as f32)
+            .count();
   io_targets
 }
 

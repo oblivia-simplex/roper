@@ -117,6 +117,8 @@ fn mk_zerostack(n: usize) -> Vec<u8>
   z
 }
 
+
+
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
                             stack: &Vec<u8>,
                             input: &Vec<i32>,

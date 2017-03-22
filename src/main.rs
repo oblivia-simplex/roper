@@ -157,11 +157,9 @@ fn main() {
   let (io_targets, pattern_matching) : (IoTargets,bool) =
     match (rpattern_str, data_path) {
       (Some(s),None) => (IoTargets::from_vec(TargetKind::PatternMatch,
-                                             vec![(vec![1;16], 
-                                                  Target::Exact(
-                                                  RPattern::new(&s)
-                                                  ))]
-                                             ),true),
+                                             vec![(Problem::new(vec![1;16]), 
+                                                  Target::Exact(RPattern::new(&s)))]),
+                         true),
       (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);
@@ -290,10 +288,13 @@ fn main() {
                          .unwrap_or(Ordering::Equal));
       for tr in trs {
         //println!("{:?}",tr);
-        let updated = patch_population(tr, &mut pop_local.write().unwrap());
+        let mut mut_pop = &mut pop_local.write().unwrap();
+        patch_io_targets(&tr, &mut mut_pop.params);
+        let updated = patch_population(&tr, mut_pop);
         if updated != None {
           champion = updated.clone();
         }
+        /*
         if false && updated != None  { // DISABLED FOR NOW
           println!("[*] Running best with disassembly on...");
           evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
@@ -312,6 +313,7 @@ fn main() {
           dfile.write("==== END OF EVALUATION ====\n".as_bytes()).unwrap();
           println!("[*] Finished running best with dissassembly");
         }
+        */
       }
   
       pop_local.read().unwrap().periodic_save();
@@ -322,20 +324,26 @@ fn main() {
       let avg_pop_fit = pop_local.read()
                                  .unwrap()
                                  .avg_fit();
+      let avg_pop_abfit = pop_local.read()
+                                   .unwrap()
+                                   .avg_abfit();
       let avg_crash = pop_local.read()
                                .unwrap()
                                .avg_crash();
       println!("==> AVG POP GEN: {}", avg_pop_gen);
       println!("==> AVG POP FIT: {}", avg_pop_fit);
+      println!("==> AVG POP AB_FIT: {}", avg_pop_abfit);
       println!("==> CRASH RATE:  {}", avg_crash);
+      println!("[Logging to {}]", pop_local.read()
+                                           .unwrap()
+                                           .params
+                                           .csv_path);
     }); // END POOL SCOPE
     i += 1;
   }
   println!("=> {} GENERATIONS", pop_local.read().unwrap().generation);
-  println!("=> BEST FIT: {:?}", pop_local.read().unwrap().best_fit());
+  println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_fit());
   println!("=> RUNNING BEST:\n");
-  let targets = pop_local.read().unwrap().params.test_targets.clone();
-  println!("ok, got targets...");
   if champion == None {
     panic!("Champion is none!");
   }
