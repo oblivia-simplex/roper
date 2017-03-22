@@ -165,7 +165,7 @@ fn eval_case (uc: &mut CpuARM,
     Some(e) => {
       crash = true;
       /* This formula determines the weight of crashing */
-      f32::min(1.0, (d + (1.0 - ratio_run)/2.0))
+      f32::min(1.0, (d + (1.0 - ratio_run)/3.0))
     },
     None    => {
       f32::min(1.0, d)
