@@ -611,7 +611,7 @@ impl Default for Params {
       label:            format!("Unnamed trial, {} {}", &datepath, &timestamp),
       population_size:  8000,
       mutation_rate:    0.45,
-      max_generations:  200000,
+      max_generations:  800000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,
       code:             Vec::new(),
@@ -634,7 +634,7 @@ impl Default for Params {
                                 &datepath, &timestamp),
       pop_path:         format!("{}/roper_pop_{}.json", 
                                 &datepath, &timestamp),
-      save_period:      256,
+      save_period:      10000,
       threads:          5,
       num_demes:        4,
       migration:        0.05,
@@ -871,7 +871,10 @@ impl RPattern {
   }
   pub fn distance (&self, regs: &Vec<i32>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
-    hamming_distance(&i, &o)
+    let h = hamming_distance(&i, &o);
+    let a = arith_distance(&i, &o);
+    let m = count_matches(&i, &o);
+    (h + a) / (2.0 * m)
   }
 }
 pub const MAXPATLEN : usize = 12;

@@ -374,9 +374,30 @@ specified \textsc{cpu} context. A pattern consisting of 32-bit
 integers and wildcards is supplied to the engine, and the task is
 to evolve a \textsc{rop}-chain that brings the register vector to
 a state that matches the pattern in question. The fitness of a
-chain's phenotype is defined as the average hamming distance
-between the non-wildcard target registers in the patter, and the
-actual register values resulting from the chain's execution. 
+chain's phenotype is defined as the average between
+\begin{enumerate}
+  
+  \item the hamming distance between the non-wildcard target
+    registers in the pattern, and the actual register values
+    resulting from the chain's execution, and
+  
+  \item the arithmetical difference between the non-wildcard
+    target registers and the resulting register values,
+
+\end{enumerate} 
+divided by 
+\begin{enumerate}
+    \setcounter{enumi}{2}
+  \item the number of matching values between the resulting
+and target register vectors, irrespective of place.
+\end{enumerate}
+The reason
+for combining these three different metrics is that there is a
+wide variety of operations that can be carried out by our chains,
+and so we would like our concept of difference to reflect,
+however vaguely, the number of steps that might be needed to
+reach our target, whether through numerical, bitwise, or move
+operations.
 
 This is a fairly simple task, but one that has immediate
 application in \textsc{rop}-chain development, where the goal is
@@ -475,6 +496,40 @@ gene pool, and helps stave off stagnation.
 % datasets
 % results for pattern matching -- chose realistic examples, such
 % as you'd use to prime the registers for a system call
+Though our experimental study (and consequent fine-tuning) of
+\textsc{roper}'s capabilities is still at an early stage, the
+results we have been able to obtain so far have been encouraging. 
+
+\subsection{Pattern Matching for \texttt{execv()}}
+
+A simple and practical example of \textsc{roper}'s
+pattern-matching capability is to have it construct the sort of
+\textsc{rop} chain we would use if we wanted to, say, pop open a
+shell with the host process' privileges. The usual way of
+doing this is to write a chain that sets up the system call
+$$\texttt{execv("/bin/sh", ["/bin/sh"], 0)}$$
+For this to work, we'll need \texttt{r0} and \texttt{r1} to point to
+\texttt{"/bin/sh"}, \texttt{r2} to contain $0$, and
+\texttt{r7} to contain $11$, the number of the \texttt{execv}
+system call. Once all of that is in place, we just jump to any
+\texttt{svc} instruction we like, and we have our shell.
+
+First, of course, we need to pick our mark. We'll use a small
+\textsc{http} server from an  \textsc{arm} router from \textsc{asus},
+\texttt{tomato-RT-N18U- httpd}.%
+\footnote{Available at
+\texttt{https://advancedtomato.com/downloads/router/rt-n18u}.}
+Poking around a little with
+Radare 2, we see that this binary already has the string
+\texttt{"/bin/sh"} sitting in plain sight, in \texttt{.rodata},
+at the address \texttt{0x0002bc3e}. The pattern we want to pass to
+\textsc{roper} is
+$$\texttt{02bc3e 02bc3e 0 \_ \_ \_ \_ 0b}$$
+
+[RESULTS]
+
+\subsection{Classification of the Iris dataset}
+
 
 
 %% start generating graphs for these. have the graph script also

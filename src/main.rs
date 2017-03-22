@@ -8,7 +8,7 @@ extern crate scoped_threadpool;
 
 use scoped_threadpool::Pool;
 use std::sync::mpsc::channel;
-use getopts::Options;
+use getopts::*;
 use std::env;
 
 use std::fs::{File,OpenOptions};
@@ -84,6 +84,7 @@ fn main() {
   let program = args[0].clone();
 
   let mut opts = Options::new();
+  opts.parsing_style(ParsingStyle::FloatingFrees);
   let verbose = true;
   opts.optopt("p", "", "set target pattern", "PATTERN");
   opts.optopt("d", "", "set data path", "PATH");
@@ -101,6 +102,8 @@ fn main() {
     Ok(m)  => { m },
     Err(f) => { panic!(f.to_string()) },
   };
+  println!("[+] Command line parameters read: {:?}", &matches.free);
+
   if matches.opt_present("h") {
     print_usage(&program, opts);
     return;
@@ -145,7 +148,7 @@ fn main() {
     Some(p) => p,
   };
   let goal : f32 = match matches.opt_str("g") {
-    None => 0.0,
+    None => 0.11,
     Some(s) => s.parse::<f32>()
                 .expect("Error parsing fitness goal"),
   };
@@ -167,7 +170,7 @@ fn main() {
     };
   
   let (testing,training) = io_targets.split_at(io_targets.len()/3);
-  let debug_samples = training.clone();
+  //let debug_samples = training.clone();
   /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
   let sample2 = "tomato-RT-N18U-httpd";
@@ -234,7 +237,7 @@ fn main() {
   // find string addresses in rodata
   // pass these addresses to the mangler in population building
   //println!("params: {:?}",params); 
-
+  println!("PARAMETERS:\n{}", params);
   let rng = rand::thread_rng();
   let population = Population::new(&params);
 

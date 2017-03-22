@@ -189,6 +189,7 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
+INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt10.tfm
 OUTPUT comment.cut
 INPUT comment.cut
 INPUT comment.cut
@@ -223,6 +224,7 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti7.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti9.pfb
+INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb

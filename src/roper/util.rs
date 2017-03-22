@@ -100,6 +100,16 @@ pub fn hamming_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
          .sum::<f32>() / n as f32
 }
 
+pub fn count_matches (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+  let mut m = 0;
+  for elem in x {
+    if y.contains(&elem) {
+      m += 1;
+    }
+  }
+  m as f32
+}
+
 pub fn arith_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
   assert_eq!(x.len(), y.len());
   let n = x.len();
