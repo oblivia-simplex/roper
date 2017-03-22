@@ -1,7 +1,7 @@
 # Fdb version 3
-["bibtex roper_gecco_sigconf"] 1490142601 "roper_gecco_sigconf.aux" "roper_gecco_sigconf.bbl" "roper_gecco_sigconf" 1490142947
+["bibtex roper_gecco_sigconf"] 1490142601 "roper_gecco_sigconf.aux" "roper_gecco_sigconf.bbl" "roper_gecco_sigconf" 1490144527
   "/home/oblivia/texlive/texmf-dist/bibtex/bst/acmart/ACM-Reference-Format.bst" 1489100463 92690 1665fc4d80e15b5536ddc801b4672551 ""
-  "roper_gecco_sigconf.aux" 1490142947 3421 0d1532f92803e5805dc8f147afd325d8 ""
+  "roper_gecco_sigconf.aux" 1490144526 3421 0d1532f92803e5805dc8f147afd325d8 ""
   "sigproc.bib" 1489258100 1959 1c33b2980edb50fa09a8bec07e4ca457 ""
   (generated)
   "roper_gecco_sigconf.blg"
@@ -129,7 +129,7 @@
   "comment.cut"
   "roper_gecco_sigconf.dvi"
   "roper_gecco_sigconf.log"
-["pdflatex"] 1490142946 "roper_gecco_sigconf.tex" "roper_gecco_sigconf.pdf" "roper_gecco_sigconf" 1490142947
+["pdflatex"] 1490144526 "roper_gecco_sigconf.tex" "roper_gecco_sigconf.pdf" "roper_gecco_sigconf" 1490144527
   "/home/oblivia/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/home/oblivia/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1272929888 3287 e6b82fe08f5336d4d5ebc73fb1152e87 ""
   "/home/oblivia/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcrm0700.tfm" 1136768653 1536 73da8e8f1d2a4c957d51ca133585586b ""
@@ -262,11 +262,11 @@
   "/home/oblivia/texlive/texmf.cnf" 1489255165 496 01ab80fa0036a81d2df86fb0ac70c709 ""
   "/home/oblivia/texmf/tex/latex/GECCO2017_ACM_latex_template/acmart.cls" 1483366568 69848 db171fa474c1c591c7a128c7a79d6686 ""
   "/home/oblivia/texmf/tex/latex/GECCO2017_ACM_latex_template/totpages.sty" 1483367218 7670 b07e668265cf485332abe582e7ed306e ""
-  "comment.cut" 1490142947 53 d806b204a8373c54bbacf265b211e256 ""
-  "roper_gecco.tex" 1490142946 24149 98954fd6a2ce7225e0188f6e2f0bd79f ""
-  "roper_gecco_sigconf.aux" 1490142947 3421 0d1532f92803e5805dc8f147afd325d8 ""
+  "comment.cut" 1490144526 53 d806b204a8373c54bbacf265b211e256 ""
+  "roper_gecco.tex" 1490144525 24292 e512d1d9070319eac0f1250d7bbcec48 ""
+  "roper_gecco_sigconf.aux" 1490144526 3421 0d1532f92803e5805dc8f147afd325d8 ""
   "roper_gecco_sigconf.bbl" 1490142601 1812 0904cd8982dab287b86d699a0a83ec8f "bibtex roper_gecco_sigconf"
-  "roper_gecco_sigconf.out" 1490142947 772 c38082726a6a45c76562634873ddbe53 ""
+  "roper_gecco_sigconf.out" 1490144526 772 c38082726a6a45c76562634873ddbe53 ""
   "roper_gecco_sigconf.tex" 1489337771 3334 06c14631b4853480463e8ad50991bd26 ""
   (generated)
   "roper_gecco_sigconf.aux"
