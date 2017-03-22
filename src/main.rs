@@ -96,6 +96,7 @@ fn main() {
   opts.optopt("D", "demes", "set number of demes", "");
   opts.optopt("b", "binary", "select binary file to search for gadgets", "");
   opts.optopt("L", "label", "set a label for the trial", "");
+  opts.optopt("m", "migration", "set migration rate (float <= 1.0)", "");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
     Err(f) => { panic!(f.to_string()) },
@@ -116,6 +117,10 @@ fn main() {
   let popsize = match matches.opt_str("P") {
     None => 2000,
     Some(n) => n.parse::<usize>().unwrap(),
+  };
+  let migration = match matches.opt_str("m") {
+    None => 0.1,
+    Some(n) => n.parse::<f32>().unwrap(),
   };
   let num_demes = match matches.opt_str("D") {
     None => 4,
@@ -217,6 +222,7 @@ fn main() {
   params.io_targets   = training;
   params.test_targets = testing;
   params.fit_goal     = goal;
+  params.migration    = migration;
   params.verbose      = verbose;
   params.threads      = threads;
   params.num_demes    = num_demes;

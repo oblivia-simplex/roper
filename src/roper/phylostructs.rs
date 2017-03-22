@@ -610,7 +610,7 @@ impl Default for Params {
     Params {
       label:            format!("Unnamed trial, {} {}", &datepath, &timestamp),
       population_size:  8000,
-      mutation_rate:    0.35,
+      mutation_rate:    0.45,
       max_generations:  200000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,

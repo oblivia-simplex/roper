@@ -49,6 +49,7 @@ function run () {
                                 -t 5 \ 
                                 -P 3200 \
                                 -D 4 \
+                                -m 1.0 \
                                 -V \
                                 $LABEL
 }
