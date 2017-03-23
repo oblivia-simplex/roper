@@ -392,7 +392,7 @@ pub fn patch_io_targets (tr: &TournementResult,
 {
   let mut io_targets = &mut params.io_targets;
   let reset_freq = params.population_size / params.t_size;
-  let reset = iteration % reset_freq == 0;
+  let reset = iteration != 0 && iteration % reset_freq == 0;
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
   };
