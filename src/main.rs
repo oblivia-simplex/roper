@@ -202,10 +202,6 @@ fn main() {
 
   let iris_data = sample_root.clone() + "/iris.data";
 
-  let elf_clumps = reap_gadgets(text_data,
-                                text_addr as u32,
-                                mode);
-
   let constants = suggest_constants(&io_targets);
   let mut params : Params = Params::new();
   let num_targets = io_targets.len();
@@ -271,7 +267,7 @@ fn main() {
         let tx = tx.clone();
         let p = pop_arc.clone();
         scope.execute(move || {
-          let t = tournement(&p.read().unwrap(),
+          let t = tournament(&p.read().unwrap(),
                              e,
                              Batch::TRAINING,
                              vdeme);

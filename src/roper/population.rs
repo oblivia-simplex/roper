@@ -173,7 +173,7 @@ fn eval_case (uc: &mut CpuARM,
     Some(e) => {
       crash = true;
       /* This formula determines the weight of crashing */
-      f32::min(1.0, (d + (1.0 - ratio_run)/3.0))
+      f32::min(1.0, (d + (1.0 - ratio_run)/2.0))
     },
     None    => {
       f32::min(1.0, d)
@@ -188,13 +188,21 @@ fn eval_case (uc: &mut CpuARM,
   }
 }
 
-fn adjust_for_difficulty (fitness: f32, difficulty: f32) -> f32 {
+fn adjust_for_difficulty (score: f32, 
+                          difficulty: f32,
+                          e_size: usize) -> f32 {
   // Double check this with fitness sharing formula(e)
   // difficulty = the running average of fitness scores that other
   // specimens have scored on this problem (the lower, the better)
   // so, the lower the difficulty, the 'easier' the exemplar, by the
   // standards current in the population. 
-  fitness * (1.0 - difficulty)
+  //
+  // standard formula: 
+  // for all sum of [ score of C on S[i] / sum of scores of other Cs on S[i]]  
+  //                               (avg of scores on S[i]) * p_size
+  //  sum of [ (    score of C on S[i] / avg)  / p_size
+  let e = e_size as f32;
+  score / (difficulty * e)
 }
 
 pub const VARIABLE_FITNESS : bool = true;
@@ -259,7 +267,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     // struct IoTargets, and then pull out input, target, 
     // and difficulty. factor in difficulty only after eval_case
     // difficulty begins at some medium value, and is adjusted
-    // in the tr patch loop after each tournement pool concludes
+    // in the tr patch loop after each tournament pool concludes
     let res = eval_case(uc,
                         chain,
                         &problem.input,
@@ -270,7 +278,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let counter = res.counter;
     difficulties.insert(problem.input.clone(), res.fitness);
     let ft = adjust_for_difficulty(res.ab_fitness,
-                                   problem.difficulty);
+                                   problem.difficulty,
+                                   io_targets.len());
     // let difficulty = io_target.difficulty
     // target_difficulty.insert(io_target, ft);
     // now modulate ft by target's difficulty
@@ -284,8 +293,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
-  let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>() 
-                   / fit_vec.len() as f32) as f32;
+  let fitness = fit_vec.iter().map(|&x| x).sum::<f32>();
+                //   / fit_vec.len() as f32) as f32;
   let ab_fitness = (abfit_vec.iter().map(|&x| x).sum::<f32>() 
                    / abfit_vec.len() as f32) as f32;
   
@@ -377,14 +386,14 @@ pub fn patch_io_targets (tr: &TournementResult,
     match tr.difficulty_update.get(&problem.input) {
       None => (),
       Some(d_vec) => {
-        //println!(">> old difficulty for {:?}: {}",
-        //         &problem.input, problem.difficulty);
+        println!(">> old difficulty for {:?}: {}",
+                 &problem.input, problem.difficulty);
         problem.difficulty = update_difficulty(&d_vec,
                                                params.population_size,
                                                params.t_size,
                                                p_diff);
-        //println!(">> new difficulty for {:?}: {}",
-        //         &problem.input, problem.difficulty);
+        println!(">> new difficulty for {:?}: {}",
+                 &problem.input, problem.difficulty);
       },
     }
   }
@@ -423,7 +432,7 @@ pub fn patch_population (tr: &TournementResult,
 }
 // returns a clone of the best if the best is new
 
-pub fn tournement (population: &Population,
+pub fn tournament (population: &Population,
                    engine: &mut Engine,
                    batch: Batch,
                    vdeme: usize)
@@ -626,9 +635,9 @@ while brood.len() > n {
 fn calc_viscosity (clump: &Clump) -> i32 {
 match clump.link_fit {
   Some(x) => {
-    assert!(x <= 1.0);
+    //assert!(x <= 1.0);
     assert!(x >= 0.0);
-    MAX_VISC - (MAX_VISC as f32 * x) as i32
+    MAX_VISC - (MAX_VISC as f32 * f32::min(x,1.0)) as i32
   },
   None    => MAX_VISC/2,
 }
