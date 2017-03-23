@@ -278,7 +278,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let crash_adjusted_ft = match res.crashes {
       true => {
         /* This formula determines the weight of crashing */
-        f32::min(1.0, (ft*(1.0+f32::min(0.1,(1.0-ratio_run)))))
+        if params.fatal_crash {
+          1.0
+        } else {
+          f32::min(1.0, (ft*(1.0+f32::min(0.2,(1.0-ratio_run)))))
+        }
       },
       false => {
         f32::min(1.0, ft)
@@ -442,8 +446,9 @@ pub fn patch_population (tr: &TournementResult,
     }
   }
   println!("{}",tr.display);
-  if population.best == None || 
-    tr.best.ab_fitness < population.best_fit() {
+  if population.best == None 
+    || (tr.best.crashes == Some(false)
+        && tr.best.ab_fitness < population.best_fit()) {
     population.best = Some(tr.best.clone());
     population.log();
     Some(tr.best.clone())

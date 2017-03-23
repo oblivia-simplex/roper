@@ -18,14 +18,15 @@ AVG_GEN=2
 AVG_FIT=3
 AVG_ABFIT=4
 MIN_FIT=5
-AVG_CRASH=6
-BEST_GEN=7
-BEST_FIT=8
-BEST_ABFIT=9
-BEST_CRASH=10
-AVG_LEN=11
-BEST_LEN=12
-UNSEEN=13
+MIN_ABFIT=6
+AVG_CRASH=7
+BEST_GEN=8
+BEST_FIT=9
+BEST_ABFIT=10
+BEST_CRASH=11
+AVG_LEN=12
+BEST_LEN=13
+UNSEEN=14
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -49,7 +50,7 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                -t 5 \ 
+                                -t 5 \
                                 -P 4000 \
                                 -D 2 \
                                 -m 0.0 \
@@ -95,6 +96,7 @@ plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${AVG_CRASH} w lines, \
   "" u ${X0}:${MIN_FIT}   w lines,\
   "" u ${X0}:${BEST_FIT} w lines, \
+  "" u ${X0}:${MIN_ABFIT} w lines, \
   "" u ${X0}:${BEST_ABFIT} w lines, \
   "" u ${X0}:${UNSEEN} w lines
 plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \

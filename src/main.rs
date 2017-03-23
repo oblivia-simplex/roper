@@ -340,18 +340,22 @@ fn main() {
       let min_fit = pop_local.read()
                              .unwrap()
                              .min_fit();
+      let min_abfit = pop_local.read()
+                               .unwrap()
+                               .min_abfit();
       let champ = champion.clone().unwrap();
-      println!("[+] CRASH RATE:  {:1.6}", avg_crash);
+      print!("[+] CRASH RATE:  {:1.6}  ", avg_crash);
       println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
-      println!("[+] AVG FIT:     {:1.6}", avg_pop_fit);
+      print!("[+] AVG FIT:     {:1.6}  ", avg_pop_fit);
       println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
-      println!("[+] MIN FIT:     {:1.6}", min_fit);
-      println!("[+] BEST FIT:    {:1.6}", champ.fitness
+      print!("[+] MIN FIT:     {:1.6}  ", min_fit);
+      println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
+      print!("[+] BEST FIT:    {:1.6}  ", champ.fitness
                                                .unwrap());
       println!("[+] BEST AB_FIT: {:1.6}", champ.ab_fitness
                                                .unwrap());
-      println!("[+] BEST CRASHES: {}", champ.crashes
-                                            .unwrap());
+      //println!("[+] BEST CRASHES: {}", champ.crashes
+      //                                      .unwrap());
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params

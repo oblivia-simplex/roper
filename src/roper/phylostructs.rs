@@ -479,6 +479,14 @@ impl Population {
         .sum::<f32>() /
           cand as f32
   }
+  pub fn min_abfit (&self) -> f32 {
+    self.deme
+        .iter()
+        .filter(|ref c| c.ab_fitness != None)
+        .map(|ref c| c.ab_fitness.clone().unwrap())
+        .min_by_key(|&x| (x * 100000.0) as usize)
+        .unwrap()
+  }
   pub fn min_fit (&self) -> f32 {
     self.deme
         .iter()
@@ -562,16 +570,17 @@ impl Population {
       return;
     }
     let row = if self.iteration == 1 {
-      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
-    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
                       row,
                       self.iteration.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
                       self.avg_abfit(),
                       self.min_fit(),
+                      self.min_abfit(),
                       self.avg_crash(),
                       best.generation,
                       best.fitness.unwrap(),
@@ -644,6 +653,7 @@ pub struct Params {
   pub outregs          : Vec<usize>,
   pub inregs           : Vec<usize>,
   pub binary_path      : String,
+  pub fatal_crash      : bool,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -688,6 +698,7 @@ impl Default for Params {
       inregs:           vec![0,1,2,3],
       outregs:          vec![4,5,6],
       binary_path:      "".to_string(),
+      fatal_crash:      false,
     }
   }
 }
@@ -735,6 +746,8 @@ impl Display for Params {
                         rem, self.binary_path));
     s.push_str(&format!("{} fitness_sharing: {}\n",
                         rem, self.fitness_sharing));
+    s.push_str(&format!("{} fatal_crash: {}\n",
+                        rem, self.fatal_crash));
     write!(f, "{}",s)
   }
     
