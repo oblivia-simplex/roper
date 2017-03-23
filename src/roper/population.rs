@@ -300,8 +300,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
-  let fitness = fit_vec.iter().map(|&x| x).sum::<f32>();
-                //   / fit_vec.len() as f32) as f32;
+  let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>()
+                   / fit_vec.len() as f32) as f32;
   let ab_fitness = (abfit_vec.iter().map(|&x| x).sum::<f32>() 
                    / abfit_vec.len() as f32) as f32;
   
