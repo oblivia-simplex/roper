@@ -223,7 +223,8 @@ impl Display for Chain {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();
     s.push_str("==================================================\n");
-    s.push_str(&format!("Fitness: {:?}\n", self.fitness));
+    s.push_str(&format!("Relative Fitness: {:?}\n", self.fitness));
+    s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
     s.push_str(&format!("Generation: {}\n", self.generation));
     s.push_str(&format!("Link ages: {:?}\n", 
                         &self.clumps
@@ -850,6 +851,22 @@ impl IoTargets {
       (IoTargets::from_vec(self.k, a.to_vec()),IoTargets::from_vec(self.k, b.to_vec()))
     }
   }
+  // We need a balanced splitting function
+  /*
+  pub fn balanced_split_at (&self, i: usize) -> (IoTargets, IoTargets) {
+    if self.k == TargetKind::PatternMatch {
+      (self.clone(),self.clone())
+    } else {
+      let unique_targets = self.iter()
+                               .map(|x| x.1.clone())
+                               .collect::<Vec<Target>>()
+                               .dedup();
+      let num_classes = unique_targets.len();
+      
+
+    }
+  }
+  */
   pub fn new (k: TargetKind) -> IoTargets {
     IoTargets{v:Vec::new(), k:k}
   }

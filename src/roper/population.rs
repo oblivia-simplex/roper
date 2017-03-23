@@ -278,7 +278,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let crash_adjusted_ft = match res.crashes {
       true => {
         /* This formula determines the weight of crashing */
-        f32::min(1.0, (ft * (1.0 + (1.0 - ratio_run))))
+        f32::min(1.0, (ft*(1.0+f32::min(0.1,(1.0-ratio_run)))))
       },
       false => {
         f32::min(1.0, ft)
