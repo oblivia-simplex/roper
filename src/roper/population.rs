@@ -304,6 +304,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                    / fit_vec.len() as f32) as f32;
   let ab_fitness = (abfit_vec.iter().map(|&x| x).sum::<f32>() 
                    / abfit_vec.len() as f32) as f32;
+  assert!(fitness <= 1.0);
+  assert!(ab_fitness <= 1.0);
   
 /*  (fitness, if anycrash {
     Some(counter_sum / io_targets.len())
