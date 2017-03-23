@@ -145,12 +145,12 @@ fn eval_case (uc: &mut CpuARM,
   // input should be a vec of ordered pairs: (reg,value)
   if verbose { print!("\n{}", result); }
   let counter = result.counter;
-  let mut crash = false;
   //let output   = &result.registers;
   let mut output : Vec<i32> = Vec::new();
   for idx in outregs {
     output.push(result.registers[*idx]);
   }
+  let crash = result.error != None;
   let final_pc = result.registers[15];
   let d : f32 = match target {
     &Target::Exact(ref t) => t.distance(&output),
@@ -292,7 +292,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let crash = res.crashes; 
     counter_sum += counter;
     anycrash = anycrash || crash;
-    fit_vec.push(ft);
+    fit_vec.push((crash_adjusted_ft + res.ab_fitness) / 2.0);
     abfit_vec.push(res.ab_fitness);
   };
   /* clean up hooks */
