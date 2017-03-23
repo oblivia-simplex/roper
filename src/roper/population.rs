@@ -202,7 +202,7 @@ fn adjust_for_difficulty (score: f32,
   //  sum of [ (    score of C on S[i] / avg)  / p_size
   assert!(difficulty >= DEFAULT_DIFFICULTY);
   assert!(score <= 1.0);
-  score / difficulty
+  1.0 - (score / difficulty)
 }
 
 pub const VARIABLE_FITNESS : bool = true;
