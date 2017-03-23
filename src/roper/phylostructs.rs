@@ -599,7 +599,6 @@ pub enum SelectionMethod {
 pub struct Params {
   pub label            : String,
   pub population_size  : usize,
-  pub init_difficulty : f32, // represents zero hypothesis forecast
   pub mutation_rate    : f32,
   pub max_iterations  : usize,
   pub selection_method : SelectionMethod,
@@ -645,7 +644,6 @@ impl Default for Params {
     Params {
       label:            format!("Fitness-sharing, {} {}", &datepath, &timestamp),
       population_size:  3200,
-      init_difficulty: 3200.0 / 3.0, // don't hardcode. 3.0 = # of classes; 3200 = popsize
       mutation_rate:    0.45,
       max_iterations:  800000,
       selection_method: SelectionMethod::Tournement,

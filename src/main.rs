@@ -229,6 +229,9 @@ fn main() {
   params.set_log_dir(&log_dir);
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
+
+  set_init_difficulties(&mut params);
+
   // add string search function
   // find string addresses in rodata
   // pass these addresses to the mangler in population building

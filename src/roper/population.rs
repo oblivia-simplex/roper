@@ -386,6 +386,14 @@ fn update_difficulty (d_vec: &Vec<f32>,
   (p_diff - (p_diff / n)) + (a / n)
 }
 
+pub fn set_init_difficulties (params: &mut Params) {
+  let mut io_targets = &mut params.io_targets;
+  for &mut (ref mut problem, _) in io_targets.iter_mut() {
+    problem.difficulty = params.population_size as f32 /
+                         params.outregs.len() as f32;
+  }
+}
+
 pub fn patch_io_targets (tr: &TournementResult,
                          params: &mut Params,
                          iteration: usize)
