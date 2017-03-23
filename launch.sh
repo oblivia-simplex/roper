@@ -56,7 +56,7 @@ function run () {
                                 $LABEL
 }
 echo "[+] launching roper"
-run > $OUTFILE 2>> $ERRORFILE &
+run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
 roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
@@ -86,7 +86,7 @@ set border lc rgb 'red'
 set key tc rgb 'red'
 set key autotitle columnhead
 set datafile separator ","
-set autoscale
+# set autoscale
 set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \

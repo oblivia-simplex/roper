@@ -190,6 +190,10 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt10.tfm
+INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
+INPUT examples/shellpattern/shellpattern.png
+INPUT ./examples/shellpattern/shellpattern.png
+INPUT ./examples/shellpattern/shellpattern.png
 OUTPUT comment.cut
 INPUT comment.cut
 INPUT comment.cut

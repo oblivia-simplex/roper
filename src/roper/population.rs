@@ -189,8 +189,7 @@ fn eval_case (uc: &mut CpuARM,
 }
 
 fn adjust_for_difficulty (score: f32, 
-                          difficulty: f32,
-                          e_size: usize) -> f32 {
+                          difficulty: f32) -> f32 {
   // Double check this with fitness sharing formula(e)
   // difficulty = the running average of fitness scores that other
   // specimens have scored on this problem (the lower, the better)
@@ -201,8 +200,9 @@ fn adjust_for_difficulty (score: f32,
   // for all sum of [ score of C on S[i] / sum of scores of other Cs on S[i]]  
   //                               (avg of scores on S[i]) * p_size
   //  sum of [ (    score of C on S[i] / avg)  / p_size
-  let e = e_size as f32;
-  (score / (difficulty * e)) / 1.5
+  assert!(difficulty >= DEFAULT_DIFFICULTY);
+  assert!(score <= 1.0);
+  score / difficulty
 }
 
 pub const VARIABLE_FITNESS : bool = true;
@@ -276,10 +276,17 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &outregs,
                         verbose);
     let counter = res.counter;
-    difficulties.insert(problem.input.clone(), res.fitness);
-    let ft = adjust_for_difficulty(res.ab_fitness,
-                                   problem.difficulty,
-                                   io_targets.len());
+    difficulties.insert(problem.input.clone(), 
+                        1.0 - res.ab_fitness);
+    // difficulties are the inverses of the scores
+    let ft = if params.fitness_sharing {
+      adjust_for_difficulty(res.ab_fitness,
+                            problem.difficulty)
+    } else {
+      res.ab_fitness
+    };
+    //println!("==[ BEFORE: {}; AFTER: {} ]==",
+    //         res.ab_fitness, ft);
     // let difficulty = io_target.difficulty
     // target_difficulty.insert(io_target, ft);
     // now modulate ft by target's difficulty
@@ -378,20 +385,26 @@ fn update_difficulty (d_vec: &Vec<f32>,
 }
 
 pub fn patch_io_targets (tr: &TournementResult,
-                         params: &mut Params)
+                         params: &mut Params,
+                         iteration: usize)
 {
   let mut io_targets = &mut params.io_targets;
+  let reset_freq = params.population_size / params.t_size;
   for &mut (ref mut problem, _) in io_targets.iter_mut() {
+    if iteration % reset_freq == 0 {
+      println!("==[ RESETTING DIFFICULTY FOR {:?} ]==",
+               problem);
+      problem.difficulty = DEFAULT_DIFFICULTY
+    };
     let p_diff : f32 = problem.difficulty.clone();
     match tr.difficulty_update.get(&problem.input) {
       None => (),
       Some(d_vec) => {
         //println!(">> old difficulty for {:?}: {}",
         //         &problem.input, problem.difficulty);
-        problem.difficulty = update_difficulty(&d_vec,
-                                               params.population_size,
-                                               params.t_size,
-                                               p_diff);
+        //print!("==[ DIFF BEFORE: {} ", problem.difficulty);
+        problem.difficulty += d_vec.iter().sum::<f32>();
+        //println!("| DIFF AFTER: {} ]==", problem.difficulty);
         //println!(">> new difficulty for {:?}: {}",
         //         &problem.input, problem.difficulty);
       },
@@ -405,7 +418,7 @@ pub fn patch_population (tr: &TournementResult,
                         -> Option<Chain> 
 {
   assert_eq!(tr.graves.len(), tr.spawn.len());
-  population.generation += 1;
+  population.iteration += 1;
   for i in 0..tr.graves.len() {
   //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
@@ -556,7 +569,7 @@ pub fn tournament (population: &Population,
   /* This little print job should be factored out into a fn */
   let mut display : String = String::new();
   display.push_str(&format!("[{:05}:{:02}] ", 
-                            population.generation,
+                            population.iteration,
                             vdeme));
   let mut i = 0;
   for &(ref specimen,_) in specimens.iter() {

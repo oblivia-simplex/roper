@@ -131,6 +131,7 @@ fn main() {
   };
   let label = matches.opt_str("L");
   let rpattern_str = matches.opt_str("p");
+  let fitness_sharing = rpattern_str == None;
   let data_path    = matches.opt_str("d");
   let threads : usize = match matches.opt_str("t") {
     None => 8,
@@ -216,6 +217,7 @@ fn main() {
   params.data = vec![rodata_data.clone()];
   params.data_addrs   = vec![rodata_addr as u32];
   params.constants    = constants;
+  params.fitness_sharing = fitness_sharing;
   params.io_targets   = training;
   params.test_targets = testing;
   params.fit_goal     = goal;
@@ -253,7 +255,7 @@ fn main() {
   let pop_arc = Arc::new(pop_rw); 
   let pop_local = pop_arc.clone();
   let mut i = 0; 
-  while pop_local.read().unwrap().generation < pop_local.read().unwrap().params.max_generations &&
+  while pop_local.read().unwrap().iteration < pop_local.read().unwrap().params.max_iterations &&
     (pop_local.read().unwrap().best_fit() == None 
     || pop_local.read().unwrap().best_crashes() == Some(true)
     || pop_local.read().unwrap().best_fit() > Some(params.fit_goal)){
@@ -286,7 +288,10 @@ fn main() {
       for tr in trs {
         //println!("{:?}",tr);
         let mut mut_pop = &mut pop_local.write().unwrap();
-        patch_io_targets(&tr, &mut mut_pop.params);
+        let iteration = mut_pop.iteration.clone();
+        if mut_pop.params.fitness_sharing {
+          patch_io_targets(&tr, &mut mut_pop.params, iteration);
+        };
         let updated = patch_population(&tr, mut_pop);
         if updated != None {
           champion = updated.clone();
@@ -338,7 +343,7 @@ fn main() {
     }); // END POOL SCOPE
     i += 1;
   }
-  println!("=> {} GENERATIONS", pop_local.read().unwrap().generation);
+  println!("=> {} ITERATIONS", pop_local.read().unwrap().iteration);
   println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_fit());
   println!("=> RUNNING BEST:\n");
   if champion == None {

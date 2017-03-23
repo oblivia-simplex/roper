@@ -383,7 +383,7 @@ impl <T> Pod <T>{
 pub struct Population  {
   pub deme: Vec<Chain>,
   pub best: Option<Chain>,
-  pub generation: usize,
+  pub iteration: usize,
   pub params: Params,
   pub primordial_ooze: Vec<Clump>,
 }
@@ -431,7 +431,7 @@ impl Population {
     Population {
       deme: deme,
       best: None,
-      generation: 0,
+      iteration: 0,
       params: (*params).clone(),
       primordial_ooze: clumps,
     }
@@ -529,7 +529,7 @@ impl Population {
     self.best = Some(self.deme[i].clone());
   }
   pub fn periodic_save (&self) {
-    if self.generation % self.params.save_period == 0 {
+    if self.iteration % self.params.save_period == 0 {
       println!("[*] Saving population to {}", &self.params.pop_path);
       self.save();
     }
@@ -553,13 +553,13 @@ impl Population {
     if best.fitness == None {
       return;
     }
-    let row = if self.generation == 1 {
+    let row = if self.iteration == 1 {
       format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
     let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{}\n",
                       row,
-                      self.generation.clone(),
+                      self.iteration.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
                       self.avg_abfit(),
@@ -600,7 +600,7 @@ pub struct Params {
   pub label            : String,
   pub population_size  : usize,
   pub mutation_rate    : f32,
-  pub max_generations  : usize,
+  pub max_iterations  : usize,
   pub selection_method : SelectionMethod,
   pub t_size           : usize,
   pub code             : Vec<u8>,
@@ -614,6 +614,7 @@ pub struct Params {
   pub constants        : Vec<u32>,
   pub training_ht      : HashMap<Vec<i32>,usize>,
   pub fit_goal         : f32,
+  pub fitness_sharing  : bool,
 /*  pub ro_data_data     : Vec<u8>,
   pub ro_data_addr     : u32,
   pub text_data        : Vec<u8>,
@@ -644,7 +645,7 @@ impl Default for Params {
       label:            format!("Fitness-sharing, {} {}", &datepath, &timestamp),
       population_size:  8000,
       mutation_rate:    0.45,
-      max_generations:  800000,
+      max_iterations:  800000,
       selection_method: SelectionMethod::Tournement,
       t_size:           4,
       code:             Vec::new(),
@@ -659,6 +660,7 @@ impl Default for Params {
       io_targets:       IoTargets::new(TargetKind::PatternMatch),
       test_targets:     IoTargets::new(TargetKind::PatternMatch),
       fit_goal:         0.1,  
+      fitness_sharing:  true,
       constants:        Vec::new(),
       cuck_rate:        0.15,
       verbose:          false,
@@ -690,8 +692,8 @@ impl Display for Params {
                         rem, self.population_size));
     s.push_str(&format!("{} mutation_rate: {}\n",
                         rem, self.mutation_rate));
-    s.push_str(&format!("{} max_generations: {}\n",
-                        rem, self.max_generations));
+    s.push_str(&format!("{} max_iterations: {}\n",
+                        rem, self.max_iterations));
     s.push_str(&format!("{} selection_method: {:?}\n",
                         rem, self.selection_method));
     s.push_str(&format!("{} t_size: {}\n",
@@ -722,6 +724,8 @@ impl Display for Params {
                         rem, self.inregs));
     s.push_str(&format!("{} binary_path: {}\n",
                         rem, self.binary_path));
+    s.push_str(&format!("{} fitness_sharing: {}\n",
+                        rem, self.fitness_sharing));
     write!(f, "{}",s)
   }
     
@@ -802,7 +806,7 @@ impl PartialEq for Problem {
 }
 impl Eq for Problem {}
 
-pub static DEFAULT_DIFFICULTY : f32 = 3.33; // don't hardcode
+pub static DEFAULT_DIFFICULTY : f32 = 1.0; // don't hardcode
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
   let mut cons : Vec<u32> = Vec::new();
