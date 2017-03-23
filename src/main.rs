@@ -335,6 +335,8 @@ fn main() {
       println!("==> AVG POP GEN: {}", avg_pop_gen);
       println!("==> AVG POP FIT: {}", avg_pop_fit);
       println!("==> AVG POP AB_FIT: {}", avg_pop_abfit);
+      println!("==> BEST FIT: {}", champion.clone().unwrap().fitness.unwrap());
+      println!("==> BEST AB_FIT: {}", champion.clone().unwrap().ab_fitness.unwrap());
       println!("==> CRASH RATE:  {}", avg_crash);
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()

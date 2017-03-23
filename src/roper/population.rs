@@ -392,11 +392,14 @@ pub fn patch_io_targets (tr: &TournementResult,
 {
   let mut io_targets = &mut params.io_targets;
   let reset_freq = params.population_size / params.t_size;
+  let reset = iteration % reset_freq == 0;
+  if reset {
+    println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
+  };
   for &mut (ref mut problem, _) in io_targets.iter_mut() {
-    if iteration % reset_freq == 0 {
-      println!("==[ RESETTING DIFFICULTY FOR {:?} ]==",
-               problem);
-      problem.difficulty = DEFAULT_DIFFICULTY
+    if reset {
+      problem.difficulty    = problem.predifficulty;
+      problem.predifficulty = DEFAULT_DIFFICULTY;
     };
     let p_diff : f32 = problem.difficulty.clone();
     match tr.difficulty_update.get(&problem.input) {
@@ -405,7 +408,7 @@ pub fn patch_io_targets (tr: &TournementResult,
         //println!(">> old difficulty for {:?}: {}",
         //         &problem.input, problem.difficulty);
         //print!("==[ DIFF BEFORE: {} ", problem.difficulty);
-        problem.difficulty += d_vec.iter().sum::<f32>();
+        problem.predifficulty += d_vec.iter().sum::<f32>();
         //println!("| DIFF AFTER: {} ]==", problem.difficulty);
         //println!(">> new difficulty for {:?}: {}",
         //         &problem.input, problem.difficulty);
@@ -593,6 +596,7 @@ pub fn tournament (population: &Population,
     if i < specimens.len() { display.push_str("|") };
     if !cflag && i == 2 { display.push_str("|") };
   }
+  /*
   if population.best_fit() != None {
     display.push_str(&format!(" ({:01.6}{})", 
                               population.best_fit().unwrap(),
@@ -600,6 +604,7 @@ pub fn tournament (population: &Population,
   } else {
     display.push_str(" (----------)");
   }
+  */
   /* End of little print job */
 
   let (_,grave0) = specimens[t_size-2];
