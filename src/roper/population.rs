@@ -166,22 +166,10 @@ fn eval_case (uc: &mut CpuARM,
         1.0
       }
     },
-  } + if final_pc == 0 { 0.0 } else { 0.1 };
-  let ratio_run = f32::min(1.0, counter as f32 / chain.size() as f32);
-  let p = if ratio_run > 1.0 {1.0} else {ratio_run};
-  let ft = match result.error {
-    Some(e) => {
-      crash = true;
-      /* This formula determines the weight of crashing */
-      f32::min(1.0, (d + (1.0 - ratio_run)/2.0))
-    },
-    None    => {
-      f32::min(1.0, d)
-    },
-  };
+  };// + if final_pc == 0 { 0.0 } else { 0.1 };
   EvalResult {
-    fitness: ft,
-    ab_fitness: ft,
+    fitness: d,
+    ab_fitness: d,
     counter: counter,
     crashes: crash,
     difficulties: None,
@@ -275,7 +263,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &inregs,
                         &outregs,
                         verbose);
-    let counter = res.counter;
     difficulties.insert(problem.input.clone(), 
                         1.0 - res.ab_fitness);
     // difficulties are the inverses of the scores
@@ -285,13 +272,24 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     } else {
       res.ab_fitness
     };
+    let counter = min(res.counter, chain.size()-1);
+    let ratio_run = f32::min(1.0, counter as f32 / 
+                             chain.size() as f32);
+    let crash_adjusted_ft = match res.crashes {
+      true => {
+        /* This formula determines the weight of crashing */
+        f32::min(1.0, (ft * (1.0 + (1.0 - ratio_run))))
+      },
+      false => {
+        f32::min(1.0, ft)
+      },
+    };
     //println!("==[ BEFORE: {}; AFTER: {} ]==",
     //         res.ab_fitness, ft);
     // let difficulty = io_target.difficulty
     // target_difficulty.insert(io_target, ft);
     // now modulate ft by target's difficulty
     let crash = res.crashes; 
-    let counter = min(counter, chain.size()-1);
     counter_sum += counter;
     anycrash = anycrash || crash;
     fit_vec.push(ft);
