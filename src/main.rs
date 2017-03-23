@@ -233,13 +233,14 @@ fn main() {
   //println!("params: {:?}",params); 
   println!("PARAMETERS:\n{}", params);
   let rng = rand::thread_rng();
-  let population = Population::new(&params);
 
   let mut machinery : Machinery
     = Machinery::new(&elf_path,
                      mode,
                      threads,
                      false);
+  
+  let population = Population::new(&params, &mut machinery.cluster[0]);
 
   let mut debug_machinery : Machinery 
     = Machinery::new(&elf_path,

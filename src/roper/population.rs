@@ -202,7 +202,7 @@ fn adjust_for_difficulty (score: f32,
   //                               (avg of scores on S[i]) * p_size
   //  sum of [ (    score of C on S[i] / avg)  / p_size
   let e = e_size as f32;
-  score / (difficulty * e)
+  (score / (difficulty * e)) / 1.5
 }
 
 pub const VARIABLE_FITNESS : bool = true;
@@ -386,14 +386,14 @@ pub fn patch_io_targets (tr: &TournementResult,
     match tr.difficulty_update.get(&problem.input) {
       None => (),
       Some(d_vec) => {
-        println!(">> old difficulty for {:?}: {}",
-                 &problem.input, problem.difficulty);
+        //println!(">> old difficulty for {:?}: {}",
+        //         &problem.input, problem.difficulty);
         problem.difficulty = update_difficulty(&d_vec,
                                                params.population_size,
                                                params.t_size,
                                                p_diff);
-        println!(">> new difficulty for {:?}: {}",
-                 &problem.input, problem.difficulty);
+        //println!(">> new difficulty for {:?}: {}",
+        //         &problem.input, problem.difficulty);
       },
     }
   }
@@ -778,20 +778,6 @@ pub fn reap_gadgets (code: &Vec<u8>,
   } // .iter().filter(|c| c.size() >= 2).collect()
 }
 
-pub fn random_chain (clumps:  &Vec<Clump>,
-                     min_len: usize,
-                     max_len: usize,
-                     pool:    &mut Mangler,
-                     rng:     &mut ThreadRng) -> Chain {
-  let rlen  = rng.gen::<usize>() % (max_len - min_len) + min_len;
-  let mut genes : Vec<Clump> = Vec::new();
-  for _ in 0..rlen {
-    let mut c = clumps[rng.gen::<usize>() % clumps.len()].clone();
-    saturate_clump(&mut c, pool);
-    genes.push(c);
-  }
-  Chain::new(genes)
-}
   
 
 

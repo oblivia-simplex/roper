@@ -23,6 +23,7 @@ use std::slice::{Iter,IterMut};
 use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
+use roper::ontostructs::*;
 
 pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
@@ -390,7 +391,7 @@ unsafe impl Send for Population {}
 //unsafe impl Sync for Population {}
 
 impl Population {
-  pub fn new (params: &Params) -> Population {
+  pub fn new (params: &Params, engine: &mut Engine) -> Population {
     let mut clumps = reap_gadgets(&params.code, 
                                   params.code_addr, 
                                   MachineMode::ARM);
@@ -402,10 +403,26 @@ impl Population {
     println!("[*] Harvested {} THUMB gadgets from {}",
              thumb_clumps.len(), params.binary_path);
     clumps.extend_from_slice(&thumb_clumps);
+
+
+    let mut clump_buckets : Vec<Vec<Clump>> = 
+      vec![Vec::new(), Vec::new(), Vec::new(), Vec::new()];
+
+    for clump in clumps.iter() {
+      clump_buckets[test_clump(engine.unwrap_mut(), &clump)]
+        .push(clump.clone())
+    }
+    println!("[*] Size of buckets:\n[+] NOCHANGE_CRASH_BUCKET: {}\n[+] NOCHANGE_NOCRASH_BUCKET: {}\n[+] CHANGE_CRASH_BUCKET: {}\n[+] CHANGE_NOCRASH_BUCKET: {}\n",
+             clump_buckets[NOCHANGE_CRASH_BUCKET].len(),
+             clump_buckets[NOCHANGE_NOCRASH_BUCKET].len(),
+             clump_buckets[CHANGE_CRASH_BUCKET].len(),
+             clump_buckets[CHANGE_NOCRASH_BUCKET].len());
+
     let mut data_pool  = Mangler::new(&params.constants);
     let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
-      deme.push(random_chain(&clumps,
+      deme.push(random_chain_from_buckets(
+                             &clump_buckets,
                              params.min_start_len,
                              params.max_start_len,
                              &mut data_pool,
@@ -975,8 +992,9 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   saturate_clump(&mut cl, &mut twos);
   let vanilla = Chain::new(vec![cl]);
   let res = hatch_chain(uc, &vanilla.packed, &input, &inregs);
+  println!("\n{}",res);
   let mut differ = 0;
-  for r in res.registers {
+  for r in res.registers[..12].to_vec() {
     if r != 2 {
       differ = 1;
       break;
@@ -985,6 +1003,51 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   let smooth = if res.error == None {2} else {0};
   differ | smooth
 }
+const NOCHANGE_CRASH_BUCKET    : usize = 0;
+const CHANGE_CRASH_BUCKET      : usize = 1;
+const NOCHANGE_NOCRASH_BUCKET  : usize = 2;
+const CHANGE_NOCRASH_BUCKET    : usize = 3;
 
+pub fn random_chain (clumps:  &Vec<Clump>,
+                     min_len: usize,
+                     max_len: usize,
+                     pool:    &mut Mangler,
+                     rng:     &mut ThreadRng) -> Chain {
+  let rlen  = rng.gen::<usize>() % (max_len - min_len) + min_len;
+  let mut genes : Vec<Clump> = Vec::new();
+  for _ in 0..rlen {
+    let mut c = clumps[rng.gen::<usize>() % clumps.len()].clone();
+    saturate_clump(&mut c, pool);
+    genes.push(c);
+  }
+  Chain::new(genes)
+}
 
+pub fn random_chain_from_buckets (clump_buckets:  &Vec<Vec<Clump>>,
+                                  min_len: usize,
+                                  max_len: usize,
+                                  pool:    &mut Mangler,
+                                  rng:     &mut ThreadRng) -> Chain {
+  let rlen  = rng.gen::<usize>() % (max_len - min_len) + min_len;
+  let mut genes : Vec<Clump> = Vec::new();
+  for _ in 0..rlen {
+    let clumps : &Vec<Clump>;
+    
+    let roll = rng.gen::<usize>() % 128;
+    if roll == 0 { 
+      clumps = &clump_buckets[NOCHANGE_CRASH_BUCKET];
+    } else if 1 <= roll && roll < 4 {
+      clumps = &clump_buckets[NOCHANGE_NOCRASH_BUCKET];
+    } else if 4 <= roll && roll < 7 {
+      clumps = &clump_buckets[CHANGE_CRASH_BUCKET];
+    } else {
+      clumps = &clump_buckets[CHANGE_NOCRASH_BUCKET];
+    };
+
+    let mut c = clumps[rng.gen::<usize>() % clumps.len()].clone();
+    saturate_clump(&mut c, pool);
+    genes.push(c);
+  }
+  Chain::new(genes)
+}
 
