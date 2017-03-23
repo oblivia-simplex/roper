@@ -478,7 +478,14 @@ impl Population {
         .sum::<f32>() /
           cand as f32
   }
-        
+  pub fn min_fit (&self) -> f32 {
+    self.deme
+        .iter()
+        .filter(|ref c| c.fitness != None)
+        .map(|ref c| c.fitness.clone().unwrap())
+        .min_by_key(|&x| (x * 100000.0) as usize)
+        .unwrap()
+  }
   pub fn avg_fit (&self) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.fitness != None)
@@ -554,15 +561,16 @@ impl Population {
       return;
     }
     let row = if self.iteration == 1 {
-      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
-    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{}\n",
+    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
                       row,
                       self.iteration.clone(),
                       self.avg_gen(),
                       self.avg_fit(),
                       self.avg_abfit(),
+                      self.min_fit(),
                       self.avg_crash(),
                       best.generation,
                       best.fitness.unwrap(),

@@ -17,14 +17,15 @@ ITERATION=1
 AVG_GEN=2
 AVG_FIT=3
 AVG_ABFIT=4
-AVG_CRASH=5
-BEST_GEN=6
-BEST_FIT=7
-BEST_ABFIT=8
-BEST_CRASH=9
-AVG_LEN=10
-BEST_LEN=11
-UNSEEN=12
+MIN_FIT=5
+AVG_CRASH=6
+BEST_GEN=7
+BEST_FIT=8
+BEST_ABFIT=9
+BEST_CRASH=10
+AVG_LEN=11
+BEST_LEN=12
+UNSEEN=13
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -92,6 +93,7 @@ set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${AVG_ABFIT} w lines, \
   "" u ${X0}:${AVG_CRASH} w lines, \
+  "" u ${X0}:${MIN_FIT}   w lines,\
   "" u ${X0}:${BEST_FIT} w lines, \
   "" u ${X0}:${BEST_ABFIT} w lines, \
   "" u ${X0}:${UNSEEN} w lines

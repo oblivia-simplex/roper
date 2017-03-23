@@ -254,14 +254,16 @@ fn main() {
                      true);
   add_debug_hooks(debug_machinery.cluster[0].unwrap_mut());
   let mut champion : Option<Chain> = None;
+  let max_iterations = params.max_iterations;
   let pop_rw  = RwLock::new(population);
   let pop_arc = Arc::new(pop_rw); 
   let pop_local = pop_arc.clone();
   let mut i = 0; 
-  while pop_local.read().unwrap().iteration < pop_local.read().unwrap().params.max_iterations &&
-    (pop_local.read().unwrap().best_fit() == None 
-    || pop_local.read().unwrap().best_crashes() == Some(true)
-    || pop_local.read().unwrap().best_fit() > Some(params.fit_goal)){
+  while i < max_iterations
+    && (champion == None 
+        || champion.as_ref().unwrap().crashes == Some(true)
+        || champion.as_ref().unwrap().ab_fitness > Some(params.fit_goal))
+  {
     
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
@@ -335,12 +337,21 @@ fn main() {
       let avg_crash = pop_local.read()
                                .unwrap()
                                .avg_crash();
-      println!("==> AVG POP GEN: {}", avg_pop_gen);
-      println!("==> AVG POP FIT: {}", avg_pop_fit);
-      println!("==> AVG POP AB_FIT: {}", avg_pop_abfit);
-      println!("==> BEST FIT: {}", champion.clone().unwrap().fitness.unwrap());
-      println!("==> BEST AB_FIT: {}", champion.clone().unwrap().ab_fitness.unwrap());
-      println!("==> CRASH RATE:  {}", avg_crash);
+      let min_fit = pop_local.read()
+                             .unwrap()
+                             .min_fit();
+      let champ = champion.clone().unwrap();
+      println!("[+] CRASH RATE:  {:1.6}", avg_crash);
+      println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
+      println!("[+] AVG FIT:     {:1.6}", avg_pop_fit);
+      println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
+      println!("[+] MIN FIT:     {:1.6}", min_fit);
+      println!("[+] BEST FIT:    {:1.6}", champ.fitness
+                                               .unwrap());
+      println!("[+] BEST AB_FIT: {:1.6}", champ.ab_fitness
+                                               .unwrap());
+      println!("[+] BEST CRASHES: {}", champ.crashes
+                                            .unwrap());
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params
