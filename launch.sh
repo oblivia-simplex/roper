@@ -1,6 +1,6 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
-DATAFILE=${PROJECT_ROOT}/data/iris.small
+DATAFILE=${PROJECT_ROOT}/data/iris.data
 BINARY=${PROJECT_ROOT}/data/ldconfig.real
 GOAL="0.10"
 
