@@ -846,6 +846,14 @@ pub enum Batch {
   TESTING,
 }
 
+/*
+impl FromIterator<(Problem, Target)> for IoTargets {
+  fn from_iter<I: IntoIterator<Item=(Problem,Target)>>(iter: I) -> Self {
+    let mut iot = IoTargets::new();
+  }
+}
+*/
+
 impl IoTargets {
   pub fn shuffle (&self) -> IoTargets {
     let mut c = self.v.clone();
@@ -865,21 +873,52 @@ impl IoTargets {
     }
   }
   // We need a balanced splitting function
-  /*
+  // assumes the IoTargets is balanced to begin with.
+  // Improve on this later, so that it preserves ratios. See example in
+  // GENLIN. 
   pub fn balanced_split_at (&self, i: usize) -> (IoTargets, IoTargets) {
     if self.k == TargetKind::PatternMatch {
       (self.clone(),self.clone())
     } else {
-      let unique_targets = self.iter()
-                               .map(|x| x.1.clone())
-                               .collect::<Vec<Target>>()
-                               .dedup();
-      let num_classes = unique_targets.len();
-      
-
+      let mut unique_targets = self.iter()
+                                   .map(|x| x.1.clone())
+                                   .collect::<Vec<Target>>();
+      unique_targets.dedup();
+      let shuffled = self.shuffle();                         
+      let num_classes : usize = unique_targets.len();
+      let mut buckets : Vec<Vec<(Problem,Target)>> = Vec::new();
+      for j in 0..num_classes {
+        let mut class : Vec<(Problem,Target)> = Vec::new();
+        for x in shuffled.iter() {
+          if x.1 == Target::Vote(j) {
+            class.push(x.clone());
+          }
+        }
+        
+        /*= shuffled.iter()
+                            .filter(|x| x.1 == Target::Vote(j))
+                            .map(|&x| x.clone())
+                            .collect();
+                            */
+        buckets.push(class);
+      }
+      let mut part_1 = IoTargets::new(TargetKind::Classification);
+      for j in 0..i {
+        match buckets[j % num_classes].pop() {
+          Some(item) => buckets[j % num_classes].push(item),
+          None       => (),
+        }
+      }
+      let mut part_2 = IoTargets::new(TargetKind::Classification);
+      for bucket in buckets {
+        for item in bucket {
+          part_2.push(item);
+        }
+      }
+      (part_1.shuffle(), part_2.shuffle())
     }
   }
-  */
+ 
   pub fn new (k: TargetKind) -> IoTargets {
     IoTargets{v:Vec::new(), k:k}
   }

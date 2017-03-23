@@ -168,7 +168,7 @@ fn main() {
       },
     };
   
-  let (testing,training) = io_targets.split_at(io_targets.len()/3);
+  let (testing,training) = io_targets.balanced_split_at(io_targets.len()/3);
   //let debug_samples = training.clone();
   /**************************************************/
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
