@@ -53,7 +53,7 @@ function run () {
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
                                 -t 5 \
-                                -P 4000 \
+                                -P 2048 \
                                 -D 2 \
                                 -m 0.0 \
                                 -V \

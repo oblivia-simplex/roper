@@ -365,15 +365,16 @@ pub fn patch_io_targets (tr: &TournementResult,
                          iteration: usize) -> usize
 {
   let mut io_targets = &mut params.io_targets;
-  let reset_freq = (params.population_size / params.t_size) / 4;
+  let reset_freq = params.population_size /
+                   (params.t_size * params.threads * 4);
   let reset = iteration > params.threads
-    && iteration % reset_freq <= params.threads;
+    && (iteration/params.threads) % reset_freq == 0;
   // The last bit is important! The iteration counter increments by
   // the number of threads!
+  let mut s = 0;
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
-  } else {
-    return 0;
+    s = 1;
   }
   for &mut (ref mut problem, _) in io_targets.iter_mut() {
     if reset {
@@ -385,7 +386,7 @@ pub fn patch_io_targets (tr: &TournementResult,
       problem.predifficulty += d_vec.iter().sum::<f32>();
     };
   }
-  1
+  s
 }
 
 

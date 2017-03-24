@@ -336,6 +336,7 @@ fn main() {
                                                .unwrap());
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
+      println!("[+] SEASONS ELAPSED: {}", d_updates);
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params

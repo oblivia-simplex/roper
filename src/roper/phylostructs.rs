@@ -663,7 +663,7 @@ impl Default for Params {
     let timestamp = t.format("%H-%M-%S").to_string();
     Params {
       label:            format!("Fitness-sharing, {} {}", &datepath, &timestamp),
-      population_size:  3200,
+      population_size:  2048,
       mutation_rate:    0.45,
       max_iterations:  800000,
       selection_method: SelectionMethod::Tournement,
