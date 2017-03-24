@@ -259,6 +259,7 @@ fn main() {
   let pop_arc = Arc::new(pop_rw); 
   let pop_local = pop_arc.clone();
   let mut i = 0; 
+  let mut crash_rate : f32 = 0.5;
   while i < max_iterations
     && (champion == None 
         || champion.as_ref().unwrap().crashes == Some(true)
@@ -287,11 +288,10 @@ fn main() {
                                               .take(n_jobs)
                                               .collect();
       println!("");
-      trs.sort_by(|a,b| b.best.fitness
-                         .partial_cmp(&a.best.fitness)
+      trs.sort_by(|a,b| b.best.ab_fitness
+                         .partial_cmp(&a.best.ab_fitness)
                          .unwrap_or(Ordering::Equal));
       for tr in trs {
-        //println!("{:?}",tr);
         let mut mut_pop = &mut pop_local.write().unwrap();
         let iteration = mut_pop.iteration.clone();
         if mut_pop.params.fitness_sharing {
@@ -301,26 +301,7 @@ fn main() {
         if updated != None {
           champion = updated.clone();
         }
-        /*
-        if false && updated != None  { // DISABLED FOR NOW
-          println!("[*] Running best with disassembly on...");
-          evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
-                           &mut updated.unwrap(),
-                           &pop_local.read().unwrap().params,
-                           Batch::TRAINING,
-                           0.1,
-                           true);
-          
-          let mut dfile = OpenOptions::new()
-                                      .append(true)
-                                      .write(true)
-                                      .create(true)
-                                      .open(&disas_path)
-                                      .unwrap();
-          dfile.write("==== END OF EVALUATION ====\n".as_bytes()).unwrap();
-          println!("[*] Finished running best with dissassembly");
-        }
-        */
+        mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
       }
   
       pop_local.read().unwrap().periodic_save();
@@ -334,9 +315,9 @@ fn main() {
       let avg_pop_abfit = pop_local.read()
                                    .unwrap()
                                    .avg_abfit();
-      let avg_crash = pop_local.read()
-                               .unwrap()
-                               .avg_crash();
+      crash_rate = pop_local.read()
+                            .unwrap()
+                            .crash_rate();
       let min_fit = pop_local.read()
                              .unwrap()
                              .min_fit();
@@ -344,18 +325,16 @@ fn main() {
                                .unwrap()
                                .min_abfit();
       let champ = champion.clone().unwrap();
-      print!("[+] CRASH RATE:  {:1.6}  ", avg_crash);
+      print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
       println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
-      print!("[+] AVG FIT:     {:1.6}  ", avg_pop_fit);
+      print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
       println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
-      print!("[+] MIN FIT:     {:1.6}  ", min_fit);
+      print!  ("[+] MIN FIT:     {:1.6}    ", min_fit);
       println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
-      print!("[+] BEST FIT:    {:1.6}  ", champ.fitness
+      print!  ("[+] BEST FIT:    {:1.6}    ", champ.fitness
                                                .unwrap());
-      println!("[+] BEST AB_FIT: {:1.6}", champ.ab_fitness
+      println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
-      //println!("[+] BEST CRASHES: {}", champ.crashes
-      //                                      .unwrap());
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params

@@ -466,7 +466,7 @@ impl Population {
         .count() as f32 / 
           self.params.population_size as f32
   }
-  pub fn avg_crash (&self) -> f32 {
+  pub fn crash_rate (&self) -> f32 {
     let cand = self.deme
                    .iter()
                    .filter(|ref c| c.crashes != None)
@@ -570,7 +570,7 @@ impl Population {
       return;
     }
     let row = if self.iteration == 1 {
-      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,AVG-CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
     let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
@@ -581,7 +581,7 @@ impl Population {
                       self.avg_abfit(),
                       self.min_fit(),
                       self.min_abfit(),
-                      self.avg_crash(),
+                      self.crash_rate(),
                       best.generation,
                       best.fitness.unwrap(),
                       best.ab_fitness.unwrap(),
@@ -654,6 +654,7 @@ pub struct Params {
   pub inregs           : Vec<usize>,
   pub binary_path      : String,
   pub fatal_crash      : bool,
+  pub crash_penalty    : f32,
 }
 impl Default for Params {
   fn default () -> Params {
@@ -699,6 +700,7 @@ impl Default for Params {
       outregs:          vec![4,5,6],
       binary_path:      "".to_string(),
       fatal_crash:      false,
+      crash_penalty:    0.2,
     }
   }
 }

@@ -176,18 +176,8 @@ fn eval_case (uc: &mut CpuARM,
   }
 }
 
-fn adjust_for_difficulty (score: f32, 
+fn adj_fit_for_difficulty (score: f32, 
                           difficulty: f32) -> f32 {
-  // Double check this with fitness sharing formula(e)
-  // difficulty = the running average of fitness scores that other
-  // specimens have scored on this problem (the lower, the better)
-  // so, the lower the difficulty, the 'easier' the exemplar, by the
-  // standards current in the population. 
-  //
-  // standard formula: 
-  // for all sum of [ score of C on S[i] / sum of scores of other Cs on S[i]]  
-  //                               (avg of scores on S[i]) * p_size
-  //  sum of [ (    score of C on S[i] / avg)  / p_size
   assert!(difficulty >= DEFAULT_DIFFICULTY);
   assert!(score <= 1.0);
   1.0 - (score / difficulty)
@@ -248,14 +238,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* own instance of the emulator.                   */
   let mut counter_sum = 0;
   let mut anycrash = false;
-  // let mut target_difficulty : HashTable<Target,f32> = HashTable::new();
   let mut difficulties : HashMap<Vec<i32>,f32> = HashMap::new();
   for &(ref problem, ref target) in io_targets.iter() {
-    // don't destructure io_target. refactor into struct in
-    // struct IoTargets, and then pull out input, target, 
-    // and difficulty. factor in difficulty only after eval_case
-    // difficulty begins at some medium value, and is adjusted
-    // in the tr patch loop after each tournament pool concludes
     let res = eval_case(uc,
                         chain,
                         &problem.input,
@@ -265,34 +249,22 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         verbose);
     difficulties.insert(problem.input.clone(), 
                         1.0 - res.ab_fitness);
-    // difficulties are the inverses of the scores
     let ft = if params.fitness_sharing {
-      adjust_for_difficulty(res.ab_fitness,
-                            problem.difficulty)
+      adj_fit_for_difficulty(res.ab_fitness,
+                             problem.difficulty)
     } else {
       res.ab_fitness
     };
     let counter = min(res.counter, chain.size()-1);
     let ratio_run = f32::min(1.0, counter as f32 / 
                              chain.size() as f32);
-    let crash_adjusted_ft = match res.crashes {
-      true => {
-        /* This formula determines the weight of crashing */
-        if params.fatal_crash {
-          1.0
-        } else {
-          f32::min(1.0, (ft*(1.0+f32::min(0.2,(1.0-ratio_run)))))
-        }
-      },
-      false => {
-        f32::min(1.0, ft)
-      },
+    let crash_adjusted_ft = if res.crashes {
+      adj_fit_for_crash(ft,
+                        ratio_run,
+                        params)
+    } else {
+      f32::min(1.0, ft)
     };
-    //println!("==[ BEFORE: {}; AFTER: {} ]==",
-    //         res.ab_fitness, ft);
-    // let difficulty = io_target.difficulty
-    // target_difficulty.insert(io_target, ft);
-    // now modulate ft by target's difficulty
     let crash = res.crashes; 
     counter_sum += counter;
     anycrash = anycrash || crash;
@@ -302,25 +274,17 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
-  let fitness = (fit_vec.iter().map(|&x| x).sum::<f32>()
-                   / fit_vec.len() as f32) as f32;
-  let ab_fitness = (abfit_vec.iter().map(|&x| x).sum::<f32>() 
-                   / abfit_vec.len() as f32) as f32;
-  assert!(fitness <= 1.0);
-  assert!(ab_fitness <= 1.0);
+  let fitness = f32::min(1.0, (fit_vec.iter().map(|&x| x).sum::<f32>()
+                               / fit_vec.len() as f32) as f32);
+  let ab_fitness = f32::min(1.0, (abfit_vec.iter().map(|&x| x).sum::<f32>() 
+                                  / abfit_vec.len() as f32) as f32);
   
-/*  (fitness, if anycrash {
-    Some(counter_sum / io_targets.len())
-  } else {
-    None
-  })
-  */
   EvalResult {
-    fitness: fitness,
-    ab_fitness: ab_fitness,
-    counter: counter_sum / io_targets.len(),
-    crashes: anycrash,
-    difficulties: Some(difficulties),
+    fitness      : fitness,
+    ab_fitness   : ab_fitness,
+    counter      : counter_sum / io_targets.len(),
+    crashes      : anycrash,
+    difficulties : Some(difficulties),
   }
 }
 
@@ -809,9 +773,19 @@ pub fn reap_gadgets (code: &Vec<u8>,
   } // .iter().filter(|c| c.size() >= 2).collect()
 }
 
-  
+pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
+  crash_rate / 2.0
+}
 
-
+pub fn adj_fit_for_crash(fitness: f32,
+                         ratio_run: f32,
+                         params: &Params) -> f32 {
+  if params.fatal_crash {
+    1.0
+  } else {
+    f32::min(1.0,ft*(1.0+params.crash_penalty+(1.0-ratio_run)))
+  }
+}
                   
 
 /*

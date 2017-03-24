@@ -4,6 +4,8 @@ DATAFILE=${PROJECT_ROOT}/data/iris.data
 BINARY=${PROJECT_ROOT}/data/ldconfig.real
 GOAL="0.10"
 
+TERMINALSTRING=""
+
 [ -n "$1" ] && LABEL="-L $1"
 
 LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
@@ -78,8 +80,17 @@ TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
 ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.out
 ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.err
 PLOTFILE=${LOGDIR}/plot_${TIMESTAMP}.gnu
+if [ -n "$DISPLAY" ]; then
+  TERMINALSTRING="set terminal x11 background rgb \"black\""
+  OUTPUTSTRING=""
+else
+  TERMINALSTRING="set terminal png background rbg \"black\" size 1024,768"
+  OUTPUTSTRING="set output \"roper_${TIMESTAMP}.png\""
+fi
+
 cat > $PLOTFILE << EOF
-set terminal x11 background rgb 'black'
+$TERMINALSTRING
+$OUTPUTSTRING
 set datafile commentschars "%"
 set multiplot layout 1, 2 title "ROPER on $recent"
 set xlabel 'ylabel' tc rgb 'red'
