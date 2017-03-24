@@ -254,6 +254,7 @@ fn main() {
                      true);
   add_debug_hooks(debug_machinery.cluster[0].unwrap_mut());
   let mut champion : Option<Chain> = None;
+  let mut d_updates = 0;
   let max_iterations = params.max_iterations;
   let pop_rw  = RwLock::new(population);
   let pop_arc = Arc::new(pop_rw); 
@@ -295,7 +296,7 @@ fn main() {
         let mut mut_pop = &mut pop_local.write().unwrap();
         let iteration = mut_pop.iteration.clone();
         if mut_pop.params.fitness_sharing {
-          patch_io_targets(&tr, &mut mut_pop.params, iteration);
+          d_updates += patch_io_targets(&tr, &mut mut_pop.params, iteration);
         };
         let updated = patch_population(&tr, mut_pop);
         if updated != None {

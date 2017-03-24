@@ -362,7 +362,7 @@ pub fn set_init_difficulties (params: &mut Params) {
 
 pub fn patch_io_targets (tr: &TournementResult,
                          params: &mut Params,
-                         iteration: usize)
+                         iteration: usize) -> usize
 {
   let mut io_targets = &mut params.io_targets;
   let reset_freq = (params.population_size / params.t_size) / 4;
@@ -372,7 +372,9 @@ pub fn patch_io_targets (tr: &TournementResult,
   // the number of threads!
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
-  };
+  } else {
+    return 0;
+  }
   for &mut (ref mut problem, _) in io_targets.iter_mut() {
     if reset {
       problem.difficulty    = problem.predifficulty;
@@ -383,6 +385,7 @@ pub fn patch_io_targets (tr: &TournementResult,
       problem.predifficulty += d_vec.iter().sum::<f32>();
     };
   }
+  1
 }
 
 
