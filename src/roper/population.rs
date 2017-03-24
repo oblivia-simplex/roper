@@ -783,7 +783,7 @@ pub fn adj_fit_for_crash(fitness: f32,
   if params.fatal_crash {
     1.0
   } else {
-    f32::min(1.0,ft*(1.0+params.crash_penalty+(1.0-ratio_run)))
+    f32::min(1.0,fitness*(1.0+params.crash_penalty+(1.0-ratio_run)))
   }
 }
                   
