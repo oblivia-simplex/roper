@@ -365,8 +365,11 @@ pub fn patch_io_targets (tr: &TournementResult,
                          iteration: usize)
 {
   let mut io_targets = &mut params.io_targets;
-  let reset_freq = params.population_size / params.t_size;
-  let reset = iteration != 0 && iteration % reset_freq == 0;
+  let reset_freq = (params.population_size / params.t_size) / 4;
+  let reset = iteration > params.threads
+    && iteration % reset_freq <= params.threads;
+  // The last bit is important! The iteration counter increments by
+  // the number of threads!
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
   };
@@ -375,19 +378,10 @@ pub fn patch_io_targets (tr: &TournementResult,
       problem.difficulty    = problem.predifficulty;
       problem.predifficulty = DEFAULT_DIFFICULTY;
     };
-    let p_diff : f32 = problem.difficulty.clone();
-    match tr.difficulty_update.get(&problem.input) {
-      None => (),
-      Some(d_vec) => {
-        //println!(">> old difficulty for {:?}: {}",
-        //         &problem.input, problem.difficulty);
-        //print!("==[ DIFF BEFORE: {} ", problem.difficulty);
-        problem.predifficulty += d_vec.iter().sum::<f32>();
-        //println!("| DIFF AFTER: {} ]==", problem.difficulty);
-        //println!(">> new difficulty for {:?}: {}",
-        //         &problem.input, problem.difficulty);
-      },
-    }
+    //let p_diff : f32 = problem.difficulty.clone();
+    if let Some(d_vec) = tr.difficulty_update.get(&problem.input) {
+      problem.predifficulty += d_vec.iter().sum::<f32>();
+    };
   }
 }
 
