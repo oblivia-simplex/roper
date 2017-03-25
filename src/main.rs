@@ -306,7 +306,7 @@ fn main() {
           }
           mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }
-        d_updates = update_difficulties(&mut mut_pop.params, iteration);
+        d_updates += update_difficulties(&mut mut_pop.params, iteration);
       }
       pop_local.read().unwrap().periodic_save();
 
