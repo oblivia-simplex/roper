@@ -352,15 +352,17 @@ pub fn patch_io_targets (tr: &TournementResult,
 
 pub fn update_difficulties (params: &mut Params,
                             iteration: usize) -> usize {
-
+//    self.season_length = self.population_size /
+//      (self.t_size * self.threads * factor); 
+  let season_length = params.calc_season_length();
+  let sd = params.season_divisor as f32;
   let mut io_targets = &mut params.io_targets;
-  let reset_freq = params.season_length;
   let reset = iteration > params.threads
-    && (iteration/params.threads) % reset_freq == 0;
+    && iteration % season_length == 0;
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for &mut (ref mut problem, _) in io_targets.iter_mut() {
-        problem.difficulty    = problem.predifficulty;
+        problem.difficulty    = problem.predifficulty * sd;
         problem.predifficulty = DEFAULT_DIFFICULTY;
     }
     1

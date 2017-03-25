@@ -651,7 +651,7 @@ pub struct Params {
   pub training_ht      : HashMap<Vec<i32>,usize>,
   pub fit_goal         : f32,
   pub fitness_sharing  : bool,
-  pub season_length    : usize,
+  pub season_divisor    : usize,
 /*  pub ro_data_data     : Vec<u8>,
   pub ro_data_addr     : u32,
   pub text_data        : Vec<u8>,
@@ -700,7 +700,7 @@ impl Default for Params {
       test_targets:     IoTargets::new(TargetKind::PatternMatch),
       fit_goal:         0.1,  
       fitness_sharing:  true,
-      season_length:    512,
+      season_divisor:    4,
       constants:        Vec::new(),
       cuck_rate:        0.15,
       verbose:          false,
@@ -778,9 +778,13 @@ impl Params {
   pub fn new () -> Params {
     Default::default()
   }
-  pub fn set_season_length (&mut self, factor: usize) {
-    self.season_length = self.population_size /
-      (self.t_size * self.threads * factor); 
+  pub fn calc_season_length (&self) -> usize {
+    self.population_size /
+      (self.t_size * self.threads * self.season_divisor)
+  }
+
+  pub fn set_season_divisor (&mut self, divisor: usize) {
+    self.season_divisor = divisor;
   }
   pub fn set_init_difficulties (&mut self) {
     let mut io_targets = &mut self.io_targets;

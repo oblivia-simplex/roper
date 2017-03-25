@@ -171,7 +171,7 @@ fn main() {
   
   let (testing,training) = io_targets.balanced_split_at(io_targets.len()/3);
   //let debug_samples = training.clone();
-  /**************************************************/
+  /*
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
   let sample2 = "tomato-RT-N18U-httpd";
   let sample3 = "openssl";
@@ -181,19 +181,24 @@ fn main() {
     .to_string();
   let elf_path = sample_root.clone() + sample4;
   let gba_path = sample_root.clone() + sample_gba;
-  
+ */ 
   
   
   let elf_path = match matches.opt_str("b") {
-    None    => elf_path,
+    None    => panic!("Please provide a path to an ELF binary"),
     Some(p) => p,
   };
-  
+ 
+  /* TODO: REFACTOR AWAY THIS OLD elf_addr_data CRUFT. 
+   * IT DUPLICATES STUFF THAT's BEING HANDLED MORE ELEGANTLY
+   * OVER IN ONTOSTRUCTS, but is still relied upon.
+   */
   
   let elf_addr_data = get_elf_addr_data(&elf_path,
                                         &vec![".text",".rodata"]);
   println!("****************** ELF {} **********************",
            elf_path);
+  
   let text_addr = elf_addr_data[0].addr;
   let text_data = &elf_addr_data[0].data;
   let rodata_addr = elf_addr_data[1].addr;
@@ -202,7 +207,8 @@ fn main() {
   
   let mode = MachineMode::ARM;
 
-  let iris_data = sample_root.clone() + "/iris.data";
+  //let iris_data = sample_root.clone() + "/iris.data";
+
 
   let constants = suggest_constants(&io_targets);
   let mut params : Params = Params::new();
@@ -231,8 +237,8 @@ fn main() {
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
   
-  params.set_season_length(1);
-  println!("[*] Season length set to {}", params.season_length);
+  params.season_divisor = 1;
+  println!("[*] Season length set to {}", params.calc_season_length());
   params.set_init_difficulties();
 
   // add string search function

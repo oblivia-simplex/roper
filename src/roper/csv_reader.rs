@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::io::{self,BufReader};
+use std::io::{BufReader};
 use std::io::prelude::*;
 use std::fs::File;
 use roper::util::{Indexable};
@@ -11,7 +10,7 @@ pub fn process_data2 (path: &str,
                       numfields: usize) 
                       -> IoTargets {
   let file = File::open(path).unwrap();
-  let mut rdr = BufReader::new(file);
+  let rdr = BufReader::new(file);
   let mut ids : Vec<String> = Vec::new();
   let mut io_targets : IoTargets = IoTargets::new(TargetKind::Classification);
   for line in rdr.lines() {
