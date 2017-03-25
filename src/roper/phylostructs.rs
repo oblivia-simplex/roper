@@ -782,10 +782,11 @@ impl Params {
     self.season_length = self.population_size /
       (self.t_size * self.threads * factor); 
   }
-  pub fn set_init_difficulties (&mut self, val: f32) {
+  pub fn set_init_difficulties (&mut self) {
     let mut io_targets = &mut self.io_targets;
     for &mut (ref mut problem, _) in io_targets.iter_mut() {
-      problem.difficulty = val;
+      problem.difficulty = self.population_size as f32 /
+                            self.outregs.len() as f32;
     }
   }
 

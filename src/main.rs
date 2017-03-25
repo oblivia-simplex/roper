@@ -233,7 +233,7 @@ fn main() {
   
   params.set_season_length(1);
   println!("[*] Season length set to {}", params.season_length);
-  params.set_init_difficulties(1.0);
+  params.set_init_difficulties();
 
   // add string search function
   // find string addresses in rodata
