@@ -779,8 +779,12 @@ impl Params {
     Default::default()
   }
   pub fn calc_season_length (&self) -> usize {
-    self.population_size /
-      (self.t_size * self.threads * self.season_divisor)
+    if !self.fitness_sharing {
+      self.max_iterations
+    } else {
+      self.population_size /
+        (self.t_size * self.threads * self.season_divisor)
+    }
   }
 
   pub fn set_season_divisor (&mut self, divisor: usize) {
@@ -1012,10 +1016,10 @@ impl Target {
 
 
 #[derive(Debug,Clone,PartialEq,Eq)]
-pub struct RPattern { regvals: Vec<(usize,i32)> }
+pub struct RPattern { regvals: Vec<(usize,u64)> }
 impl RPattern {
   pub fn new (s: &str) -> RPattern {
-    let mut parts = s.split_whitespace();
+    let mut parts = s.split(',');
     let mut rp : RPattern = RPattern {
       regvals: Vec::new(),
     };
@@ -1024,13 +1028,13 @@ impl RPattern {
       if !part.starts_with("_") {
         rp.push((i,u32::from_str_radix(part, 16)
                   .expect("Failed to parse RPattern")
-                  as i32));
+                  as u64));
       }
       i += 1;
     }
     rp
   }
-  pub fn push (&mut self, x: (usize, i32)) {
+  pub fn push (&mut self, x: (usize, u64)) {
     self.regvals.push(x);
   }
   pub fn constants (&self) -> Vec<u32> {
@@ -1039,13 +1043,13 @@ impl RPattern {
         .map(|&p| p.1 as u32)
         .collect()
   }
-  pub fn satisfy (&self, regs: &Vec<i32>) -> bool {
+  pub fn satisfy (&self, regs: &Vec<u64>) -> bool {
     for &(idx,val) in &self.regvals {
       if regs[idx] != val { return false };
     }
     true
   }
-  fn vec_pair (&self, regs: &Vec<i32>) -> (Vec<i32>, Vec<i32>) {
+  fn vec_pair (&self, regs: &Vec<u64>) -> (Vec<u64>, Vec<u64>) {
     let mut ivec = Vec::new();
     let mut ovec = Vec::new();
     for &(idx,val) in &self.regvals {
@@ -1054,12 +1058,13 @@ impl RPattern {
     }
     (ivec, ovec)
   }
-  pub fn distance (&self, regs: &Vec<i32>) -> f32 {
+  pub fn distance (&self, regs: &Vec<u64>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
     let h = hamming_distance(&i, &o);
-    let a = arith_distance(&i, &o);
-    let m = count_matches(&i, &o);
-    (h + a) / (2.0 * m)
+  //  let a = arith_distance(&i, &o);
+    //let m = count_matches(&i, &o);
+    //(h + a) / 2.0 //(2.0 * m)
+    h   
   }
 }
 pub const MAXPATLEN : usize = 12;

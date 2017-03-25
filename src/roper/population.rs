@@ -102,7 +102,7 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   };
 }
 
-pub fn mate (parents: &Vec<&Chain>, 
+fn mate (parents: &Vec<&Chain>, 
              params:  &Params, 
              rng:     &mut ThreadRng,
              uc:      &mut CpuARM) -> Vec<Chain> {
@@ -148,14 +148,14 @@ fn eval_case (uc: &mut CpuARM,
   if verbose { print!("\n{}", result); }
   let counter = result.counter;
   //let output   = &result.registers;
-  let mut output : Vec<i32> = Vec::new();
+  let mut output : Vec<u64> = Vec::new();
   for idx in outregs {
     output.push(result.registers[*idx]);
   }
   let crash = result.error != None;
   let final_pc = result.registers[15];
   let d : f32 = match target {
-    &Target::Exact(ref t) => t.distance(&output),
+    &Target::Exact(ref t) => f32::max(0.0, 1.0 - t.distance(&output)),
     &Target::Vote(t)  => {
       // hardcoded shortcut
       let b = max_bin(&(output.to_vec()));
@@ -256,9 +256,9 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let ratio_run = f32::min(1.0, counter as f32 / 
                              chain.size() as f32);
     let crash_adjusted = if res.crashes {
-      adj_score_for_crash(score,
-                          ratio_run,
-                          params)
+      crash_override(score,
+                     ratio_run,
+                     params)
     } else {
       score
     };
@@ -272,8 +272,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
 
   let fitness    = mean(&fit_vec);
   let ab_fitness = mean(&abfit_vec);
-  assert!(fitness <= 1.0);
-  assert!(ab_fitness <= 1.0);
+  if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
+  if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
   
   EvalResult {
     score        : 0.0,
@@ -628,8 +628,8 @@ while brood.len() > n {
 fn calc_viscosity (clump: &Clump) -> i32 {
 match clump.link_fit {
   Some(x) => {
-    //assert!(x <= 1.0);
-    assert!(x >= 0.0);
+    assert!(x <= 1.0);
+    //let x = f32::max(0.0,x);
     MAX_VISC - (MAX_VISC as f32 * f32::min(x,1.0)) as i32
   },
   None    => MAX_VISC/2,
@@ -775,9 +775,9 @@ pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
   crash_rate / 2.0
 }
 
-pub fn adj_score_for_crash(score: f32,
-                           ratio_run: f32,
-                           params: &Params) -> f32 {
+fn crash_override(score: f32,
+                      ratio_run: f32,
+                      params: &Params) -> f32 {
   if params.fatal_crash {
     0.0
   } else {

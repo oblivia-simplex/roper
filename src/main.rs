@@ -158,10 +158,12 @@ fn main() {
   // ugly kludge here
   let (io_targets, pattern_matching) : (IoTargets,bool) =
     match (rpattern_str, data_path) {
-      (Some(s),None) => (IoTargets::from_vec(TargetKind::PatternMatch,
-                                             vec![(Problem::new(vec![1;16]), 
-                                                  Target::Exact(RPattern::new(&s)))]),
-                         true),
+      (Some(s),None) => {
+        println!("rpattern_str parsed as \"{}\"",s);
+        (IoTargets::from_vec(TargetKind::PatternMatch,
+                             vec![(Problem::new(vec![1;16]), 
+                                   Target::Exact(RPattern::new(&s)))]),
+                         true) },
       (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);

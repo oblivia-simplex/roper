@@ -68,7 +68,7 @@ pub fn get_word16le (a: &Vec<u8>, offset: usize) -> u16 {
 }
 
 // pretty-print the contents of a vector in hex
-pub fn hexvec (v: &Vec<i32>) -> String{
+pub fn hexvec (v: &Vec<u64>) -> String{
   let vs : Vec<String> = v.iter()
                           .map(|x| format!("{:08x}",x))
                           .collect();
@@ -93,7 +93,7 @@ pub fn distance2 (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
   }).sum::<i64>() & 0xEFFFFFFF) as i32
 }
 
-pub fn hamming_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+pub fn hamming_distance (x: &Vec<u64>, y: &Vec<u64>) -> f32 {
   assert_eq!(x.len(), y.len());
   let n = x.len();
   (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 16.0).tanh())
@@ -110,13 +110,25 @@ pub fn count_matches (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
   m as f32
 }
 
-pub fn arith_distance (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
+// STILL BUGGY
+pub fn arith_distance (x: &Vec<u64>, y: &Vec<u64>) -> f32 {
   assert_eq!(x.len(), y.len());
   let n = x.len();
-  (0..n).map(|i| ((x[i].abs() - y[i].abs()) as f32 
-                  / 4096 as f32).abs().tanh())
-         .sum::<f32>() / n as f32
+  ((0..n).map(|i| {
+    let (a,b) = if x[i] > y[i] {
+      (x[i],y[i])
+    } else {
+      (y[i],x[i])
+    };
+    let d = (a & 0xFFFFFFFF) - (b & 0xFFFFFFFF);
+    if d > 0x80000000 {
+      (d - 0x80000000) as f64 / 0x80000000 as f64
+    } else {
+      d as f64 / 0x80000000 as f64
+    } 
+  }).sum::<f64>() / n as f64) as f32
 }
+
 
 pub trait Indexable <T: PartialEq> {
   fn index_of (&self, t: T) -> usize;
@@ -250,9 +262,9 @@ pub fn ranked_ballot (bins: &Vec<i32>, correct: usize) -> f32 {
 }
 */
 
-pub fn max_bin (bins: &Vec<i32>) -> usize {
+pub fn max_bin (bins: &Vec<u64>) -> usize {
   let mut mb : usize = 0;
-  let mut mx : i32 = bins[0];
+  let mut mx : u64 = bins[0];
   for i in 0..bins.len() {
     if bins[i] > mx { 
       mx = bins[i];

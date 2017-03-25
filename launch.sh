@@ -1,8 +1,10 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 DATAFILE=${PROJECT_ROOT}/data/iris.data
-BINARY=${PROJECT_ROOT}/data/ldconfig.real
-GOAL="0.10"
+PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
+DATASTRING="-d $DATAFILE"
+BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
+GOAL="0.1"
 
 TERMINALSTRING=""
 

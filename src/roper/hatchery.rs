@@ -25,8 +25,8 @@ fn elf_perm_to_uc (elf_perm: ProgFlag) -> unicorn::Protection {
   }
 }
 */
-pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<i32> {
-  REGISTERS.iter().map(|&x| uc.reg_read_i32(x.to_i32())
+pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<u64> {
+  REGISTERS.iter().map(|&x| uc.reg_read(x.to_i32())
                               .expect("Error reading reg"))
                   .collect()
 }
@@ -151,7 +151,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
 type ErrorCode = f32;
 #[derive(Debug,Clone)]
 pub struct HatchResult {
-  pub registers : Vec<i32>,
+  pub registers : Vec<u64>,
   pub error     : Option<ErrorCode>,
   pub counter   : usize,
 }
