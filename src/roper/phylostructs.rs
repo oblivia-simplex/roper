@@ -24,7 +24,7 @@ use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
 use roper::ontostructs::*;
-
+use roper::statistics::*;
 pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
 pub const VISC_DROP_THRESH : i32 = 10;
@@ -514,6 +514,13 @@ impl Population {
         .map(|ref c| c.fitness.clone().unwrap())
         .sum::<f32>() / 
           cand as f32
+  }
+  pub fn std_dev_abfit (&self) -> f32 {
+    let cand = self.deme.iter()
+                   .filter(|ref c| c.ab_fitness != None)
+                   .map(|ref c| c.ab_fitness.clone().unwrap())
+                   .collect();
+    standard_deviation(&cand)
   }
   pub fn avg_abfit (&self) -> f32 {
     let cand = self.deme.iter()

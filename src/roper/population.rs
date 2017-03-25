@@ -180,8 +180,9 @@ fn eval_case (uc: &mut CpuARM,
 }
 
 fn adj_score_for_difficulty (score: f32, 
+                             popsize: usize,
                              difficulty: f32) -> f32 {
-  score / difficulty
+  score / (popsize as f32 / difficulty)
 }
 
 pub const VARIABLE_FITNESS : bool = true;
@@ -246,6 +247,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         res.score);
     let score = if params.fitness_sharing {
       adj_score_for_difficulty(res.score,
+                               params.population_size,
                                problem.difficulty)
     } else {
       res.score

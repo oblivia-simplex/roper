@@ -231,7 +231,7 @@ fn main() {
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
   
-  params.set_season_length(4);
+  params.set_season_length(1);
   println!("[*] Season length set to {}", params.season_length);
   params.set_init_difficulties(1.0);
 
