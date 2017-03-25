@@ -109,13 +109,11 @@ plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${MIN_FIT}   w lines, \
   "" u ${X0}:${BEST_FIT} w lines,  \
   "" u ${X0}:${MIN_ABFIT} w lines, \
-  "" u ${X0}:${BEST_ABFIT} w lines, \
-  "" u ${X0}:${UNSEEN} w lines
+  "" u ${X0}:${BEST_ABFIT} w lines
 plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
   "" u ${X1}:${AVG_LEN} w lines, \
   "" u ${X1}:${BEST_GEN} w lines, \
-  "" u ${X1}:${BEST_LEN} w lines, \
-  "" u ${X1}:${SEASON} w lines
+  "" u ${X1}:${BEST_LEN} w lines
 pause 2 
 unset multiplot
 reread

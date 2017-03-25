@@ -506,7 +506,15 @@ pub fn tournament (population: &Population,
     }
 
   specimens.sort();
-
+  /* bit of ab_fit elitism now */
+  let min_abfit = population.min_abfit();
+  if let Some(i) = specimens[1..].iter()
+                            .position(|x| x.0.ab_fitness
+                                           .unwrap() == min_abfit) {
+    let tmp = specimens[0].clone();
+    specimens[0] = specimens[i].clone();
+    specimens[i] = tmp;
+  }
   let (mother,m_idx) = specimens[0].clone();
   let (father,f_idx) = if cflag {
     // make this a separate method of population
