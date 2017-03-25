@@ -127,12 +127,13 @@ pub struct EvalResult {
 
 fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
-              input: &Vec<i32>, // may revise
-              target: &Target,
+              problem: &Problem,
               inregs:  &Vec<usize>,
               outregs: &Vec<usize>, // need a better system
               verbose: bool) -> EvalResult{ //(f32, usize, bool) {
   
+  let input  = &problem.input;
+  let target = &problem.target;
   if verbose {
     print!("\n");
     for _ in 0..60 { print!("="); };
@@ -153,8 +154,8 @@ fn eval_case (uc: &mut CpuARM,
     output.push(result.registers[*idx]);
   }
   let crash = result.error != None;
-  let final_pc = result.registers[15];
-  let d : f32 = target.assess_output(&output);
+//  let final_pc = result.registers[15];
+  let (d,_) = problem.assess_output(&output);
   EvalResult {
     score: d,
     fitness: 0.0,
@@ -224,8 +225,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   for ref problem in io_targets.iter() {
     let res = eval_case(uc,
                         chain,
-                        &problem.input,
-                        &problem.target,
+                        &problem,
                         &inregs,
                         &outregs,
                         verbose);

@@ -795,6 +795,7 @@ impl Params {
     for ref mut problem in io_targets.iter_mut() {
       problem.set_difficulty(self.population_size as f32 /
                              self.outregs.len() as f32);
+      problem.set_pfactor(self.population_size);
     }
   }
 
@@ -862,6 +863,7 @@ pub struct Problem {
   pub input: Vec<i32>,
   difficulty: f32,
   predifficulty: f32,
+  pfactor: f32,
   pub target: Target,
 }
 impl Problem {
@@ -870,7 +872,36 @@ impl Problem {
       input: input, 
       difficulty: DEFAULT_DIFFICULTY,
       predifficulty: DEFAULT_DIFFICULTY,
+      pfactor: 1.0,
       target: target,
+    }
+  }
+  pub fn assess_output (&self,
+                        output: &Vec<u64>) -> (f32,f32) {
+    match &self.target {
+      &Target::Exact(ref rp) => {
+        // here we can try some sort of fitness sharing thing
+        let r = f32::max(0.0, 1.0 - rp.distance(&output));
+        (r,r)
+      },
+      &Target::Vote(ref cls) => {
+        let b = max_bin(&output);
+        let r = if b == cls.class {
+          1.0
+        } else {
+          0.0 
+        };
+        (r,r)
+      }
+    }
+  }
+  pub fn set_pfactor (&mut self, p: usize) {
+    self.pfactor = p as f32
+  }
+  pub fn kind (&self) -> TargetKind {
+    match self.target {
+      Target::Exact(_) => TargetKind::PatternMatch,
+      Target::Vote(_)  => TargetKind::Classification,
     }
   }
   pub fn rotate_difficulty(&mut self, factor: f32) {
@@ -1070,21 +1101,6 @@ impl Target {
     match self {
       &Target::Exact(_) => false,
       &Target::Vote(ref cls) => c == cls.class,
-    }
-  }
-  pub fn assess_output (&self, output: &Vec<u64>) -> f32 {
-    match self {
-      &Target::Exact(ref rp) => {
-        f32::max(0.0, 1.0 - rp.distance(&output))
-      },
-      &Target::Vote(ref cls) => {
-        let b = max_bin(&output);
-        if b == cls.class {
-          1.0
-        } else {
-          0.0 
-        }
-      }
     }
   }
 }
