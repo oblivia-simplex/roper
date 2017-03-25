@@ -507,10 +507,12 @@ pub fn tournament (population: &Population,
 
   specimens.sort();
   /* bit of ab_fit elitism now */
-  let best_abfit = population.best_abfit().unwrap_or(0.0);
+  let best_abfit = f32::min(1.0 / (population.params.outregs.len() as f32), 
+                       population.best_abfit().unwrap_or(0.0));
   if let Some(i) = specimens[1..].iter()
                             .position(|x| x.0.ab_fitness
                                            .unwrap() <= best_abfit) {
+    println!(">> invoking elitism to preserve abfit {} <<", best_abfit);
     let tmp = specimens[0].clone();
     specimens[0] = specimens[i].clone();
     specimens[i] = tmp;

@@ -14,7 +14,7 @@ OUTFILE="${LOGDIR}/roper_`date +%H-%M-%S`.out"
 ERRORFILE=${LOGDIR}/roper_`date +%H-%M-%S`.err
 
 mkdir -p $PROJECT_ROOT/logs
-gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
+#gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
 ITERATION=1
 SEASON=2
 AVG_GEN=3
