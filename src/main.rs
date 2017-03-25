@@ -158,12 +158,11 @@ fn main() {
   // ugly kludge here
   let (io_targets, pattern_matching) : (IoTargets,bool) =
     match (rpattern_str, data_path) {
-      (Some(s),None) => {
+      (Some(s),None) => ({
         println!("rpattern_str parsed as \"{}\"",s);
-        (IoTargets::from_vec(TargetKind::PatternMatch,
-                             vec![(Problem::new(vec![1;16]), 
-                                   Target::Exact(RPattern::new(&s)))]),
-                         true) },
+        IoTargets::from_vec(TargetKind::PatternMatch,
+                      vec![Problem::new(vec![1;16],mk_pattern(&s))])
+       },true),
       (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
       _              => {
         print_usage(&program, opts);
@@ -187,7 +186,7 @@ fn main() {
   
   
   let elf_path = match matches.opt_str("b") {
-    None    => panic!("Please provide a path to an ELF binary"),
+    None    => { print_usage(&program, opts); return; },
     Some(p) => p,
   };
  

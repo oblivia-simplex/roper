@@ -154,21 +154,7 @@ fn eval_case (uc: &mut CpuARM,
   }
   let crash = result.error != None;
   let final_pc = result.registers[15];
-  let d : f32 = match target {
-    &Target::Exact(ref t) => f32::max(0.0, 1.0 - t.distance(&output)),
-    &Target::Vote(t)  => {
-      // hardcoded shortcut
-      let b = max_bin(&(output.to_vec()));
-      if verbose {
-        println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
-      };
-      if t == b {
-        1.0 
-      } else {
-        0.0
-      } // REVERSE THJE POLARITY!
-    },
-  };// + if final_pc == 0 { 0.0 } else { 0.1 };
+  let d : f32 = target.assess_output(&output);
   EvalResult {
     score: d,
     fitness: 0.0,
@@ -235,11 +221,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   let mut counter_sum = 0;
   let mut anycrash = false;
   let mut difficulties : HashMap<Vec<i32>,f32> = HashMap::new();
-  for &(ref problem, ref target) in io_targets.iter() {
+  for ref problem in io_targets.iter() {
     let res = eval_case(uc,
                         chain,
                         &problem.input,
-                        &target,
+                        &problem.target,
                         &inregs,
                         &outregs,
                         verbose);
@@ -248,7 +234,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let score = if params.fitness_sharing {
       adj_score_for_difficulty(res.score,
                                params.population_size,
-                               problem.difficulty)
+                               problem.difficulty())
     } else {
       res.score
     };
@@ -343,9 +329,9 @@ pub fn patch_io_targets (tr: &TournementResult,
                          iteration: usize) 
 {
   let mut io_targets = &mut params.io_targets;
-  for &mut (ref mut problem, _) in io_targets.iter_mut() {
+  for ref mut problem in io_targets.iter_mut() {
     if let Some(d_vec) = tr.difficulty_update.get(&problem.input) {
-      problem.predifficulty += d_vec.iter().sum::<f32>();
+      problem.inc_predifficulty(d_vec); // += d_vec.iter().sum::<f32>();
     };
   }
 }
@@ -361,9 +347,8 @@ pub fn update_difficulties (params: &mut Params,
     && iteration % season_length == 0;
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
-    for &mut (ref mut problem, _) in io_targets.iter_mut() {
-        problem.difficulty    = problem.predifficulty * sd;
-        problem.predifficulty = DEFAULT_DIFFICULTY;
+    for ref mut problem in io_targets.iter_mut() {
+      problem.rotate_difficulty(sd);
     }
     1
   } else {

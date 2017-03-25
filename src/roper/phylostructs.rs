@@ -792,9 +792,9 @@ impl Params {
   }
   pub fn set_init_difficulties (&mut self) {
     let mut io_targets = &mut self.io_targets;
-    for &mut (ref mut problem, _) in io_targets.iter_mut() {
-      problem.difficulty = self.population_size as f32 /
-                            self.outregs.len() as f32;
+    for ref mut problem in io_targets.iter_mut() {
+      problem.set_difficulty(self.population_size as f32 /
+                             self.outregs.len() as f32);
     }
   }
 
@@ -846,23 +846,53 @@ pub enum TargetKind {
 
 #[derive(Debug,Clone,Eq,PartialEq)]
 pub struct IoTargets {
-  v: Vec<(Problem,Target)>,
+  v: Vec<Problem>,
   k: TargetKind, 
+}
+
+pub fn mk_class(c: usize) -> Target {
+  Target::Vote(Classification::new(c))
+}
+pub fn mk_pattern(s: &str) -> Target {
+  Target::Exact(RPattern::new(&s))
 }
 
 #[derive(Debug,Clone)]
 pub struct Problem {
   pub input: Vec<i32>,
-  pub difficulty: f32,
-  pub predifficulty: f32,
+  difficulty: f32,
+  predifficulty: f32,
+  pub target: Target,
 }
 impl Problem {
-  pub fn new (input: Vec<i32>) -> Problem {
+  pub fn new (input: Vec<i32>, target: Target) -> Problem {
     Problem { 
       input: input, 
       difficulty: DEFAULT_DIFFICULTY,
       predifficulty: DEFAULT_DIFFICULTY,
+      target: target,
     }
+  }
+  pub fn rotate_difficulty(&mut self, factor: f32) {
+    let pd = self.predifficulty();
+    self.set_difficulty(pd * factor);
+    self.set_predifficulty(DEFAULT_DIFFICULTY);
+  }
+  pub fn difficulty (&self) -> f32 {
+    self.difficulty
+  }
+  pub fn predifficulty (&self) -> f32 {
+    self.predifficulty
+  }
+  pub fn set_difficulty (&mut self, n: f32) {
+    self.difficulty = n;
+  }
+  pub fn set_predifficulty (&mut self, n: f32) {
+    self.predifficulty = n;
+  }
+  pub fn inc_predifficulty (&mut self, d_vec: &Vec<f32>) {
+    let pd = self.predifficulty();
+    self.set_predifficulty(pd + d_vec.iter().sum::<f32>());
   }
 }
 impl PartialEq for Problem {
@@ -872,12 +902,36 @@ impl PartialEq for Problem {
 }
 impl Eq for Problem {}
 
+#[derive(Debug,Clone)]
+pub struct Classification {
+  pub class: usize,
+  pub difficulty: f32,
+  pub predifficulty: f32,
+}
+
+impl PartialEq for Classification {
+  fn eq (&self, other: &Self) -> bool {
+    self.class == other.class
+  }
+}
+impl Eq for Classification {}
+
+impl Classification {
+  pub fn new (val: usize) -> Self {
+    Classification {
+      class: val,
+      difficulty: 1.0,
+      predifficulty: 1.0,
+    }
+  }
+}
+
 pub static DEFAULT_DIFFICULTY : f32 = 1.0; // don't hardcode
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
   let mut cons : Vec<u32> = Vec::new();
-  for &(ref i, ref o) in iot.v.iter() {
-    cons.extend_from_slice(&o.suggest_constants(&i.input));
+  for ref p in iot.v.iter() {
+    cons.extend_from_slice(&p.target.suggest_constants(&p.input));
   }
   cons
 }
@@ -904,11 +958,11 @@ impl IoTargets {
   }
   pub fn difficulty_profile (&self) -> Vec<f32> {
     self.iter()
-        .map(|x| x.0.difficulty)
+        .map(|x| x.difficulty())
         .collect()
   }
   // this might be confusing later.
-  pub fn push (&mut self, t: (Problem,Target)) {
+  pub fn push (&mut self, t: Problem) {
     self.v.push(t);
   }
   pub fn split_at (&self, i: usize) -> (IoTargets,IoTargets) {
@@ -928,16 +982,16 @@ impl IoTargets {
       (self.clone(),self.clone())
     } else {
       let mut unique_targets = self.iter()
-                                   .map(|x| x.1.clone())
+                                   .map(|x| x.target.clone())
                                    .collect::<Vec<Target>>();
       unique_targets.dedup();
       let shuffled = self.shuffle();                         
       let num_classes : usize = unique_targets.len();
-      let mut buckets : Vec<Vec<(Problem,Target)>> = Vec::new();
+      let mut buckets : Vec<Vec<Problem>> = Vec::new();
       for j in 0..num_classes {
-        let mut class : Vec<(Problem,Target)> = Vec::new();
+        let mut class : Vec<Problem> = Vec::new();
         for x in shuffled.iter() {
-          if x.1 == Target::Vote(j) {
+          if x.target.is_class(j) {
             class.push(x.clone());
           }
         }
@@ -969,16 +1023,16 @@ impl IoTargets {
   pub fn new (k: TargetKind) -> IoTargets {
     IoTargets{v:Vec::new(), k:k}
   }
-  pub fn from_vec (k: TargetKind, v: Vec<(Problem,Target)>) -> IoTargets {
+  pub fn from_vec (k: TargetKind, v: Vec<Problem>) -> IoTargets {
     IoTargets{v:v, k:k}
   }
   pub fn len (&self) -> usize {
     self.v.len()
   }
-  pub fn iter (&self) -> Iter<(Problem, Target)> {
+  pub fn iter (&self) -> Iter<Problem> {
     self.v.iter()
   }
-  pub fn iter_mut (&mut self) -> IterMut<(Problem, Target)> {
+  pub fn iter_mut (&mut self) -> IterMut<Problem> {
     self.v.iter_mut()
   }
 }
@@ -986,14 +1040,14 @@ impl IoTargets {
 #[derive(Eq,PartialEq,Debug,Clone)]
 pub enum Target {
   Exact(RPattern),
-  Vote(usize),
+  Vote(Classification),
 }
 
 impl Display for Target {
   fn fmt (&self, f: &mut Formatter) -> Result {
     match self {
       &Target::Exact(ref rp) => rp.fmt(f),
-      &Target::Vote(i)   => i.fmt(f),
+      &Target::Vote(ref i)   => i.class.fmt(f),
     }
   }
 }
@@ -1012,16 +1066,58 @@ impl Target {
       &Target::Exact(ref r) => r.constants(),
     }
   }
+  pub fn is_class (&self, c: usize) -> bool {
+    match self {
+      &Target::Exact(_) => false,
+      &Target::Vote(ref cls) => c == cls.class,
+    }
+  }
+  pub fn assess_output (&self, output: &Vec<u64>) -> f32 {
+    match self {
+      &Target::Exact(ref rp) => {
+        f32::max(0.0, 1.0 - rp.distance(&output))
+      },
+      &Target::Vote(ref cls) => {
+        let b = max_bin(&output);
+        if b == cls.class {
+          1.0
+        } else {
+          0.0 
+        }
+      }
+    }
+  }
 }
 
 
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub struct RPattern { regvals: Vec<(usize,u64)> }
+#[derive(Debug,Clone)]
+pub struct RPattern { 
+  regvals_diff: Vec<(usize,u64,f32)>,
+  regvals_prediff: Vec<(usize,u64,f32)>,
+}
+impl PartialEq for RPattern {
+  fn eq (&self, other: &Self) -> bool {
+    let mut a = self.clean();
+    let mut b = other.clean();
+    a.sort();
+    b.sort();
+    a == b
+  }
+}
+impl Eq for RPattern {}
+
 impl RPattern {
-  pub fn new (s: &str) -> RPattern {
+  pub fn clean (&self) -> Vec<(usize,u64)> {
+    self.regvals_diff
+        .iter()
+        .map(|&(x,y,_)| (x,y))
+        .collect::<Vec<(usize,u64)>>()
+  }
+  pub fn new (s: &str) -> Self {
     let mut parts = s.split(',');
     let mut rp : RPattern = RPattern {
-      regvals: Vec::new(),
+      regvals_diff: Vec::new(),
+      regvals_prediff: Vec::new(),
     };
     let mut i : usize = 0;
     for part in parts {
@@ -1035,24 +1131,35 @@ impl RPattern {
     rp
   }
   pub fn push (&mut self, x: (usize, u64)) {
-    self.regvals.push(x);
+    self.regvals_diff.push((x.0,x.1,1.0));
   }
   pub fn constants (&self) -> Vec<u32> {
-    self.regvals
+    self.regvals_diff
         .iter()
         .map(|&p| p.1 as u32)
         .collect()
   }
   pub fn satisfy (&self, regs: &Vec<u64>) -> bool {
-    for &(idx,val) in &self.regvals {
+    for &(idx,val,_) in &self.regvals_diff {
       if regs[idx] != val { return false };
     }
     true
   }
+  pub fn matches_with_diff (&self, regs: &Vec<u64>) -> Vec<f32> {
+    let mut scorecard : Vec<f32> = Vec::new();
+    for &(idx,val,diff) in &self.regvals_diff {
+      if regs[idx] == val {
+        scorecard.push(1.0/diff);
+      } else {
+        scorecard.push(0.0);
+      }
+    }
+    scorecard
+  }
   fn vec_pair (&self, regs: &Vec<u64>) -> (Vec<u64>, Vec<u64>) {
     let mut ivec = Vec::new();
     let mut ovec = Vec::new();
-    for &(idx,val) in &self.regvals {
+    for &(idx,val,_) in &self.regvals_diff {
       ivec.push(regs[idx]);
       ovec.push(val);
     }
@@ -1073,7 +1180,7 @@ impl Display for RPattern {
     let blank = "________ ";
     let mut s = String::new();
     let mut i : usize = 0;
-    for &(idx,val) in &self.regvals {
+    for &(idx,val,_) in &self.regvals_diff {
       while i < idx {
         s.push_str(blank);
         i += 1;

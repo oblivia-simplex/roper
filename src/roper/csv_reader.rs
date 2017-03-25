@@ -36,7 +36,11 @@ pub fn process_data2 (path: &str,
       ids.push(v.clone()); 
     }
     let val = ids.index_of(v);
-    io_targets.push((Problem::new(key.clone()), Target::Vote(val)));
+    io_targets.push(Problem::new(key.clone(), mk_class(val)))
+                            
+
+//    io_targets.push((Problem::new(key.clone()), 
+//                     Target::Vote(Classification::new(val))));
     //println!("Inserted {:?} -> {:?}", key, val);
   }
   io_targets
