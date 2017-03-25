@@ -255,7 +255,7 @@ fn main() {
                      true);
   add_debug_hooks(debug_machinery.cluster[0].unwrap_mut());
   let mut champion : Option<Chain> = None;
-  let mut d_updates = 0;
+  let mut season = 0;
   let max_iterations = params.max_iterations;
   let pop_rw  = RwLock::new(population);
   let pop_arc = Arc::new(pop_rw); 
@@ -306,7 +306,9 @@ fn main() {
           }
           mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }
-        d_updates += update_difficulties(&mut mut_pop.params, iteration);
+        mut_pop.season += update_difficulties(&mut mut_pop.params, 
+                                              iteration);
+        season = mut_pop.season.clone();
       }
       pop_local.read().unwrap().periodic_save();
 
@@ -315,7 +317,7 @@ fn main() {
                                  .avg_gen();
       let avg_pop_fit = pop_local.read()
                                  .unwrap()
-                                 .avg_fit();
+                                 .avg_fit(season);
       let avg_pop_abfit = pop_local.read()
                                    .unwrap()
                                    .avg_abfit();
@@ -324,7 +326,7 @@ fn main() {
                             .crash_rate();
       let min_fit = pop_local.read()
                              .unwrap()
-                             .min_fit();
+                             .min_fit(season);
       let min_abfit = pop_local.read()
                                .unwrap()
                                .min_abfit();
@@ -344,7 +346,7 @@ fn main() {
                                                .unwrap());
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
-      println!("[+] SEASONS ELAPSED: {}", d_updates);
+      println!("[+] SEASONS ELAPSED: {}", season);
       println!("[+] STANDARD DEVIATION OF DIFFICULTY: {:?}",  
                standard_deviation(&dprof));
       println!("[Logging to {}]", pop_local.read()

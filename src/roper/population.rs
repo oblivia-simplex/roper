@@ -385,12 +385,14 @@ pub fn patch_population (tr: &TournementResult,
 {
   assert_eq!(tr.graves.len(), tr.spawn.len());
   population.iteration += 1;
+  let season = population.season;
   for i in 0..tr.graves.len() {
   //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
   }
   for &(i, ref fit_up) in tr.fit_updates.iter() {
     if fit_up.fitness != None {
+      population.deme[i].season  = season;
       population.deme[i].fitness = fit_up.fitness.clone();
       population.deme[i].crashes = fit_up.crashes.clone();
       population.deme[i].ab_fitness = fit_up.ab_fitness.clone();

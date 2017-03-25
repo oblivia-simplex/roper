@@ -203,6 +203,7 @@ pub struct Chain {
   pub generation: u32,
   pub verbose_tag: bool,
   pub crashes: Option<bool>,
+  pub season: usize,
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
@@ -223,7 +224,8 @@ impl Display for Chain {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();
     s.push_str("==================================================\n");
-    s.push_str(&format!("Relative Fitness: {:?}\n", self.fitness));
+    s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", 
+                        self.fitness, self.season));
     s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
     s.push_str(&format!("Generation: {}\n", self.generation));
     s.push_str(&format!("Link ages: {:?}\n", 
@@ -274,6 +276,7 @@ impl Default for Chain {
       fitness: None,
       ab_fitness: None,
       generation: 0,
+      season: 0,
       verbose_tag: false,
       crashes: None,
       i: 0,
@@ -385,6 +388,7 @@ pub struct Population  {
   pub deme: Vec<Chain>,
   pub best: Option<Chain>,
   pub iteration: usize,
+  pub season: usize,
   pub params: Params,
   pub primordial_ooze: Vec<Clump>,
 }
@@ -433,6 +437,7 @@ impl Population {
       deme: deme,
       best: None,
       iteration: 0,
+      season: 0,
       params: (*params).clone(),
       primordial_ooze: clumps,
     }
@@ -487,17 +492,19 @@ impl Population {
         .min_by_key(|&x| (x * 100000.0) as usize)
         .unwrap()
   }
-  pub fn min_fit (&self) -> f32 {
+  pub fn min_fit (&self, season: usize) -> f32 {
     self.deme
         .iter()
-        .filter(|ref c| c.fitness != None)
+        .filter(|ref c| c.fitness != None
+                && c.season == season)
         .map(|ref c| c.fitness.clone().unwrap())
         .min_by_key(|&x| (x * 100000.0) as usize)
         .unwrap()
   }
-  pub fn avg_fit (&self) -> f32 {
+  pub fn avg_fit (&self, season: usize) -> f32 {
     let cand = self.deme.iter()
-                   .filter(|ref c| c.fitness != None)
+                   .filter(|ref c| c.fitness != None 
+                           && c.season == season)
                    .count();
     self.deme
         .iter()
@@ -570,16 +577,18 @@ impl Population {
       return;
     }
     let row = if self.iteration == 1 {
-      format!("{}\nITERATION,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
+      format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
               self.params)
     } else { "".to_string() };
-    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+    let season = self.season;
+    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
                       row,
                       self.iteration.clone(),
+                      season,
                       self.avg_gen(),
-                      self.avg_fit(),
+                      self.avg_fit(season),
                       self.avg_abfit(),
-                      self.min_fit(),
+                      self.min_fit(season),
                       self.min_abfit(),
                       self.crash_rate(),
                       best.generation,
@@ -1082,7 +1091,7 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   saturate_clump(&mut cl, &mut twos);
   let vanilla = Chain::new(vec![cl]);
   let res = hatch_chain(uc, &vanilla.packed, &input, &inregs);
-  println!("\n{}",res);
+  //println!("\n{}",res);
   let mut differ = 0;
   for r in res.registers[..12].to_vec() {
     if r != 2 {

@@ -16,19 +16,20 @@ ERRORFILE=${LOGDIR}/roper_`date +%H-%M-%S`.err
 mkdir -p $PROJECT_ROOT/logs
 gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
 ITERATION=1
-AVG_GEN=2
-AVG_FIT=3
-AVG_ABFIT=4
-MIN_FIT=5
-MIN_ABFIT=6
-AVG_CRASH=7
-BEST_GEN=8
-BEST_FIT=9
-BEST_ABFIT=10
-BEST_CRASH=11
-AVG_LEN=12
-BEST_LEN=13
-UNSEEN=14
+SEASON=2
+AVG_GEN=3
+AVG_FIT=4
+AVG_ABFIT=5
+MIN_FIT=6
+MIN_ABFIT=7
+AVG_CRASH=8
+BEST_GEN=9
+BEST_FIT=10
+BEST_ABFIT=11
+BEST_CRASH=12
+AVG_LEN=13
+BEST_LEN=14
+UNSEEN=15
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -52,9 +53,9 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                -t 5 \
+                                -t 4 \
                                 -P 2048 \
-                                -D 2 \
+                                -D 4 \
                                 -m 0.0 \
                                 -V \
                                 $LABEL
@@ -105,15 +106,16 @@ set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${AVG_ABFIT} w lines, \
   "" u ${X0}:${AVG_CRASH} w lines, \
-  "" u ${X0}:${MIN_FIT}   w lines,\
-  "" u ${X0}:${BEST_FIT} w lines, \
+  "" u ${X0}:${MIN_FIT}   w lines, \
+  "" u ${X0}:${BEST_FIT} w lines,  \
   "" u ${X0}:${MIN_ABFIT} w lines, \
   "" u ${X0}:${BEST_ABFIT} w lines, \
   "" u ${X0}:${UNSEEN} w lines
 plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
   "" u ${X1}:${AVG_LEN} w lines, \
   "" u ${X1}:${BEST_GEN} w lines, \
-  "" u ${X1}:${BEST_LEN} w lines
+  "" u ${X1}:${BEST_LEN} w lines, \
+  "" u ${X1}:${SEASON} w lines
 pause 1 
 unset multiplot
 reread
