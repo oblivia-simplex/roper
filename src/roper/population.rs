@@ -182,7 +182,7 @@ fn eval_case (uc: &mut CpuARM,
 fn adj_score_for_difficulty (score: f32, 
                              popsize: usize,
                              difficulty: f32) -> f32 {
-  score / (popsize as f32 / difficulty)
+  f32::max(0.0, score - (difficulty / popsize as f32))
 }
 
 pub const VARIABLE_FITNESS : bool = true;

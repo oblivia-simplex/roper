@@ -331,6 +331,9 @@ fn main() {
       let min_abfit = pop_local.read()
                                .unwrap()
                                .min_abfit();
+      let stddev_abfit = pop_local.read()
+                                  .unwrap()
+                                  .stddev_abfit();
       let champ = champion.clone().unwrap();
       let dprof = pop_local.read()
                            .unwrap()
@@ -348,8 +351,12 @@ fn main() {
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
       println!("[+] SEASONS ELAPSED: {}", season);
-      println!("[+] STANDARD DEVIATION OF DIFFICULTY: {:?}",  
-               standard_deviation(&dprof));
+      println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
+               standard_deviation(&(dprof.iter()
+                                         .map(|x| x / popsize as f32)
+                                         .collect::<Vec<f32>>())));
+      println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
+               
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params

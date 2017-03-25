@@ -515,7 +515,7 @@ impl Population {
         .sum::<f32>() / 
           cand as f32
   }
-  pub fn std_dev_abfit (&self) -> f32 {
+  pub fn stddev_abfit (&self) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.ab_fitness != None)
                    .map(|ref c| c.ab_fitness.clone().unwrap())
