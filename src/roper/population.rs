@@ -335,12 +335,6 @@ pub struct TournementResult {
 }
 unsafe impl Send for TournementResult {}
 
-pub fn set_init_difficulties (params: &mut Params) {
-  let mut io_targets = &mut params.io_targets;
-  for &mut (ref mut problem, _) in io_targets.iter_mut() {
-    problem.difficulty = 1.0;
-  }
-}
 
 pub fn patch_io_targets (tr: &TournementResult,
                          params: &mut Params,
@@ -420,6 +414,7 @@ pub fn tournament (population: &Population,
                    vdeme: usize)
                   -> TournementResult 
 {
+  let season = population.season;
   let mut lots : Vec<usize> = Vec::new();
   let mut contestants : Vec<(Chain,usize)> = Vec::new();
   let mut uc = engine.unwrap_mut(); //(machinery.cluster[0].unwrap_mut()); // bandaid
@@ -460,7 +455,7 @@ pub fn tournament (population: &Population,
   let mut difficulty_update = HashMap::new();
   for &(ref specimen,_) in specimens.iter() 
   {
-    if specimen.fitness == None || VARIABLE_FITNESS {
+    if specimen.fitness == None || specimen.season != season {
       let res = evaluate_fitness(&mut uc, 
                                  &specimen,
                                  &population.params,

@@ -464,10 +464,11 @@ impl Population {
         .sum::<f32>() / 
           self.params.population_size as f32
   }
-  pub fn proportion_unseen (&self) -> f32 {
+  pub fn proportion_unseen (&self, season: usize) -> f32 {
     self.deme
         .iter()
-        .filter(|ref c| c.fitness == None)
+        .filter(|ref c| c.fitness == None
+                && (season as isize - c.season as isize).abs() <= 1)
         .count() as f32 / 
           self.params.population_size as f32
   }
@@ -508,7 +509,8 @@ impl Population {
                    .count();
     self.deme
         .iter()
-        .filter(|ref c| c.fitness != None)
+        .filter(|ref c| c.fitness != None
+                && (c.season as isize - season as isize).abs() <= 1)
         .map(|ref c| c.fitness.clone().unwrap())
         .sum::<f32>() / 
           cand as f32
@@ -597,7 +599,7 @@ impl Population {
                       if best.crashes == Some(true) { 1 } else { 0 },
                       self.avg_len(),
                       best.size(),
-                      self.proportion_unseen());
+                      self.proportion_unseen(season));
     let mut csv_file = OpenOptions::new()
                                    .append(true)
                                    .create(true)
@@ -642,6 +644,7 @@ pub struct Params {
   pub training_ht      : HashMap<Vec<i32>,usize>,
   pub fit_goal         : f32,
   pub fitness_sharing  : bool,
+  pub season_length    : usize,
 /*  pub ro_data_data     : Vec<u8>,
   pub ro_data_addr     : u32,
   pub text_data        : Vec<u8>,
@@ -690,6 +693,7 @@ impl Default for Params {
       test_targets:     IoTargets::new(TargetKind::PatternMatch),
       fit_goal:         0.1,  
       fitness_sharing:  true,
+      season_length:    512,
       constants:        Vec::new(),
       cuck_rate:        0.15,
       verbose:          false,
@@ -767,6 +771,17 @@ impl Params {
   pub fn new () -> Params {
     Default::default()
   }
+  pub fn set_season_length (&mut self, factor: usize) {
+    self.season_length = self.population_size /
+      (self.t_size * self.threads * factor); 
+  }
+  pub fn set_init_difficulties (&mut self, val: f32) {
+    let mut io_targets = &mut self.io_targets;
+    for &mut (ref mut problem, _) in io_targets.iter_mut() {
+      problem.difficulty = val;
+    }
+  }
+
   pub fn set_log_dir (&mut self, dir: &str) {
     let ddir = format!("{}/{}",dir, self.date_dir);
     let d = DirBuilder::new()
