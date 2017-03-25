@@ -269,6 +269,9 @@ fn main() {
   let pop_local = pop_arc.clone();
   let mut i = 0; 
   let mut crash_rate : f32 = 0.5;
+  /***************************
+   * The Main Evolution Loop *
+   ***************************/
   while i < max_iterations
     && (champion == None 
         || champion.as_ref().unwrap().crashes == Some(true)
@@ -371,7 +374,7 @@ fn main() {
     i += 1;
   } // END OF MAIN LOOP
   println!("=> {} ITERATIONS", pop_local.read().unwrap().iteration);
-  println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_fit());
+  println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_abfit());
   println!("=> RUNNING BEST:\n");
   if champion == None {
     panic!("Champion is none!");

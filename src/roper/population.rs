@@ -394,7 +394,7 @@ pub fn patch_population (tr: &TournementResult,
   println!("{}",tr.display);
   if population.best == None 
     || (tr.best.crashes == Some(false)
-        && tr.best.ab_fitness < population.best_fit()) {
+        && tr.best.ab_fitness < population.best_abfit()) {
     population.best = Some(tr.best.clone());
     population.log();
     Some(tr.best.clone())
@@ -507,10 +507,10 @@ pub fn tournament (population: &Population,
 
   specimens.sort();
   /* bit of ab_fit elitism now */
-  let min_abfit = population.min_abfit();
+  let best_abfit = population.best_abfit().unwrap_or(0.0);
   if let Some(i) = specimens[1..].iter()
                             .position(|x| x.0.ab_fitness
-                                           .unwrap() == min_abfit) {
+                                           .unwrap() <= best_abfit) {
     let tmp = specimens[0].clone();
     specimens[0] = specimens[i].clone();
     specimens[i] = tmp;

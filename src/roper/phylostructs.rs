@@ -545,7 +545,7 @@ impl Population {
   pub fn size (&self) -> usize {
     self.deme.len()
   }
-  pub fn best_fit (&self) -> Option<f32> {
+  pub fn best_abfit (&self) -> Option<f32> {
     match self.best {
       Some(ref x) => x.ab_fitness,
       _           => None,
