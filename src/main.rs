@@ -240,7 +240,6 @@ fn main() {
   // pass these addresses to the mangler in population building
   //println!("params: {:?}",params); 
   println!("PARAMETERS:\n{}", params);
-  let rng = rand::thread_rng();
 
   let mut machinery : Machinery
     = Machinery::new(&elf_path,

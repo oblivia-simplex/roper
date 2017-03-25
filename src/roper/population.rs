@@ -352,24 +352,19 @@ pub fn update_difficulties (params: &mut Params,
                             iteration: usize) -> usize {
 
   let mut io_targets = &mut params.io_targets;
-  let reset_freq = params.population_size /
-                   (params.t_size * params.threads * 4);
+  let reset_freq = params.season_length;
   let reset = iteration > params.threads
     && (iteration/params.threads) % reset_freq == 0;
-  // The last bit is important! The iteration counter increments by
-  // the number of threads!
-  let mut s = 0;
   if reset {
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
-    s = 1;
+    for &mut (ref mut problem, _) in io_targets.iter_mut() {
+        problem.difficulty    = problem.predifficulty;
+        problem.predifficulty = DEFAULT_DIFFICULTY;
+    }
+    1
+  } else {
+    0
   }
-  for &mut (ref mut problem, _) in io_targets.iter_mut() {
-    if reset {
-      problem.difficulty    = problem.predifficulty;
-      problem.predifficulty = DEFAULT_DIFFICULTY;
-    };
-  }
-  s
 }
 
 
