@@ -480,7 +480,7 @@ impl Population {
     self.deme
         .iter()
         .filter(|ref c| c.crashes != None)
-        .map(|ref c| if c.crashes.clone().unwrap() {1.0} else {0.0})
+        .map(|ref c| if c.crashes.clone().unwrap_or(false) {1.0} else {0.0})
         .sum::<f32>() /
           cand as f32
   }
@@ -488,23 +488,23 @@ impl Population {
     self.deme
         .iter()
         .filter(|ref c| c.ab_fitness != None)
-        .map(|ref c| c.ab_fitness.clone().unwrap())
+        .map(|ref c| c.ab_fitness.clone().unwrap_or(1.0))
         .min_by_key(|&x| (x * 100000.0) as usize)
-        .unwrap()
+        .unwrap_or(1.0)
   }
   pub fn min_fit (&self, season: usize) -> f32 {
     self.deme
         .iter()
         .filter(|ref c| c.fitness != None
-                && c.season == season)
-        .map(|ref c| c.fitness.clone().unwrap())
+                && (c.season as isize - season as isize).abs() <= 1)
+        .map(|ref c| c.fitness.clone().unwrap_or(1.0))
         .min_by_key(|&x| (x * 100000.0) as usize)
-        .unwrap()
+        .unwrap_or(1.0)
   }
   pub fn avg_fit (&self, season: usize) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.fitness != None 
-                           && c.season == season)
+                           && (c.season as isize - season as isize).abs() <= 1)
                    .count();
     self.deme
         .iter()
