@@ -23,6 +23,7 @@ use std::cmp::Ordering;
 use unicorn::*;
 // use std::io;
 //use roper::dis::{disas_sec,Inst};
+use roper::statistics::*;
 use roper::thumb::*;
 use roper::util::*;
 use roper::population::*;
@@ -292,19 +293,21 @@ fn main() {
       trs.sort_by(|a,b| b.best.ab_fitness
                          .partial_cmp(&a.best.ab_fitness)
                          .unwrap_or(Ordering::Equal));
-      for tr in trs {
+      { // block to enclose write lock
         let mut mut_pop = &mut pop_local.write().unwrap();
         let iteration = mut_pop.iteration.clone();
-        if mut_pop.params.fitness_sharing {
-          d_updates += patch_io_targets(&tr, &mut mut_pop.params, iteration);
-        };
-        let updated = patch_population(&tr, mut_pop);
-        if updated != None {
-          champion = updated.clone();
+        for tr in trs {
+          if mut_pop.params.fitness_sharing {
+            patch_io_targets(&tr, &mut mut_pop.params, iteration);
+          };
+          let updated = patch_population(&tr, mut_pop);
+          if updated != None {
+            champion = updated.clone();
+          }
+          mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }
-        mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
+        d_updates = update_difficulties(&mut mut_pop.params, iteration);
       }
-  
       pop_local.read().unwrap().periodic_save();
 
       let avg_pop_gen = pop_local.read()
@@ -326,6 +329,11 @@ fn main() {
                                .unwrap()
                                .min_abfit();
       let champ = champion.clone().unwrap();
+      let dprof = pop_local.read()
+                           .unwrap()
+                           .params
+                           .io_targets
+                           .difficulty_profile();
       print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
       println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
       print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
@@ -337,13 +345,15 @@ fn main() {
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
       println!("[+] SEASONS ELAPSED: {}", d_updates);
+      println!("[+] STANDARD DEVIATION OF DIFFICULTY: {:?}",  
+               standard_deviation(&dprof));
       println!("[Logging to {}]", pop_local.read()
                                            .unwrap()
                                            .params
                                            .csv_path);
     }); // END POOL SCOPE
     i += 1;
-  }
+  } // END OF MAIN LOOP
   println!("=> {} ITERATIONS", pop_local.read().unwrap().iteration);
   println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_fit());
   println!("=> RUNNING BEST:\n");

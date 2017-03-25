@@ -10,8 +10,10 @@ pub mod arm;
 pub mod evolution;
 pub mod ontostructs;
 pub mod csv_reader;
+pub mod statistics;
 //pub mod dis;
 
+pub use self::statistics::*;
 pub use self::ontostructs::*;
 pub use self::evolution::*;
 pub use self::util::*;

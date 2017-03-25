@@ -18,6 +18,7 @@ use unicorn::*;
  
 use std::cmp::*;
 
+use roper::statistics::*;
 use roper::phylostructs::*;
 use roper::hatchery::*;
 use roper::util::{pack_word32le,
@@ -118,6 +119,7 @@ pub fn mate (parents: &Vec<&Chain>,
 pub struct EvalResult {
   pub fitness : f32,
   pub ab_fitness : f32,
+  pub score   : f32,
   pub counter : usize,
   pub crashes : bool,
   pub difficulties : Option<HashMap<Vec<i32>, f32>>,
@@ -161,26 +163,25 @@ fn eval_case (uc: &mut CpuARM,
         println!("==> Target: {}, Result: {}\t[{}]", t, b, t == b);
       };
       if t == b {
-        0.0 
+        1.0 
       } else {
-        1.0
-      }
+        0.0
+      } // REVERSE THJE POLARITY!
     },
   };// + if final_pc == 0 { 0.0 } else { 0.1 };
   EvalResult {
-    fitness: d,
-    ab_fitness: d,
+    score: d,
+    fitness: 0.0,
+    ab_fitness: 0.0,
     counter: counter,
     crashes: crash,
     difficulties: None,
   }
 }
 
-fn adj_fit_for_difficulty (score: f32, 
-                          difficulty: f32) -> f32 {
-  assert!(difficulty >= DEFAULT_DIFFICULTY);
-  assert!(score <= 1.0);
-  1.0 - (score / difficulty)
+fn adj_score_for_difficulty (score: f32, 
+                             difficulty: f32) -> f32 {
+  score / difficulty
 }
 
 pub const VARIABLE_FITNESS : bool = true;
@@ -190,13 +191,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                          batch: Batch,
                          sample_ratio: f32,
                          verbose: bool)
-  // refactor return type for this and eval_case. might as well
-  // use the same kind of struct. (EvalResult). 
                          -> EvalResult //(f32,Option<usize>)
 {
-//  if !VARIABLE_FITNESS && chain.fitness != None {
-//    return chain.fitness;
-//  }
   /* Empty chains can be discarded immediately */
   if chain.size() == 0 {
     panic!("EMPTY CHAIN IN evaluate_fitness");
@@ -232,7 +228,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   
   let mut fit_vec : Vec<f32> = Vec::new();
   let mut abfit_vec : Vec<f32> = Vec::new();
-  //let mut crashes = 0;
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
@@ -248,38 +243,38 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &outregs,
                         verbose);
     difficulties.insert(problem.input.clone(), 
-                        1.0 - res.ab_fitness);
-    let ft = if params.fitness_sharing {
-      adj_fit_for_difficulty(res.ab_fitness,
-                             problem.difficulty)
+                        res.score);
+    let score = if params.fitness_sharing {
+      adj_score_for_difficulty(res.score,
+                               problem.difficulty)
     } else {
-      res.ab_fitness
+      res.score
     };
     let counter = min(res.counter, chain.size()-1);
     let ratio_run = f32::min(1.0, counter as f32 / 
                              chain.size() as f32);
-    let crash_adjusted_ft = if res.crashes {
-      adj_fit_for_crash(ft,
-                        ratio_run,
-                        params)
+    let crash_adjusted = if res.crashes {
+      adj_score_for_crash(score,
+                          ratio_run,
+                          params)
     } else {
-      f32::min(1.0, ft)
+      score
     };
-    let crash = res.crashes; 
     counter_sum += counter;
-    anycrash = anycrash || crash;
-    fit_vec.push((crash_adjusted_ft + res.ab_fitness) / 2.0);
-    abfit_vec.push(res.ab_fitness);
+    anycrash = anycrash || res.crashes;
+    fit_vec.push(1.0 - crash_adjusted);
+    abfit_vec.push(1.0 - res.score);
   };
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
-  let fitness = f32::min(1.0, (fit_vec.iter().map(|&x| x).sum::<f32>()
-                               / fit_vec.len() as f32) as f32);
-  let ab_fitness = f32::min(1.0, (abfit_vec.iter().map(|&x| x).sum::<f32>() 
-                                  / abfit_vec.len() as f32) as f32);
+  let fitness    = mean(&fit_vec);
+  let ab_fitness = mean(&abfit_vec);
+  assert!(fitness <= 1.0);
+  assert!(ab_fitness <= 1.0);
   
   EvalResult {
+    score        : 0.0,
     fitness      : fitness,
     ab_fitness   : ab_fitness,
     counter      : counter_sum / io_targets.len(),
@@ -340,30 +335,28 @@ pub struct TournementResult {
 }
 unsafe impl Send for TournementResult {}
 
-fn update_difficulty (d_vec: &Vec<f32>,
-                      p_size: usize,
-                      t_size: usize,
-                      p_diff: f32) -> f32
-{
-  let p_size : f32 = p_size as f32;
-  let t_size : f32 = t_size as f32;
-  let n : f32 = p_size / t_size;
-  let a : f32 = d_vec.iter().sum::<f32>() / d_vec.len() as f32;
-  (p_diff - (p_diff / n)) + (a / n)
-}
-
 pub fn set_init_difficulties (params: &mut Params) {
   let mut io_targets = &mut params.io_targets;
   for &mut (ref mut problem, _) in io_targets.iter_mut() {
-    problem.difficulty = params.population_size as f32 /
-                         params.outregs.len() as f32;
+    problem.difficulty = 1.0;
   }
 }
 
 pub fn patch_io_targets (tr: &TournementResult,
                          params: &mut Params,
-                         iteration: usize) -> usize
+                         iteration: usize) 
 {
+  let mut io_targets = &mut params.io_targets;
+  for &mut (ref mut problem, _) in io_targets.iter_mut() {
+    if let Some(d_vec) = tr.difficulty_update.get(&problem.input) {
+      problem.predifficulty += d_vec.iter().sum::<f32>();
+    };
+  }
+}
+
+pub fn update_difficulties (params: &mut Params,
+                            iteration: usize) -> usize {
+
   let mut io_targets = &mut params.io_targets;
   let reset_freq = params.population_size /
                    (params.t_size * params.threads * 4);
@@ -380,10 +373,6 @@ pub fn patch_io_targets (tr: &TournementResult,
     if reset {
       problem.difficulty    = problem.predifficulty;
       problem.predifficulty = DEFAULT_DIFFICULTY;
-    };
-    //let p_diff : f32 = problem.difficulty.clone();
-    if let Some(d_vec) = tr.difficulty_update.get(&problem.input) {
-      problem.predifficulty += d_vec.iter().sum::<f32>();
     };
   }
   s
@@ -775,13 +764,13 @@ pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
   crash_rate / 2.0
 }
 
-pub fn adj_fit_for_crash(fitness: f32,
-                         ratio_run: f32,
-                         params: &Params) -> f32 {
+pub fn adj_score_for_crash(score: f32,
+                           ratio_run: f32,
+                           params: &Params) -> f32 {
   if params.fatal_crash {
-    1.0
+    0.0
   } else {
-    f32::min(1.0,fitness*(1.0+params.crash_penalty+(1.0-ratio_run)))
+    score * params.crash_penalty * ratio_run
   }
 }
                   

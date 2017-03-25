@@ -766,7 +766,7 @@ impl Params {
                       .unwrap();
     self.csv_path = format!("{}/{}", dir, self.csv_path);
     self.pop_path = format!("{}/{}", dir, self.pop_path); 
-  }
+  } 
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -861,6 +861,11 @@ impl IoTargets {
     let mut c = self.v.clone();
     thread_rng().shuffle(&mut c);
     IoTargets{v:c, k: self.k}
+  }
+  pub fn difficulty_profile (&self) -> Vec<f32> {
+    self.iter()
+        .map(|x| x.0.difficulty)
+        .collect()
   }
   // this might be confusing later.
   pub fn push (&mut self, t: (Problem,Target)) {
