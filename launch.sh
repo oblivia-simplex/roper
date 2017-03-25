@@ -116,7 +116,7 @@ plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
   "" u ${X1}:${BEST_GEN} w lines, \
   "" u ${X1}:${BEST_LEN} w lines, \
   "" u ${X1}:${SEASON} w lines
-pause 1 
+pause 2 
 unset multiplot
 reread
 EOF
