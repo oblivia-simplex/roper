@@ -194,7 +194,7 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt8.tfm
 INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmtt10.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmbx5.tfm
+INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmbx6.tfm
 INPUT examples/shellpattern/shellpattern.png
 INPUT ./examples/shellpattern/shellpattern.png
 INPUT ./examples/shellpattern/shellpattern.png
@@ -235,7 +235,6 @@ INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss9.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi9.pfb
-INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb
 INPUT /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb
