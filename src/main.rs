@@ -397,12 +397,15 @@ fn main() {
   if champion == None {
     panic!("Champion is none!");
   }
-  evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
+  let testing_res =
+    evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                    &mut champion.unwrap(),
                    &pop_local.read().unwrap().params,
                    Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
                    1.0,
                    true);
   println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
-  
+  println!("[*] Absolute fitness of champion on testing run: {:1.6}",
+           testing_res.ab_fitness);
+  println!("[*] Crash on testing run: {}", testing_res.crashes);
 }

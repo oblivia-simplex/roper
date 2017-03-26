@@ -1,0 +1,57 @@
+from roper_14-27-08.out
+
+16 ==> Target: 0, Result: 0     [true]
+14 ==> Target: 1, Result: 1     [true]
+20 ==> Target: 2, Result: 2     [false]
+
+This same specimen achieved 94% accuracy on the training set.
+The total dataset contained 50 of each class. This means that
+the training set had
+
+50-16 = 34 of class 0
+50-14 = 36 of class 1
+50-20 = 30 of class 2
+
+Not terribly unbalanced. If it performed the way in training
+the way it did in testing, it would have only achieved 70% 
+accuracy, not 94%. 
+
+This appears, therefore, to be a dramatic case of overfitting.
+
+Let's repeat the experiment with a strictly balanced dataset 
+and see if this happens again.
+
+====
+
+roper_15-17-17.csv illustrates an extremely odd situation: not
+only is crashing tolerated, but appears to be correlated with an
+extremely dominant genotype. By iteration 15715, the crash rate
+has reached 100%! 
+
+The crash penalty formula used in this run was
+
+if crash then:
+  fitness := fitness + min(1.0, (fitness * (2.0 - ratio_run))))
+
+ratio_run, in turn, is defined as
+  min(1.0, counter / size(chain))
+
+where counter is implemented as a memory region in the emulator
+that stores an integer, which is incremented every time a return
+address from the chain is reached.
+
+this counter, note, is vulnerable to corruption. 
+
+if counter == size(chain), then ratio_run == 1, and there is no
+real crash penalty to speak of. 
+
+fix: force the crash penalty to be positive in all cases. e.g.
+
+min(1.0, fitness * (1.0 + min(0.1, (1.0 - ratio_run))))
+
+this way, the crash penalty will always be at least a factor of
+1.1, unless the fitness is already abysmal. 
+
+The additive component of 0.1, here, can of course be raised.
+(Consider raising it to 0.2.)
+

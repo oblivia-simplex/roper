@@ -369,6 +369,7 @@ pub fn patch_population (tr: &TournementResult,
   for i in 0..tr.graves.len() {
   //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
+    population.deme[tr.graves[i]].season = season;
   }
   for &(i, ref fit_up) in tr.fit_updates.iter() {
     if fit_up.fitness != None {
