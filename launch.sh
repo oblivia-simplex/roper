@@ -57,8 +57,8 @@ function run () {
                                 -g $GOAL \
                                 -t 4 \
                                 -P 2048 \
-                                -D 4 \
-                                -m 0.0 \
+                                -D 1 \
+                                -m 0.05 \
                                 -V \
                                 $LABEL
 }
