@@ -893,7 +893,7 @@ impl Problem {
     match &self.target {
       &Target::Exact(ref rp) => {
         // here we can try some sort of fitness sharing thing
-        let r = f32::max(0.0, 1.0 - rp.distance(&output));
+        let r = f32::max(0.0, rp.distance(&output));
         (r,r)
       },
       &Target::Vote(ref cls) => {
@@ -1037,6 +1037,9 @@ impl IoTargets {
       .map(|&p| p.1)
       .collect::<Vec<f32>>()
   }
+  // Note; these are not efficiently written, just lazily written. 
+  // They're meant to be used sparingly, for the sake of 
+  // readable output for curious humans, when running verbosely.
   pub fn class_mean_difficulties (&self) -> Vec<(usize, f32)> {
     let mut res = Vec::new();
     for i in 0..self.num_classes {

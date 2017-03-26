@@ -242,7 +242,7 @@ fn main() {
   println!("[*] Season length set to {}", params.calc_season_length());
   params.set_init_difficulties();
 
-  params.io_targets.num_classes = params.outregs.len();
+  //params.io_targets.num_classes = params.outregs.len();
   // add string search function
   // find string addresses in rodata
   // pass these addresses to the mangler in population building
@@ -400,7 +400,7 @@ fn main() {
   evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
                    &mut champion.unwrap(),
                    &pop_local.read().unwrap().params,
-                   Batch::TESTING,
+                   Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
                    1.0,
                    true);
   println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
