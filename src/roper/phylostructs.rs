@@ -7,6 +7,7 @@ extern crate rustc_serialize;
 use self::chrono::prelude::*;
 use self::chrono::offset::LocalResult;
 use std::collections::BTreeMap;
+use std::hash::*;
 use std::iter::repeat;
 use self::rustc_serialize::json::{self, Json, ToJson};
 use rand::*;
@@ -786,15 +787,13 @@ impl Params {
         (self.t_size * self.threads * self.season_divisor)
     }
   }
-
   pub fn set_season_divisor (&mut self, divisor: usize) {
     self.season_divisor = divisor;
   }
   pub fn set_init_difficulties (&mut self) {
     let mut io_targets = &mut self.io_targets;
     for ref mut problem in io_targets.iter_mut() {
-      problem.set_difficulty(self.population_size as f32 /
-                             self.outregs.len() as f32);
+      problem.set_difficulty(1.0 - 1.0 / self.outregs.len() as f32);
       problem.set_pfactor(self.population_size);
     }
   }
@@ -849,6 +848,7 @@ pub enum TargetKind {
 pub struct IoTargets {
   v: Vec<Problem>,
   k: TargetKind, 
+  pub num_classes: usize,
 }
 
 pub fn mk_class(c: usize) -> Target {
@@ -866,6 +866,12 @@ pub struct Problem {
   pfactor: f32,
   pub target: Target,
 }
+impl Hash for Problem {
+  fn hash <H: Hasher> (&self, state: &mut H) {
+    self.input.hash(state);
+    self.target.hash(state);
+  }
+}
 impl Problem {
   pub fn new (input: Vec<i32>, target: Target) -> Problem {
     Problem { 
@@ -876,6 +882,12 @@ impl Problem {
       target: target,
     }
   }
+  fn adj_cls_score_for_difficulty (&self, score: f32) -> f32 {
+    // here, the lower the score, the better. 
+    // difficulty is a float <= 1.0, and the lower the harder.
+    f32::max(0.0, score * self.difficulty()) 
+  }
+
   pub fn assess_output (&self,
                         output: &Vec<u64>) -> (f32,f32) {
     match &self.target {
@@ -887,11 +899,11 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          1.0
+          0.0
         } else {
-          0.0 
+          1.0 
         };
-        (r,r)
+        (r, self.adj_cls_score_for_difficulty(r))
       }
     }
   }
@@ -904,9 +916,12 @@ impl Problem {
       Target::Vote(_)  => TargetKind::Classification,
     }
   }
-  pub fn rotate_difficulty(&mut self, factor: f32) {
+  pub fn rotate_difficulty(&mut self, divisor: f32) {
     let pd = self.predifficulty();
-    self.set_difficulty(pd * factor);
+    // pd: how many times this problem has been solved correctly
+    // divisor: how many attempts have been made on it
+    // so, the higher, the easier.
+    self.set_difficulty(pd / divisor);
     self.set_predifficulty(DEFAULT_DIFFICULTY);
   }
   pub fn difficulty (&self) -> f32 {
@@ -936,8 +951,13 @@ impl Eq for Problem {}
 #[derive(Debug,Clone)]
 pub struct Classification {
   pub class: usize,
-  pub difficulty: f32,
-  pub predifficulty: f32,
+  difficulty: f32,
+  predifficulty: f32,
+}
+impl Hash for Classification {
+  fn hash <H: Hasher> (&self, state: &mut H) {
+    self.class.hash(state);
+  }
 }
 
 impl PartialEq for Classification {
@@ -985,12 +1005,51 @@ impl IoTargets {
   pub fn shuffle (&self) -> IoTargets {
     let mut c = self.v.clone();
     thread_rng().shuffle(&mut c);
-    IoTargets{v:c, k: self.k}
+    IoTargets{v:c, k: self.k, num_classes: self.num_classes}
   }
   pub fn difficulty_profile (&self) -> Vec<f32> {
     self.iter()
         .map(|x| x.difficulty())
         .collect()
+  }
+  pub fn class_difficulties (&self) -> Vec<(usize,f32)> {
+    self.v.iter()
+          .filter(|x| x.kind() == TargetKind::Classification)
+          .map(|p| (p.target.classifier().class, p.difficulty()))
+          .collect::<Vec<(usize,f32)>>()
+  }
+  /*pub fn count_classes (&mut self) -> usize {
+    let mut cd = self.class_difficulties()
+                 .iter()
+                 .map(|&p| p.0)
+                 .collect::<Vec<usize>>() ; // being lazy
+    println!("cd before: {:?}",cd);
+    let cd = cd.dedup();
+    println!("cd after: {:?}",cd);
+    self.num_classes = cd.len();
+    self.num_classes
+  }
+  */
+  pub fn difficulties_by_class (&self, i: usize) -> Vec<f32> {
+    let cd = self.class_difficulties();
+    cd.iter()
+      .filter(|&p| p.0 == i)
+      .map(|&p| p.1)
+      .collect::<Vec<f32>>()
+  }
+  pub fn class_mean_difficulties (&self) -> Vec<(usize, f32)> {
+    let mut res = Vec::new();
+    for i in 0..self.num_classes {
+      res.push((i, mean(&self.difficulties_by_class(i))));
+    }
+    res
+  }
+  pub fn class_stddev_difficulties (&self) -> Vec<(usize, f32)> {
+    let mut res = Vec::new();
+    for i in 0..self.num_classes {
+      res.push((i, standard_deviation(&self.difficulties_by_class(i))));
+    }
+    res
   }
   // this might be confusing later.
   pub fn push (&mut self, t: Problem) {
@@ -1001,7 +1060,10 @@ impl IoTargets {
       (self.clone(),self.clone())
     } else {
       let (a,b) = self.v.split_at(i);
-      (IoTargets::from_vec(self.k, a.to_vec()),IoTargets::from_vec(self.k, b.to_vec()))
+      let (mut at, mut bt) = (IoTargets::from_vec(self.k, a.to_vec()),IoTargets::from_vec(self.k, b.to_vec()));
+      at.num_classes = self.num_classes;
+      bt.num_classes = self.num_classes;
+      (at,bt)
     }
   }
   // We need a balanced splitting function
@@ -1047,15 +1109,18 @@ impl IoTargets {
           part_2.push(item);
         }
       }
-      (part_1.shuffle(), part_2.shuffle())
+      let (mut at, mut bt) = (part_1.shuffle(), part_2.shuffle());
+      at.num_classes = self.num_classes;
+      bt.num_classes = self.num_classes;
+      (at,bt)
     }
   }
  
   pub fn new (k: TargetKind) -> IoTargets {
-    IoTargets{v:Vec::new(), k:k}
+    IoTargets{v:Vec::new(), k:k, num_classes: 1}
   }
   pub fn from_vec (k: TargetKind, v: Vec<Problem>) -> IoTargets {
-    IoTargets{v:v, k:k}
+    IoTargets{v:v, k:k, num_classes: 1}
   }
   pub fn len (&self) -> usize {
     self.v.len()
@@ -1073,7 +1138,14 @@ pub enum Target {
   Exact(RPattern),
   Vote(Classification),
 }
-
+impl Hash for Target {
+  fn hash <H: Hasher> (&self, state: &mut H) {
+    match self {
+      &Target::Exact(ref r) => r.hash(state),
+      &Target::Vote(ref c) => c.hash(state),
+    }
+  }
+}
 impl Display for Target {
   fn fmt (&self, f: &mut Formatter) -> Result {
     match self {
@@ -1103,6 +1175,12 @@ impl Target {
       &Target::Vote(ref cls) => c == cls.class,
     }
   }
+  pub fn classifier (&self) -> &Classification {
+    match self {
+      &Target::Exact(_) => panic!("Not a Classification"),
+      &Target::Vote(ref cls) => cls,
+    }
+  }
 }
 
 
@@ -1110,6 +1188,11 @@ impl Target {
 pub struct RPattern { 
   regvals_diff: Vec<(usize,u64,f32)>,
   regvals_prediff: Vec<(usize,u64,f32)>,
+}
+impl Hash for RPattern {
+  fn hash <H: Hasher> (&self, state: &mut H) {
+    self.clean().hash(state)
+  }
 }
 impl PartialEq for RPattern {
   fn eq (&self, other: &Self) -> bool {

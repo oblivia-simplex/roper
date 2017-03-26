@@ -242,6 +242,7 @@ fn main() {
   println!("[*] Season length set to {}", params.calc_season_length());
   params.set_init_difficulties();
 
+  params.io_targets.num_classes = params.outregs.len();
   // add string search function
   // find string addresses in rodata
   // pass these addresses to the mangler in population building
@@ -365,6 +366,22 @@ fn main() {
                standard_deviation(&(dprof.iter()
                                          .map(|x| x / popsize as f32)
                                          .collect::<Vec<f32>>())));
+      println!("[+] MEAN DIFFICULTIES BY CLASS:");
+      for (c,d) in pop_local.read()
+                            .unwrap()
+                            .params
+                            .io_targets
+                            .class_mean_difficulties() {
+        println!("    {} -> {:1.6}", c, d);
+      }
+      println!("[+] STDDEV DIFFICULTIES BY CLASS:");
+      for (c,d) in pop_local.read()
+                            .unwrap()
+                            .params
+                            .io_targets
+                            .class_stddev_difficulties() {
+        println!("    {} -> {:1.6}", c, d);
+      }
       println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
                
       println!("[Logging to {}]", pop_local.read()

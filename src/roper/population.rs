@@ -119,10 +119,9 @@ fn mate (parents: &Vec<&Chain>,
 pub struct EvalResult {
   pub fitness : f32,
   pub ab_fitness : f32,
-  pub score   : f32,
   pub counter : usize,
   pub crashes : bool,
-  pub difficulties : Option<HashMap<Vec<i32>, f32>>,
+  pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
 fn eval_case (uc: &mut CpuARM,
@@ -155,23 +154,22 @@ fn eval_case (uc: &mut CpuARM,
   }
   let crash = result.error != None;
 //  let final_pc = result.registers[15];
-  let (d,_) = problem.assess_output(&output);
+  let (af,rf) = problem.assess_output(&output);
   EvalResult {
-    score: d,
-    fitness: 0.0,
-    ab_fitness: 0.0,
+    fitness: rf,
+    ab_fitness: af,
     counter: counter,
     crashes: crash,
     difficulties: None,
   }
 }
-
+/*
 fn adj_score_for_difficulty (score: f32, 
                              popsize: usize,
                              difficulty: f32) -> f32 {
   f32::max(0.0, score - (difficulty / popsize as f32))
 }
-
+*/
 pub const VARIABLE_FITNESS : bool = true;
 pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
@@ -221,37 +219,32 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   /* own instance of the emulator.                   */
   let mut counter_sum = 0;
   let mut anycrash = false;
-  let mut difficulties : HashMap<Vec<i32>,f32> = HashMap::new();
-  for ref problem in io_targets.iter() {
+  let mut difficulties : HashMap<Problem,f32> = HashMap::new();
+  for problem in io_targets.iter() {
     let res = eval_case(uc,
                         chain,
-                        &problem,
+                        problem,
                         &inregs,
                         &outregs,
                         verbose);
-    difficulties.insert(problem.input.clone(), 
-                        res.score);
-    let score = if params.fitness_sharing {
-      adj_score_for_difficulty(res.score,
-                               params.population_size,
-                               problem.difficulty())
-    } else {
-      res.score
-    };
+    let p = problem.clone();
+    difficulties.insert(p, res.ab_fitness);
+    /* crash tracking */ 
     let counter = min(res.counter, chain.size()-1);
     let ratio_run = f32::min(1.0, counter as f32 / 
                              chain.size() as f32);
+    counter_sum += counter;
+    anycrash = anycrash || res.crashes;
+    /* adjust score if there was a crash */
     let crash_adjusted = if res.crashes {
-      crash_override(score,
+      crash_override(res.fitness,
                      ratio_run,
                      params)
     } else {
-      score
+      res.fitness
     };
-    counter_sum += counter;
-    anycrash = anycrash || res.crashes;
-    fit_vec.push(1.0 - crash_adjusted);
-    abfit_vec.push(1.0 - res.score);
+    fit_vec.push(crash_adjusted);
+    abfit_vec.push(res.ab_fitness);
   };
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
@@ -262,7 +255,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
   
   EvalResult {
-    score        : 0.0,
     fitness      : fitness,
     ab_fitness   : ab_fitness,
     counter      : counter_sum / io_targets.len(),
@@ -319,7 +311,7 @@ pub struct TournementResult {
   pub best:   Chain,
   pub display: String,
   pub fit_updates: Vec<(usize,FitUpdate)>,
-  pub difficulty_update: HashMap <Vec<i32>, Vec<f32>>, // or avg f32
+  pub difficulty_update: HashMap <Problem, Vec<f32>>, // or avg f32
 }
 unsafe impl Send for TournementResult {}
 
@@ -330,9 +322,12 @@ pub fn patch_io_targets (tr: &TournementResult,
 {
   let mut io_targets = &mut params.io_targets;
   for ref mut problem in io_targets.iter_mut() {
-    if let Some(d_vec) = tr.difficulty_update.get(&problem.input) {
+    if let Some(d_vec) = tr.difficulty_update.get(&problem) {
+//      println!("(*) found problem {:?}", problem);
       problem.inc_predifficulty(d_vec); // += d_vec.iter().sum::<f32>();
-    };
+    } else {
+//      println!("(x) couldn't find problem {:?}", problem);
+    }
   }
 }
 
@@ -341,14 +336,21 @@ pub fn update_difficulties (params: &mut Params,
 //    self.season_length = self.population_size /
 //      (self.t_size * self.threads * factor); 
   let season_length = params.calc_season_length();
-  let sd = params.season_divisor as f32;
   let mut io_targets = &mut params.io_targets;
   let reset = iteration > params.threads
     && iteration % season_length == 0;
   if reset {
+    let divisor = (season_length * params.t_size) as f32
+                  * (1.0 - params.cuck_rate);
+    /*
+    let divisor = params.io_targets
+                        .iter()
+                        .map(|p| p.predifficulty())
+                        .sum::<f32>();
+                        */
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for ref mut problem in io_targets.iter_mut() {
-      problem.rotate_difficulty(sd);
+      problem.rotate_difficulty(divisor);
     }
     1
   } else {
@@ -491,7 +493,7 @@ pub fn tournament (population: &Population,
     }
 
   specimens.sort();
-  /* bit of ab_fit elitism now */
+  /* bit of ab_fit elitism now *
   let j = if cflag {1} else {2};
   let outr = population.params.outregs.len() as f32;
   let best_abfit = f32::min(1.0 / outr,
@@ -507,6 +509,7 @@ pub fn tournament (population: &Population,
     specimens[0] = specimens[i].clone();
     specimens[i] = tmp;
   }
+  */
   let (mother,m_idx) = specimens[0].clone();
   let (father,f_idx) = if cflag {
     // make this a separate method of population
@@ -764,9 +767,9 @@ fn crash_override(score: f32,
                       ratio_run: f32,
                       params: &Params) -> f32 {
   if params.fatal_crash {
-    0.0
+    1.0
   } else {
-    score * params.crash_penalty * ratio_run
+    (1.0 - (1.0 - score) * params.crash_penalty * ratio_run)
   }
 }
                   

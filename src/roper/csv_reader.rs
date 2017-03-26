@@ -43,6 +43,7 @@ pub fn process_data2 (path: &str,
 //                     Target::Vote(Classification::new(val))));
     //println!("Inserted {:?} -> {:?}", key, val);
   }
+  io_targets.num_classes = ids.len();
   io_targets
 }
 
