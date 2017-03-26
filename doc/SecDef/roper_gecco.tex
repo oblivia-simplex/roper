@@ -676,7 +676,8 @@ pointers are listed in the left-hand margin, with immediate
 values extending to the right. 
 
 \begin{table}
-\scriptsize
+  \hrule
+  {\scriptsize
 \begin{verbatim}
 000100fc 0002bc3e 0002bc3e 0002bc3e 
 00012780 0000000b 0000000b 0000000b 0000000b 0002bc3e 
@@ -711,6 +712,8 @@ values extending to the right.
 0000e0f8 0002bc3e 
 00013760 00000000 0000000b 0002bc3e 0002bc3e 0002bc3e 
 \end{verbatim}
+  }
+\hrule
 \caption{Contents of a successful payload: address pointers on
 the left-hand margin, literals extending to the right. Each row
 is a `clump'.}
@@ -921,7 +924,6 @@ from crashing. The result was a complete takeover of the
 population by dominant, crashing genotypes: a congenital plague of
 segfaults. The population was nevertheless able to achieve an 82\,\%
 detection rate against Iris. 
- 
 
 Modifying the crash penalty -- making it proportional to the
 prevalence of crashes in the population, a sort of segfault

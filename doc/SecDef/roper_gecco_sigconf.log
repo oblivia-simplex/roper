@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  26 MAR 2017 11:15
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  26 MAR 2017 12:10
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -772,13 +772,13 @@ ownloads / router /
 
 [6.6]
 LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <5> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 741.
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 744.
  <examples/shellpattern/shellpattern.png, id=206, 770.88pt x 385.44pt>
 File: examples/shellpattern/shellpattern.png Graphic file (type png)
 
 <use examples/shellpattern/shellpattern.png>
 Package pdftex.def Info: examples/shellpattern/shellpattern.png used on input l
-ine 814.
+ine 817.
 (pdftex.def)             Requested size: 241.14749pt x 120.57321pt.
 
 <examples/iris/good-nosharing/good-nosharing.png, id=211, 770.88pt x 385.44pt>
@@ -786,14 +786,14 @@ File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type png)
 
 <use examples/iris/good-nosharing/good-nosharing.png>
 Package pdftex.def Info: examples/iris/good-nosharing/good-nosharing.png used o
-n input line 886.
+n input line 889.
 (pdftex.def)             Requested size: 241.14749pt x 120.57321pt.
 
 <examples/iris/plague/plague.png, id=212, 770.88pt x 385.44pt>
 File: examples/iris/plague/plague.png Graphic file (type png)
 
 <use examples/iris/plague/plague.png>
-Package pdftex.def Info: examples/iris/plague/plague.png used on input line 894
+Package pdftex.def Info: examples/iris/plague/plague.png used on input line 897
 .
 (pdftex.def)             Requested size: 241.14749pt x 120.57321pt.
  [7.7 <./examples/shellpattern/shellpattern.png> <./examples/iris/good-nosharin
@@ -806,7 +806,7 @@ File: examples/iris/sharing2/sharing2.png Graphic file (type png)
 
 <use examples/iris/sharing2/sharing2.png>
 Package pdftex.def Info: examples/iris/sharing2/sharing2.png used on input line
- 937.
+ 939.
 (pdftex.def)             Requested size: 241.14749pt x 120.57321pt.
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
@@ -838,7 +838,7 @@ Here is how much of TeX's memory you used:
  14634 multiletter control sequences out of 15000+600000
  25187 words of font info for 193 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
- 60i,12n,94p,679b,418s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 60i,12n,94p,679b,411s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/home/oblivia/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}<
 /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></ho
 me/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></home/o
@@ -871,7 +871,7 @@ st/fonts/type1/public/amsfonts/cm/cmtt8.pfb></home/oblivia/texlive/texmf-dist/f
 onts/type1/public/amsfonts/cm/cmtt9.pfb></home/oblivia/texlive/texmf-dist/fonts
 /type1/public/cm-super/sfrm0700.pfb></home/oblivia/texlive/texmf-dist/fonts/typ
 e1/public/cm-super/sfrm0900.pfb>
-Output written on roper_gecco_sigconf.pdf (9 pages, 488776 bytes).
+Output written on roper_gecco_sigconf.pdf (9 pages, 488797 bytes).
 PDF statistics:
  365 PDF objects out of 1000 (max. 8388607)
  308 compressed objects within 4 object streams
