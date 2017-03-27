@@ -361,24 +361,31 @@ fn main() {
                                                .unwrap());
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
-      println!("[+] SEASONS ELAPSED: {}", season);
+      print!  ("[+] AVG LEN:  {:3.6}    ", pop_local.read()
+                                                     .unwrap()
+                                                     .avg_len());     
+        println!("[+] SEASONS ELAPSED: {}", season);
       println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                standard_deviation(&dprof));
       println!("[+] MEAN DIFFICULTIES BY CLASS:");
-      for (c,d) in pop_local.read()
+      let mut c = 0;
+      for d     in pop_local.read()
                             .unwrap()
                             .params
                             .io_targets
                             .class_mean_difficulties() {
         println!("    {} -> {:1.6}", c, d);
+        c += 1;
       }
       println!("[+] STDDEV DIFFICULTIES BY CLASS:");
-      for (c,d) in pop_local.read()
+      let mut c = 0;
+      for d in     pop_local.read()
                             .unwrap()
                             .params
                             .io_targets
                             .class_stddev_difficulties() {
         println!("    {} -> {:1.6}", c, d);
+        c += 1;
       }
       println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
                

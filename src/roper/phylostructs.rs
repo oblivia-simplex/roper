@@ -586,12 +586,19 @@ impl Population {
     if best.fitness == None {
       return;
     }
+    let nclasses = self.params.io_targets.num_classes;
+    // todo: don't hardcode the number of classes
     let row = if self.iteration == 1 {
-      format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN\n",
-              self.params)
+      let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN",
+              self.params);
+      for i in 0..nclasses {
+        s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
+      }
+      s.push_str("\n");
+      s
     } else { "".to_string() };
     let season = self.season;
-    let row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+    let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                       row,
                       self.iteration.clone(),
                       season,
@@ -608,6 +615,14 @@ impl Population {
                       self.avg_len(),
                       best.size(),
                       self.proportion_unseen(season));
+    let c_mn_dif = self.params.io_targets
+                         .class_mean_difficulties();
+    let c_sd_dif = self.params.io_targets
+                           .class_stddev_difficulties();
+    for i in 0..nclasses {
+      row.push_str(&format!(",{},{}", c_mn_dif[i], c_sd_dif[i]));
+    }
+    row.push_str("\n");
     let mut csv_file = OpenOptions::new()
                                    .append(true)
                                    .create(true)
@@ -1044,17 +1059,17 @@ impl IoTargets {
   // Note; these are not efficiently written, just lazily written. 
   // They're meant to be used sparingly, for the sake of 
   // readable output for curious humans, when running verbosely.
-  pub fn class_mean_difficulties (&self) -> Vec<(usize, f32)> {
+  pub fn class_mean_difficulties (&self) -> Vec<f32> {
     let mut res = Vec::new();
     for i in 0..self.num_classes {
-      res.push((i, mean(&self.difficulties_by_class(i))));
+      res.push(mean(&self.difficulties_by_class(i)));
     }
     res
   }
-  pub fn class_stddev_difficulties (&self) -> Vec<(usize, f32)> {
+  pub fn class_stddev_difficulties (&self) -> Vec<f32> {
     let mut res = Vec::new();
     for i in 0..self.num_classes {
-      res.push((i, standard_deviation(&self.difficulties_by_class(i))));
+      res.push(standard_deviation(&self.difficulties_by_class(i)));
     }
     res
   }

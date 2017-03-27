@@ -32,6 +32,12 @@ BEST_CRASH=12
 AVG_LEN=13
 BEST_LEN=14
 UNSEEN=15
+CLASS0_MEANDIF=16
+CLASS0_STDDEVDIF=17
+CLASS1_MEANDIF=18
+CLASS1_STDDEVDIF=19
+CLASS2_MEANDIF=20
+CLASS2_STDDEVDIF=21
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -51,7 +57,8 @@ DISASFILE="/tmp/roper_disassembly.txt"
 [ -f "$DISASFILE" ] && mv $DISASFILE \
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
-  RUST_BACKTRACE=1 cargo run -- -d $DATAFILE \
+  RUST_BACKTRACE=1 cargo run \
+                             -- -d $DATAFILE \
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
@@ -91,6 +98,29 @@ else
   OUTPUTSTRING="set output \"roper_${TIMESTAMP}.png\""
 fi
 
+function difplot ()
+{
+  class=$(( 2 * $1 ))
+  colour=$(( $1 + 1 ))
+  mcol=$(( $class + $CLASS0_MEANDIF ))
+  scol=$(( $mcol + 1))
+  echo "u ${X1}:(\$${mcol}+\$${scol}):(\$${mcol}-\$${scol}) w filledcurves lc $colour title 'C$1 STDDEV'"
+}
+function difplotline ()
+{
+  class=$(( 2 * $1 ))
+  colour=$(( $1 + 1 ))
+  mcol=$(( $class + $CLASS0_MEANDIF ))
+  echo "u ${X1}:$mcol w lines lc $colour title 'C$1 MEAN'"
+}
+function plotdbg ()
+{
+  class=$1
+  mcol=$(( $class * 2 + $CLASS0_MEANDIF ))
+  scol=$(( $mcol + 1))
+  echo "print \"class $class mean+stddev > (\$${mcol}+\$${scol})\""
+  echo "print \"class $class mean-stddev > (\$${mcol}-\$${scol})\""
+}
 cat > $PLOTFILE << EOF
 $TERMINALSTRING
 $OUTPUTSTRING
@@ -103,7 +133,8 @@ set key tc rgb 'red'
 set key autotitle columnhead
 set datafile separator ","
 # set autoscale
-set xlabel "$X0_AXIS_TITLE or $X1_AXIS_TITLE"
+set yrange [0:1]
+set xlabel "$X0_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${AVG_ABFIT} w lines, \
@@ -112,15 +143,91 @@ plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
   "" u ${X0}:${BEST_FIT} w lines,  \
   "" u ${X0}:${MIN_ABFIT} w lines, \
   "" u ${X0}:${BEST_ABFIT} w lines
-plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
-  "" u ${X1}:${AVG_LEN} w lines, \
-  "" u ${X1}:${BEST_GEN} w lines, \
-  "" u ${X1}:${BEST_LEN} w lines
+set yrange [0:1]
+set xlabel "$X1_AXIS_TITLE"
+set ylabel "DIFFICULTY BY CLASS"
+set style fill transparent solid 0.5 
+plot "$PROJECT_ROOT/logs/$recent" $(difplotline 0), \
+  "" $(difplot 0), \
+  "" $(difplotline 1), \
+  "" $(difplot 1), \
+  "" $(difplotline 2), \
+  "" $(difplot 2)
+
 pause 2 
 unset multiplot
 reread
 EOF
+#plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
+#  "" u ${X1}:${AVG_LEN} w lines, \
+#  "" u ${X1}:${BEST_GEN} w lines, \
+#  "" u ${X1}:${BEST_LEN} w lines
 ln -sf $recent recent.csv
+export recent
+export PLOTFILE
+cd ..
+echo "[+] logging to $PROJECT_ROOT/logs/$recent"
+sleep 1
+( [ -n "$DISPLAY" ] && gnuplot $PLOTFILE) &
+gnuplot_pid=$!
+echo "[+] gnuplot PID is $gnuplot_pid"
+for i in {0..70}; do echo -n "="; done; echo
+tail -n 4096 -f $OUTFILE
+kill $roper_pid
+[ -n "$DISPLAY" ] && kill $gnuplot_pid
+rm $OUTFILE
+rm $ERRORFILE
+
+
+function plotdbg ()
+{
+  class=$1
+  mcol=$(( $class * 2 + $CLASS0_MEANDIF ))
+  scol=$(( $mcol + 1))
+  echo "print \"class $class mean+stddev > (\$${mcol}+\$${scol})\""
+  echo "print \"class $class mean-stddev > (\$${mcol}-\$${scol})\""
+}
+cat > $PLOTFILE << EOF
+$TERMINALSTRING
+$OUTPUTSTRING
+set datafile commentschars "%"
+set multiplot layout 1, 2 title "ROPER on $recent"
+set xlabel 'ylabel' tc rgb 'red'
+set ylabel 'xlabel' tc rgb 'red'
+set border lc rgb 'red'
+set key tc rgb 'red'
+set key autotitle columnhead
+set datafile separator ","
+# set autoscale
+set yrange [0:1]
+set xlabel "$X0_AXIS_TITLE"
+set ylabel "POPULATION FEATURES"
+plot "$PROJECT_ROOT/logs/$recent" u ${X0}:${AVG_FIT} w lines, \
+  "" u ${X0}:${AVG_ABFIT} w lines, \
+  "" u ${X0}:${AVG_CRASH} w lines, \
+  "" u ${X0}:${MIN_FIT}   w lines, \
+  "" u ${X0}:${BEST_FIT} w lines,  \
+  "" u ${X0}:${MIN_ABFIT} w lines, \
+  "" u ${X0}:${BEST_ABFIT} w lines
+set yrange [0:1]
+set xlabel "$X1_AXIS_TITLE"
+set ylabel "DIFFICULTY BY CLASS"
+set style fill transparent solid 0.5 
+plot "$PROJECT_ROOT/logs/$recent" $(difplot 0), \
+  "" $(difplot 1), \
+  "" $(difplot 2)
+
+pause 2 
+unset multiplot
+reread
+EOF
+#plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
+#  "" u ${X1}:${AVG_LEN} w lines, \
+#  "" u ${X1}:${BEST_GEN} w lines, \
+#  "" u ${X1}:${BEST_LEN} w lines
+ln -sf $recent recent.csv
+export recent
+export PLOTFILE
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"
 sleep 1

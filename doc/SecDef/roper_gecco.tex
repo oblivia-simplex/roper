@@ -670,6 +670,10 @@ population of 2048 chains, with a 45\,\% mutation rate, spread over
 pointers are listed in the left-hand margin, with immediate
 values extending to the right. 
 \begin{table}
+\caption{Contents of a successful payload: address pointers on
+the left-hand margin, literals extending to the right. Each row
+is a `clump'.}
+\label{tab:clump}
   \hrule
   {\tiny
 \begin{verbatim}
@@ -708,10 +712,6 @@ values extending to the right.
 \end{verbatim}
   }
 \hrule
-\caption{Contents of a successful payload: address pointers on
-the left-hand margin, literals extending to the right. Each row
-is a `clump'.}
-\label{tab:clump}
 \end{table}
 
 It's an extaordinarily labyrnithine chain, by human standards,
@@ -811,7 +811,7 @@ chain's fitness -- though they do increase the odds that its
 fitness-critical gene linkages will be passed on to its
 offspring. 
 \begin{figure}
-  \includegraphics[width=\columnwidth,height=3cm]{examples/shellpattern/shellpattern.png}
+  \includegraphics[height=4cm]{examples/shellpattern/shellpattern.png}
   \caption{Evolving a shell-spawning chain on {tomato-RT-N18U-httpd}}
   \label{shellpattern-graph}
 \end{figure}
@@ -883,7 +883,7 @@ back-and-forth between the two curves, as if the two strategies
 for intron-formation are competing.%: pad the genome with junk gadgets, or sidestep your genome by placing your bets on an extended phenotype found in the host process' memory?
 
 \begin{figure}
-  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/good-nosharing/good-nosharing.png}
+  \includegraphics[height=4cm]{examples/iris/good-nosharing/good-nosharing.png}
   \caption{ROPER's classification of the Iris data set, without
   fitness sharing: 86.8\,\% detection rate, after 180800
   tournaments}
@@ -891,7 +891,7 @@ for intron-formation are competing.%: pad the genome with junk gadgets, or sides
 \end{figure}
 
 \begin{figure}
-  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/plague/plague.png}
+  \includegraphics[height=4cm]{examples/iris/plague/plague.png}
   \caption{A plague of segfaults: an overly lax crash penalty
   gives way to a 100\,\% crash rate, during ROPER's Iris
   classification. {AB-FIT} is absolute fitness,
@@ -933,7 +933,7 @@ difficulty rotation, and an average
 phylogenic generation of just 31.9. 
 
 \begin{figure}
-  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/sharing2/sharing2.png}
+  \includegraphics[height=4cm]{examples/iris/sharing2/sharing2.png}
   \caption{Sharing both fitness and crash-penalties on the Iris
   data set, with chains from tomato-RT-N18U-httpd: 96.6\,\% detection rate on training set after just
   9040 tournaments}
