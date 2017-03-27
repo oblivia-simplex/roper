@@ -924,7 +924,7 @@ impl Problem {
     // pd: how many times this problem has been solved correctly
     // divisor: how many attempts have been made on it
     // so, the higher, the easier.
-    self.set_difficulty(1.0 - pd / divisor);
+    self.set_difficulty(f32::max(0.0, 1.0 - pd / divisor));
     self.set_predifficulty(DEFAULT_DIFFICULTY);
   }
   pub fn difficulty (&self) -> f32 {
