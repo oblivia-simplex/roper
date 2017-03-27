@@ -901,9 +901,9 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          (0.0, f32::min(1.0, self.difficulty()))    // temporarily st higher is better
+          (0.0, 0.0) //(0.0, f32::min(1.0, self.difficulty()))    // temporarily st higher is better
         } else {
-          (1.0, 1.0) // temporarily st lower is worse
+          (1.0, f32::max(1.0, 1.0-self.difficulty())) // temporarily st lower is worse
         }; // inversion into fitness scores where lower is better
         // difficulty now: the higher the harder. is complement of fraction that got right
         //(1.0 - r,  1.0 - r * self.difficulty()) // 1.0 if r == 0
