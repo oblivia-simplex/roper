@@ -901,7 +901,7 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          (0.0, max(1.0, self.difficulty()))    // temporarily st higher is better
+          (0.0, f32::max(1.0, self.difficulty()))    // temporarily st higher is better
         } else {
           (1.0, 1.0) // temporarily st lower is worse
         }; // inversion into fitness scores where lower is better
