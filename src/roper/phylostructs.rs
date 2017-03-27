@@ -883,9 +883,9 @@ impl Problem {
     }
   }
   fn adj_cls_score_for_difficulty (&self, score: f32) -> f32 {
-    // here, the lower the score, the better. 
+    // here, the higher the score, the better. 
     // difficulty is a float <= 1.0, and the lower the harder.
-    f32::max(0.0, score * self.difficulty()) 
+    f32::max(0.0, score * (1.0 - self.difficulty()))
   }
 
   pub fn assess_output (&self,
@@ -899,11 +899,11 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          0.0
+          1.0
         } else {
-          1.0 
+          0.0 
         };
-        (r, self.adj_cls_score_for_difficulty(r))
+        (1.0 - r, 1.0 - self.adj_cls_score_for_difficulty(r))
       }
     }
   }

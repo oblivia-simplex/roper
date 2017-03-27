@@ -363,9 +363,7 @@ fn main() {
                                                .unwrap());
       println!("[+] SEASONS ELAPSED: {}", season);
       println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
-               standard_deviation(&(dprof.iter()
-                                         .map(|x| x / popsize as f32)
-                                         .collect::<Vec<f32>>())));
+               standard_deviation(&dprof));
       println!("[+] MEAN DIFFICULTIES BY CLASS:");
       for (c,d) in pop_local.read()
                             .unwrap()
