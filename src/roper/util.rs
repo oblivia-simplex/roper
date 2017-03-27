@@ -263,16 +263,20 @@ pub fn ranked_ballot (bins: &Vec<i32>, correct: usize) -> f32 {
 */
 
 pub fn max_bin (bins: &Vec<u64>) -> usize {
-  let mut mb : usize = bins.len(); // ensures that equal bins means no winner
-  let mut mx : u64 = bins[0];
-  for i in 0..bins.len() {
-    if bins[i] > mx { 
-      mx = bins[i];
-      mb = i;
+  if bins.iter().filter(|&x| *x == bins[0]).count() == bins.len() {
+    bins.len()// ensures that equal bins means no winner
+  } else {
+    let mut mb : usize = 0; 
+    let mut mx : u64 = bins[0];
+    for i in 0..bins.len() {
+      if bins[i] > mx { 
+        mx = bins[i];
+        mb = i;
+      }
     }
-  }
 //  println!(">> in max_bin(), mb = {}", mb);
-  mb
+    mb
+  }
 }
 
 

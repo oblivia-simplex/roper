@@ -717,8 +717,8 @@ impl Default for Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![4,5,6,7],
-      outregs:          vec![0,1,2],
+      inregs:           vec![1,2,3,4],
+      outregs:          vec![5,6,7],
       binary_path:      "".to_string(),
       fatal_crash:      false,
       crash_penalty:    0.2,
@@ -905,7 +905,7 @@ impl Problem {
         } else {
           (1.0, 1.0)
         }; 
-        println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
+        //println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
        r
       }
     }

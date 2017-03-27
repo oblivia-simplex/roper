@@ -1,4 +1,5 @@
 %
+%\raggedbottom
 \section{Introduction}
 
 Vulnerability testing attempts to identify weaknesses in code
@@ -25,23 +26,14 @@ list.\footnote{\url{http://seclists.org/bugtraq/1997/Aug/63}}
 Unlike traditional shellcode attacks, where the attacker places
 executable code onto the stack (either in an input buffer or an
 environment variable, for instance) and then redirects the
-instruction pointer to that code, Solar Designer’s attack simply
+instruction pointer to that code, Solar Designer's attack simply
 uses code that is already mapped to executable memory. Since libc
 is almost always going to be resident in the executable memory of
-a Unix process, it makes for a convenient target. Thus,
+a Unix process, it makes for a convenient target. And so,
 conceptually at least, all that is necessary is to redirect the
 instruction pointer to, say, the \texttt{system()} function, with
-the desired parameters, such as a pointer to the string
-\texttt{/bin/sh}. This works because libc contains procedures
-useful to a potential attacker, such as code fragments for
-performing system calls. The attacker need not write any more
-code, just over-write the return address of a library function,
-continuing the process for additional stack locations. The trick
-is to make sure that the return addresses collectively describe a
-new function by selectively targeting appropriate library
-functions.% The matter is somewhat more complicated when dealing
-with more modern ABIs, such as \textsc{arm} and x86\_64, where the first
-few function arguments are passed in registers.
+the desired parameters (with may include, say, a pointer to the string
+\texttt{/bin/sh}). 
 
 Return-oriented-programming (\textsc{rop}) is a generalization of this
 technique. Instead of redirecting execution to already resident
@@ -56,7 +48,7 @@ was first demonstrated on the x86 \cite{shacham07} and then the
 to \textsc{rop} under x86 and \textsc{arm} architectures was identified without
 using the return instruction \cite{checkoway10}, i.e.\ instruction
 sequences are identified that collectively mimic the return
-instruction; thus making detection more difficult.
+instruction, making detection more difficult.
 
 This work introduces \textsc{Roper}, a genetic compiler that evolves payloads for
 return-oriented programming (\textsc{rop}) attacks.%
@@ -221,7 +213,7 @@ ongoing exchange of genotypes for phenotypes between (4) and (5),
 until the completion criteria have been reached. 
 
 \begin{figure}
-  \includegraphics[width=\columnwidth]{architecture.png}
+  \includegraphics[width=\columnwidth,height=3.5cm]{architecture.png}
   \caption{High-level map of ROPER's architecture}
   \label{fig:architecture}
 \end{figure}
@@ -677,10 +669,9 @@ population of 2048 chains, with a 45\,\% mutation rate, spread over
 4 demes with 10\,\% migration trafficking between them. Address
 pointers are listed in the left-hand margin, with immediate
 values extending to the right. 
-
 \begin{table}
   \hrule
-  {\scriptsize
+  {\tiny
 \begin{verbatim}
 000100fc 0002bc3e 0002bc3e 0002bc3e 
 00012780 0000000b 0000000b 0000000b 0000000b 0002bc3e 
@@ -723,21 +714,24 @@ is a `clump'.}
 \label{tab:clump}
 \end{table}
 
-What is interesting about this chain is how labrynthine and
-obfuscated it is. In fact, of the 32 gadgets included in the
-payload, only the first three execute as expected -- but the
-third gadget starts writing to its own call stack, jumping
+It's an extaordinarily labyrnithine chain, by human standards,
+and there's little in it genotype to hint at the path it takes
+through phenospace. Only 3 of its 32 gadgets execute as expected -- but the
+third starts writing to its own call stack by jumping
 backwards with a \texttt{bl} instruction, which loads the link
-register, pushes it onto the stack, which it will later pop into
+register, and then pushing \texttt{lr} onto the stack, which it will later pop into
 the programme counter. From that point forward, we are
 off-script.  The next four `gadgets' (Deep Gadget 0 through 3)
-appear to have been discovered spontaneously. The chain
-nevertheless concludes without crashing, ending with a branch to
-the pre-established halting address (\texttt{blx r2}, which
-happens to contain \texttt{0x00000000}).  Table~\ref{tbl:gadget} provides a
+appear to have been discovered spontaneously. They were
+discovered in the environment, not supplied by the gene pool. 
+%The chain
+%nevertheless concludes without crashing, ending with a branch to
+%the pre-established halting address (\texttt{blx r2}, which
+%happens to contain \texttt{0x00000000}).  
+Table~\ref{tbl:gadget} provides a
 disassembly of the chain as it wound its way through the
 \textsc{http} daemon's memory. After each gadget we printed
-out the state of the four registers we are interested in, i.e. \texttt{R0, R1, R2, R7}.
+out the state of the four registers we're interested in, i.e. \texttt{R0, R1, R2, R7}.
  
 \begin{table*}
 \caption{Gadget to state relation for standard and deep gadgets. ** indicates where the pattern is completed. }\label{tbl:gadget}
@@ -817,7 +811,7 @@ chain's fitness -- though they do increase the odds that its
 fitness-critical gene linkages will be passed on to its
 offspring. 
 \begin{figure}
-  \includegraphics[width=\columnwidth]{examples/shellpattern/shellpattern.png}
+  \includegraphics[width=\columnwidth,height=3cm]{examples/shellpattern/shellpattern.png}
   \caption{Evolving a shell-spawning chain on {tomato-RT-N18U-httpd}}
   \label{shellpattern-graph}
 \end{figure}
@@ -839,10 +833,10 @@ that we rarely see in mediocre specimens, but which are common in
 chains that are either complete disasters, or which are the
 population's fittest specimens. 
 
-Such traits are even more common when we turn to a more complex
-and nuanced problem set, and charge \textsc{roper} with the task
-of evolving \textsc{rop}-chain classifiers -- exploits that
-exhibit subtle, adaptive behaviour. 
+%Such traits are even more common when we turn to a more complex
+%and nuanced problem set, and charge \textsc{roper} with the task
+%of evolving \textsc{rop}-chain classifiers -- exploits that
+%exhibit subtle, adaptive behaviour. 
 
 \subsection{Classification of the Iris dataset}
 %% start generating graphs for these. have the graph script also
@@ -889,7 +883,7 @@ back-and-forth between the two curves, as if the two strategies
 for intron-formation are competing.%: pad the genome with junk gadgets, or sidestep your genome by placing your bets on an extended phenotype found in the host process' memory?
 
 \begin{figure}
-  \includegraphics[width=\columnwidth]{examples/iris/good-nosharing/good-nosharing.png}
+  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/good-nosharing/good-nosharing.png}
   \caption{ROPER's classification of the Iris data set, without
   fitness sharing: 86.8\,\% detection rate, after 180800
   tournaments}
@@ -897,7 +891,7 @@ for intron-formation are competing.%: pad the genome with junk gadgets, or sides
 \end{figure}
 
 \begin{figure}
-  \includegraphics[width=\columnwidth]{examples/iris/plague/plague.png}
+  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/plague/plague.png}
   \caption{A plague of segfaults: an overly lax crash penalty
   gives way to a 100\,\% crash rate, during ROPER's Iris
   classification. {AB-FIT} is absolute fitness,
@@ -939,7 +933,7 @@ difficulty rotation, and an average
 phylogenic generation of just 31.9. 
 
 \begin{figure}
-  \includegraphics[width=\columnwidth]{examples/iris/sharing2/sharing2.png}
+  \includegraphics[width=\columnwidth,height=3cm]{examples/iris/sharing2/sharing2.png}
   \caption{Sharing both fitness and crash-penalties on the Iris
   data set, with chains from tomato-RT-N18U-httpd: 96.6\,\% detection rate on training set after just
   9040 tournaments}
