@@ -572,8 +572,9 @@ niching through fitness sharing. That is to say, the points awarded for correctl
       field is set to 1.  
 
     \item when an individual correctly responds to an exemplar,
-      it receives $1 * \texttt{difficulty(e)}$ points; the baseline
-      fitness of the individual is then set to the average of the
+      it receives \texttt{difficulty(e)} points, when it responds
+      incorrectly, it receives 1.0 points; the baseline
+     fitness of the individual is then set to the average of the
       scores it receives over all exemplars. (We say
       `baseline' fitness, since it will later be modified by crash
       penalties etc.)
