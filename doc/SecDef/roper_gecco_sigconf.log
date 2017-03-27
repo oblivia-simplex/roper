@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  27 MAR 2017 00:33
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  27 MAR 2017 09:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -828,11 +828,11 @@ LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 130.
  ) 
 Here is how much of TeX's memory you used:
- 11947 strings out of 494113
- 178249 string characters out of 6154997
+ 11949 strings out of 494113
+ 178263 string characters out of 6154997
  343473 words of memory out of 5000000
  14634 multiletter control sequences out of 15000+600000
- 25190 words of font info for 193 fonts, out of 8000000 for 9000
+ 25240 words of font info for 194 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
  60i,12n,94p,679b,476s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/home/oblivia/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}<
@@ -866,7 +866,7 @@ f-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></home/oblivia/texlive/texmf-di
 st/fonts/type1/public/amsfonts/cm/cmtt9.pfb></home/oblivia/texlive/texmf-dist/f
 onts/type1/public/cm-super/sfrm0700.pfb></home/oblivia/texlive/texmf-dist/fonts
 /type1/public/cm-super/sfrm0900.pfb>
-Output written on roper_gecco_sigconf.pdf (9 pages, 482003 bytes).
+Output written on roper_gecco_sigconf.pdf (9 pages, 482011 bytes).
 PDF statistics:
  361 PDF objects out of 1000 (max. 8388607)
  305 compressed objects within 4 object streams

@@ -717,8 +717,8 @@ impl Default for Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![0,1,2,3],
-      outregs:          vec![4,5,6],
+      inregs:           vec![4,5,6,7],
+      outregs:          vec![0,1,2],
       binary_path:      "".to_string(),
       fatal_crash:      false,
       crash_penalty:    0.2,
@@ -901,12 +901,11 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          (0.0, 0.0) //(0.0, f32::min(1.0, self.difficulty()))    // temporarily st higher is better
+          (0.0, 1.0 - self.difficulty())
         } else {
-          (1.0, f32::max(1.0, 1.0-self.difficulty())) // temporarily st lower is worse
-        }; // inversion into fitness scores where lower is better
-        // difficulty now: the higher the harder. is complement of fraction that got right
-        //(1.0 - r,  1.0 - r * self.difficulty()) // 1.0 if r == 0
+          (1.0, 1.0)
+        }; 
+        println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
        r
       }
     }
@@ -935,7 +934,8 @@ impl Problem {
     self.predifficulty
   }
   pub fn set_difficulty (&mut self, n: f32) {
-    self.difficulty = n;
+    self.difficulty = f32::min(1.0, n);
+    assert!(self.difficulty <= 1.0);
   }
   pub fn set_predifficulty (&mut self, n: f32) {
     self.predifficulty = n;
