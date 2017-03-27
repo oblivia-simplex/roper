@@ -916,7 +916,7 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          (0.0, 1.0 - self.difficulty()*1.15) // to soften
+          (0.0, 1.0 - self.difficulty()) 
         } else {
           (1.0, 1.0)
         }; 
