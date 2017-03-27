@@ -566,14 +566,16 @@ niching through fitness sharing. That is to say, the points awarded for correctl
       replaced by a new random chain), we iterate through
       the list of exemplars. The exemplar $e$'s \texttt{difficulty}
       field is set to
-      $$\frac{\texttt{predifficulty(e)}}{N * x *
-      \texttt{tournament\_size}}$$ 
-      and the \texttt{predifficulty}
+      $$1.0 - \frac{\texttt{predifficulty}(e)}{N * x *
+      \texttt{tournament\_size}}$$ (the higher, the harder, since
+      \texttt{difficulty}$(e)$ is approximately the complement of
+      the fraction of the contestants who got $e$ wrong);
+      the \texttt{predifficulty}
       field is set to 1.  
 
     \item when an individual correctly responds to an exemplar,
-      it receives \texttt{difficulty(e)} points, when it responds
-      incorrectly, it receives 1.0 points; the baseline
+      it receives $1.0 - \texttt{difficulty}(e)$ points, when it responds
+      incorrectly, it receives 1.0; the baseline shared
      fitness of the individual is then set to the average of the
       scores it receives over all exemplars. (We say
       `baseline' fitness, since it will later be modified by crash

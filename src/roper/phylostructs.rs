@@ -901,11 +901,12 @@ impl Problem {
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         let r = if b == cls.class {
-          1.0
+          1.0    // temporarily st higher is better
         } else {
-          0.0
-        };
-        (1.0 - r, 1.0 - (r * self.difficulty()))
+          0.0    // temporarily st lower is worse
+        }; // inversion into fitness scores where lower is better
+        // difficulty now: the higher the harder. is complement of fraction that got right
+        (1.0 - r,  1.0 - r * self.difficulty()) // 1.0 if r == 0
       }
     }
   }
@@ -923,7 +924,7 @@ impl Problem {
     // pd: how many times this problem has been solved correctly
     // divisor: how many attempts have been made on it
     // so, the higher, the easier.
-    self.set_difficulty(pd / divisor);
+    self.set_difficulty(1.0 - pd / divisor);
     self.set_predifficulty(DEFAULT_DIFFICULTY);
   }
   pub fn difficulty (&self) -> f32 {
