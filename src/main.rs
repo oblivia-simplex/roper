@@ -361,7 +361,7 @@ fn main() {
                                                .unwrap());
       println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                .unwrap());
-      print!  ("[+] AVG LEN:  {:3.6}    ", pop_local.read()
+      print!  ("[+] AVG LEN:    {:3.6}    ", pop_local.read()
                                                      .unwrap()
                                                      .avg_len());     
         println!("[+] SEASONS ELAPSED: {}", season);
