@@ -13,6 +13,7 @@ use std::env;
 
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
+use std::io;
 mod roper;
 
 use rand::{thread_rng,Rng,Generator};
@@ -80,13 +81,13 @@ const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
 /* Just a debugging stub */
 fn main() {
+  let verbose = false;
   let disas_path = "/tmp/roper_disassembly.txt"; 
   let args: Vec<String> = env::args().collect();
   let program = args[0].clone();
 
   let mut opts = Options::new();
   opts.parsing_style(ParsingStyle::FloatingFrees);
-  let verbose = true;
   opts.optopt("p", "", "set target pattern", "PATTERN");
   opts.optopt("d", "", "set data path", "PATH");
   opts.optopt("g", "", "set fitness goal (default 0)", "POSITIVE FLOAT <= 1");
@@ -263,12 +264,14 @@ fn main() {
                      1,
                      true);
   add_debug_hooks(debug_machinery.cluster[0].unwrap_mut());
+  let printevery = 1;
   let mut champion : Option<Chain> = None;
   let mut season = 0;
   let max_iterations = params.max_iterations;
   let pop_rw  = RwLock::new(population);
   let pop_arc = Arc::new(pop_rw); 
   let pop_local = pop_arc.clone();
+  let mut first_log = true;
   let mut i = 0; 
   let mut crash_rate : f32 = 0.5;
   /***************************
@@ -301,98 +304,110 @@ fn main() {
       let mut trs : Vec<TournementResult> = rx.iter()
                                               .take(n_jobs)
                                               .collect();
-      println!("");
       trs.sort_by(|a,b| b.best.ab_fitness
                          .partial_cmp(&a.best.ab_fitness)
                          .unwrap_or(Ordering::Equal));
+      let iteration;
+      let season_change;
+      /* Update a bunch of relatively global parameters & population */
       { // block to enclose write lock
         let mut mut_pop = &mut pop_local.write().unwrap();
-        let iteration = mut_pop.iteration.clone();
+        iteration = mut_pop.iteration.clone();
         for tr in trs {
           if mut_pop.params.fitness_sharing {
             patch_io_targets(&tr, &mut mut_pop.params, iteration);
           };
-          let updated = patch_population(&tr, mut_pop);
+          let updated = patch_population(&tr, mut_pop, verbose);
           if updated != None {
             champion = updated.clone();
           }
           mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }
-        mut_pop.season += update_difficulties(&mut mut_pop.params, 
-                                              iteration);
+        season_change = update_difficulties(&mut mut_pop.params, 
+                                           iteration);
+        mut_pop.season += season_change;
         season = mut_pop.season.clone();
       }
-      pop_local.read().unwrap().periodic_save();
-
-      let avg_pop_gen = pop_local.read()
-                                 .unwrap()
-                                 .avg_gen();
-      let avg_pop_fit = pop_local.read()
-                                 .unwrap()
-                                 .avg_fit(season);
-      let avg_pop_abfit = pop_local.read()
+     
+      if season_change > 0 || iteration % printevery == 0 {
+        /**************************************************
+         * Pretty-print some information for the viewers  *
+         * huddled around the terminal, in hushed antici- *
+         * pation.                                        *
+         **************************************************/
+        first_log = pop_local.read().unwrap().log(first_log);
+        println!("");
+        let avg_pop_gen = pop_local.read()
                                    .unwrap()
-                                   .avg_abfit();
-      crash_rate = pop_local.read()
-                            .unwrap()
-                            .crash_rate();
-      let min_fit = pop_local.read()
-                             .unwrap()
-                             .min_fit(season);
-      let min_abfit = pop_local.read()
+                                   .avg_gen();
+        let avg_pop_fit = pop_local.read()
+                                   .unwrap()
+                                   .avg_fit(season);
+        let avg_pop_abfit = pop_local.read()
+                                     .unwrap()
+                                     .avg_abfit();
+        crash_rate = pop_local.read()
+                              .unwrap()
+                              .crash_rate();
+        let min_fit = pop_local.read()
                                .unwrap()
-                               .min_abfit();
-      let stddev_abfit = pop_local.read()
-                                  .unwrap()
-                                  .stddev_abfit();
-      let champ = champion.clone().unwrap();
-      let dprof = pop_local.read()
-                           .unwrap()
-                           .params
-                           .io_targets
-                           .difficulty_profile();
-      print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
-      println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
-      print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
-      println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
-      print!  ("[+] MIN FIT:     {:1.6}    ", min_fit);
-      println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
-      print!  ("[+] BEST FIT:    {:1.6}    ", champ.fitness
-                                               .unwrap());
-      println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
-                                               .unwrap());
-      print!  ("[+] AVG LEN:    {:3.6}    ", pop_local.read()
-                                                     .unwrap()
-                                                     .avg_len());     
-        println!("[+] SEASONS ELAPSED: {}", season);
-      println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
-               standard_deviation(&dprof));
-      println!("[+] MEAN DIFFICULTIES BY CLASS:");
-      let mut c = 0;
-      for d     in pop_local.read()
-                            .unwrap()
-                            .params
-                            .io_targets
-                            .class_mean_difficulties() {
-        println!("    {} -> {:1.6}", c, d);
-        c += 1;
+                               .min_fit(season);
+        let min_abfit = pop_local.read()
+                                 .unwrap()
+                                 .min_abfit();
+        let stddev_abfit = pop_local.read()
+                                    .unwrap()
+                                    .stddev_abfit();
+        let champ = champion.clone().unwrap();
+        let dprof = pop_local.read()
+                             .unwrap()
+                             .params
+                             .io_targets
+                             .difficulty_profile();
+        println!("[*] ITERATION {}, SEASON {}", iteration, season);
+        print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
+        println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
+        print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
+        println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
+        print!  ("[+] MIN FIT:     {:1.6}    ", min_fit);
+        println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
+        print!  ("[+] BEST FIT:    {:1.6}    ", champ.fitness
+                                                 .unwrap());
+        println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
+                                                 .unwrap());
+        println!  ("[+] AVG LEN:    {:3.6}    ", pop_local.read()
+                                                       .unwrap()
+                                                       .avg_len());     
+        //println!("[+] SEASONS ELAPSED: {}", season);
+        println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
+                 standard_deviation(&dprof));
+        println!("[+] MEAN DIFFICULTIES BY CLASS:");
+        let mut c = 0;
+        for d     in pop_local.read()
+                              .unwrap()
+                              .params
+                              .io_targets
+                              .class_mean_difficulties() {
+          println!("    {} -> {:1.6}", c, d);
+          c += 1;
+        }
+        println!("[+] STDDEV DIFFICULTIES BY CLASS:");
+        let mut c = 0;
+        for d in     pop_local.read()
+                              .unwrap()
+                              .params
+                              .io_targets
+                              .class_stddev_difficulties() {
+          println!("    {} -> {:1.6}", c, d);
+          c += 1;
+        }
+        println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
+                 
+      } else {
+        print!("\r[{}]                 ",iteration);
+        io::stdout().flush().ok().expect("Could not flush stdout");
       }
-      println!("[+] STDDEV DIFFICULTIES BY CLASS:");
-      let mut c = 0;
-      for d in     pop_local.read()
-                            .unwrap()
-                            .params
-                            .io_targets
-                            .class_stddev_difficulties() {
-        println!("    {} -> {:1.6}", c, d);
-        c += 1;
-      }
-      println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
-               
-      println!("[Logging to {}]", pop_local.read()
-                                           .unwrap()
-                                           .params
-                                           .csv_path);
+      pop_local.read().unwrap().periodic_save();
     }); // END POOL SCOPE
     i += 1;
   } // END OF MAIN LOOP

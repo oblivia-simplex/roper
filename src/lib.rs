@@ -7,6 +7,7 @@ extern crate capstone;
 extern crate rand;
 extern crate getopts;
 extern crate chrono;
+extern crate bit_vec;
 
 
 pub mod roper;

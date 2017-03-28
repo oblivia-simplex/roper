@@ -6,7 +6,7 @@ extern crate rustc_serialize;
 
 use self::chrono::prelude::*;
 use self::chrono::offset::LocalResult;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap};
 use std::hash::*;
 use std::iter::repeat;
 use self::rustc_serialize::json::{self, Json, ToJson};
@@ -34,6 +34,57 @@ pub const MAX_FIT : f32 = 1.0;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
 pub type FIT_INT = u32;
+
+#[derive(Debug,Clone,PartialEq,Eq)]
+pub struct Fingerprint (Vec<bool>);
+
+impl Display for Fingerprint {
+  fn fmt (&self, f: &mut Formatter) -> Result {
+    let mut s = String::new();
+    for b in self.0.iter() {
+      s.push_str(if *b {"1"} else {"0"})
+    }
+    write!(f, "{}", s)
+  }
+}
+impl Fingerprint {
+  pub fn push (&mut self, x: bool) {
+    self.0.push(x);
+  }
+  pub fn pop (&mut self) -> Option<bool> {
+    self.0.pop()
+  }
+  pub fn new () -> Self {
+    Fingerprint ( Vec::new() )
+  }
+  pub fn len (&self) -> usize {
+    self.0.len()
+  }
+  pub fn iter (&self) -> Iter<bool> {
+    self.0.iter()
+  }
+  pub fn iter_mut (&mut self) -> IterMut<bool> {
+    self.0.iter_mut()
+  }
+  pub fn extend (&mut self, other: &Fingerprint) {
+    for b in other.iter() {
+      self.push(b.clone())
+    }
+  }
+  pub fn distance (&self, other: &Fingerprint) -> usize {
+    self.0.iter()
+          .zip(&other.0)
+          .map(|(x,y)| x ^ y)
+          .filter(|&b| b)
+          .count()
+  }
+}
+impl Index<usize> for Fingerprint {
+  type Output = bool;
+  fn index(&self, index: usize) -> &bool {
+    &self.0[index]
+  }
+}
 
 #[derive(Clone,Debug)]
 pub struct Clump {
@@ -205,6 +256,7 @@ pub struct Chain {
   pub verbose_tag: bool,
   pub crashes: Option<bool>,
   pub season: usize,
+  pub fingerprint: Fingerprint,
   i: usize,
 //  pub ancestral_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
@@ -280,6 +332,7 @@ impl Default for Chain {
       season: 0,
       verbose_tag: false,
       crashes: None,
+      fingerprint: Fingerprint::new(),
       i: 0,
     //  ancestral_fitness: Vec::new(),
     }
@@ -578,17 +631,18 @@ impl Population {
     json_file.write(json_string.as_bytes());
     json_file.flush();
   }
-  pub fn log (&self) {
+  pub fn log (&self, first: bool) -> bool {
     if self.best == None {
-      return;
+      return true;
     }
     let best = self.best.clone().unwrap();
     if best.fitness == None {
-      return;
+      return true;
     }
+    println!("\n[Logging to {}]", self.params.csv_path);
     let nclasses = self.params.io_targets.num_classes;
     // todo: don't hardcode the number of classes
-    let row = if self.iteration == 1 {
+    let row = if first {
       let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN",
               self.params);
       for i in 0..nclasses {
@@ -630,6 +684,7 @@ impl Population {
                                    .unwrap();
     csv_file.write(row.as_bytes());
     csv_file.flush();
+    false
   }
 }
 
@@ -906,19 +961,25 @@ impl Problem {
   }
 
   pub fn assess_output (&self,
-                        output: &Vec<u64>) -> (f32,f32) {
+                        output: &Vec<u64>) -> (Fingerprint, f32) {
     match &self.target {
       &Target::Exact(ref rp) => {
         // here we can try some sort of fitness sharing thing
+        // refactor later so that this returns a fingerprint
+        // as its first parameter
         let r = f32::max(0.0, rp.distance(&output));
-        (r,r)
+        let f = rp.matches(&output);
+        (f, r)
       },
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
+        let mut f = Fingerprint::new();
         let r = if b == cls.class {
-          (0.0, 1.0 - self.difficulty()) 
+          f.push(false);
+          (f, 1.0 - self.difficulty()) 
         } else {
-          (1.0, 1.0)
+          f.push(true);
+          (f, 1.0)
         }; 
         //println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
        r
@@ -1266,13 +1327,13 @@ impl RPattern {
     }
     true
   }
-  pub fn matches_with_diff (&self, regs: &Vec<u64>) -> Vec<f32> {
-    let mut scorecard : Vec<f32> = Vec::new();
+  pub fn matches (&self, regs: &Vec<u64>) -> Fingerprint {
+    let mut scorecard : Fingerprint = Fingerprint::new();
     for &(idx,val,diff) in &self.regvals_diff {
       if regs[idx] == val {
-        scorecard.push(1.0/diff);
+        scorecard.push(false);
       } else {
-        scorecard.push(0.0);
+        scorecard.push(true);
       }
     }
     scorecard

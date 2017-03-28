@@ -1,15 +1,14 @@
 // Implement something like stackvec to make a copiable vec
 // like structure to contain your shit.
 extern crate unicorn; 
-
+extern crate bit_vec;
 use std::cell::*;
 use std::io::{BufReader,BufRead};
 use std::path::Path;
 use std::sync::{RwLock,RwLockReadGuard};
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
-use std::collections::HashMap;
-
+use std::collections::{HashMap};
 use rand::distributions::*;
 use rand::Rng;
 use rand::ThreadRng;
@@ -119,6 +118,7 @@ fn mate (parents: &Vec<&Chain>,
 pub struct EvalResult {
   pub fitness : f32,
   pub ab_fitness : f32,
+  pub fingerprint : Fingerprint,
   pub counter : usize,
   pub crashes : bool,
   pub difficulties : Option<HashMap<Problem, f32>>,
@@ -157,7 +157,8 @@ fn eval_case (uc: &mut CpuARM,
   let (af,rf) = problem.assess_output(&output);
   EvalResult {
     fitness: rf,
-    ab_fitness: af,
+    ab_fitness: 0.0,
+    fingerprint: af,
     counter: counter,
     crashes: crash,
     difficulties: None,
@@ -188,6 +189,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     Batch::TESTING  => &params.test_targets,
   };
   let io2 : IoTargets;
+  // NB: fingerprint mechanics won't work, as currrently implemented,
+  // if the samples are shuffled, since it uses the order to id them
+  // but this can be overcome at the cost of a bit more memory usage.
+  // we'd just have to make fingerprints a vector of problem_id/bool
+  // pairs. 
   let io_targets = if sample_ratio == 1.0 {
     io
   } else {
@@ -213,7 +219,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   }
   
   let mut fit_vec : Vec<f32> = Vec::new();
-  let mut abfit_vec : Vec<f32> = Vec::new();
+  let mut fingerprint :Fingerprint = Fingerprint::new(); 
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
@@ -228,7 +234,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &outregs,
                         verbose);
     let p = problem.clone();
-    difficulties.insert(p, res.ab_fitness);
+    let dif = if res.fingerprint[0] {1.0} else {0.0};
+    difficulties.insert(p, dif);
     /* crash tracking */ 
     let counter = min(res.counter, chain.size()-1);
     let ratio_run = f32::min(1.0, counter as f32 / 
@@ -244,19 +251,24 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
       res.fitness
     };
     fit_vec.push(crash_adjusted);
-    abfit_vec.push(res.ab_fitness);
+    fingerprint.extend(&res.fingerprint);
   };
   /* clean up hooks */
   for hook in &hooks { uc.remove_hook(*hook); }
 
   let fitness    = mean(&fit_vec);
-  let ab_fitness = mean(&abfit_vec);
+  let ab_fitness = fingerprint.iter()
+                              .filter(|&x| *x)
+                              .count() as f32 / 
+                              fingerprint.len() as f32;
+    //mean(&abfit_vec);
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
   
   EvalResult {
     fitness      : fitness,
     ab_fitness   : ab_fitness,
+    fingerprint  : fingerprint,
     counter      : counter_sum / io_targets.len(),
     crashes      : anycrash,
     difficulties : Some(difficulties),
@@ -301,6 +313,7 @@ fn append_to_csv(path: &str, iter: usize,
 pub struct FitUpdate {
   pub fitness : Option<f32>,
   pub ab_fitness : Option<f32>,
+  pub fingerprint : Fingerprint,
   pub crashes : Option<bool>,
 }
 
@@ -360,7 +373,8 @@ pub fn update_difficulties (params: &mut Params,
 
 
 pub fn patch_population (tr: &TournementResult,
-                        population: &mut Population) 
+                        population: &mut Population,
+                        verbose: bool) 
                         -> Option<Chain> 
 {
   assert_eq!(tr.graves.len(), tr.spawn.len());
@@ -377,19 +391,16 @@ pub fn patch_population (tr: &TournementResult,
       population.deme[i].fitness = fit_up.fitness.clone();
       population.deme[i].crashes = fit_up.crashes.clone();
       population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
+      population.deme[i].fingerprint = fit_up.fingerprint.clone();
     }
   }
-  println!("{}",tr.display);
+  if verbose { println!("{}",tr.display); };
   if population.best == None 
     || (tr.best.crashes == Some(false)
         && tr.best.ab_fitness < population.best_abfit()) {
     population.best = Some(tr.best.clone());
-    population.log();
     Some(tr.best.clone())
   } else {
-    if population.params.verbose {
-      population.log();
-    }
     None
   }
 }
@@ -450,6 +461,7 @@ pub fn tournament (population: &Population,
                                  1.0,
                                  false); // verbose
       let fitness = res.fitness;
+      let ab_fitness = res.ab_fitness;
       let crash   = Some(res.crashes);
       for (input, difficulty) in &res.difficulties.unwrap() {
         match difficulty_update.get(input) {
@@ -463,15 +475,18 @@ pub fn tournament (population: &Population,
         };
       }
       fit_vec.push(FitUpdate {
-        fitness: Some(fitness),
-        ab_fitness: Some(res.ab_fitness.clone()),
-        crashes: crash,
+        fitness     : Some(fitness),
+        ab_fitness  : Some(ab_fitness),
+        crashes     : crash,
+        fingerprint : res.fingerprint,
         });
     } else {
       fit_vec.push(FitUpdate {
-        fitness: specimen.fitness.clone(),
-        ab_fitness: specimen.ab_fitness.clone(),
-        crashes: specimen.crashes,
+        // are all these clones necessary?
+        fitness     : specimen.fitness.clone(),
+        ab_fitness  : specimen.ab_fitness.clone(),
+        crashes     : specimen.crashes,
+        fingerprint : specimen.fingerprint.clone(),
       });
     }
   } 
@@ -520,16 +535,18 @@ pub fn tournament (population: &Population,
   };
   let mut fit_updates = vec![(m_idx, 
                               FitUpdate {
-                                fitness: mother.fitness,
-                                ab_fitness: mother.ab_fitness,
-                                crashes:mother.crashes,
+                                fitness     : mother.fitness,
+                                ab_fitness  : mother.ab_fitness,
+                                crashes     : mother.crashes,
+                                fingerprint : Fingerprint::new(),
                               })];
   if !cflag {
     fit_updates.push((f_idx, 
                       FitUpdate { 
-                        fitness: father.fitness,
-                        ab_fitness: father.ab_fitness,
-                        crashes: father.crashes,
+                        fitness     : father.fitness,
+                        ab_fitness  : father.ab_fitness,
+                        crashes     : father.crashes,
+                        fingerprint : Fingerprint::new(),
                       })); // (father.fitness,father.crashes)));
   }
 
