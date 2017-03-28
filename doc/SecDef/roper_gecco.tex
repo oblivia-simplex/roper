@@ -816,6 +816,7 @@ offspring.
   \label{shellpattern-graph}
 \end{figure}
 
+
 Branching to gadgets unlisted in the chain's own genome can be
 seen as a dangerous and error-prone tactic to dramatically
 increase the proportion of introns in the genome. Selection for
@@ -927,16 +928,21 @@ prevalence of crashes in the population, a sort of segfault
 thermostat -- subdued the
 pressures that encouraged the population to crash, just enough to
 prevent behaviour of figure~\ref{fig:plague}.
-The result was a superb run -- achieving 94\,\% detection rate on
-the training set in just 11,182 tournaments, 31 seasons of
+The result was a superb run -- achieving 96.6\,\% detection rate on
+the training set in 27,724 tournaments, 216 seasons of
 difficulty rotation, and an average
-phylogenic generation of just 31.9. 
+phylogenic generation of 91.3. Figure~\ref{fig:okay} shows the
+course the evolution took, with the right-hand panel showing the
+responding environmental pressures -- the \texttt{difficulty}
+scores associated
+with each class, showing both mean and standard deviation.
+
 
 \begin{figure}
-  \includegraphics[height=4cm]{examples/iris/sharing2/sharing2.png}
+  \includegraphics[height=4cm,width=\columnwidth]{examples/iris/sharing3/sharing3white.png}
   \caption{Sharing both fitness and crash-penalties on the Iris
-  data set, with chains from tomato-RT-N18U-httpd: 96.6\,\% detection rate on training set after just
-  9040 tournaments}
+  data set, with chains from tomato-RT-N18U-httpd: 96.6\,\%
+  detection rate on training set after 27,724 tournaments}
   \label{fig:okay}
 \end{figure}
 

@@ -204,9 +204,9 @@ INPUT ./examples/iris/good-nosharing/good-nosharing.png
 INPUT examples/iris/plague/plague.png
 INPUT ./examples/iris/plague/plague.png
 INPUT ./examples/iris/plague/plague.png
-INPUT examples/iris/sharing2/sharing2.png
-INPUT ./examples/iris/sharing2/sharing2.png
-INPUT ./examples/iris/sharing2/sharing2.png
+INPUT examples/iris/sharing3/sharing3white.png
+INPUT ./examples/iris/sharing3/sharing3white.png
+INPUT ./examples/iris/sharing3/sharing3white.png
 OUTPUT comment.cut
 INPUT comment.cut
 INPUT comment.cut

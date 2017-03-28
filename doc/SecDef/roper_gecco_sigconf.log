@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  27 MAR 2017 13:31
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  28 MAR 2017 12:48
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -785,27 +785,27 @@ File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type png)
 
 <use examples/iris/good-nosharing/good-nosharing.png>
 Package pdftex.def Info: examples/iris/good-nosharing/good-nosharing.png used o
-n input line 886.
+n input line 887.
 (pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
 
 <examples/iris/plague/plague.png, id=221, 770.88pt x 385.44pt>
 File: examples/iris/plague/plague.png Graphic file (type png)
 
 <use examples/iris/plague/plague.png>
-Package pdftex.def Info: examples/iris/plague/plague.png used on input line 894
+Package pdftex.def Info: examples/iris/plague/plague.png used on input line 895
 .
 (pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
 
-<examples/iris/sharing2/sharing2.png, id=224, 770.88pt x 385.44pt>
-File: examples/iris/sharing2/sharing2.png Graphic file (type png)
+<examples/iris/sharing3/sharing3white.png, id=225, 846.16125pt x 460.72125pt>
+File: examples/iris/sharing3/sharing3white.png Graphic file (type png)
 
-<use examples/iris/sharing2/sharing2.png>
-Package pdftex.def Info: examples/iris/sharing2/sharing2.png used on input line
- 936.
-(pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
+<use examples/iris/sharing3/sharing3white.png>
+Package pdftex.def Info: examples/iris/sharing3/sharing3white.png used on input
+ line 942.
+(pdftex.def)             Requested size: 241.14555pt x 113.80917pt.
  [8.8 <./examples/iris/good-nosharing/good-nosharing.png> <./examples/iris/plag
-ue/plague.png> <./examples/iris/sharing2/sharing2.png>] Processing 'acks' comme
-nt.
+ue/plague.png> <./examples/iris/sharing3/sharing3white.png (PNG copy)>] Process
+ing 'acks' comment.
 \openout3 = `comment.cut'.
 
 
@@ -828,8 +828,8 @@ Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 130.
  ) 
 Here is how much of TeX's memory you used:
  11948 strings out of 494113
- 178254 string characters out of 6154997
- 344473 words of memory out of 5000000
+ 178279 string characters out of 6154997
+ 344470 words of memory out of 5000000
  14633 multiletter control sequences out of 15000+600000
  25288 words of font info for 194 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
@@ -865,10 +865,10 @@ f-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></home/oblivia/texlive/texmf-di
 st/fonts/type1/public/amsfonts/cm/cmtt9.pfb></home/oblivia/texlive/texmf-dist/f
 onts/type1/public/cm-super/sfrm0700.pfb></home/oblivia/texlive/texmf-dist/fonts
 /type1/public/cm-super/sfrm0900.pfb>
-Output written on roper_gecco_sigconf.pdf (9 pages, 481284 bytes).
+Output written on roper_gecco_sigconf.pdf (9 pages, 552205 bytes).
 PDF statistics:
  361 PDF objects out of 1000 (max. 8388607)
- 305 compressed objects within 4 object streams
+ 306 compressed objects within 4 object streams
  80 named destinations out of 1000 (max. 500000)
  33922 words of extra memory for PDF output out of 35830 (max. 10000000)
 
