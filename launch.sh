@@ -1,11 +1,12 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
-DATAFILE=${PROJECT_ROOT}/data/iris.data
+
+DATAFILE=${PROJECT_ROOT}/data/data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
 DATASTRING="-d $DATAFILE"
 BINARY=${PROJECT_ROOT}/data/openssl #tomato-RT-N18U-httpd
 GOAL="0.1"
-READEVERY=64
+READEVERY=1
 
 TERMINALSTRING=""
 

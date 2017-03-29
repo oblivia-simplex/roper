@@ -498,6 +498,7 @@ pub fn tournament (population: &Population,
       specimen.crashes = fit_up.crashes;
       specimen.fitness = fit_up.fitness;
       specimen.ab_fitness = fit_up.ab_fitness;
+      specimen.fingerprint = fit_up.fingerprint.clone();
       /* Set link fitness values */
       for clump in &mut specimen.clumps {
         clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
@@ -508,7 +509,7 @@ pub fn tournament (population: &Population,
     //  specimen.set_ab_fitness(ab_fitness);
     }
 
-  specimens.sort();
+  select_mates(&mut specimens); //.sort();
   /* bit of ab_fit elitism now *
   let j = if cflag {1} else {2};
   let outr = population.params.outregs.len() as f32;
@@ -607,6 +608,27 @@ pub fn tournament (population: &Population,
   }  
 }
 
+fn select_mates(specimens: &mut Vec<(Chain,usize)>)  {
+  // easy way: sort by fitness. specimens.sort()
+  // interesting way: sort, and then let the winner choose her mate
+  specimens.sort();
+  let m0 = specimens[0].0.fingerprint.clone();
+  /*
+  println!(">> BEFORE FINGERPRINT SORT:");
+  for s in specimens.iter() {
+    println!("   {} [{}]", s.0.fingerprint, m0.distance(&s.0.fingerprint));
+  }
+  */
+  specimens[1..]
+    .sort_by(|y,x| m0.distance(&x.0.fingerprint)
+                     .cmp(&m0.distance(&y.0.fingerprint)));
+  /*
+  println!(">> AFTER FINGERPRINT SORT:");
+  for s in specimens.iter() {
+    println!("{}[{}]", s.0.fingerprint, m0.distance(&s.0.fingerprint));
+  }
+  */
+}
 
 fn cull_brood (brood: &mut Vec<Chain>, 
              n: usize,
@@ -666,8 +688,8 @@ spin.sample(rng)
 }
 
 fn shufflefuck (parents:    &Vec<&Chain>, 
-              params:     &Params,
-              rng:        &mut ThreadRng) -> Vec<Chain> {
+                params:     &Params,
+                rng:        &mut ThreadRng) -> Vec<Chain> {
 let brood_size = params.brood_size;
 let max_len    = params.max_len;
 let use_viscosity = params.use_viscosity;

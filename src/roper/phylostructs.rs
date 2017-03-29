@@ -773,7 +773,7 @@ impl Default for Params {
       fitness_sharing:  true,
       season_divisor:    4,
       constants:        Vec::new(),
-      cuck_rate:        0.15,
+      cuck_rate:        0.0,
       verbose:          false,
       date_dir:         datepath.clone(),
       csv_path:         format!("{}/roper_{}.csv", 
@@ -1059,8 +1059,8 @@ impl Classification {
 
 pub static DEFAULT_DIFFICULTY : f32 = 1.0; // don't hardcode
 
-pub fn suggest_constants (iot: &IoTargets) -> Vec<u32> {
-  let mut cons : Vec<u32> = Vec::new();
+pub fn suggest_constants (iot: &IoTargets) -> Vec<i32> {
+  let mut cons : Vec<i32> = Vec::new();
   for ref p in iot.v.iter() {
     cons.extend_from_slice(&p.target.suggest_constants(&p.input));
   }
@@ -1239,13 +1239,13 @@ impl Display for Target {
 }
 
 impl Target {
-  pub fn suggest_constants (&self, input: &Vec<i32>) -> Vec<u32> {
+  pub fn suggest_constants (&self, input: &Vec<i32>) -> Vec<i32> {
     match self {
       &Target::Vote(_) => {
-        let mut cons : Vec<u32> = Vec::new();
+        let mut cons : Vec<i32> = Vec::new();
         let mut rng = rand::thread_rng();
         for ut in input {
-          cons.push(rng.gen::<u32>() % (2 * *ut as u32));
+          cons.push(rng.gen::<i32>() % (2 * (ut.abs()+1) as i32));
         }
         cons
       },
@@ -1315,10 +1315,10 @@ impl RPattern {
   pub fn push (&mut self, x: (usize, u64)) {
     self.regvals_diff.push((x.0,x.1,1.0));
   }
-  pub fn constants (&self) -> Vec<u32> {
+  pub fn constants (&self) -> Vec<i32> {
     self.regvals_diff
         .iter()
-        .map(|&p| p.1 as u32)
+        .map(|&p| p.1 as i32)
         .collect()
   }
   pub fn satisfy (&self, regs: &Vec<u64>) -> bool {

@@ -225,7 +225,7 @@ fn main() {
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
   params.data_addrs   = vec![rodata_addr as u32];
-  params.constants    = constants;
+  params.constants    = constants.iter().map(|&x| x as u32).collect();
   params.fitness_sharing = fitness_sharing;
   params.io_targets   = training;
   params.test_targets = testing;
@@ -428,4 +428,5 @@ fn main() {
   println!("[*] Absolute fitness of champion on testing run: {:1.6}",
            testing_res.ab_fitness);
   println!("[*] Crash on testing run: {}", testing_res.crashes);
+  println!("[*] Logged at {}", pop_local.read().unwrap().params.csv_path);
 }
