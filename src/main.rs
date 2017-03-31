@@ -88,18 +88,21 @@ fn main() {
 
   let mut opts = Options::new();
   opts.parsing_style(ParsingStyle::FloatingFrees);
-  opts.optopt("p", "", "set target pattern", "PATTERN");
-  opts.optopt("d", "", "set data path", "PATH");
-  opts.optopt("g", "", "set fitness goal (default 0)", "POSITIVE FLOAT <= 1");
-  opts.optopt("o", "", "set log directory", "DIRECTORY");
-  opts.optopt("h", "help", "print this help menu", "");
-  opts.optopt("t", "threads", "set number of threads", "");
-  opts.optopt("P", "population", "set population size", "");
-  opts.optflag("V", "viscosity", "use viscosity modulations to encourage gene linkage");
-  opts.optopt("D", "demes", "set number of demes", "");
-  opts.optopt("b", "binary", "select binary file to search for gadgets", "");
-  opts.optopt("L", "label", "set a label for the trial", "");
-  opts.optopt("m", "migration", "set migration rate (float <= 1.0)", "");
+  opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
+  opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
+  opts.optopt("d", "data", "set data path", "<path to data file>");
+  opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
+  opts.optopt("o", "logs", "set log directory", "<directory>");
+  opts.optopt("t", "threads", "set number of threads", "<positive integer>");
+  opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
+  opts.optopt("P", "population", "set population size", "<positive integer>");
+  opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
+  opts.optopt("L", "label", "set a label for the trial", "<string>");
+  opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
+  opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
+  opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
+  opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
+  opts.optflag("h", "help", "print this help menu");
   let matches = match opts.parse(&args[1..]) {
     Ok(m)  => { m },
     Err(f) => { panic!(f.to_string()) },
@@ -110,14 +113,21 @@ fn main() {
     print_usage(&program, opts);
     return;
   }
-  let use_viscosity = true;
-  /*
-    if matches.opt_present("V") {
-      true
-    } else {
-      false
-    };
-    */
+  let use_viscosity = if matches.opt_present("V") {
+    false 
+  } else {
+    true
+  };
+   
+  let ret_hooks = if matches.opt_present("R") {
+    false
+  } else {
+    true 
+  };
+  let crossover_rate = match matches.opt_str("c") {
+    None => 0.5,
+    Some(n) => n.parse::<f32>().unwrap(),
+  };
   println!(">> use_viscosity = {}", use_viscosity);
   let popsize = match matches.opt_str("P") {
     None => 2000,
@@ -131,7 +141,10 @@ fn main() {
     None => 4,
     Some(n) => n.parse::<usize>().unwrap(),
   };
-  let label = matches.opt_str("L");
+  let label = match matches.opt_str("L") {
+    None => "roper".to_string(),
+    Some(n) => n.to_string(),
+  };
   let rpattern_str = matches.opt_str("p");
   let fitness_sharing = rpattern_str == None;
   let data_path    = matches.opt_str("d");
@@ -149,6 +162,11 @@ fn main() {
       }
     },
     Some(p) => p,
+  };
+  let t_size = match matches.opt_str("T") {
+    None => 4,
+    Some(p) => p.parse::<usize>()
+                .expect("Couldn't parse t_size parameter."),
   };
   let goal : f32 = match matches.opt_str("g") {
     None => 0.11,
@@ -213,19 +231,18 @@ fn main() {
 
 
   let constants = suggest_constants(&io_targets);
-  let mut params : Params = Params::new();
+  let mut params : Params = Params::new(&label);
   let num_targets = io_targets.len();
   if pattern_matching {
     params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
   }
-  if label != None {
-    params.label = label.unwrap();
-  }
+  params.ret_hooks = ret_hooks;
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
   params.data = vec![rodata_data.clone()];
   params.data_addrs   = vec![rodata_addr as u32];
   params.constants    = constants.iter().map(|&x| x as u32).collect();
+  params.t_size       = t_size;
   params.fitness_sharing = fitness_sharing;
   params.io_targets   = training;
   params.test_targets = testing;
@@ -235,6 +252,7 @@ fn main() {
   params.threads      = threads;
   params.num_demes    = num_demes;
   params.use_viscosity = use_viscosity;
+  params.crossover_rate = crossover_rate;
   params.set_log_dir(&log_dir);
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
@@ -309,6 +327,7 @@ fn main() {
                          .unwrap_or(Ordering::Equal));
       let iteration;
       let season_change;
+      let class_stddev_difficulties;
       /* Update a bunch of relatively global parameters & population */
       { // block to enclose write lock
         let mut mut_pop = &mut pop_local.write().unwrap();
@@ -317,17 +336,22 @@ fn main() {
           if mut_pop.params.fitness_sharing {
             patch_io_targets(&tr, &mut mut_pop.params, iteration);
           };
-          let updated = patch_population(&tr, mut_pop, verbose);
+          let updated = patch_population(&tr, mut_pop, true);
           if updated != None {
             champion = updated.clone();
           }
           mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }
         season_change = update_difficulties(&mut mut_pop.params, 
-                                           iteration);
+                                            iteration);
         mut_pop.season += season_change;
         season = mut_pop.season.clone();
-      }
+        class_stddev_difficulties = mut_pop.params
+                                      .io_targets
+                                      .class_stddev_difficulties();
+        //mut_pop.params.mutation_rate = 
+        //  calc_mutrate(&class_stddev_difficulties);
+      } // end mut block
      
       if season_change > 0 || iteration % printevery == 0 {
         /**************************************************
@@ -393,21 +417,17 @@ fn main() {
         }
         println!("[+] STDDEV DIFFICULTIES BY CLASS:");
         let mut c = 0;
-        for d in     pop_local.read()
-                              .unwrap()
-                              .params
-                              .io_targets
-                              .class_stddev_difficulties() {
+        for d in class_stddev_difficulties {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
         println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
-                 
       } else {
         print!("\r[{}]                 ",iteration);
         io::stdout().flush().ok().expect("Could not flush stdout");
       }
       pop_local.read().unwrap().periodic_save();
+      println!("------------------------------------------------");
     }); // END POOL SCOPE
     i += 1;
   } // END OF MAIN LOOP

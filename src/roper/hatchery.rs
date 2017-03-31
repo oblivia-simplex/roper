@@ -10,21 +10,7 @@ use roper::util::{disas,get_word32le, get_word16le, hexvec};
 use roper::phylostructs::MachineMode;
 use std::fmt::{Display,format,Formatter,Result};
 use roper::ontostructs::*;
-//use roper::hooks::*;
-//use roper::unitools::*;
 
-
-/*
-fn elf_perm_to_uc (elf_perm: ProgFlag) -> unicorn::Protection {
-  match elf_perm {
-    // Note that the only difference is the order of bits. Why?
-    PF_NONE => PROT_NONE,  // 0 -> 0
-    PF_X    => PROT_EXEC,  // 1 -> 4
-    PF_W    => PROT_WRITE, // 2 -> 2
-    PF_R    => PROT_READ,  // 4 -> 1 
-  }
-}
-*/
 pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<u64> {
   REGISTERS.iter().map(|&x| uc.reg_read(x.to_i32())
                               .expect("Error reading reg"))
@@ -45,7 +31,8 @@ pub fn set_registers (uc: &unicorn::Unicorn,
     uc.reg_write_i32(REGISTERS[i].to_i32(), val);
   }
 }
-/**
+
+/*
  * Initializes the engine. Anchors the engine to the
  * lifetime of the text section, since text will be
  * used throughout (generation of gadgets, etc.).
@@ -127,9 +114,9 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
-  let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
   set_registers(uc.emu(), &input, &inregs);
-  reset_counter(uc);
+  //reset_counter(uc);
+  let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
   uc.mem_write(BASE_STACK, &zerostack)
     .expect("Error zeroing out stack");
   uc.mem_write(STACK_INIT, stack)
@@ -144,7 +131,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   };
   HatchResult { registers: read_registers(&(uc.emu())),
                 error: e,
-                counter: read_counter(uc),
+                counter: 0,//read_counter(uc),
   }
 }
 

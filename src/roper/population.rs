@@ -81,6 +81,15 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   }
   let mut cl_idx : usize = rng.gen::<usize>() % chain.size();
   let mut tries = 3;
+  /* if you do this, take viscosity, link age, and link fit into 
+   * account. 
+  if rng.gen::<bool>() {
+    let cl_idx2 = rng.gen::<usize>() % chain.size();
+    let tmp = chain[cl_idx];
+    chain[cl_idx] = chain[cl_idx2];
+    chain[cl_idx2] = tmp;
+  }
+  **/
   while chain[cl_idx].size() == 1 {
     if tries == 0 { return } else { tries -= 1 };
     cl_idx = rng.gen::<usize>() % chain.size();
@@ -88,10 +97,10 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   let mut clump = chain[cl_idx].clone();
   assert!(clump.size() > 0);
   let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-  let mut_kind : u8 = rng.gen::<u8>() % 2;
+  let mut_kind : u8 = rng.gen::<u8>() % 4;
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
-    //1 => mutate_addr(&mut clump, rng),
+    1 => mutate_addr(&mut clump, rng),
     _ => { /* permutation */
       let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
       let tmp = clump.words[idx];
@@ -101,13 +110,34 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   };
 }
 
+fn clone_and_mutate (parents: &Vec<&Chain>,
+                     params:  &Params,
+                     rng:     &mut ThreadRng) -> Vec<Chain> {
+  let mut brood : Vec<Chain> = Vec::new();
+  let n = params.brood_size;
+  for i in 0..n {
+    let mut spawn = parents[i % 2].clone();
+    mutate(&mut spawn, &params, rng);
+    brood.push(spawn);
+  }
+  brood
+}
+
 fn mate (parents: &Vec<&Chain>, 
-             params:  &Params, 
-             rng:     &mut ThreadRng,
-             uc:      &mut CpuARM) -> Vec<Chain> {
-  let mut brood = shufflefuck(parents, 
-                              params,
-                              rng);
+         params:  &Params, 
+         rng:     &mut ThreadRng,
+         uc:      &mut CpuARM) -> Vec<Chain> {
+  let mut brood = if rng.gen::<f32>() < params.crossover_rate {
+//    println!("-- sex --");
+    shufflefuck(parents, 
+                params,
+                rng)
+  } else {
+//    println!("-- clone + mutate --");
+    clone_and_mutate(parents,
+                     params,
+                     rng)
+  };
   for s in brood.iter_mut() {
     mutate(s, params, rng)
   }
@@ -115,6 +145,7 @@ fn mate (parents: &Vec<&Chain>,
   brood
 }
 
+#[derive(Debug,PartialEq)]
 pub struct EvalResult {
   pub fitness : f32,
   pub ab_fitness : f32,
@@ -147,7 +178,6 @@ fn eval_case (uc: &mut CpuARM,
   // input should be a vec of ordered pairs: (reg,value)
   if verbose { print!("\n{}", result); }
   let counter = result.counter;
-  //let output   = &result.registers;
   let mut output : Vec<u64> = Vec::new();
   for idx in outregs {
     output.push(result.registers[*idx]);
@@ -208,16 +238,17 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
 
   /* Set hooks at return addresses */
   let mut hooks : Vec<uc_hook> = Vec::new();
-
-  for clump in &chain.clumps {
-    let r = uc.add_code_hook(CodeHookType::CODE,
-                     clump.ret_addr as u64 ,
-                     clump.ret_addr as u64,
-                     counter_hook)
-      .expect("Error adding ret_addr hook.");
-    hooks.push(r);
+  if params.ret_hooks {
+//    println!("(ADDING RETURN HOOKS)");
+    for clump in &chain.clumps {
+      let r = uc.add_code_hook(CodeHookType::CODE,
+                       clump.ret_addr as u64 ,
+                       clump.ret_addr as u64,
+                       counter_hook)
+        .expect("Error adding ret_addr hook.");
+      hooks.push(r);
+    }
   }
-  
   let mut fit_vec : Vec<f32> = Vec::new();
   let mut fingerprint :Fingerprint = Fingerprint::new(); 
   /* This loop would probably be easy to parallelize */
@@ -237,9 +268,14 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let dif = if res.fingerprint[0] {1.0} else {0.0};
     difficulties.insert(p, dif);
     /* crash tracking */ 
-    let counter = min(res.counter, chain.size()-1);
+    let counter = if params.ret_hooks {
+      min(res.counter, chain.size()-1)
+    } else {
+      chain.size()-1
+    }; // benefit of the doubt here?
+    
     let ratio_run = f32::min(1.0, counter as f32 / 
-                             chain.size() as f32);
+                             (chain.size()-1) as f32);
     counter_sum += counter;
     anycrash = anycrash || res.crashes;
     /* adjust score if there was a crash */
@@ -254,7 +290,9 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     fingerprint.extend(&res.fingerprint);
   };
   /* clean up hooks */
-  for hook in &hooks { uc.remove_hook(*hook); }
+  if params.ret_hooks {
+    for hook in &hooks { uc.remove_hook(*hook); }
+  }
 
   let fitness    = mean(&fit_vec);
   let ab_fitness = fingerprint.iter()
@@ -336,10 +374,10 @@ pub fn patch_io_targets (tr: &TournementResult,
   let mut io_targets = &mut params.io_targets;
   for ref mut problem in io_targets.iter_mut() {
     if let Some(d_vec) = tr.difficulty_update.get(&problem) {
-//      println!("(*) found problem {:?}", problem);
+      //println!("(*) found problem {:?}", problem);
       problem.inc_predifficulty(d_vec); // += d_vec.iter().sum::<f32>();
     } else {
-//      println!("(x) couldn't find problem {:?}", problem);
+      //println!("(x) couldn't find problem {:?}", problem);
     }
   }
 }
@@ -509,7 +547,7 @@ pub fn tournament (population: &Population,
     //  specimen.set_ab_fitness(ab_fitness);
     }
 
-  select_mates(&mut specimens); //.sort();
+  select_mates(&mut specimens, true); //.sort();
   /* bit of ab_fit elitism now *
   let j = if cflag {1} else {2};
   let outr = population.params.outregs.len() as f32;
@@ -608,7 +646,8 @@ pub fn tournament (population: &Population,
   }  
 }
 
-fn select_mates(specimens: &mut Vec<(Chain,usize)>)  {
+fn select_mates(specimens: &mut Vec<(Chain,usize)>,
+                select_for_diversity: bool)  {
   // easy way: sort by fitness. specimens.sort()
   // interesting way: sort, and then let the winner choose her mate
   specimens.sort();
@@ -619,9 +658,11 @@ fn select_mates(specimens: &mut Vec<(Chain,usize)>)  {
     println!("   {} [{}]", s.0.fingerprint, m0.distance(&s.0.fingerprint));
   }
   */
-  specimens[1..]
-    .sort_by(|y,x| m0.distance(&x.0.fingerprint)
-                     .cmp(&m0.distance(&y.0.fingerprint)));
+  if select_for_diversity {
+    specimens[1..]
+      .sort_by(|y,x| m0.distance(&x.0.fingerprint)
+                       .cmp(&m0.distance(&y.0.fingerprint)));
+  }
   /*
   println!(">> AFTER FINGERPRINT SORT:");
   for s in specimens.iter() {
@@ -634,23 +675,31 @@ fn cull_brood (brood: &mut Vec<Chain>,
              n: usize,
              uc: &mut CpuARM,
              params: &Params) {
-/* Sort by fitness - most to least */
-let mut i = 0;
-for spawn in brood.iter_mut() {
-  // println!("[*] Evaluating spawn #{}...", i);
-  i += 1;
-  evaluate_fitness(uc, 
-                   &spawn, 
-                   &params, 
-                   Batch::TRAINING,
-                   0.1,
-                   false); 
+  /* Sort by fitness - most to least */
+  let mut i = 0;
+  for spawn in brood.iter_mut() {
+    // println!("[*] Evaluating spawn #{}...", i);
+    i += 1;
+    evaluate_fitness(uc, 
+                     &spawn, 
+                     &params, 
+                     Batch::TRAINING,
+                     0.1,
+                     false); 
+  }
+  brood.sort();
+  /* Now eliminate the least fit */
+  while brood.len() > n {
+    brood.pop();
+  }
 }
-brood.sort();
-/* Now eliminate the least fit */
-while brood.len() > n {
-  brood.pop();
-}
+
+pub fn calc_mutrate (std_dev_difs: &Vec<f32>) -> f32 {
+  let mean_std_dev_dif = mean(std_dev_difs);
+  let rate = f32::max(0.01, 1.0 - (100.0 * mean_std_dev_dif));
+  println!(">> mean_std_dev_dif at {}; setting mutation rate to {}",
+           mean_std_dev_dif, rate);
+  rate
 }
 
 fn calc_viscosity (clump: &Clump) -> i32 {
@@ -804,8 +853,8 @@ pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
 }
 
 fn crash_override(score: f32,
-                      ratio_run: f32,
-                      params: &Params) -> f32 {
+                  ratio_run: f32,
+                  params: &Params) -> f32 {
   if params.fatal_crash {
     1.0
   } else {

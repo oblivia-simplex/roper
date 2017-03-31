@@ -21,6 +21,7 @@ use std::ops::{Index,IndexMut};
 use std::fs::{DirBuilder,File,OpenOptions};
 use std::io::prelude::*;
 use std::slice::{Iter,IterMut};
+use std::env;
 use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
@@ -33,6 +34,7 @@ pub const RIPENING_FACTOR : i32 = 4;
 pub const MAX_FIT : f32 = 1.0;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
+//pub static mut DISAS_PATH : str = "./DISASSEMBLY_FILE_DEFAULT_NAME.TXT";
 pub type FIT_INT = u32;
 
 #[derive(Debug,Clone,PartialEq,Eq)]
@@ -466,7 +468,6 @@ impl Population {
 
     let mut clump_buckets : Vec<Vec<Clump>> = 
       vec![Vec::new(), Vec::new(), Vec::new(), Vec::new()];
-
     for clump in clumps.iter() {
       clump_buckets[test_clump(engine.unwrap_mut(), &clump)]
         .push(clump.clone())
@@ -480,12 +481,21 @@ impl Population {
     let mut data_pool  = Mangler::new(&params.constants);
     let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
+
       deme.push(random_chain_from_buckets(
                              &clump_buckets,
                              params.min_start_len,
                              params.max_start_len,
                              &mut data_pool,
                              &mut rand::thread_rng()));
+      /*
+      deme.push(random_chain(&clumps,
+                             params.min_start_len,
+                             params.max_start_len,
+                             &mut data_pool,
+                             &mut rand::thread_rng()));
+                             */
+
     }
     Population {
       deme: deme,
@@ -705,8 +715,10 @@ pub enum SelectionMethod {
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
   pub label            : String,
+  pub ret_hooks        : bool,
   pub population_size  : usize,
   pub mutation_rate    : f32,
+  pub crossover_rate   : f32,
   pub max_iterations  : usize,
   pub selection_method : SelectionMethod,
   pub t_size           : usize,
@@ -745,62 +757,18 @@ pub struct Params {
   pub binary_path      : String,
   pub fatal_crash      : bool,
   pub crash_penalty    : f32,
+  pub host_port        : String,
 }
-impl Default for Params {
-  fn default () -> Params {
-    let t = Local::now();
-    let datepath  = t.format("%y/%m/%d").to_string();
-    let timestamp = t.format("%H-%M-%S").to_string();
-    Params {
-      label:            format!("Fitness-sharing, {} {}", &datepath, &timestamp),
-      population_size:  2048,
-      mutation_rate:    0.45,
-      max_iterations:  800000,
-      selection_method: SelectionMethod::Tournement,
-      t_size:           4,
-      code:             Vec::new(),
-      code_addr:        0,
-      data:             Vec::new(),
-      data_addrs:       Vec::new(),
-      brood_size:       2,
-      min_start_len:    2,
-      max_start_len:    32,
-      max_len:          256,
-      training_ht:      HashMap::new(),
-      io_targets:       IoTargets::new(TargetKind::PatternMatch),
-      test_targets:     IoTargets::new(TargetKind::PatternMatch),
-      fit_goal:         0.1,  
-      fitness_sharing:  true,
-      season_divisor:    4,
-      constants:        Vec::new(),
-      cuck_rate:        0.0,
-      verbose:          false,
-      date_dir:         datepath.clone(),
-      csv_path:         format!("{}/roper_{}.csv", 
-                                &datepath, &timestamp),
-      pop_path:         format!("{}/roper_pop_{}.json", 
-                                &datepath, &timestamp),
-      save_period:      10000,
-      threads:          5,
-      num_demes:        4,
-      migration:        0.05,
-      use_viscosity:    true,
-      // don't hardcode size and numbers of in/out regs.
-      // make this dependent on the data
-      inregs:           vec![1,2,3,4],
-      outregs:          vec![5,6,7],
-      binary_path:      "".to_string(),
-      fatal_crash:      false,
-      crash_penalty:    0.2,
-    }
-  }
-}
+    
+
 impl Display for Params {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let rem = "% ";
     let mut s = String::new(); 
     s.push_str(&format!("{} label: {}\n",
                         rem, self.label));
+    s.push_str(&format!("{} ret_hooks: {}\n",
+                        rem, self.ret_hooks));
     s.push_str(&format!("{} population_size: {}\n",
                         rem, self.population_size));
     s.push_str(&format!("{} mutation_rate: {}\n",
@@ -846,8 +814,55 @@ impl Display for Params {
     
 }
 impl Params {
-  pub fn new () -> Params {
-    Default::default()
+  pub fn new (label: &str) -> Params {
+    let t = Local::now();
+    let datepath  = t.format("%y/%m/%d").to_string();
+    let timestamp = t.format("%H-%M-%S").to_string();
+    Params {
+      label:            label.to_string(),
+      ret_hooks:        true,
+      population_size:  2048,
+      mutation_rate:    0.90,
+      crossover_rate:   0.10,
+      max_iterations:   800000,
+      selection_method: SelectionMethod::Tournement,
+      t_size:           7,
+      code:             Vec::new(),
+      code_addr:        0,
+      data:             Vec::new(),
+      data_addrs:       Vec::new(),
+      brood_size:       2,
+      min_start_len:    2,
+      max_start_len:    32,
+      max_len:          256,
+      training_ht:      HashMap::new(),
+      io_targets:       IoTargets::new(TargetKind::PatternMatch),
+      test_targets:     IoTargets::new(TargetKind::PatternMatch),
+      fit_goal:         0.1,  
+      fitness_sharing:  true,
+      season_divisor:    4,
+      constants:        Vec::new(),
+      cuck_rate:        0.15,
+      verbose:          false,
+      date_dir:         datepath.clone(),
+      csv_path:         format!("{}/{}_{}.csv", 
+                                &datepath, &label, &timestamp),
+      pop_path:         format!("{}/{}-pop_{}.json", 
+                                &datepath, &label, &timestamp),
+      save_period:      10000,
+      threads:          5,
+      num_demes:        4,
+      migration:        0.05,
+      use_viscosity:    true,
+      // don't hardcode size and numbers of in/out regs.
+      // make this dependent on the data
+      inregs:           vec![1,2,3,4],
+      outregs:          vec![5,6,7],
+      binary_path:      "".to_string(),
+      fatal_crash:      false,
+      crash_penalty:    0.2,
+      host_port:        "127.0.0.1:8888".to_string(),
+    }
   }
   pub fn calc_season_length (&self) -> usize {
     if !self.fitness_sharing {

@@ -1,16 +1,33 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 
-DATAFILE=${PROJECT_ROOT}/data/data_banknote_authentication.txt
+function labelmaker () 
+{
+  SRC=/dev/urandom
+  len=6
+  i=1
+  (
+  while (( $i <= len )); do
+    if (( ($i + 1) % 3 == 0 )) ; then
+      cat $SRC | tr -dc aeiouy | head -c1
+    else
+      cat $SRC | tr -dc qwrtpsdfghjklzxcvbnm | head -c1
+    fi
+    # (( $i > 0 )) && (( $i % 6 == 0 )) && echo -n "_"
+    i=$(( $i + 1 ))
+  done
+  ) | sed s:-$::
+  echo
+}
+
+DATAFILE=${PROJECT_ROOT}/data/iris.small #data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
 DATASTRING="-d $DATAFILE"
-BINARY=${PROJECT_ROOT}/data/openssl #tomato-RT-N18U-httpd
+BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 GOAL="0.1"
 READEVERY=1
-
+LABEL=`labelmaker`
 TERMINALSTRING=""
-
-[ -n "$1" ] && LABEL="-L $1"
 
 LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
 mkdir -p $LOGDIR
@@ -64,12 +81,14 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                -t 4 \
                                 -P 2048 \
+                                -t 4 \
                                 -D 1 \
                                 -m 0.05 \
                                 -V \
-                                $LABEL
+                                -R \
+                                -L $LABEL 
+                                
 }
 echo "[+] launching roper"
 run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
@@ -85,9 +104,9 @@ while ! [ -n "$recent" ]; do
   fi
   echo -n "."
   sleep 0.5
-  recent=`find ./ -name "roper*csv" -anewer $STAMPFILE | tail -n1`
+  recent=`find ./ -newer $STAMPFILE -name "${LABEL}*csv"`
 done
-echo "*** recent csv -> $recent"
+echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
 TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
 echo "TIMESTAMP: $TIMESTAMP"
 export TIMESTAMP
@@ -179,7 +198,7 @@ export PLOTFILE
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"
 sleep 1
-( [ -n "$DISPLAY" ] && gnuplot $PLOTFILE) &
+( [ -n "$DISPLAY" ] && gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt) &
 gnuplot_pid=$!
 echo "[+] gnuplot PID is $gnuplot_pid"
 for i in {0..70}; do echo -n "="; done; echo
