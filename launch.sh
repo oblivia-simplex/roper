@@ -153,8 +153,8 @@ cat > $PLOTFILE << EOF
 $TERMINALSTRING
 $OUTPUTSTRING
 set datafile commentschars "%"
-set title "$recent"
-set multiplot layout 1, 2 
+set multiplot layout 1, 2  
+set title ${LABEL}
 set xlabel 'ylabel' tc rgb 'red'
 set ylabel 'xlabel' tc rgb 'red'
 set border lc rgb 'red'

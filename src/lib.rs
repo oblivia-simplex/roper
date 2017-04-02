@@ -8,6 +8,7 @@ extern crate rand;
 extern crate getopts;
 extern crate chrono;
 extern crate bit_vec;
+extern crate regex;
 
 
 pub mod roper;

@@ -3,7 +3,9 @@ extern crate unicorn;
 extern crate time;
 extern crate chrono;
 extern crate rustc_serialize;
+extern crate regex;
 
+use self::regex::*;
 use self::chrono::prelude::*;
 use self::chrono::offset::LocalResult;
 use std::collections::{BTreeMap};
@@ -764,7 +766,25 @@ pub struct Params {
 impl Display for Params {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let rem = "% ";
+    let inside_braces = Regex::new(r"^\{(.+)\}$").unwrap();
+    let dbgstring = format!("{:?}", self);
+    let stuff = &inside_braces.captures_iter(&dbgstring)
+                             .nth(0).unwrap()[1];
+    let dump_innards = inside_braces.replace_all(&stuff, "...");
+    let re = Regex::new(r"([A-Za-z_0-9]+):[ ]*([^, \[{]+)")
+      .expect("Trouble compiling regex.");
     let mut s = String::new(); 
+    for cap in re.captures_iter(&dump_innards) {
+      let field = &cap[1];
+      let value = &cap[2];
+      if value.len() < 60 {
+        s.push_str(&format!("{} {}\n", &rem, &field));
+      } else {
+        s.push_str(&format!("{} {} [elided]\n", &rem, &field));
+      }
+    }
+          
+/*
     s.push_str(&format!("{} label: {}\n",
                         rem, self.label));
     s.push_str(&format!("{} ret_hooks: {}\n",
@@ -809,6 +829,7 @@ impl Display for Params {
                         rem, self.fitness_sharing));
     s.push_str(&format!("{} fatal_crash: {}\n",
                         rem, self.fatal_crash));
+  */
     write!(f, "{}",s)
   }
     

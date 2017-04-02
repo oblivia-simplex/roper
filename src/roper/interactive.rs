@@ -20,7 +20,8 @@ use std::cmp::*;
 use roper::statistics::*;
 use roper::phylostructs::*;
 use roper::hatchery::*;
-use roper::util::{pack_word32le,
+use roper::util::{get_word32le,
+                  pack_word32le,
                   pack_word32le_vec,
                   u8s_to_u16s,
                   u8s_to_u32s,
@@ -45,6 +46,47 @@ fn handle_stream_and_eval (stream: TcpStream,
 
   None
 }
+
+#[derive(Debug,PartialEq)]
+enum GameState {
+  Hello,
+  Input (Vec<i32>),
+  Score (f32), // we'll use fixed point numbers to keep it simple
+}
+
+const hello : u8 = 0x00;
+const input : u8 = 0x10;
+const score : u8 = 0x20;
+const output: u8 = 0x30;
+
+fn decode_packet (packet: &Vec<u8>) -> GameState {
+  let header = packet[0].clone();
+  let off = 1;
+  match header & 0xF0 {
+    hello => GameState::Hello,
+    input => {
+      let wordsize = 4;
+      let len = (header & 0xF) as usize;
+      let mut i = off;
+      let mut words : Vec<i32> = Vec::new();
+      while i < (off + (len * 4)) {
+        words.push(get_word32le(&packet, i) as i32);
+        i += wordsize;
+      }
+      GameState::Input(words)
+    },
+    score => GameState::Score(1.0/get_word32le(&packet, off) as f32),
+    _     => panic!("Packet header not recognized."),
+  }
+}
+
+fn encode_packet (regs: &Vec<u32>) -> Vec<u8> {
+  let mut pkt : Vec<u8> = Vec::new();
+  pkt.push(output | (0x0F & regs.len() as u8));
+  pkt.extend_from_slice(&pack_word32le_vec(&regs));
+  pkt
+}
+
 
 pub fn listen_and_eval (chain: &Chain,
                         params: &Params) -> Vec<EvalResult> {
