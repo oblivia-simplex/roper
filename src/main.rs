@@ -363,7 +363,7 @@ fn main() {
         if fitness_deltas.primed() {
           improvement_ratio = Some(fitness_deltas.as_vec()
                                                  .iter()
-                                                 .filter(|x| **x < 0.0)
+                                                 .filter(|x| **x <= 0.0)
                                                  .count() as f32 / fitness_deltas.cap() as f32);
         }
 
@@ -417,7 +417,7 @@ fn main() {
                                                  .unwrap());
         println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                  .unwrap());
-        print!  ("[+] AVG LEN:     {:3.6}   ", pop_local.read()
+        print!  ("[+] AVG LEN:     {:3.5}    ", pop_local.read()
                                                        .unwrap()
                                                        .avg_len());     
         println!("[+] IMPROVEMENT: {:1.6}  ", improvement_ratio.unwrap_or(0.0));

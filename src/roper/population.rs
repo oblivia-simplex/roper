@@ -119,7 +119,7 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
     let spawnclumps = parents[i % 2].clumps.clone();
     let mut spawn = Chain::new(spawnclumps);
     mutate(&mut spawn, &params, rng);
-    spawn.p_fitness = parents[i % 2].fitness;
+    spawn.p_fitness = parents[i % 2].ab_fitness;
     brood.push(spawn);
   }
   brood
@@ -806,8 +806,8 @@ fn shufflefuck (parents:    &Vec<&Chain>,
     child.generation = max(mother.generation, father.generation)+1;
     child.p_fitness = {
       let mut f = Vec::new();
-      if let Some(x) = mother.fitness {f.push(x)};
-      if let Some(x) = father.fitness {f.push(x)};
+      if let Some(x) = mother.ab_fitness {f.push(x)};
+      if let Some(x) = father.ab_fitness {f.push(x)};
       if f.len() == 0 {None} else {Some(mean(&f))}
     };
     brood.push(child);
