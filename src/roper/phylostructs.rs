@@ -256,13 +256,14 @@ pub struct Chain {
   pub packed: Vec<u8>,
   pub fitness: Option<f32>,
   pub ab_fitness: Option<f32>, // unshared
+  pub p_fitness: Option<f32>,
   pub generation: u32,
   pub verbose_tag: bool,
   pub crashes: Option<bool>,
   pub season: usize,
   pub fingerprint: Fingerprint,
   i: usize,
-//  pub ancestral_fitness: Vec<i32>,
+//  pub p_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
   // the destructiveness of the shufflefuck operator
 }
@@ -285,6 +286,8 @@ impl Display for Chain {
                         self.fitness, self.season));
     s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
     s.push_str(&format!("Generation: {}\n", self.generation));
+    s.push_str(&format!("Ancestral Fitness: {:?}\n",
+                        self.p_fitness));
     s.push_str(&format!("Link ages: {:?}\n", 
                         &self.clumps
                              .iter()
@@ -332,13 +335,14 @@ impl Default for Chain {
       packed: Vec::new(),
       fitness: None,
       ab_fitness: None,
+      p_fitness: None,
       generation: 0,
       season: 0,
       verbose_tag: false,
       crashes: None,
       fingerprint: Fingerprint::new(),
       i: 0,
-    //  ancestral_fitness: Vec::new(),
+    //  p_fitness: Vec::new(),
     }
   } 
 }

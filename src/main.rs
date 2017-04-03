@@ -292,6 +292,8 @@ fn main() {
   let mut first_log = true;
   let mut i = 0; 
   let mut crash_rate : f32 = 0.5;
+  let mut fitness_deltas : CircBuffer<f32> = CircBuffer::new(100);
+  let mut improvement_ratio = None;
   /***************************
    * The Main Evolution Loop *
    ***************************/
@@ -336,7 +338,11 @@ fn main() {
           if mut_pop.params.fitness_sharing {
             patch_io_targets(&tr, &mut mut_pop.params, iteration);
           };
-          let updated = patch_population(&tr, mut_pop, true);
+          let (updated, f_deltas) = patch_population(&tr,
+                                                       mut_pop,
+                                                       true);
+          fitness_deltas.push_all(f_deltas);
+          //let mean_fit_deltas = mean(&fit_deltas);
           if updated != None {
             champion = updated.clone();
           }
@@ -349,6 +355,18 @@ fn main() {
         class_stddev_difficulties = mut_pop.params
                                       .io_targets
                                       .class_stddev_difficulties();
+        /* Update variation operators according to 1:5 rule:
+         * if fewer than 1 in 5 offspring is as fit as the parent(s),
+         * then the algorithm should be more exploitative; if more
+         * than 1 in 5 is fitter, the algorithm should be more exploratory.
+         */
+        if fitness_deltas.primed() {
+          improvement_ratio = Some(fitness_deltas.as_vec()
+                                                 .iter()
+                                                 .filter(|x| **x < 0.0)
+                                                 .count() as f32 / fitness_deltas.cap() as f32);
+        }
+
         //mut_pop.params.mutation_rate = 
         //  calc_mutrate(&class_stddev_difficulties);
       } // end mut block
@@ -399,9 +417,10 @@ fn main() {
                                                  .unwrap());
         println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                  .unwrap());
-        println!  ("[+] AVG LEN:    {:3.6}    ", pop_local.read()
+        print!  ("[+] AVG LEN:     {:3.6}   ", pop_local.read()
                                                        .unwrap()
                                                        .avg_len());     
+        println!("[+] IMPROVEMENT: {:1.6}  ", improvement_ratio.unwrap_or(0.0));
         //println!("[+] SEASONS ELAPSED: {}", season);
         println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                  standard_deviation(&dprof));

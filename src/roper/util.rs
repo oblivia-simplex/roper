@@ -280,4 +280,49 @@ pub fn max_bin (bins: &Vec<u64>) -> usize {
   }
 }
 
+#[derive(Debug,Clone)]
+pub struct CircBuffer<T> {
+  buf: Vec<T>,
+  cap: usize,
+  ptr: usize,
+}
+impl<T> CircBuffer<T> {
+  pub fn new(cap: usize) -> Self {
+    CircBuffer {
+      buf: Vec::with_capacity(cap),
+      cap: cap,
+      ptr: 0,
+    }
+  }
+  pub fn push (&mut self, item: T) {
+    if self.primed() {
+      self.buf[self.ptr] = item;
+    } else {
+      self.buf.push(item);
+    }
+    self.ptr = (self.ptr + 1) % self.cap;
+  }
+  pub fn pop (&mut self) -> &T {
+    self.ptr = (self.ptr - 1) % self.cap;
+    &self.buf[self.ptr]
+  }
+  pub fn as_vec (&self) -> &Vec<T> {
+    &self.buf
+  }
+  pub fn as_mut_vec (&mut self) -> &mut Vec<T> {
+    &mut self.buf
+  }
+  pub fn push_all (&mut self, items: Vec<T>) {
+    for item in items {
+      self.push(item)
+    };
+  }
+  pub fn primed (&self) -> bool {
+    self.buf.len() == self.cap
+  }
+  pub fn cap (&self) -> usize {
+    self.cap
+  }
+
+}
 

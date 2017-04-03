@@ -116,8 +116,10 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
   let mut brood : Vec<Chain> = Vec::new();
   let n = params.brood_size;
   for i in 0..n {
-    let mut spawn = parents[i % 2].clone();
+    let spawnclumps = parents[i % 2].clumps.clone();
+    let mut spawn = Chain::new(spawnclumps);
     mutate(&mut spawn, &params, rng);
+    spawn.p_fitness = parents[i % 2].fitness;
     brood.push(spawn);
   }
   brood
@@ -128,12 +130,10 @@ fn mate (parents: &Vec<&Chain>,
          rng:     &mut ThreadRng,
          uc:      &mut CpuARM) -> Vec<Chain> {
   let mut brood = if rng.gen::<f32>() < params.crossover_rate {
-//    println!("-- sex --");
     shufflefuck(parents, 
                 params,
                 rng)
   } else {
-//    println!("-- clone + mutate --");
     clone_and_mutate(parents,
                      params,
                      rng)
@@ -349,20 +349,21 @@ fn append_to_csv(path: &str, iter: usize,
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct FitUpdate {
-  pub fitness : Option<f32>,
-  pub ab_fitness : Option<f32>,
+  pub fitness     : Option<f32>,
+  pub ab_fitness  : Option<f32>,
+  pub p_fitness   : Option<f32>,
   pub fingerprint : Fingerprint,
-  pub crashes : Option<bool>,
+  pub crashes     : Option<bool>,
 }
 
 #[derive(Debug,Clone)]
 pub struct TournementResult {
-  pub graves: Vec<usize>,
-  pub spawn:  Vec<Chain>,
-  pub best:   Chain,
-  pub display: String,
-  pub fit_updates: Vec<(usize,FitUpdate)>,
-  pub difficulty_update: HashMap <Problem, Vec<f32>>, // or avg f32
+  pub graves            : Vec<usize>,
+  pub spawn             : Vec<Chain>,
+  pub best              : Chain,
+  pub display           : String,
+  pub fit_updates       : Vec<(usize,FitUpdate)>,
+  pub difficulty_update : HashMap <Problem, Vec<f32>>, // or avg f32
 }
 unsafe impl Send for TournementResult {}
 
@@ -413,33 +414,45 @@ pub fn update_difficulties (params: &mut Params,
 pub fn patch_population (tr: &TournementResult,
                         population: &mut Population,
                         verbose: bool) 
-                        -> Option<Chain> 
+                        -> (Option<Chain>, Vec<f32>) 
 {
   assert_eq!(tr.graves.len(), tr.spawn.len());
   population.iteration += 1;
   let season = population.season;
+  // Insert the new children into the slots of the dead
   for i in 0..tr.graves.len() {
   //    println!(">> filling grave #{}",tr.graves[i]);
     population.deme[tr.graves[i]] = tr.spawn[i].clone();
     population.deme[tr.graves[i]].season = season;
   }
+  // Update fitness, etc. on survivors
+  let mut fitness_deltas = Vec::new();
   for &(i, ref fit_up) in tr.fit_updates.iter() {
-    if fit_up.fitness != None {
+    if let Some(f) = fit_up.fitness {
       population.deme[i].season  = season;
-      population.deme[i].fitness = fit_up.fitness.clone();
+      population.deme[i].fitness = Some(f);
       population.deme[i].crashes = fit_up.crashes.clone();
       population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
       population.deme[i].fingerprint = fit_up.fingerprint.clone();
+      population.deme[i].p_fitness = fit_up.p_fitness
+                                                   .clone();
+
+      if let Some(pf) = population.deme[i].p_fitness {
+//        println!(">> [{}] avg parent fitness: {}", i, pf);
+//        println!(">> [{}] current fitness: {}", i, f);
+        fitness_deltas.push(f - pf);
+      };
     }
   }
+//  println!(">> fitness_deltas: {:?}", fitness_deltas);
   if verbose { println!("{}",tr.display); };
   if population.best == None 
     || (tr.best.crashes == Some(false)
         && tr.best.ab_fitness < population.best_abfit()) {
     population.best = Some(tr.best.clone());
-    Some(tr.best.clone())
+    (Some(tr.best.clone()), fitness_deltas)
   } else {
-    None
+    (None, fitness_deltas)
   }
 }
 // returns a clone of the best if the best is new
@@ -515,6 +528,7 @@ pub fn tournament (population: &Population,
       fit_vec.push(FitUpdate {
         fitness     : Some(fitness),
         ab_fitness  : Some(ab_fitness),
+        p_fitness   : specimen.p_fitness.clone(),
         crashes     : crash,
         fingerprint : res.fingerprint,
         });
@@ -523,6 +537,7 @@ pub fn tournament (population: &Population,
         // are all these clones necessary?
         fitness     : specimen.fitness.clone(),
         ab_fitness  : specimen.ab_fitness.clone(),
+        p_fitness   : specimen.p_fitness.clone(),
         crashes     : specimen.crashes,
         fingerprint : specimen.fingerprint.clone(),
       });
@@ -576,6 +591,7 @@ pub fn tournament (population: &Population,
                               FitUpdate {
                                 fitness     : mother.fitness,
                                 ab_fitness  : mother.ab_fitness,
+                                p_fitness   : mother.p_fitness,
                                 crashes     : mother.crashes,
                                 fingerprint : Fingerprint::new(),
                               })];
@@ -584,6 +600,7 @@ pub fn tournament (population: &Population,
                       FitUpdate { 
                         fitness     : father.fitness,
                         ab_fitness  : father.ab_fitness,
+                        p_fitness   : father.p_fitness,
                         crashes     : father.crashes,
                         fingerprint : Fingerprint::new(),
                       })); // (father.fitness,father.crashes)));
@@ -739,68 +756,63 @@ spin.sample(rng)
 fn shufflefuck (parents:    &Vec<&Chain>, 
                 params:     &Params,
                 rng:        &mut ThreadRng) -> Vec<Chain> {
-let brood_size = params.brood_size;
-let max_len    = params.max_len;
-let use_viscosity = params.use_viscosity;
-let mut brood : Vec<Chain> = Vec::new();
-for i in 0..brood_size {
-  let m_idx  : usize  = i % 2;
-  let mother : &Chain = &(parents[m_idx]);
-  let father : &Chain = &(parents[(m_idx+1) % 2]);
-  let m_i : usize = splice_point(&mother, rng, use_viscosity);
-  let m_n : usize = mother.size() - (m_i+1);
-  let f_i : usize = splice_point(&father, rng, use_viscosity);
+  let brood_size = params.brood_size;
+  let max_len    = params.max_len;
+  let use_viscosity = params.use_viscosity;
+  let mut brood : Vec<Chain> = Vec::new();
+  for i in 0..brood_size {
+    let m_idx  : usize  = i % 2;
+    let mother : &Chain = &(parents[m_idx]);
+    let father : &Chain = &(parents[(m_idx+1) % 2]);
+    let m_i : usize = splice_point(&mother, rng, use_viscosity);
+    let m_n : usize = mother.size() - (m_i+1);
+    let f_i : usize = splice_point(&father, rng, use_viscosity);
 
-  /*
-   * println!("==> m viscosity at splice point: {}",
-           mother[m_i].viscosity);
-           */
-  assert!(m_i < mother.size());
-  assert!(f_i < father.size());
-
-  // println!("[*] mother.size() = {}, father.size() = {}",
-  // mother.size(), father.size());
-  //println!("[*] Splicing father at {}, mother at {}", f_i, m_i);
-  //println!("[*] m_n = {}", m_n);
-  
-  let mut child_clumps : Vec<Clump> = Vec::new();
-  let mut i = 0;
-  // let f_n : usize = father.size() - f_i;
-  for f in 0..f_i {
-    // println!("[+] f = {}",f);
-    child_clumps.push(father.clumps[f].clone());
-    child_clumps[i].link_age += 1;
-    i += 1;
+    /*
+     * println!("==> m viscosity at splice point: {}",
+             mother[m_i].viscosity);
+             */
+    assert!(m_i < mother.size());
+    assert!(f_i < father.size());
+    
+    let mut child_clumps : Vec<Clump> = Vec::new();
+    let mut i = 0;
+    for f in 0..f_i {
+      child_clumps.push(father.clumps[f].clone());
+      child_clumps[i].link_age += 1;
+      i += 1;
+    }
+    /* By omitting the following lines, we drop the splicepoint */
+    if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
+      child_clumps.push(father.clumps[f_i].clone());
+      i += 1;
+    } 
+    if i > 0 { 
+      child_clumps[i-1].link_age = 0;
+      child_clumps[i-1].link_fit = None;
+    };
+    /***********************************************************/
+    for m in m_n..mother.size() {
+      if i >= max_len { break };
+      child_clumps.push(mother.clumps[m].clone());
+      child_clumps[i].link_age += 1;
+      i += 1;
+      /* adjust link_fit later, obviously */
+    }
+    if child_clumps.len() == 0 {
+      panic!("child_clumps.len() == 0. Stopping.");
+    }
+    let mut child : Chain = Chain::new(child_clumps);
+    child.generation = max(mother.generation, father.generation)+1;
+    child.p_fitness = {
+      let mut f = Vec::new();
+      if let Some(x) = mother.fitness {f.push(x)};
+      if let Some(x) = father.fitness {f.push(x)};
+      if f.len() == 0 {None} else {Some(mean(&f))}
+    };
+    brood.push(child);
   }
-  /* By omitting the following lines, we drop the splicepoint */
-  if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
-    //println!("[+] splice point over VISC_DROP_THRESH. copying.");
-    child_clumps.push(father.clumps[f_i].clone());
-    i += 1;
-  } 
-  if i > 0 { 
-    child_clumps[i-1].link_age = 0;
-    child_clumps[i-1].link_fit = None;
-  };
-  /***********************************************************/
-  for m in m_n..mother.size() {
-    if i >= max_len { break };
-    // println!("[+] m = {}",m);
-    child_clumps.push(mother.clumps[m].clone());
-    //println!("[+] child_clumps.len() = {}",child_clumps.len());
-    child_clumps[i].link_age += 1;
-    i += 1;
-    /* adjust link_fit later, obviously */
-  }
-  //println!("%%% child_clumps.len() == {}", child_clumps.len());
-  if child_clumps.len() == 0 {
-    panic!("child_clumps.len() == 0. Stopping.");
-  }
-  let mut child : Chain = Chain::new(child_clumps);
-  child.generation = max(mother.generation, father.generation)+1;
-  brood.push(child);
-}
-brood
+  brood
 }
 
 pub fn saturate_clumps <'a,I> (unsat: &mut Vec<Clump>,
