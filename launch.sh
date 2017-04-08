@@ -81,9 +81,11 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
+                                -c 0.2 \
+                                -s 1.0 \
                                 -P 2048 \
-                                -t 4 \
-                                -D 1 \
+                                -t 8 \
+                                -D 4 \
                                 -m 0.05 \
                                 -V \
                                 -R \
@@ -154,7 +156,6 @@ $TERMINALSTRING
 $OUTPUTSTRING
 set datafile commentschars "%"
 set multiplot layout 1, 2  
-set title ${LABEL}
 set xlabel 'ylabel' tc rgb 'red'
 set ylabel 'xlabel' tc rgb 'red'
 set border lc rgb 'red'

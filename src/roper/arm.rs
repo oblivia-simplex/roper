@@ -217,7 +217,7 @@ fn arm_scan_for_rets (ws: &Vec<u32>)
           rets.push(Clump {
             exchange:   false,
             sp_delta:   rs.len() as i32,
-            ret_offset: rs.len() as i32,
+            ret_offset: rs.len(),
             words:      vec![i as u32],
             mode:       MachineMode::ARM,
             ..Default::default()

@@ -93,12 +93,13 @@ impl Index<usize> for Fingerprint {
 #[derive(Clone,Debug)]
 pub struct Clump {
   pub sp_delta:    i32, // how much does the sp change by?
-  pub ret_offset:  i32, // how far down is the next address?
+  pub ret_offset:  usize, // how far down is the next address?
   pub exchange:    bool, // BX instruction? can we change mode?
   pub mode:        MachineMode,
   pub ret_addr:    u32,
   pub words:       Vec<u32>,
   pub viscosity:   i32,
+  pub input_slots: Vec<(usize,usize)>, // (offset, input#)
   pub link_age:    i32,
   pub link_fit:    Option<f32>,
 }
@@ -148,6 +149,7 @@ impl Default for Clump {
       exchange:   false,
       mode:       MachineMode::THUMB,
       words:      Vec::new(),
+      input_slots: Vec::new(),
       viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
       link_age:   0,
       link_fit:   None, // (MAX_FIT/2),
@@ -258,6 +260,7 @@ pub struct Chain {
   pub ab_fitness: Option<f32>, // unshared
   pub p_fitness: Option<f32>,
   pub generation: u32,
+  pub input_slots: Vec<(usize,usize)>,
   pub verbose_tag: bool,
   pub crashes: Option<bool>,
   pub season: usize,
@@ -308,10 +311,19 @@ impl Display for Chain {
                              .iter()
                              .map(|ref c| c.visc())
                              .collect::<Vec<i32>>()));
+    s.push_str(&format!("Input slots on stack: {:?}\n", 
+                        &self.input_slots));
     s.push_str("Clumps:\n");
     for clump in &self.clumps {
+      let mut i = 0;
       for word in &clump.words {
-        s.push_str(&format!("{:08x} ",word));
+        match clump.input_slots
+                   .iter()
+                   .position(|&(off, _)| off == i) {
+          None => s.push_str(&format!("{:08x} ",word)),
+          Some(_) => s.push_str("*INPUT?* "),
+        };
+        i += 1;
       }
       s.push_str("\n");
     }
@@ -333,6 +345,7 @@ impl Default for Chain {
     Chain {
       clumps: Vec::new(),
       packed: Vec::new(),
+      input_slots: Vec::new(),
       fitness: None,
       ab_fitness: None,
       p_fitness: None,
@@ -384,10 +397,22 @@ impl Chain {
   pub fn new (clumps: Vec<Clump>) -> Chain {
     let conc = concatenate(&clumps);
     let pack = pack_word32le_vec(&conc);
-    Chain {
+    let mut chain = Chain {
       clumps: clumps,
       packed: pack,
       ..Default::default()
+    };
+    chain.collate_input_slots();
+    chain
+  }
+  pub fn collate_input_slots (&mut self) {
+    self.input_slots = Vec::new();
+    let mut offset = 0;
+    for clump in self.clumps.iter_mut() {
+      for &(off, inp) in clump.input_slots.iter() {
+        self.input_slots.push((off + offset, inp));
+      }
+      offset += clump.ret_offset;
     }
   }
   pub fn pack (&mut self) {
@@ -470,7 +495,8 @@ impl Population {
     println!("[*] Harvested {} THUMB gadgets from {}",
              thumb_clumps.len(), params.binary_path);
     clumps.extend_from_slice(&thumb_clumps);
-
+  
+    let mut rng = rand::thread_rng();
 
     let mut clump_buckets : Vec<Vec<Clump>> = 
       vec![Vec::new(), Vec::new(), Vec::new(), Vec::new()];
@@ -487,20 +513,19 @@ impl Population {
     let mut data_pool  = Mangler::new(&params.constants);
     let mut deme : Vec<Chain> = Vec::new();
     for _ in 0..params.population_size{
-
+/*
       deme.push(random_chain_from_buckets(
                              &clump_buckets,
                              params.min_start_len,
                              params.max_start_len,
                              &mut data_pool,
                              &mut rand::thread_rng()));
-      /*
+      */
       deme.push(random_chain(&clumps,
-                             params.min_start_len,
-                             params.max_start_len,
+                             &params,
                              &mut data_pool,
                              &mut rand::thread_rng()));
-                             */
+                             
 
     }
     Population {
@@ -515,8 +540,7 @@ impl Population {
   pub fn random_spawn (&self) -> Chain {
     let mut mangler = Mangler::new(&self.params.constants);
     random_chain(&self.primordial_ooze,
-                 self.params.min_start_len,
-                 self.params.max_start_len,
+                 &self.params,
                  &mut mangler,
                  &mut thread_rng())
   }
@@ -737,6 +761,7 @@ pub struct Params {
   pub max_start_len    : usize,
   pub max_len          : usize,
   pub constants        : Vec<u32>,
+  pub stack_input_sampling : f32,
   pub training_ht      : HashMap<Vec<i32>,usize>,
   pub fit_goal         : f32,
   pub fitness_sharing  : bool,
@@ -748,6 +773,7 @@ pub struct Params {
   */
   pub io_targets       : IoTargets,
   pub test_targets     : IoTargets,
+  pub sample_ratio     : f32,
   pub cuck_rate        : f32,
   pub verbose          : bool,
   pub date_dir         : String,
@@ -864,10 +890,12 @@ impl Params {
       training_ht:      HashMap::new(),
       io_targets:       IoTargets::new(TargetKind::PatternMatch),
       test_targets:     IoTargets::new(TargetKind::PatternMatch),
+      sample_ratio:     0.9,
       fit_goal:         0.1,  
       fitness_sharing:  true,
       season_divisor:    4,
       constants:        Vec::new(),
+      stack_input_sampling: 0.5,
       cuck_rate:        0.15,
       verbose:          false,
       date_dir:         datepath.clone(),
@@ -1179,17 +1207,21 @@ impl IoTargets {
   pub fn push (&mut self, t: Problem) {
     self.v.push(t);
   }
+
   pub fn split_at (&self, i: usize) -> (IoTargets,IoTargets) {
     if self.k == TargetKind::PatternMatch {
       (self.clone(),self.clone())
     } else {
       let (a,b) = self.v.split_at(i);
-      let (mut at, mut bt) = (IoTargets::from_vec(self.k, a.to_vec()),IoTargets::from_vec(self.k, b.to_vec()));
+      let (mut at, mut bt) = 
+        (IoTargets::from_vec(self.k, a.to_vec()),
+         IoTargets::from_vec(self.k, b.to_vec()));
       at.num_classes = self.num_classes;
       bt.num_classes = self.num_classes;
       (at,bt)
     }
   }
+
   // We need a balanced splitting function
   // assumes the IoTargets is balanced to begin with.
   // Improve on this later, so that it preserves ratios. See example in
@@ -1246,6 +1278,9 @@ impl IoTargets {
   pub fn from_vec (k: TargetKind, v: Vec<Problem>) -> IoTargets {
     IoTargets{v:v, k:k, num_classes: 1}
   }
+  pub fn to_vec (&self) -> &Vec<Problem> {
+    &self.v
+  }
   pub fn len (&self) -> usize {
     self.v.len()
   }
@@ -1254,6 +1289,11 @@ impl IoTargets {
   }
   pub fn iter_mut (&mut self) -> IterMut<Problem> {
     self.v.iter_mut()
+  }
+  pub fn empty_clone (&self) -> IoTargets {
+    let mut cl = self.clone();
+    cl.v = Vec::new();
+    cl
   }
 }
 
@@ -1352,6 +1392,13 @@ impl RPattern {
       i += 1;
     }
     rp
+  }
+  pub fn shuffle_vec (&self) 
+                     -> Vec<(usize, u64, f32)> {
+    let mut c = self.regvals_diff.clone();
+    let mut rng = thread_rng(); // switch to seedable
+    rng.shuffle(&mut c);
+    c
   }
   pub fn push (&mut self, x: (usize, u64)) {
     self.regvals_diff.push((x.0,x.1,1.0));
@@ -1452,7 +1499,7 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   let mut cl = clump.clone();
   saturate_clump(&mut cl, &mut twos);
   let vanilla = Chain::new(vec![cl]);
-  let res = hatch_chain(uc, &vanilla.packed, &input, &inregs);
+  let res = hatch_chain(uc, &vanilla, &input, &inregs);
   //println!("\n{}",res);
   let mut differ = 0;
   for r in res.registers[..12].to_vec() {
@@ -1470,16 +1517,25 @@ const NOCHANGE_NOCRASH_BUCKET  : usize = 2;
 const CHANGE_NOCRASH_BUCKET    : usize = 3;
 
 pub fn random_chain (clumps:  &Vec<Clump>,
-                     min_len: usize,
-                     max_len: usize,
+                     params:  &Params,
                      pool:    &mut Mangler,
                      rng:     &mut ThreadRng) -> Chain {
+  let max_len = params.max_start_len;
+  let min_len = params.min_start_len;
   let rlen  = rng.gen::<usize>() % (max_len - min_len) + min_len;
   let mut genes : Vec<Clump> = Vec::new();
   for _ in 0..rlen {
-    let mut c = clumps[rng.gen::<usize>() % clumps.len()].clone();
-    saturate_clump(&mut c, pool);
-    genes.push(c);
+    let mut clump = clumps[rng.gen::<usize>() % clumps.len()].clone();
+    saturate_clump(&mut clump, pool);
+    for i in 1..clump.words.len() {
+      let roll = rng.gen::<f32>();
+      if roll < params.stack_input_sampling {
+        clump.input_slots.push((i, rng.gen::<usize>() % 
+                                params.inregs.len()));
+                              
+      }
+    }
+    genes.push(clump);
   }
   Chain::new(genes)
 }

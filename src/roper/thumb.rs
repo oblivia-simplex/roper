@@ -153,7 +153,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
           rets.push(Clump {
             exchange:   false,
             sp_delta:   rs.len() as i32,
-            ret_offset: rs.len() as i32,
+            ret_offset: rs.len(),
             words:      vec![i as u32],
             mode:       MachineMode::THUMB,
             ..Default::default()
@@ -164,7 +164,7 @@ fn th_scan_for_rets (ws: &Vec<u16>)
               rets.push(Clump {
                 exchange:   true,
                 sp_delta:   rs.len() as i32,
-                ret_offset: (rs.index_of(r)+1) as i32,
+                ret_offset: (rs.index_of(r)+1),
                 words:      vec![o as u32],
                 mode:       MachineMode::THUMB,
                 ..Default::default()

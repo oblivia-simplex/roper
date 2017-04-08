@@ -101,6 +101,7 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   match mut_kind {
     0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
     1 => mutate_addr(&mut clump, rng),
+    // 2 => /**** mutate the input_slots ****/
     _ => { /* permutation */
       let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
       let tmp = clump.words[idx];
@@ -171,7 +172,7 @@ fn eval_case (uc: &mut CpuARM,
   };
 
   let result : HatchResult = hatch_chain(uc, 
-                                         &chain.packed, 
+                                         &chain,
                                          &input,
                                          &inregs);
   // need to let hatch_chain choose *which* registers to preload.
@@ -206,7 +207,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
                          params: &Params,
                          batch: Batch,
-                         sample_ratio: f32,
                          verbose: bool)
                          -> EvalResult //(f32,Option<usize>)
 {
@@ -224,14 +224,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   // but this can be overcome at the cost of a bit more memory usage.
   // we'd just have to make fingerprints a vector of problem_id/bool
   // pairs. 
-  let io_targets = if sample_ratio == 1.0 {
-    io
-  } else {
-    io2 = io.shuffle()
-      .split_at((io.len() as f32 * sample_ratio).ceil() as usize)
-      .0;
-    &io2
-  };
+  /* could be optimized by skipping when sample_ratio == 1 */
+  let sample_ratio = &params.sample_ratio;
+  let (io_targets, io_targets2) = 
+    io.split_at((io.len() as f32 * sample_ratio).ceil() as usize);
+  
   let outregs    = &params.outregs;
   let inregs     = &params.inregs;
   let verbose = verbose || chain.verbose_tag;
@@ -286,6 +283,10 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     } else {
       res.fitness
     };
+    /* If crash_adjusted is better than the best currently on 
+     * record, then evaluate the specimen against the remainder
+     * of the problems (io_targets2). 
+     */ //\\//\\ TODO //\\//\\
     fit_vec.push(crash_adjusted);
     fingerprint.extend(&res.fingerprint);
   };
@@ -294,11 +295,14 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     for hook in &hooks { uc.remove_hook(*hook); }
   }
 
-  let fitness    = mean(&fit_vec);
+  
   let ab_fitness = fingerprint.iter()
                               .filter(|&x| *x)
                               .count() as f32 / 
                               fingerprint.len() as f32;
+                              
+  //let ab_fitness = mean(&fit_vec);
+  let fitness = mean(&fit_vec);
     //mean(&abfit_vec);
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
@@ -402,7 +406,11 @@ pub fn update_difficulties (params: &mut Params,
                         */
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for ref mut problem in io_targets.iter_mut() {
-      problem.rotate_difficulty(divisor);
+      if params.fitness_sharing {
+        problem.rotate_difficulty(divisor);
+      } else {
+        problem.set_difficulty(1.0);
+      }
     }
     1
   } else {
@@ -450,12 +458,44 @@ pub fn patch_population (tr: &TournementResult,
     || (tr.best.crashes == Some(false)
         && tr.best.ab_fitness < population.best_abfit()) {
     population.best = Some(tr.best.clone());
+    println!("NEW BEST\n{}\n", &tr.best);
     (Some(tr.best.clone()), fitness_deltas)
   } else {
     (None, fitness_deltas)
   }
 }
-// returns a clone of the best if the best is new
+pub fn lexicase_rpat (population: &Population,
+                      engine: &mut Engine,
+                      batch: Batch,
+                      vdeme: usize)
+                      -> ()
+{
+  // for register patterns
+  let p_size = population.params.population_size;
+  let n_demes = population.params.num_demes;
+  let d_size  = p_size / n_demes;
+  let io_targets = &population.params.io_targets;
+  
+  let ref pproblem = io_targets.to_vec()[0]; // shortcut.
+  
+  let rpat : &RPattern = match pproblem.target {
+    Target::Vote(_)   => panic!("Not that kind of lexicase, yet."),
+    Target::Exact(ref rp) => rp,
+  };
+
+  let mut rng = thread_rng(); // switch to seedable
+  let deme = rng.gen::<usize>() % n_demes;
+  let mut lots : Vec<usize> = 
+    ((deme * d_size)..(deme * (d_size+1))).collect();
+  rng.shuffle(&mut lots);
+  
+  let rpvec = rpat.shuffle_vec();
+  for (reg, val, dif) in rpvec {
+    while lots.len() > 2 {
+     // do the stuff 
+    }
+  }
+}
 
 pub fn tournament (population: &Population,
                    engine: &mut Engine,
@@ -479,23 +519,17 @@ pub fn tournament (population: &Population,
 
   let mut specimens = Vec::new();
 
-  let r = population.params.population_size / population.params.num_demes;
   let migrating = rng.gen::<f32>() < population.params.migration;
+  let vdeme = if migrating {vdeme / 2 + (vdeme % 2)} else {vdeme};
+  let r = population.params.population_size / population.params.num_demes;
+  let r = if migrating {r*2} else {r};
   for _ in 0..t_size 
   {
-    let mut l: usize = if !migrating 
-    {
-      rng.gen::<usize>() % r + (r * vdeme)
-    } else {
-      rng.gen::<usize>() % population.params.population_size
-    };
+    let mut l: usize = rng.gen::<usize>() % r + (r * vdeme);
     while lots.contains(&l) {
-      l = if migrating {
-        rng.gen::<usize>() % r + (r * vdeme)
-      } else {
-        rng.gen::<usize>() % population.params.population_size
-      };
+      l = rng.gen::<usize>() % r + (r * vdeme);
     }
+    l = l % population.params.population_size;
     lots.push(l);
     specimens.push((population.deme[l].clone(),l));
   }
@@ -509,7 +543,6 @@ pub fn tournament (population: &Population,
                                  &specimen,
                                  &population.params,
                                  batch,
-                                 1.0,
                                  false); // verbose
       let fitness = res.fitness;
       let ab_fitness = res.ab_fitness;
@@ -694,14 +727,18 @@ fn cull_brood (brood: &mut Vec<Chain>,
              params: &Params) {
   /* Sort by fitness - most to least */
   let mut i = 0;
+  if brood.len() <= n { return; };
   for spawn in brood.iter_mut() {
     // println!("[*] Evaluating spawn #{}...", i);
     i += 1;
+    /* This doesn't make sense anymore. The fitness field
+     * isn't mutated by evaluate_fitness, just returned. 
+     * This whole function needs to be refactored.
+     */
     evaluate_fitness(uc, 
                      &spawn, 
                      &params, 
                      Batch::TRAINING,
-                     0.1,
                      false); 
   }
   brood.sort();

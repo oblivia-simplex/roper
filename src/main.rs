@@ -99,6 +99,7 @@ fn main() {
   opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
   opts.optopt("L", "label", "set a label for the trial", "<string>");
   opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
+  opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
   opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
   opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
   opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
@@ -126,6 +127,10 @@ fn main() {
   };
   let crossover_rate = match matches.opt_str("c") {
     None => 0.5,
+    Some(n) => n.parse::<f32>().unwrap(),
+  };
+  let sample_ratio = match matches.opt_str("s") {
+    None => 1.0,
     Some(n) => n.parse::<f32>().unwrap(),
   };
   println!(">> use_viscosity = {}", use_viscosity);
@@ -253,6 +258,7 @@ fn main() {
   params.num_demes    = num_demes;
   params.use_viscosity = use_viscosity;
   params.crossover_rate = crossover_rate;
+  params.sample_ratio = sample_ratio;
   params.set_log_dir(&log_dir);
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
@@ -363,7 +369,7 @@ fn main() {
         if fitness_deltas.primed() {
           improvement_ratio = Some(fitness_deltas.as_vec()
                                                  .iter()
-                                                 .filter(|x| **x <= 0.0)
+                                                 .filter(|x| **x < 0.0)
                                                  .count() as f32 / fitness_deltas.cap() as f32);
         }
 
@@ -461,7 +467,6 @@ fn main() {
                    &mut champion.unwrap(),
                    &pop_local.read().unwrap().params,
                    Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
-                   1.0,
                    true);
   println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
   println!("[*] Absolute fitness of champion on testing run: {:1.6}",

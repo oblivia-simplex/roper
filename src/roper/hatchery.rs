@@ -6,8 +6,12 @@ use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use elf::*;
 use unicorn::*; //{Cpu, CpuARM, uc_handle};
-use roper::util::{disas,get_word32le, get_word16le, hexvec};
-use roper::phylostructs::MachineMode;
+use roper::util::{disas,
+                  get_word32le,
+                  get_word16le,
+                  hexvec,
+                  pack_word32le};
+use roper::phylostructs::{Chain,MachineMode};
 use std::fmt::{Display,format,Formatter,Result};
 use roper::ontostructs::*;
 
@@ -107,23 +111,36 @@ fn mk_zerostack(n: usize) -> Vec<u8>
 
 
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
-                            stack: &Vec<u8>,
+                            chain: &Chain,
+                            //stack: &Vec<u8>,
                             input: &Vec<i32>,
                             inregs:  &Vec<usize>) 
                             -> HatchResult {
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
+  let mut stack = chain.packed.clone();
+
+  // refactor ?
+  let il = input.len();
+  for &(off, inp) in chain.input_slots.iter() {
+    let byte_offset = off * 4;
+    let input_value = pack_word32le(input[inp % il] as u32);
+    for i in 0..4 {
+      stack[byte_offset+i] = input_value[i]; 
+    }
+  }
+
   set_registers(uc.emu(), &input, &inregs);
   //reset_counter(uc);
   let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
   uc.mem_write(BASE_STACK, &zerostack)
     .expect("Error zeroing out stack");
-  uc.mem_write(STACK_INIT, stack)
+  uc.mem_write(STACK_INIT, &stack)
     .expect("Error initializing stack memory");
   uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop
     .expect("Error writing SP register");
-  let start_addr : u64 = get_word32le(stack, 0) as u64 ; //| 1;
+  let start_addr : u64 = get_word32le(&stack, 0) as u64 ; //| 1;
   let ee = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS);
   let e = match ee {
     Err(e) => Some(err_encode(e)),
@@ -136,7 +153,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
 }
 
 type ErrorCode = f32;
-#[derive(Debug,Clone)]
+#[derive(Default,Debug,Clone)]
 pub struct HatchResult {
   pub registers : Vec<u64>,
   pub error     : Option<ErrorCode>,

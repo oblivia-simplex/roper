@@ -49,24 +49,28 @@ fn handle_stream_and_eval (stream: TcpStream,
 
 #[derive(Debug,PartialEq)]
 enum GameState {
-  Hello,
-  Input (Vec<i32>),
-  Score (f32), // we'll use fixed point numbers to keep it simple
+    Hello (usize),
+    Input (Vec<i32>),
+    Output (Vec<i32>),
+    Params (Vec<i32>),
+    Score (f32), // we'll use fixed point numbers to keep it simple
 }
 
-const hello : u8 = 0x00;
-const input : u8 = 0x10;
-const score : u8 = 0x20;
+const hello: u8 = 0x00;
+const input: u8 = 0x10;
+const score: u8 = 0x20;
+// outgoing packet headers
 const output: u8 = 0x30;
+const param: u8 = 0x40; 
 
 fn decode_packet (packet: &Vec<u8>) -> GameState {
   let header = packet[0].clone();
+  let len = (header & 0x0F) as usize;
   let off = 1;
   match header & 0xF0 {
-    hello => GameState::Hello,
+    hello => GameState::Hello(len),
     input => {
       let wordsize = 4;
-      let len = (header & 0xF) as usize;
       let mut i = off;
       let mut words : Vec<i32> = Vec::new();
       while i < (off + (len * 4)) {
