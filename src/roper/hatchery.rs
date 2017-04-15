@@ -159,6 +159,15 @@ pub struct HatchResult {
   pub error     : Option<ErrorCode>,
   pub counter   : usize,
 }
+impl HatchResult {
+  pub fn new () -> Self {
+    HatchResult {
+      registers : Vec::new(),
+      error     : None,
+      counter   : 0,
+    }
+  }
+}
 impl Display for HatchResult {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();

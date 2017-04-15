@@ -79,6 +79,14 @@ fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
 
 const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
+#[derive(PartialEq,Eq,Clone,Debug)]
+enum Challenge {
+  Data,
+  Pattern,
+  Game,
+  Undecided,
+}
+
 /* Just a debugging stub */
 fn main() {
   let verbose = false;
@@ -91,6 +99,7 @@ fn main() {
   opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
   opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
   opts.optopt("d", "data", "set data path", "<path to data file>");
+  opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
   opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
   opts.optopt("o", "logs", "set log directory", "<directory>");
   opts.optopt("t", "threads", "set number of threads", "<positive integer>");
@@ -114,6 +123,9 @@ fn main() {
     print_usage(&program, opts);
     return;
   }
+
+  let mut challenge : Challenge = Challenge::Undecided;
+
   let use_viscosity = if matches.opt_present("V") {
     false 
   } else {
@@ -125,6 +137,15 @@ fn main() {
   } else {
     true 
   };
+
+  let host_port = match matches.opt_str("a") {
+    None    => "".to_string(),
+    Some(s) => {
+      challenge = Challenge::Game;
+      s.to_string()
+    },
+  };
+  
   let crossover_rate = match matches.opt_str("c") {
     None => 0.5,
     Some(n) => n.parse::<f32>().unwrap(),
@@ -151,8 +172,12 @@ fn main() {
     Some(n) => n.to_string(),
   };
   let rpattern_str = matches.opt_str("p");
+  if rpattern_str != None {challenge = Challenge::Pattern};
+
   let fitness_sharing = rpattern_str == None;
   let data_path    = matches.opt_str("d");
+  if data_path != None {challenge = Challenge::Data};
+
   let threads : usize = match matches.opt_str("t") {
     None => 8,
     Some(n) => n.parse::<usize>().unwrap(),
@@ -180,20 +205,29 @@ fn main() {
   };
   println!(">> goal = {}", goal);
   // ugly kludge here
-  let (io_targets, pattern_matching) : (IoTargets,bool) =
-    match (rpattern_str, data_path) {
-      (Some(s),None) => ({
-        println!("rpattern_str parsed as \"{}\"",s);
-        IoTargets::from_vec(TargetKind::PatternMatch,
-                      vec![Problem::new(vec![1;16],mk_pattern(&s))])
-       },true),
-      (None,Some(s)) => (process_data2(&s,4).shuffle(),false), // don't hardcode numfields. infer by analysing lines. 
-      _              => {
-        print_usage(&program, opts);
-        return;
-      },
-    };
-  
+ 
+  let mut params : Params = Params::new(&label);
+  let io_targets = match challenge {
+    Challenge::Data => process_data2(&data_path.unwrap(), 4).shuffle(), // DO NOT HARDCODE TODO
+    Challenge::Pattern => {
+      params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+      IoTargets::from_vec(TargetKind::PatternMatch,
+        vec![Problem::new(vec![1;16], mk_pattern(&rpattern_str.unwrap()))])
+    },
+    Challenge::Game => {
+      /* This should be read from a per-game config file */
+      params.inregs  = vec![1,2,3,4,5,6];
+      params.outregs = vec![7,8,9];
+      IoTargets::from_vec(TargetKind::Game,
+        vec![Problem::new(vec![0,0,0],
+             Target::Game(GameData {
+               addr: host_port.clone(),
+               params: vec![1, 8, 99, 256],
+              }))])
+    },
+    Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
+  };
+
   let (testing,training) = io_targets.balanced_split_at(io_targets.len()/3);
   //let debug_samples = training.clone();
   /*
@@ -236,11 +270,7 @@ fn main() {
 
 
   let constants = suggest_constants(&io_targets);
-  let mut params : Params = Params::new(&label);
   let num_targets = io_targets.len();
-  if pattern_matching {
-    params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
-  }
   params.ret_hooks = ret_hooks;
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
@@ -262,7 +292,7 @@ fn main() {
   params.set_log_dir(&log_dir);
   params.population_size = popsize;
   params.binary_path = elf_path.clone();
-  
+  params.host_port = host_port; 
   params.season_divisor = 1;
   println!("[*] Season length set to {}", params.calc_season_length());
   params.set_init_difficulties();
@@ -300,6 +330,9 @@ fn main() {
   let mut crash_rate : f32 = 0.5;
   let mut fitness_deltas : CircBuffer<f32> = CircBuffer::new(100);
   let mut improvement_ratio = None;
+
+  println!("io_targets: {:?}", &params.io_targets);
+
   /***************************
    * The Main Evolution Loop *
    ***************************/

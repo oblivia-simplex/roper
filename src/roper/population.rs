@@ -3,6 +3,7 @@
 extern crate unicorn; 
 extern crate bit_vec;
 use std::cell::*;
+use std::time::Instant;
 use std::io::{BufReader,BufRead};
 use std::path::Path;
 use std::sync::{RwLock,RwLockReadGuard};
@@ -120,7 +121,7 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
     let spawnclumps = parents[i % 2].clumps.clone();
     let mut spawn = Chain::new(spawnclumps);
     mutate(&mut spawn, &params, rng);
-    spawn.p_fitness = parents[i % 2].ab_fitness;
+    spawn.p_fitness = parents[i % 2].fitness;
     brood.push(spawn);
   }
   brood
@@ -150,7 +151,7 @@ fn mate (parents: &Vec<&Chain>,
 pub struct EvalResult {
   pub fitness : f32,
   pub ab_fitness : f32,
-  pub fingerprint : Fingerprint,
+  //pub fingerprint : Fingerprint,
   pub counter : usize,
   pub crashes : bool,
   pub difficulties : Option<HashMap<Problem, f32>>,
@@ -163,33 +164,49 @@ fn eval_case (uc: &mut CpuARM,
               outregs: &Vec<usize>, // need a better system
               verbose: bool) -> EvalResult{ //(f32, usize, bool) {
   
-  let input  = &problem.input;
   let target = &problem.target;
-  if verbose {
-    print!("\n");
-    for _ in 0..60 { print!("="); };
-    println!("\n==> Evaluating {:?}", input);
-  };
-
-  let result : HatchResult = hatch_chain(uc, 
-                                         &chain,
-                                         &input,
-                                         &inregs);
+  let mut result : HatchResult = HatchResult::new();
+  let af; let rf;
+  let mut output : Vec<u64> = Vec::new();
+  loop {
+    let (score, input) = problem.get_input(&output);
+    output.truncate(0);
+    if score == None {
+      if verbose {
+        print!("\n");
+        for _ in 0..60 { print!("="); };
+        println!("\n==> Evaluating {:?}", input);
+      };
+      result = hatch_chain(uc, 
+                           &chain,
+                           &input,
+                           &inregs);
+      for idx in outregs {
+        output.push(result.registers[*idx]);
+      }
+    } else {
+      // this is such spaghetti i want to cry
+      // get rid of fingerprints. they're not doing much. 
+      af = 1.0 / score.unwrap() as f32;
+      rf = af;
+      break;
+    }
+    if let Some((a,r)) = problem.assess_output(&output) {
+      af = a; rf = r;
+      break;
+    }
+  }
   // need to let hatch_chain choose *which* registers to preload.
   // input should be a vec of ordered pairs: (reg,value)
   if verbose { print!("\n{}", result); }
   let counter = result.counter;
-  let mut output : Vec<u64> = Vec::new();
-  for idx in outregs {
-    output.push(result.registers[*idx]);
-  }
   let crash = result.error != None;
 //  let final_pc = result.registers[15];
-  let (af,rf) = problem.assess_output(&output);
+
   EvalResult {
     fitness: rf,
-    ab_fitness: 0.0,
-    fingerprint: af,
+    ab_fitness: af,
+//    fingerprint: 
     counter: counter,
     crashes: crash,
     difficulties: None,
@@ -247,7 +264,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     }
   }
   let mut fit_vec : Vec<f32> = Vec::new();
-  let mut fingerprint :Fingerprint = Fingerprint::new(); 
+  let mut abfit_vec : Vec<f32> = Vec::new();
+//  let mut fingerprint :Fingerprint = Fingerprint::new(); 
   /* This loop would probably be easy to parallelize */
   /* So long as each thread can be provided with its */
   /* own instance of the emulator.                   */
@@ -262,7 +280,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &outregs,
                         verbose);
     let p = problem.clone();
-    let dif = if res.fingerprint[0] {1.0} else {0.0};
+    let dif = res.ab_fitness;
+    //let dif = if res.fingerprint[0] {1.0} else {0.0};
     difficulties.insert(p, dif);
     /* crash tracking */ 
     let counter = if params.ret_hooks {
@@ -288,20 +307,21 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
      * of the problems (io_targets2). 
      */ //\\//\\ TODO //\\//\\
     fit_vec.push(crash_adjusted);
-    fingerprint.extend(&res.fingerprint);
+    abfit_vec.push(res.ab_fitness);
+    //fingerprint.extend(&res.fingerprint);
   };
   /* clean up hooks */
   if params.ret_hooks {
     for hook in &hooks { uc.remove_hook(*hook); }
   }
 
-  
+ /* 
   let ab_fitness = fingerprint.iter()
                               .filter(|&x| *x)
                               .count() as f32 / 
                               fingerprint.len() as f32;
-                              
-  //let ab_fitness = mean(&fit_vec);
+   */                           
+  let ab_fitness = mean(&abfit_vec);
   let fitness = mean(&fit_vec);
     //mean(&abfit_vec);
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
@@ -310,7 +330,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   EvalResult {
     fitness      : fitness,
     ab_fitness   : ab_fitness,
-    fingerprint  : fingerprint,
+  //  fingerprint  : fingerprint,
     counter      : counter_sum / io_targets.len(),
     crashes      : anycrash,
     difficulties : Some(difficulties),
@@ -356,8 +376,9 @@ pub struct FitUpdate {
   pub fitness     : Option<f32>,
   pub ab_fitness  : Option<f32>,
   pub p_fitness   : Option<f32>,
-  pub fingerprint : Fingerprint,
+ // pub fingerprint : Fingerprint,
   pub crashes     : Option<bool>,
+  pub runtime     : Option<f32>,
 }
 
 #[derive(Debug,Clone)]
@@ -441,9 +462,8 @@ pub fn patch_population (tr: &TournementResult,
       population.deme[i].fitness = Some(f);
       population.deme[i].crashes = fit_up.crashes.clone();
       population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
-      population.deme[i].fingerprint = fit_up.fingerprint.clone();
-      population.deme[i].p_fitness = fit_up.p_fitness
-                                                   .clone();
+//      population.deme[i].fingerprint = fit_up.fingerprint.clone();
+      population.deme[i].p_fitness = fit_up.p_fitness.clone();
 
       if let Some(pf) = population.deme[i].p_fitness {
 //        println!(">> [{}] avg parent fitness: {}", i, pf);
@@ -479,8 +499,8 @@ pub fn lexicase_rpat (population: &Population,
   let ref pproblem = io_targets.to_vec()[0]; // shortcut.
   
   let rpat : &RPattern = match pproblem.target {
-    Target::Vote(_)   => panic!("Not that kind of lexicase, yet."),
     Target::Exact(ref rp) => rp,
+    _   => panic!("Not that kind of lexicase, yet."),
   };
 
   let mut rng = thread_rng(); // switch to seedable
@@ -539,11 +559,14 @@ pub fn tournament (population: &Population,
   for &(ref specimen,_) in specimens.iter() 
   {
     if specimen.fitness == None || specimen.season != season {
+      let start = Instant::now();
       let res = evaluate_fitness(&mut uc, 
                                  &specimen,
                                  &population.params,
                                  batch,
                                  false); // verbose
+      let e = start.elapsed();
+      let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
       let fitness = res.fitness;
       let ab_fitness = res.ab_fitness;
       let crash   = Some(res.crashes);
@@ -563,7 +586,8 @@ pub fn tournament (population: &Population,
         ab_fitness  : Some(ab_fitness),
         p_fitness   : specimen.p_fitness.clone(),
         crashes     : crash,
-        fingerprint : res.fingerprint,
+        runtime     : elapsed,
+ //       fingerprint : res.fingerprint,
         });
     } else {
       fit_vec.push(FitUpdate {
@@ -572,7 +596,8 @@ pub fn tournament (population: &Population,
         ab_fitness  : specimen.ab_fitness.clone(),
         p_fitness   : specimen.p_fitness.clone(),
         crashes     : specimen.crashes,
-        fingerprint : specimen.fingerprint.clone(),
+        runtime     : specimen.runtime,
+ //       fingerprint : specimen.fingerprint.clone(),
       });
     }
   } 
@@ -583,8 +608,9 @@ pub fn tournament (population: &Population,
     {
       specimen.crashes = fit_up.crashes;
       specimen.fitness = fit_up.fitness;
+      specimen.runtime = fit_up.runtime;
       specimen.ab_fitness = fit_up.ab_fitness;
-      specimen.fingerprint = fit_up.fingerprint.clone();
+  //    specimen.fingerprint = fit_up.fingerprint.clone();
       /* Set link fitness values */
       for clump in &mut specimen.clumps {
         clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
@@ -626,7 +652,8 @@ pub fn tournament (population: &Population,
                                 ab_fitness  : mother.ab_fitness,
                                 p_fitness   : mother.p_fitness,
                                 crashes     : mother.crashes,
-                                fingerprint : Fingerprint::new(),
+                                runtime     : mother.runtime,
+                             //   fingerprint : Fingerprint::new(),
                               })];
   if !cflag {
     fit_updates.push((f_idx, 
@@ -635,7 +662,8 @@ pub fn tournament (population: &Population,
                         ab_fitness  : father.ab_fitness,
                         p_fitness   : father.p_fitness,
                         crashes     : father.crashes,
-                        fingerprint : Fingerprint::new(),
+                        runtime     : father.runtime,
+                     //   fingerprint : Fingerprint::new(),
                       })); // (father.fitness,father.crashes)));
   }
 
@@ -701,18 +729,20 @@ fn select_mates(specimens: &mut Vec<(Chain,usize)>,
   // easy way: sort by fitness. specimens.sort()
   // interesting way: sort, and then let the winner choose her mate
   specimens.sort();
-  let m0 = specimens[0].0.fingerprint.clone();
+  //let m0 = specimens[0].0.fingerprint.clone();
   /*
   println!(">> BEFORE FINGERPRINT SORT:");
   for s in specimens.iter() {
     println!("   {} [{}]", s.0.fingerprint, m0.distance(&s.0.fingerprint));
   }
   */
+/*
   if select_for_diversity {
     specimens[1..]
       .sort_by(|y,x| m0.distance(&x.0.fingerprint)
                        .cmp(&m0.distance(&y.0.fingerprint)));
   }
+  */
   /*
   println!(">> AFTER FINGERPRINT SORT:");
   for s in specimens.iter() {
@@ -843,8 +873,8 @@ fn shufflefuck (parents:    &Vec<&Chain>,
     child.generation = max(mother.generation, father.generation)+1;
     child.p_fitness = {
       let mut f = Vec::new();
-      if let Some(x) = mother.ab_fitness {f.push(x)};
-      if let Some(x) = father.ab_fitness {f.push(x)};
+      if let Some(x) = mother.fitness {f.push(x)};
+      if let Some(x) = father.fitness {f.push(x)};
       if f.len() == 0 {None} else {Some(mean(&f))}
     };
     brood.push(child);

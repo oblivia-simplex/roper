@@ -29,6 +29,7 @@ use roper::population::*;
 use roper::hatchery::*;
 use roper::ontostructs::*;
 use roper::statistics::*;
+use roper::interactive::*;
 pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
 pub const VISC_DROP_THRESH : i32 = 10;
@@ -265,6 +266,7 @@ pub struct Chain {
   pub crashes: Option<bool>,
   pub season: usize,
   pub fingerprint: Fingerprint,
+  pub runtime: Option<f32>,
   i: usize,
 //  pub p_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
@@ -353,6 +355,7 @@ impl Default for Chain {
       season: 0,
       verbose_tag: false,
       crashes: None,
+      runtime: None,
       fingerprint: Fingerprint::new(),
       i: 0,
     //  p_fitness: Vec::new(),
@@ -683,7 +686,7 @@ impl Population {
     let nclasses = self.params.io_targets.num_classes;
     // todo: don't hardcode the number of classes
     let row = if first {
-      let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,UNSEEN",
+      let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN",
               self.params);
       for i in 0..nclasses {
         s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -692,7 +695,7 @@ impl Population {
       s
     } else { "".to_string() };
     let season = self.season;
-    let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+    let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                       row,
                       self.iteration.clone(),
                       season,
@@ -708,6 +711,7 @@ impl Population {
                       if best.crashes == Some(true) { 1 } else { 0 },
                       self.avg_len(),
                       best.size(),
+                      best.runtime.unwrap(),
                       self.proportion_unseen(season));
     let c_mn_dif = self.params.io_targets
                          .class_mean_difficulties();
@@ -890,7 +894,7 @@ impl Params {
       training_ht:      HashMap::new(),
       io_targets:       IoTargets::new(TargetKind::PatternMatch),
       test_targets:     IoTargets::new(TargetKind::PatternMatch),
-      sample_ratio:     0.9,
+      sample_ratio:     1.0,
       fit_goal:         0.1,  
       fitness_sharing:  true,
       season_divisor:    4,
@@ -981,6 +985,7 @@ impl Default for MachineMode {
 pub enum TargetKind {
   PatternMatch,
   Classification,
+  Game,
 }
 
 #[derive(Debug,Clone,Eq,PartialEq)]
@@ -1029,39 +1034,64 @@ impl Problem {
     // which is then inverted again: 1.0 - (1.0 - self.difficulty())
   }
 
+  pub fn get_input<'a> (&'a self, output: &Vec<u64>) -> (Option<f32>,
+                                                         Vec<i32>) {
+    match &self.target {
+      &Target::Game(ref x) => {
+        if output.len() == 0 {
+          (None, init_game(&x.params, &x.addr))
+        } else {
+          let out = output.iter()
+                          .map(|&x| (x & 0xFFFFFFFF) as i32)
+                          .collect::<Vec<i32>>();
+          play_game(&out, &x.addr)
+        }
+      },
+      _ => (None, self.input.clone()),
+    }
+  }
+  /* 
+   * Dispatch the relevant problem-specific fitness function
+   */
   pub fn assess_output (&self,
-                        output: &Vec<u64>) -> (Fingerprint, f32) {
+                        output: &Vec<u64>) 
+                       -> Option<(f32, f32)> {
     match &self.target {
       &Target::Exact(ref rp) => {
         // here we can try some sort of fitness sharing thing
         // refactor later so that this returns a fingerprint
         // as its first parameter
         let r = f32::max(0.0, rp.distance(&output));
-        let f = rp.matches(&output);
-        (f, r)
+        //let f = rp.matches(&output);
+        Some((r, r))
       },
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
-        let mut f = Fingerprint::new();
+        //let mut f = Fingerprint::new();
         let r = if b == cls.class {
-          f.push(false);
-          (f, 1.0 - self.difficulty()) 
+          //f.push(false);
+          Some((0.0, 1.0 - self.difficulty())) 
         } else {
-          f.push(true);
-          (f, 1.0)
+          //f.push(true);
+          Some((1.0, 1.0))
         }; 
         //println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
        r
+      }
+      &Target::Game(_) => {
+        None
       }
     }
   }
   pub fn set_pfactor (&mut self, p: usize) {
     self.pfactor = p as f32
   }
+  /* crying out for refactoring! */
   pub fn kind (&self) -> TargetKind {
     match self.target {
       Target::Exact(_) => TargetKind::PatternMatch,
       Target::Vote(_)  => TargetKind::Classification,
+      Target::Game(_)  => TargetKind::Game,
     }
   }
   pub fn rotate_difficulty(&mut self, divisor: f32) {
@@ -1227,7 +1257,7 @@ impl IoTargets {
   // Improve on this later, so that it preserves ratios. See example in
   // GENLIN. 
   pub fn balanced_split_at (&self, i: usize) -> (IoTargets, IoTargets) {
-    if self.k == TargetKind::PatternMatch {
+    if self.k != TargetKind::Classification {
       (self.clone(),self.clone())
     } else {
       let mut unique_targets = self.iter()
@@ -1297,16 +1327,27 @@ impl IoTargets {
   }
 }
 
+pub type Score = u32;
+
+#[derive(Hash,Eq,PartialEq,Debug,Clone)]
+pub struct GameData {
+  pub addr: String,
+  pub params: Vec<i32>,
+}
+
+
 #[derive(Eq,PartialEq,Debug,Clone)]
 pub enum Target {
   Exact(RPattern),
   Vote(Classification),
+  Game(GameData),
 }
 impl Hash for Target {
   fn hash <H: Hasher> (&self, state: &mut H) {
     match self {
       &Target::Exact(ref r) => r.hash(state),
       &Target::Vote(ref c) => c.hash(state),
+      &Target::Game(ref s) => s.hash(state),
     }
   }
 }
@@ -1315,6 +1356,7 @@ impl Display for Target {
     match self {
       &Target::Exact(ref rp) => rp.fmt(f),
       &Target::Vote(ref i)   => i.class.fmt(f),
+      &Target::Game(_)       => "[game]".fmt(f),
     }
   }
 }
@@ -1331,18 +1373,19 @@ impl Target {
         cons
       },
       &Target::Exact(ref r) => r.constants(),
+      &Target::Game(_) => vec![2], // PLACEHOLDER TODO
     }
   }
   pub fn is_class (&self, c: usize) -> bool {
     match self {
-      &Target::Exact(_) => false,
       &Target::Vote(ref cls) => c == cls.class,
+      _ => false,
     }
   }
   pub fn classifier (&self) -> &Classification {
     match self {
-      &Target::Exact(_) => panic!("Not a Classification"),
       &Target::Vote(ref cls) => cls,
+      _ => panic!("Not a Classification"),
     }
   }
 }

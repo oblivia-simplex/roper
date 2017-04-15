@@ -39,16 +39,31 @@ pub fn get_word32le (a: &Vec<u8>, offset: usize) -> u32 {
   s
 }
 
+// Lot of silly looking code duplication here. 
+// There must be a way of doing this in a more generic way.
 pub fn pack_word32le (n: u32) -> Vec<u8> {
   let mut v = Vec::new();
   for i in 0..4 {
     v.push(((n & (0xFF << (i*8))) >> (i*8)) as u8);
   }
-  //println!("## {:08x} --> {:02x} {:02x} {:02x} {:02x}",
-  //         n, v[0], v[1], v[2], v[3]);
   v
 }   
 
+pub fn pack_wordi32le (n: i32) -> Vec<u8> {
+  let mut v = Vec::new();
+  for i in 0..4 {
+    v.push(((n & (0xFF << (i*8))) >> (i*8)) as u8);
+  }
+  v
+}   
+pub fn pack_wordi32le_vec (v: &Vec<i32>) -> Vec<u8> {
+  let mut p : Vec<u8> = Vec::new();
+  for ref w in v {
+   // println!("## p.len() == {}",p.len());
+    p.extend(pack_wordi32le(**w).iter())
+  }
+  p
+}
 pub fn pack_word32le_vec (v: &Vec<u32>) -> Vec<u8> {
   let mut p : Vec<u8> = Vec::new();
   for ref w in v {
