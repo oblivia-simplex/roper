@@ -115,8 +115,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
   let mut body = vec![0; len * 4];
   stream.read(&mut body)
         .expect(&format!("Failed to read packet body of length {} from TCP stream.", len));
-  println!("--> hdr: {:02x}", &hdr[0]);
-  print!("--> body: ");
+  print!("--> pkt: {:02x} ", &hdr[0]);
   for byte in body.iter() {
     print!("{:02x} ", byte);
   }

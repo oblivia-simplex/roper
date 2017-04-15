@@ -218,12 +218,15 @@ fn main() {
       /* This should be read from a per-game config file */
       params.inregs  = vec![1,2,3,4,5,6];
       params.outregs = vec![7,8,9];
-      IoTargets::from_vec(TargetKind::Game,
-        vec![Problem::new(vec![0,0,0],
-             Target::Game(GameData {
-               addr: host_port.clone(),
-               params: vec![1, 8, 99, 256],
-              }))])
+      let mut gs = Vec::new();
+      for i in 1..4 {
+        gs.push(Problem::new(vec![0,0,0],
+                             Target::Game(GameData {
+                               addr: host_port.clone(),
+                               params: vec![7, i*100, 128]
+                             })));
+      }
+      IoTargets::from_vec(TargetKind::Game, gs)
     },
     Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
   };

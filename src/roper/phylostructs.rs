@@ -1034,12 +1034,21 @@ impl Problem {
     // which is then inverted again: 1.0 - (1.0 - self.difficulty())
   }
 
-  pub fn get_input<'a> (&'a self, output: &Vec<u64>) -> (Option<i32>,
-                                                         Vec<i32>) {
+  pub fn get_input<'a> (&'a self, 
+                        output: &Vec<u64>, 
+                        verbose: bool) 
+                      -> (Option<i32>, Vec<i32>) {
     match &self.target {
       &Target::Game(ref x) => {
         if output.len() == 0 {
-          (None, init_game(&x.params, &x.addr))
+          let mut p = Vec::new();
+          if verbose {
+            p.push(2);
+          } else {
+            p.push(0);
+          };
+          p.extend_from_slice(&x.params);
+          (None, init_game(&p, &x.addr))
         } else {
           let out = output.iter()
                           .map(|&x| (x & 0xFFFFFFFF) as i32)

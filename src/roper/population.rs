@@ -169,7 +169,7 @@ fn eval_case (uc: &mut CpuARM,
   let af; let rf;
   let mut output : Vec<u64> = Vec::new();
   loop {
-    let (score, input) = problem.get_input(&output);
+    let (score, input) = problem.get_input(&output, verbose);
     output.truncate(0);
     if score == None {
       if verbose {
@@ -560,6 +560,7 @@ pub fn tournament (population: &Population,
 
   let mut fit_vec = Vec::new();
   let mut difficulty_update = HashMap::new();
+  let mut verbose = thread_rng().gen::<f32>() < 0.01;
   for &(ref specimen,_) in specimens.iter() 
   {
     if specimen.fitness == None || specimen.season != season {
@@ -568,7 +569,8 @@ pub fn tournament (population: &Population,
                                  &specimen,
                                  &population.params,
                                  batch,
-                                 false); // verbose
+                                 verbose); // verbose
+  //    verbose = false;
       let e = start.elapsed();
       let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
       let fitness = res.fitness;
