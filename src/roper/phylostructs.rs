@@ -1034,7 +1034,7 @@ impl Problem {
     // which is then inverted again: 1.0 - (1.0 - self.difficulty())
   }
 
-  pub fn get_input<'a> (&'a self, output: &Vec<u64>) -> (Option<f32>,
+  pub fn get_input<'a> (&'a self, output: &Vec<u64>) -> (Option<i32>,
                                                          Vec<i32>) {
     match &self.target {
       &Target::Game(ref x) => {

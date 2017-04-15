@@ -187,7 +187,7 @@ fn eval_case (uc: &mut CpuARM,
     } else {
       // this is such spaghetti i want to cry
       // get rid of fingerprints. they're not doing much. 
-      af = score.unwrap();
+      af = (1.0 / (score.unwrap() as f32)).sqrt().sqrt();
       println!("[SCORE: {}]", af);
       rf = af;
       break;

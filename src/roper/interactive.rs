@@ -44,7 +44,7 @@ pub enum GameState {
     Input (Vec<i32>),
     Output (Vec<i32>),
     Param (Vec<i32>),
-    Score (f32), // we'll use fixed point numbers to keep it simple
+    Score (i32), // we'll use fixed point numbers to keep it simple
 }
 
 const okay: u8 = 0x00;
@@ -91,7 +91,7 @@ pub fn init_game<'a> (game_params: &'a Vec<i32>,
 }
 
 pub fn play_game <'a> (out: &Vec<i32>,
-                  addr: &'a str) -> (Option<f32>, Vec<i32>) {
+                  addr: &'a str) -> (Option<i32>, Vec<i32>) {
   
   let gs = GameState::Output(out.clone());
   let rs = send_controls(&gs, &addr);
@@ -133,7 +133,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
       GameState::Input(words)
     },
     score => {
-      GameState::Score(1.0/get_word32le(&body, 0) as f32)
+      GameState::Score(get_word32le(&body, 0) as i32)
     },
     _ => panic!(format!("Unrecognized packet header: {:02x}", hdr[0])),
   }
