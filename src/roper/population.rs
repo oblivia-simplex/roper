@@ -187,7 +187,8 @@ fn eval_case (uc: &mut CpuARM,
     } else {
       // this is such spaghetti i want to cry
       // get rid of fingerprints. they're not doing much. 
-      af = 1.0 / score.unwrap() as f32;
+      af = score.unwrap();
+      println!("[SCORE: {}]", af);
       rf = af;
       break;
     }
@@ -322,7 +323,10 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                               fingerprint.len() as f32;
    */                           
   let ab_fitness = mean(&abfit_vec);
-  let fitness = mean(&fit_vec);
+  let fitness =  mean(&fit_vec);
+  println!(">> ab_fitness: {}, fitness: {}", ab_fitness, fitness);
+  let ab_fitness = f32::min(1.0, ab_fitness);
+  let fitness = f32::min(1.0, fitness);
     //mean(&abfit_vec);
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
