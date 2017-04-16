@@ -63,11 +63,13 @@ fn encode_packet (gamestate: &GameState) -> Vec<u8> {
   };
   pkt.push(hdr);
   pkt.extend_from_slice(&pack_wordi32le_vec(&bdy));
+  /*
   print!("<-- pkt: ");
   for byte in pkt.iter() {
     print!("{:02x} ", byte);
   }
   println!("");
+  */
   pkt 
 }
 
@@ -115,11 +117,13 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
   let mut body = vec![0; len * 4];
   stream.read(&mut body)
         .expect(&format!("Failed to read packet body of length {} from TCP stream.", len));
+  /*
   print!("--> pkt: {:02x} ", &hdr[0]);
   for byte in body.iter() {
     print!("{:02x} ", byte);
   }
   println!("");
+  */
   match typ {
     input => {
       let wordsize = 4;

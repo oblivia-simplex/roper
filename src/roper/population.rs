@@ -168,26 +168,29 @@ fn eval_case (uc: &mut CpuARM,
   let mut result : HatchResult = HatchResult::new();
   let af; let rf;
   let mut output : Vec<u64> = Vec::new();
+  let mut reset = true;
   loop {
     let (score, input) = problem.get_input(&output, verbose);
     output.truncate(0);
     if score == None {
       if verbose {
-        print!("\n");
-        for _ in 0..60 { print!("="); };
+        //print!("\n");
+        //for _ in 0..60 { print!("="); };
         println!("\n==> Evaluating {:?}", input);
       };
       result = hatch_chain(uc, 
                            &chain,
                            &input,
-                           &inregs);
+                           &inregs,
+                           reset);
+      reset = false;
       for idx in outregs {
         output.push(result.registers[*idx]);
       }
     } else {
       // this is such spaghetti i want to cry
       // get rid of fingerprints. they're not doing much. 
-      af = (1.0 / (score.unwrap() as f32)).sqrt().sqrt();
+      af = (1.0 / (score.unwrap() as f32)).sqrt();
       println!("[SCORE: {}]", af);
       rf = af;
       break;
@@ -199,7 +202,7 @@ fn eval_case (uc: &mut CpuARM,
   }
   // need to let hatch_chain choose *which* registers to preload.
   // input should be a vec of ordered pairs: (reg,value)
-  if verbose { print!("\n{}", result); }
+  if verbose { print!("{}", result); }
   let counter = result.counter;
   let crash = result.error != None;
 //  let final_pc = result.registers[15];
@@ -560,7 +563,7 @@ pub fn tournament (population: &Population,
 
   let mut fit_vec = Vec::new();
   let mut difficulty_update = HashMap::new();
-  let mut verbose = thread_rng().gen::<f32>() < 0.01;
+  let mut verbose = thread_rng().gen::<f32>() < 0.001;
   for &(ref specimen,_) in specimens.iter() 
   {
     if specimen.fitness == None || specimen.season != season {

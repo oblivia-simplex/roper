@@ -914,8 +914,8 @@ impl Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![1,2,3,4],
-      outregs:          vec![5,6,7],
+      inregs:           vec![3,4,5,6,7,8],
+      outregs:          vec![0,1,2],
       binary_path:      "".to_string(),
       fatal_crash:      false,
       crash_penalty:    0.2,
@@ -1043,7 +1043,7 @@ impl Problem {
         if output.len() == 0 {
           let mut p = Vec::new();
           if verbose {
-            p.push(2);
+            p.push(3);
           } else {
             p.push(0);
           };
@@ -1551,7 +1551,7 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   let mut cl = clump.clone();
   saturate_clump(&mut cl, &mut twos);
   let vanilla = Chain::new(vec![cl]);
-  let res = hatch_chain(uc, &vanilla, &input, &inregs);
+  let res = hatch_chain(uc, &vanilla, &input, &inregs, true);
   //println!("\n{}",res);
   let mut differ = 0;
   for r in res.registers[..12].to_vec() {

@@ -23,16 +23,19 @@ pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<u64> {
 
 pub fn set_registers (uc: &unicorn::Unicorn, 
                       input: &Vec<i32>,
-                      inregs: &Vec<usize>) {
+                      inregs: &Vec<usize>,
+                      reset: bool) {
   let mut in_ptr = 0;
   for i in 0..REGISTERS.len() {
-    let val = if in_ptr < inregs.len() && i == inregs[in_ptr] { 
+    if in_ptr < inregs.len() && i == inregs[in_ptr] { 
       in_ptr += 1;
-      input[in_ptr-1] 
+      let val = input[in_ptr-1];
+      uc.reg_write_i32(REGISTERS[i].to_i32(), val);
     } else { 
-      0
+      if reset {
+        uc.reg_write_i32(REGISTERS[i].to_i32(), 0);
+      }
     };
-    uc.reg_write_i32(REGISTERS[i].to_i32(), val);
   }
 }
 
@@ -112,9 +115,9 @@ fn mk_zerostack(n: usize) -> Vec<u8>
 
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
                             chain: &Chain,
-                            //stack: &Vec<u8>,
                             input: &Vec<i32>,
-                            inregs:  &Vec<usize>) 
+                            inregs:  &Vec<usize>,
+                            reset: bool) 
                             -> HatchResult {
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
@@ -131,11 +134,13 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     }
   }
 
-  set_registers(uc.emu(), &input, &inregs);
+  set_registers(uc.emu(), &input, &inregs, reset);
   //reset_counter(uc);
+  if reset {
   let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
-  uc.mem_write(BASE_STACK, &zerostack)
-    .expect("Error zeroing out stack");
+    uc.mem_write(BASE_STACK, &zerostack)
+      .expect("Error zeroing out stack");
+  }
   uc.mem_write(STACK_INIT, &stack)
     .expect("Error initializing stack memory");
   uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop

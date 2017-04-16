@@ -219,7 +219,7 @@ fn main() {
       params.inregs  = vec![1,2,3,4,5,6];
       params.outregs = vec![7,8,9];
       let mut gs = Vec::new();
-      for i in 1..4 {
+      for i in 1..10 {
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
