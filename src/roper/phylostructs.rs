@@ -317,6 +317,7 @@ impl Display for Chain {
                         &self.input_slots));
     s.push_str("Clumps:\n");
     for clump in &self.clumps {
+      s.push_str(&format!("<{:08x}> ", clump.ret_addr));
       let mut i = 0;
       for word in &clump.words {
         match clump.input_slots
@@ -936,7 +937,7 @@ impl Params {
   pub fn set_init_difficulties (&mut self) {
     let mut io_targets = &mut self.io_targets;
     for ref mut problem in io_targets.iter_mut() {
-      problem.set_difficulty(1.0 - 1.0 / self.outregs.len() as f32);
+      problem.set_difficulty(DEFAULT_DIFFICULTY as f32);
       problem.set_pfactor(self.population_size);
     }
   }
@@ -1034,6 +1035,16 @@ impl Problem {
     // which is then inverted again: 1.0 - (1.0 - self.difficulty())
   }
 
+  pub fn get_class (&self) -> Option<usize> {
+    /* do this */
+    match &self.target {
+      &Target::Vote(ref i)  => Some(i.class),
+      &Target::Game(ref ps) => Some(ps.params[0].clone() as usize),
+      _ => None,
+    }
+    
+  }
+
   pub fn get_input<'a> (&'a self, 
                         output: &Vec<u64>, 
                         verbose: bool) 
@@ -1064,7 +1075,7 @@ impl Problem {
    */
   pub fn assess_output (&self,
                         output: &Vec<u64>) 
-                       -> Option<(f32, f32)> {
+                       -> (f32, f32) {
     match &self.target {
       &Target::Exact(ref rp) => {
         // here we can try some sort of fitness sharing thing
@@ -1072,23 +1083,23 @@ impl Problem {
         // as its first parameter
         let r = f32::max(0.0, rp.distance(&output));
         //let f = rp.matches(&output);
-        Some((r, r))
+        (r, r)
       },
       &Target::Vote(ref cls) => {
         let b = max_bin(&output);
         //let mut f = Fingerprint::new();
-        let r = if b == cls.class {
+        if b == cls.class {
           //f.push(false);
-          Some((0.0, 1.0 - self.difficulty())) 
+          (0.0, 1.0 - self.difficulty())
         } else {
           //f.push(true);
-          Some((1.0, 1.0))
-        }; 
-        //println!(">> output: {}\t class == {}\t dif: {:1.6}; predif: {}\t r: {:?}", hexvec(output), cls.class, self.difficulty(), self.predifficulty(), r);
-       r
-      }
+          (1.0, 1.0)
+        } 
+      } 
       &Target::Game(_) => {
-        None
+        let s = output[0].clone() as f32;
+        let af = (1.0 / s).sqrt();
+        (af, af * (1.0 - self.difficulty()))
       }
     }
   }
@@ -1165,7 +1176,7 @@ impl Classification {
   }
 }
 
-pub static DEFAULT_DIFFICULTY : f32 = 1.0; // don't hardcode
+pub static DEFAULT_DIFFICULTY : f32 = 0.5; // don't hardcode
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<i32> {
   let mut cons : Vec<i32> = Vec::new();
@@ -1202,8 +1213,8 @@ impl IoTargets {
   }
   pub fn class_difficulties (&self) -> Vec<(usize,f32)> {
     self.v.iter()
-          .filter(|x| x.kind() == TargetKind::Classification)
-          .map(|p| (p.target.classifier().class, p.difficulty()))
+          .filter(|x| x.get_class() != None)
+          .map(|p| (p.get_class().unwrap(), p.difficulty()))
           .collect::<Vec<(usize,f32)>>()
   }
   /*pub fn count_classes (&mut self) -> usize {
@@ -1219,11 +1230,10 @@ impl IoTargets {
   }
   */
   pub fn difficulties_by_class (&self, i: usize) -> Vec<f32> {
-    let cd = self.class_difficulties();
-    cd.iter()
-      .filter(|&p| p.0 == i)
-      .map(|&p| p.1)
-      .collect::<Vec<f32>>()
+    self.iter()
+        .filter(|ref p| p.get_class() == Some(i))
+        .map(|ref p| p.difficulty())
+        .collect::<Vec<f32>>()
   }
   // Note; these are not efficiently written, just lazily written. 
   // They're meant to be used sparingly, for the sake of 
@@ -1252,12 +1262,8 @@ impl IoTargets {
       (self.clone(),self.clone())
     } else {
       let (a,b) = self.v.split_at(i);
-      let (mut at, mut bt) = 
-        (IoTargets::from_vec(self.k, a.to_vec()),
-         IoTargets::from_vec(self.k, b.to_vec()));
-      at.num_classes = self.num_classes;
-      bt.num_classes = self.num_classes;
-      (at,bt)
+        (IoTargets::from_vec(self.k, a.to_vec(), self.num_classes),
+         IoTargets::from_vec(self.k, b.to_vec(), self.num_classes))
     }
   }
 
@@ -1265,6 +1271,7 @@ impl IoTargets {
   // assumes the IoTargets is balanced to begin with.
   // Improve on this later, so that it preserves ratios. See example in
   // GENLIN. 
+  // TODO: Fix this. it doesn't work. 
   pub fn balanced_split_at (&self, i: usize) -> (IoTargets, IoTargets) {
     if self.k != TargetKind::Classification {
       (self.clone(),self.clone())
@@ -1279,11 +1286,10 @@ impl IoTargets {
       for j in 0..num_classes {
         let mut class : Vec<Problem> = Vec::new();
         for x in shuffled.iter() {
-          if x.target.is_class(j) {
+          if x.get_class() == Some(j) {
             class.push(x.clone());
           }
         }
-        
         /*= shuffled.iter()
                             .filter(|x| x.1 == Target::Vote(j))
                             .map(|&x| x.clone())
@@ -1295,7 +1301,7 @@ impl IoTargets {
       for j in 0..i {
         match buckets[j % num_classes].pop() {
           Some(item) => buckets[j % num_classes].push(item),
-          None       => (),
+          None       => (), 
         }
       }
       let mut part_2 = IoTargets::new(TargetKind::Classification);
@@ -1307,6 +1313,7 @@ impl IoTargets {
       let (mut at, mut bt) = (part_1.shuffle(), part_2.shuffle());
       at.num_classes = self.num_classes;
       bt.num_classes = self.num_classes;
+      println!(">> i == {}; at.len() == {}; bt.len() == {}",i, at.len(), bt.len());
       (at,bt)
     }
   }
@@ -1314,8 +1321,8 @@ impl IoTargets {
   pub fn new (k: TargetKind) -> IoTargets {
     IoTargets{v:Vec::new(), k:k, num_classes: 1}
   }
-  pub fn from_vec (k: TargetKind, v: Vec<Problem>) -> IoTargets {
-    IoTargets{v:v, k:k, num_classes: 1}
+  pub fn from_vec (k: TargetKind, v: Vec<Problem>, num_classes: usize) -> IoTargets {
+    IoTargets{v:v, k:k, num_classes: num_classes}
   }
   pub fn to_vec (&self) -> &Vec<Problem> {
     &self.v

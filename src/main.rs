@@ -154,7 +154,6 @@ fn main() {
     None => 1.0,
     Some(n) => n.parse::<f32>().unwrap(),
   };
-  println!(">> use_viscosity = {}", use_viscosity);
   let popsize = match matches.opt_str("P") {
     None => 2000,
     Some(n) => n.parse::<usize>().unwrap(),
@@ -203,35 +202,46 @@ fn main() {
     Some(s) => s.parse::<f32>()
                 .expect("Error parsing fitness goal"),
   };
-  println!(">> goal = {}", goal);
   // ugly kludge here
  
   let mut params : Params = Params::new(&label);
   let io_targets = match challenge {
-    Challenge::Data => process_data2(&data_path.unwrap(), 4).shuffle(), // DO NOT HARDCODE TODO
+    Challenge::Data => {
+      let num_attrs = 4; // TODO: Figure out how not to hardcode this
+      let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
+      params.inregs  = (0..num_attrs).collect::<Vec<usize>>();
+      params.outregs = (num_attrs..(io.num_classes)).collect::<Vec<usize>>();
+      assert!(io.len() > 0);
+      io
+    },
     Challenge::Pattern => {
       params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
       IoTargets::from_vec(TargetKind::PatternMatch,
-        vec![Problem::new(vec![1;16], mk_pattern(&rpattern_str.unwrap()))])
+        vec![Problem::new(vec![1;16], mk_pattern(&rpattern_str.unwrap()))],
+        1)
     },
     Challenge::Game => {
       /* This should be read from a per-game config file */
-      params.inregs  = vec![1,2,3,4,5,6];
-      params.outregs = vec![7,8,9];
+      params.inregs = vec![3,4,5,6,7,8];
+      params.outregs= vec![0,1,2];
       let mut gs = Vec::new();
-      for i in 1..10 {
+      let mut num_classes = 0;
+      for i in 0..10 {
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![7, i*100, 128]
+                               params: vec![i, 6, 128]
                              })));
+        num_classes += 1;
       }
-      IoTargets::from_vec(TargetKind::Game, gs)
+      IoTargets::from_vec(TargetKind::Game, gs, num_classes)
     },
     Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
   };
 
-  let (testing,training) = io_targets.balanced_split_at(io_targets.len()/3);
+  let (testing,training) = io_targets.split_at(io_targets.len()/3);
+  println!(">> testing.len() = {}; training.len() = {}", testing.len(), training.len());
+
   //let debug_samples = training.clone();
   /*
   let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
@@ -315,6 +325,10 @@ fn main() {
   
   let population = Population::new(&params, &mut machinery.cluster[0]);
 
+  for chain in population.deme.iter() {
+    println!("\n{}",chain);
+  }
+
   let mut debug_machinery : Machinery 
     = Machinery::new(&elf_path,
                      mode,
@@ -387,6 +401,13 @@ fn main() {
           //let mean_fit_deltas = mean(&fit_deltas);
           if updated != None {
             champion = updated.clone();
+            println!("[*] Verbosely evaluating new champion...");
+            evaluate_fitness(debug_machinery.cluster[0]
+                                             .unwrap_mut(),
+                             &updated.unwrap(),
+                             &params,
+                             Batch::TESTING,
+                             true);
           }
           mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
         }

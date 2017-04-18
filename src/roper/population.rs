@@ -169,6 +169,7 @@ fn eval_case (uc: &mut CpuARM,
   let af; let rf;
   let mut output : Vec<u64> = Vec::new();
   let mut reset = true;
+  let mut finished = problem.kind() != TargetKind::Game;
   loop {
     let (score, input) = problem.get_input(&output, verbose);
     output.truncate(0);
@@ -188,20 +189,15 @@ fn eval_case (uc: &mut CpuARM,
         output.push(result.registers[*idx]);
       }
     } else {
-      // this is such spaghetti i want to cry
-      // get rid of fingerprints. they're not doing much. 
-      af = (1.0 / (score.unwrap() as f32)).sqrt();
-      println!("[SCORE: {}]", af);
-      rf = af;
-      break;
+      finished = true;
+      output = vec![score.unwrap() as u64];
     }
-    if let Some((a,r)) = problem.assess_output(&output) {
+    if finished {
+      let (a,r) = problem.assess_output(&output);
       af = a; rf = r;
       break;
     }
   }
-  // need to let hatch_chain choose *which* registers to preload.
-  // input should be a vec of ordered pairs: (reg,value)
   if verbose { print!("{}", result); }
   let counter = result.counter;
   let crash = result.error != None;
@@ -294,8 +290,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
       chain.size()-1
     }; // benefit of the doubt here?
     
-    let ratio_run = f32::min(1.0, counter as f32 / 
-                             (chain.size()-1) as f32);
+    let cs = max(chain.size()-1, 1) as f32;
+    let ratio_run = f32::min(1.0, counter as f32 / cs);
     counter_sum += counter;
     anycrash = anycrash || res.crashes;
     /* adjust score if there was a crash */
@@ -327,7 +323,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
    */                           
   let ab_fitness = mean(&abfit_vec);
   let fitness =  mean(&fit_vec);
-  println!(">> ab_fitness: {}, fitness: {}", ab_fitness, fitness);
   let ab_fitness = f32::min(1.0, ab_fitness);
   let fitness = f32::min(1.0, fitness);
     //mean(&abfit_vec);
@@ -563,7 +558,7 @@ pub fn tournament (population: &Population,
 
   let mut fit_vec = Vec::new();
   let mut difficulty_update = HashMap::new();
-  let mut verbose = thread_rng().gen::<f32>() < 0.001;
+  let mut verbose = false;
   for &(ref specimen,_) in specimens.iter() 
   {
     if specimen.fitness == None || specimen.season != season {
