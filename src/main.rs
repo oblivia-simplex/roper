@@ -230,7 +230,7 @@ fn main() {
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, 6, 128]
+                               params: vec![i, 6, 64, 1, 0]
                              })));
         num_classes += 1;
       }
