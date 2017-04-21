@@ -395,9 +395,7 @@ fn main() {
         let mut mut_pop = &mut pop_local.write().unwrap();
         iteration = mut_pop.iteration.clone();
         for tr in trs {
-          if mut_pop.params.fitness_sharing {
-            patch_io_targets(&tr, &mut mut_pop.params, iteration);
-          };
+          patch_io_targets(&tr, &mut mut_pop.params, iteration);
           let (updated, f_deltas) = patch_population(&tr,
                                                        mut_pop,
                                                        true);

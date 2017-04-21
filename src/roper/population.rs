@@ -195,7 +195,7 @@ fn eval_case (uc: &mut CpuARM,
     }
     if finished {
       let (a,r) = problem.assess_output(&output);
-      //println!(">> (af,rf) = ({},{})", a, r);
+      // println!(">> (af,rf) = ({},{})", a, r);
       af = a; rf = r;
       break;
     }
@@ -406,6 +406,7 @@ pub fn patch_io_targets (tr: &TournementResult,
     if let Some(d_vec) = tr.difficulty_update.get(&problem) {
       //println!("(*) found problem {:?}", problem);
       problem.inc_predifficulty(d_vec); // += d_vec.iter().sum::<f32>();
+      //println!(">> d_vec: {:?}", d_vec);
     } else {
       //println!("(x) couldn't find problem {:?}", problem);
     }

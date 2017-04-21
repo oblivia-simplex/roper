@@ -90,7 +90,6 @@ function run () {
                                 -m 0.05 \
                                 -V \
                                 -R \
-                                -S \
                                 -L $LABEL 
   # Add -S flag to enable fitness sharing
                                 
