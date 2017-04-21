@@ -915,8 +915,8 @@ impl Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![4,5,6,7],
-      outregs:          vec![1,2,3],
+      inregs:           vec![1,2,3,4],
+      outregs:          vec![5,6,7],
       binary_path:      "".to_string(),
       fatal_crash:      false,
       crash_penalty:    0.2,

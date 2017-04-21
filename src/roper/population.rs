@@ -281,7 +281,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                         &params,
                         verbose);
     let p = problem.clone();
-    let dif = mean(&abfit_vec); // this was the bug, i think
+    let dif = res.ab_fitness;
+    //println!(">> dif = {}", dif);
     //let dif = if res.fingerprint[0] {1.0} else {0.0};
     difficulties.insert(p, dif);
     /* crash tracking */ 

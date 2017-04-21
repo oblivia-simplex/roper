@@ -212,7 +212,9 @@ fn main() {
       let num_attrs = 4; // TODO: Figure out how not to hardcode this
       let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
       params.inregs  = (0..num_attrs).collect::<Vec<usize>>();
-      params.outregs = (num_attrs..(io.num_classes)).collect::<Vec<usize>>();
+      params.outregs = (num_attrs..(num_attrs+io.num_classes)).collect::<Vec<usize>>();
+      println!(">> inregs: {:?}\n>> outregs: {:?}", 
+               &params.inregs, &params.outregs);
       assert!(io.len() > 0);
       io
     },
