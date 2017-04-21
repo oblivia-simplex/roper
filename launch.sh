@@ -20,7 +20,7 @@ function labelmaker ()
   echo
 }
 
-DATAFILE=${PROJECT_ROOT}/data/iris.small #data_banknote_authentication.txt
+DATAFILE=${PROJECT_ROOT}/data/iris.shuffled #data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
 DATASTRING="-d $DATAFILE"
 BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
@@ -90,7 +90,9 @@ function run () {
                                 -m 0.05 \
                                 -V \
                                 -R \
+                                -S \
                                 -L $LABEL 
+  # Add -S flag to enable fitness sharing
                                 
 }
 echo "[+] launching roper"

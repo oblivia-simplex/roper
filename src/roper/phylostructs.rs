@@ -915,8 +915,8 @@ impl Params {
       use_viscosity:    true,
       // don't hardcode size and numbers of in/out regs.
       // make this dependent on the data
-      inregs:           vec![3,4,5,6,7,8],
-      outregs:          vec![0,1,2],
+      inregs:           vec![4,5,6,7],
+      outregs:          vec![1,2,3],
       binary_path:      "".to_string(),
       fatal_crash:      false,
       crash_penalty:    0.2,
@@ -924,11 +924,11 @@ impl Params {
     }
   }
   pub fn calc_season_length (&self) -> usize {
-    if !self.fitness_sharing {
+    if false && !self.fitness_sharing {
       self.max_iterations
     } else {
       self.population_size /
-        (self.t_size * self.threads * self.season_divisor)
+        (self.t_size * self.season_divisor)
     }
   }
   pub fn set_season_divisor (&mut self, divisor: usize) {

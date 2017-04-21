@@ -160,10 +160,13 @@ pub struct EvalResult {
 fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               problem: &Problem,
-              inregs:  &Vec<usize>,
-              outregs: &Vec<usize>, // need a better system
+              params: &Params,
+              //inregs:  &Vec<usize>,
+
+              //outregs: &Vec<usize>, 
               verbose: bool) -> EvalResult{ //(f32, usize, bool) {
-  
+  let inregs = &params.inregs;
+  let outregs = &params.outregs;
   let target = &problem.target;
   let mut result : HatchResult = HatchResult::new();
   let af; let rf;
@@ -175,8 +178,6 @@ fn eval_case (uc: &mut CpuARM,
     output.truncate(0);
     if score == None {
       if verbose {
-        //print!("\n");
-        //for _ in 0..60 { print!("="); };
         println!("\n==> Evaluating {:?}", input);
       };
       result = hatch_chain(uc, 
@@ -194,6 +195,7 @@ fn eval_case (uc: &mut CpuARM,
     }
     if finished {
       let (a,r) = problem.assess_output(&output);
+      //println!(">> (af,rf) = ({},{})", a, r);
       af = a; rf = r;
       break;
     }
@@ -204,7 +206,7 @@ fn eval_case (uc: &mut CpuARM,
 //  let final_pc = result.registers[15];
 
   EvalResult {
-    fitness: rf,
+    fitness: if params.fitness_sharing {rf} else {af},
     ab_fitness: af,
 //    fingerprint: 
     counter: counter,
@@ -276,11 +278,10 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     let res = eval_case(uc,
                         chain,
                         problem,
-                        &inregs,
-                        &outregs,
+                        &params,
                         verbose);
     let p = problem.clone();
-    let dif = res.ab_fitness;
+    let dif = mean(&abfit_vec); // this was the bug, i think
     //let dif = if res.fingerprint[0] {1.0} else {0.0};
     difficulties.insert(p, dif);
     /* crash tracking */ 
@@ -429,11 +430,11 @@ pub fn update_difficulties (params: &mut Params,
                         */
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for ref mut problem in io_targets.iter_mut() {
-      if params.fitness_sharing {
+      //if params.fitness_sharing {
         problem.rotate_difficulty(divisor);
-      } else {
-        problem.set_difficulty(1.0);
-      }
+      //} else {
+      //  problem.set_difficulty(1.0);
+      //}
     }
     1
   } else {

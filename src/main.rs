@@ -70,14 +70,15 @@ fn get_elf_addr_data (path: &str,
   sections
 }
 
+/*
 fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
   let addr = GBA_CARTRIDGE_ROM_START;
   let data = load_file(path);
   vec![(addr,data)]
 }
-                    
+  */                  
 
-const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
+//const GBA_CARTRIDGE_ROM_START : u64 = 0x08000000;
 
 #[derive(PartialEq,Eq,Clone,Debug)]
 enum Challenge {
@@ -109,6 +110,7 @@ fn main() {
   opts.optopt("L", "label", "set a label for the trial", "<string>");
   opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
   opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
+  opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
   opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
   opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
   opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
@@ -173,7 +175,7 @@ fn main() {
   let rpattern_str = matches.opt_str("p");
   if rpattern_str != None {challenge = Challenge::Pattern};
 
-  let fitness_sharing = rpattern_str == None;
+  let fitness_sharing = matches.opt_present("S") && rpattern_str == None;
   let data_path    = matches.opt_str("d");
   if data_path != None {challenge = Challenge::Data};
 
