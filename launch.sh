@@ -31,8 +31,8 @@ TERMINALSTRING=""
 
 LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
 mkdir -p $LOGDIR
-OUTFILE="${LOGDIR}/roper_`date +%H-%M-%S`.out"
-ERRORFILE=${LOGDIR}/roper_`date +%H-%M-%S`.err
+OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
+ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
 
 mkdir -p $PROJECT_ROOT/logs
 #gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
@@ -90,6 +90,7 @@ function run () {
                                 -m 0.05 \
                                 -V \
                                 -R \
+                                -S \
                                 -L $LABEL 
   # Add -S flag to enable fitness sharing
                                 
@@ -114,9 +115,9 @@ echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
 TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
 echo "TIMESTAMP: $TIMESTAMP"
 export TIMESTAMP
-ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.out
-ln $OUTFILE ${LOGDIR}/roper_${TIMESTAMP}.err
-PLOTFILE=${LOGDIR}/plot_${TIMESTAMP}.gnu
+ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
+ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
+PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
 if [ -n "$DISPLAY" ]; then
   TERMINALSTRING="set terminal x11 background rgb \"black\""
   OUTPUTSTRING=""

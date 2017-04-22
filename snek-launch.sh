@@ -99,6 +99,7 @@ function run () {
                                 -m 0.05 \
                                 -V \
                                 -R \
+                                -S \
                                 -L $LABEL 
                                 
 }

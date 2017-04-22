@@ -234,7 +234,7 @@ fn main() {
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, 6, 64, 1, 0]
+                               params: vec![i, 10, 128, 0, 3]
                              })));
         num_classes += 1;
       }
@@ -359,10 +359,11 @@ fn main() {
    ***************************/
   while i < max_iterations
     && (champion == None 
-        || champion.as_ref().unwrap().crashes == Some(true)
-        || champion.as_ref().unwrap().ab_fitness > Some(params.fit_goal))
+        || champion.as_ref().expect("Failed to unwrap champion reference (1)").crashes == Some(true)
+        || champion.as_ref().expect("Failed to unwrap champion reference (2)").ab_fitness > Some(params.fit_goal))
   {
-    
+    let mut iteration = 0;
+    let show_every = params.calc_season_length();
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
     let n_jobs    = machinery.cluster.len();
@@ -372,12 +373,14 @@ fn main() {
       for e in machinery.cluster.iter_mut() {
         let tx = tx.clone();
         let p = pop_arc.clone();
+        let verbose = season > 1 && iteration % show_every == show_every % threads;
         scope.execute(move || {
-          let t = tournament(&p.read().unwrap(),
+          let t = tournament(&p.read().expect("Failed to open read lock on tournament"),
                              e,
                              Batch::TRAINING,
-                             vdeme);
-          tx.send(t).unwrap();
+                             vdeme,
+                             verbose);
+          tx.send(t).expect("Failed to sent tournament result down channel");
         });
         vdeme = (vdeme + 1) % num_demes;
       }
@@ -387,18 +390,17 @@ fn main() {
       trs.sort_by(|a,b| b.best.ab_fitness
                          .partial_cmp(&a.best.ab_fitness)
                          .unwrap_or(Ordering::Equal));
-      let iteration;
       let season_change;
       let class_stddev_difficulties;
       /* Update a bunch of relatively global parameters & population */
       { // block to enclose write lock
-        let mut mut_pop = &mut pop_local.write().unwrap();
+        let mut mut_pop = &mut pop_local.write().expect("Failed to open write lock on population");
         iteration = mut_pop.iteration.clone();
         for tr in trs {
           patch_io_targets(&tr, &mut mut_pop.params, iteration);
           let (updated, f_deltas) = patch_population(&tr,
-                                                       mut_pop,
-                                                       true);
+                                                     mut_pop,
+                                                     true);
           fitness_deltas.push_all(f_deltas);
           //let mean_fit_deltas = mean(&fit_deltas);
           if updated != None {
@@ -406,7 +408,7 @@ fn main() {
             println!("[*] Verbosely evaluating new champion...");
             evaluate_fitness(debug_machinery.cluster[0]
                                              .unwrap_mut(),
-                             &updated.unwrap(),
+                             &updated.expect("Failed to unwrap updated struct"),
                              &params,
                              Batch::TESTING,
                              true);
@@ -418,8 +420,8 @@ fn main() {
         mut_pop.season += season_change;
         season = mut_pop.season.clone();
         class_stddev_difficulties = mut_pop.params
-                                      .io_targets
-                                      .class_stddev_difficulties();
+                                           .io_targets
+                                           .class_stddev_difficulties();
         /* Update variation operators according to 1:5 rule:
          * if fewer than 1 in 5 offspring is as fit as the parent(s),
          * then the algorithm should be more exploitative; if more
@@ -436,41 +438,26 @@ fn main() {
         //  calc_mutrate(&class_stddev_difficulties);
       } // end mut block
      
-      if season_change > 0 || iteration % printevery == 0 {
+      if champion != None && (season_change > 0 || iteration % printevery == 0) {
         /**************************************************
          * Pretty-print some information for the viewers  *
          * huddled around the terminal, in hushed antici- *
          * pation.                                        *
          **************************************************/
-        first_log = pop_local.read().unwrap().log(first_log);
+        let pop_read = pop_local.read().expect("Failed to open read lock on pop_local");
+        first_log = pop_read.log(first_log);
         println!("");
-        let avg_pop_gen = pop_local.read()
-                                   .unwrap()
-                                   .avg_gen();
-        let avg_pop_fit = pop_local.read()
-                                   .unwrap()
-                                   .avg_fit(season);
-        let avg_pop_abfit = pop_local.read()
-                                     .unwrap()
-                                     .avg_abfit();
-        crash_rate = pop_local.read()
-                              .unwrap()
-                              .crash_rate();
-        let min_fit = pop_local.read()
-                               .unwrap()
-                               .min_fit(season);
-        let min_abfit = pop_local.read()
-                                 .unwrap()
-                                 .min_abfit();
-        let stddev_abfit = pop_local.read()
-                                    .unwrap()
-                                    .stddev_abfit();
-        let champ = champion.clone().unwrap();
-        let dprof = pop_local.read()
-                             .unwrap()
-                             .params
-                             .io_targets
-                             .difficulty_profile();
+        let avg_pop_gen = pop_read.avg_gen();
+        let avg_pop_fit = pop_read.avg_fit(season);
+        let avg_pop_abfit = pop_read.avg_abfit();
+        crash_rate = pop_read.crash_rate();
+        let min_fit = pop_read.min_fit(season);
+        let min_abfit = pop_read.min_abfit();
+        let stddev_abfit = pop_read.stddev_abfit();
+        let champ = champion.clone().expect("Failed to unwrap champion");
+        let dprof = pop_read.params
+                            .io_targets
+                            .difficulty_profile();
         println!("[*] ITERATION {}, SEASON {}", iteration, season);
         print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
         println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
@@ -482,41 +469,45 @@ fn main() {
                                                  .unwrap());
         println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                  .unwrap());
-        print!  ("[+] AVG LEN:     {:3.5}    ", pop_local.read()
-                                                       .unwrap()
-                                                       .avg_len());     
+        print!  ("[+] AVG LEN:     {:3.5}    ", pop_read.avg_len());     
         println!("[+] IMPROVEMENT: {:1.6}  ", improvement_ratio.unwrap_or(0.0));
         //println!("[+] SEASONS ELAPSED: {}", season);
         println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                  standard_deviation(&dprof));
         println!("[+] MEAN DIFFICULTIES BY CLASS:");
         let mut c = 0;
-        for d     in pop_local.read()
-                              .unwrap()
-                              .params
-                              .io_targets
-                              .class_mean_difficulties() {
+        for d in pop_local.read()
+                          .expect("Failed to open read lock on pop_local")
+                          .params
+                          .io_targets
+                          .class_mean_difficulties() {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
-        println!("[+] STDDEV DIFFICULTIES BY CLASS:");
+        /*
+         * println!("[+] STDDEV DIFFICULTIES BY CLASS:");
         let mut c = 0;
         for d in class_stddev_difficulties {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
+        */
         println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
       } else {
         print!("\r[{}]                 ",iteration);
         io::stdout().flush().ok().expect("Could not flush stdout");
       }
-      pop_local.read().unwrap().periodic_save();
+      pop_local.read().expect("Failed to open read lock on pop_local for periodic_save").periodic_save();
       println!("------------------------------------------------");
     }); // END POOL SCOPE
     i += 1;
   } // END OF MAIN LOOP
-  println!("=> {} ITERATIONS", pop_local.read().unwrap().iteration);
-  println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read().unwrap().best_abfit());
+  println!("=> {} ITERATIONS",
+           pop_local.read()
+                    .expect("Failed to open read lock on pop_local")
+                    .iteration);
+  println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read()
+                                                    .unwrap().best_abfit());
   println!("=> RUNNING BEST:\n");
   if champion == None {
     panic!("Champion is none!");

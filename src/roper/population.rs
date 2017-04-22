@@ -525,7 +525,8 @@ pub fn lexicase_rpat (population: &Population,
 pub fn tournament (population: &Population,
                    engine: &mut Engine,
                    batch: Batch,
-                   vdeme: usize)
+                   vdeme: usize,
+                   verbose: bool)
                   -> TournementResult 
 {
   let season = population.season;
@@ -561,7 +562,6 @@ pub fn tournament (population: &Population,
 
   let mut fit_vec = Vec::new();
   let mut difficulty_update = HashMap::new();
-  let mut verbose = false;
   for &(ref specimen,_) in specimens.iter() 
   {
     if specimen.fitness == None || specimen.season != season {
@@ -571,7 +571,6 @@ pub fn tournament (population: &Population,
                                  &population.params,
                                  batch,
                                  verbose); // verbose
-  //    verbose = false;
       let e = start.elapsed();
       let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
       let fitness = res.fitness;
