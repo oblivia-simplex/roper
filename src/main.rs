@@ -101,6 +101,7 @@ fn main() {
   opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
   opts.optopt("d", "data", "set data path", "<path to data file>");
   opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
+  opts.optopt("n", "game_seeds", "number of unique random seeds to use for game", "<integer>");
   opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
   opts.optopt("o", "logs", "set log directory", "<directory>");
   opts.optopt("t", "threads", "set number of threads", "<positive integer>");
@@ -138,6 +139,11 @@ fn main() {
     false
   } else {
     true 
+  };
+
+  let game_seeds = match matches.opt_str("n") {
+    None => 9,
+    Some(n) => n.parse::<i32>().expect("Failed to parse game_seeds parameter (-n)"),
   };
 
   let host_port = match matches.opt_str("a") {
@@ -226,15 +232,16 @@ fn main() {
     },
     Challenge::Game => {
       /* This should be read from a per-game config file */
-      params.inregs = vec![3,4,5,6,7,8];
+      params.inregs = vec![3,4,5,6,7,8,9];
       params.outregs= vec![0,1,2];
       let mut gs = Vec::new();
       let mut num_classes = 0;
-      for i in 0..10 {
+      for i in 0..game_seeds {
+        let radius = 8 + i % 4;
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, 10, 64, 0, 3]
+                               params: vec![i, radius, radius * 8 +1, 0, 1+i%3, 4*i]
                              })));
         num_classes += 1;
       }
@@ -351,7 +358,9 @@ fn main() {
   let mut crash_rate : f32 = 0.5;
   let mut fitness_deltas : CircBuffer<f32> = CircBuffer::new(100);
   let mut improvement_ratio = None;
-
+  
+  let peek_path = format!("/tmp/roper/{}.peek", label);
+  let peek_path = Path::new(&peek_path);
   println!("io_targets: {:?}", &params.io_targets);
 
   /***************************
@@ -362,7 +371,9 @@ fn main() {
         || champion.as_ref().expect("Failed to unwrap champion reference (1)").crashes == Some(true)
         || champion.as_ref().expect("Failed to unwrap champion reference (2)").ab_fitness > Some(params.fit_goal))
   {
-    let mut iteration = 0;
+    let mut iteration = pop_local.read()
+                                 .expect("Failed to open read lock on pop_local")
+                                 .iteration;
     let show_every = 4 * params.calc_season_length();
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
@@ -373,7 +384,7 @@ fn main() {
       for e in machinery.cluster.iter_mut() {
         let tx = tx.clone();
         let p = pop_arc.clone();
-        let verbose = vdeme == 0 && season > 1 && iteration % show_every == show_every % threads;
+        let verbose = false; //vdeme == 0 && season > 1 && iteration % show_every == show_every % threads;
         scope.execute(move || {
           let t = tournament(&p.read().expect("Failed to open read lock on tournament"),
                              e,
@@ -402,13 +413,16 @@ fn main() {
                                                      mut_pop,
                                                      true);
           fitness_deltas.push_all(f_deltas);
-          //let mean_fit_deltas = mean(&fit_deltas);
           if updated != None {
             champion = updated.clone();
+          };
+          //let mean_fit_deltas = mean(&fit_deltas);
+          if peek_path.exists() && champion != None {
+            let champion = champion.clone();
             println!("[*] Verbosely evaluating new champion...");
             evaluate_fitness(debug_machinery.cluster[0]
                                              .unwrap_mut(),
-                             &updated.expect("Failed to unwrap updated struct"),
+                             &champion.expect("Failed to unwrap champion clone for peeking"),
                              &params,
                              Batch::TESTING,
                              true);
@@ -476,6 +490,7 @@ fn main() {
                  standard_deviation(&dprof));
         println!("[+] MEAN DIFFICULTIES BY CLASS:");
         let mut c = 0;
+        /*
         for d in pop_local.read()
                           .expect("Failed to open read lock on pop_local")
                           .params
@@ -484,7 +499,7 @@ fn main() {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
-        /*
+        *
          * println!("[+] STDDEV DIFFICULTIES BY CLASS:");
         let mut c = 0;
         for d in class_stddev_difficulties {

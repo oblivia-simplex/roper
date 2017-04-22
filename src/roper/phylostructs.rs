@@ -105,6 +105,7 @@ pub struct Clump {
   pub link_fit:    Option<f32>,
 }
 
+// UPDATE THIS to_json with new fields TODO
 impl ToJson for Clump {
   fn to_json(&self) -> Json {
     let mut b = BTreeMap::new();

@@ -1,9 +1,13 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 
-echo -n "PORT: "
-read GAMEPORT
-echo $GAMEPORT
+BINARY=$1
+[ -n "$BINARY" ] || \
+  BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
+echo -n "HOST:PORT> "
+read HOST_PORT
+
+echo $HOST_PORT
 
 
 function labelmaker () 
@@ -28,7 +32,6 @@ function labelmaker ()
 DATAFILE=${PROJECT_ROOT}/data/iris.small #data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
 DATASTRING="-d $DATAFILE"
-BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 GOAL="0.01"
 READEVERY=1
 LABEL=`labelmaker`
@@ -87,7 +90,7 @@ DISASFILE="/tmp/roper_disassembly.txt"
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
   RUST_BACKTRACE=1 cargo run \
-                             -- -a "localhost:$GAMEPORT"\
+                             -- -a "$HOST_PORT"\
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
@@ -97,6 +100,7 @@ function run () {
                                 -t 1 \
                                 -D 4 \
                                 -m 0.05 \
+                                -n 20 \
                                 -V \
                                 -R \
                                 -S \

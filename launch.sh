@@ -1,6 +1,8 @@
 #! /bin/bash
 PROJECT_ROOT=`pwd`
 
+BINARY=$1
+[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-AC3200-ARM-132-AIO-httpd
 function labelmaker () 
 {
   SRC=/dev/urandom
@@ -23,7 +25,6 @@ function labelmaker ()
 DATAFILE=${PROJECT_ROOT}/data/iris.shuffled #data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
 DATASTRING="-d $DATAFILE"
-BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 GOAL="0.1"
 READEVERY=1
 LABEL=`labelmaker`
@@ -167,7 +168,7 @@ set key autotitle columnhead
 set datafile separator ","
 # set autoscale
 set yrange [0:1]
-set xlabel "$X0_AXIS_TITLE"
+set xlabel "$X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $AVG_ABFIT), \

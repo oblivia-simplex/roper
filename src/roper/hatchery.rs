@@ -243,8 +243,9 @@ pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
                               .open(&path)
                               .unwrap();
                               */
-  let row = format!("({:02x})-[{:08x}] | {:?} | {}\n    {}\n", read_counter_u(u), addr, mmo, dis, regs);
-  println!("{}",row);
+  let row = format!("[{:08x}] {}\n", addr, dis);
+  //format!("({:02x})-[{:08x}] | {:?} | {}\n    {}\n", read_counter_u(u), addr, mmo, dis, regs);
+  print!("{}",row);
   //dfile.write(&row.as_bytes()).unwrap();
 }
 

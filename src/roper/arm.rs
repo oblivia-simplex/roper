@@ -187,17 +187,30 @@ pub fn is_ctrl (w: u32) -> bool {
   // ** add disas hook for debugging
   //return false; // let's see what this does
   let res = match what_layout(w) {
-    //Lay::BX  => true,
-    //Lay::BR  => true,
+    Lay::BX  => true,
+    Lay::BR  => true,
     //Lay::BDT => bdt_stack_direction(w) != 0,
     Lay::SWI => true,
-    //Lay::UNDEF => true,
+    Lay::UNDEF => true,
     Lay::RAWDATA => true,
     //Lay::DP  => special_reg(dp_dst_reg(w)),
     _ => false,
   };
   if _DEBUG >= 2 && res {
     println!("is_ctrl >> {}", disas32(w,MachineMode::ARM));
+  };
+  res
+}
+
+pub fn is_arith (w: u32) -> bool {
+  let res = match what_layout(w) {
+    Lay::DP => true,
+    Lay::MULT => true,
+    Lay::MULT_L => true,
+    _ => false,
+  };
+  if _DEBUG >= 2 && res {
+    println!("is_arith >> {}", disas32(w, MachineMode::ARM));
   };
   res
 }
@@ -248,9 +261,15 @@ pub fn reap_arm_gadgets (code: &Vec<u8>,
   for clump in rets {
     // now start walking up from offset until you hit a 
     // control instruction
+    let mut arith_count = 0;
     let from : u32 = clump.words[0];
     let mut o = from.clone() as usize;
     while o > 0 && o > (from as usize - 8) && !is_ctrl(insts[o-1]) {
+      if is_arith(insts[o]) {
+        arith_count += 1;
+        println!("## insts[o] = {}; incrementing arith_count to {}",
+                 disas32(insts[o], MachineMode::ARM), arith_count);
+      };
       o -= 1
     }
     let a = start_addr + (4 * o as u32);
@@ -264,7 +283,14 @@ pub fn reap_arm_gadgets (code: &Vec<u8>,
       ..Default::default()
     };
     // println!("{:?}",c);
-    if c.gadlen() >= MIN_GAD_LEN { gads.push(c); }
+    if c.gadlen() >= MIN_GAD_LEN {
+      if _DEBUG >= 2 {
+        println!(">> c.gadlen() = {}; arith_count = {}", c.gadlen(), arith_count);
+      };
+      for _ in 0..arith_count {
+        gads.push(c.clone()); 
+      }
+    }
   }
   gads
 }
