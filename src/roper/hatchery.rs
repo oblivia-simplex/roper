@@ -129,8 +129,12 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   for &(off, inp) in chain.input_slots.iter() {
     let byte_offset = off * 4;
     let input_value = pack_word32le(input[inp % il] as u32);
-    for i in 0..4 {
-      stack[byte_offset+i] = input_value[i]; 
+    if stack.len() < byte_offset + 4 {
+      for i in 0..4 { 
+        stack[byte_offset+i] = input_value[i]; 
+      }
+    } else {
+      break;
     }
   }
 
