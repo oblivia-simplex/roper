@@ -234,7 +234,7 @@ fn main() {
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, 10, 128, 0, 3]
+                               params: vec![i, 10, 64, 0, 3]
                              })));
         num_classes += 1;
       }
@@ -363,7 +363,7 @@ fn main() {
         || champion.as_ref().expect("Failed to unwrap champion reference (2)").ab_fitness > Some(params.fit_goal))
   {
     let mut iteration = 0;
-    let show_every = params.calc_season_length();
+    let show_every = 4 * params.calc_season_length();
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
     let n_jobs    = machinery.cluster.len();
@@ -373,7 +373,7 @@ fn main() {
       for e in machinery.cluster.iter_mut() {
         let tx = tx.clone();
         let p = pop_arc.clone();
-        let verbose = season > 1 && iteration % show_every == show_every % threads;
+        let verbose = vdeme == 0 && season > 1 && iteration % show_every == show_every % threads;
         scope.execute(move || {
           let t = tournament(&p.read().expect("Failed to open read lock on tournament"),
                              e,

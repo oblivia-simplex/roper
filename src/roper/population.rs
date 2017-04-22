@@ -161,10 +161,7 @@ fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               problem: &Problem,
               params: &Params,
-              //inregs:  &Vec<usize>,
-
-              //outregs: &Vec<usize>, 
-              verbose: bool) -> EvalResult{ //(f32, usize, bool) {
+              verbose: bool) -> EvalResult{ 
   let inregs = &params.inregs;
   let outregs = &params.outregs;
   let target = &problem.target;

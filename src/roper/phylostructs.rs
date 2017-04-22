@@ -105,7 +105,6 @@ pub struct Clump {
   pub link_fit:    Option<f32>,
 }
 
-// JClumps are just a transitional data structure, used in the JSON
 impl ToJson for Clump {
   fn to_json(&self) -> Json {
     let mut b = BTreeMap::new();
@@ -121,6 +120,13 @@ impl ToJson for Clump {
     Json::Object(b)
   }
 }
+/* TODO
+impl FromJson for Clump {
+  fn from_json (json: Json) -> Self {
+    
+  }
+}
+*/
 impl Display for Clump {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();
@@ -1054,7 +1060,7 @@ impl Problem {
         if output.len() == 0 {
           let mut p = Vec::new();
           if verbose {
-            p.push(6);
+            p.push(8);
           } else {
             p.push(0);
           };
