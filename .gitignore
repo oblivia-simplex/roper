@@ -1,4 +1,8 @@
 *.swp
+*.err
+*.csv
+*.json
+*.out
 \#*
 *~
 *.core
