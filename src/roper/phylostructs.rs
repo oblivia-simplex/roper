@@ -1061,7 +1061,7 @@ impl Problem {
         if output.len() == 0 {
           let mut p = Vec::new();
           if verbose {
-            p.push(2);
+            p.push(6);
           } else {
             p.push(0);
           };
@@ -1106,7 +1106,8 @@ impl Problem {
       &Target::Game(_) => {
         let s = output[0].clone() as f32;
         let af = (1.0 / s).sqrt();
-        (af, (af + (1.0 - self.difficulty().powi(4)))/2.0)
+        //(af, (af + (1.0 - self.difficulty().powi(2)))/2.0)
+        (af, (af * (1.0 - self.difficulty())))
       }
     }
   }
@@ -1413,6 +1414,31 @@ impl Target {
   }
 }
 
+#[derive(Debug,Clone)]
+struct RPatEq {
+  pub reg_res: usize,
+  pub reg_exp: Option<usize>,
+  pub immed: u64,
+  pub diff:  f32,
+  pub prediff: f32,
+}
+/* Formula: match req.reg_exp {
+ *  None => dist(regs[req.reg_res], req.immed),
+ *  Some(r) => dist(regs[req.reg_res], regs[req.reg_exp.unwrap()]
+ *                                     + immed),
+ * }
+ */
+
+#[derive(Debug,Clone)]
+pub struct RPattern2 (Vec<RPatEq>);
+
+/* TODO:
+ * reimplement Register Patterns in such a way that
+ * the pattern can contain other register references.
+ * e.g: r0 = sp+4
+ * And then write a parser for a simple set of equations, 
+ * instead of an int / wildcard pattern.
+ */
 
 #[derive(Debug,Clone)]
 pub struct RPattern { 

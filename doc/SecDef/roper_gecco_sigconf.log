@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  28 MAR 2017 12:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  23 APR 2017 13:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -737,62 +737,59 @@ Package microtype Info: Loading generic settings for font family
 <architecture.png, id=121, 498.86375pt x 321.2pt>
 File: architecture.png Graphic file (type png)
  <use architecture.png>
-Package pdftex.def Info: architecture.png used on input line 216.
+Package pdftex.def Info: architecture.png used on input line 217.
 (pdftex.def)             Requested size: 241.14175pt x 99.58566pt.
 
 
 LaTeX Font Warning: Font shape `OT1/cmss/m/it' in size <9> not available
-(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 226.
+(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 227.
 
 
-LaTeX Font Info:    Try loading font information for OMS+cmtt on input line 251
+LaTeX Font Info:    Try loading font information for OMS+cmtt on input line 252
 .
-LaTeX Font Info:    No file OMScmtt.fd. on input line 251.
+LaTeX Font Info:    No file OMScmtt.fd. on input line 252.
 
 LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
 (Font)              using `OMS/cmsy/m/n' instead
-(Font)              for symbol `textbraceleft' on input line 251.
+(Font)              for symbol `textbraceleft' on input line 252.
 
 [3.3 <./architecture.png>] [4.4] [5.5]
-Overfull \hbox (5.07646pt too wide) in paragraph at lines 599--606
+Overfull \hbox (5.07646pt too wide) in paragraph at lines 604--611
 \OT1/cmr/m/n/9 (-20) na-ment con-tes-tants, there is some prob-a-bil-ity, \OT1/
 cmtt/m/n/9 migration[]rate\OT1/cmr/m/n/9 (-20) ,
  []
 
 LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 638.
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 643.
 
-Underfull \hbox (badness 10000) in paragraph at lines 656--656
+Underfull \hbox (badness 10000) in paragraph at lines 661--661
 [][][]\OT1/cmr/m/n/7 (+20) Available at []$https : / / advancedtomato . com / d
 ownloads / router /
  []
 
 LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <6> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 741.
-<examples/shellpattern/shellpattern.png, id=194, 770.88pt x 385.44pt>
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 753.
+<examples/shellpattern/shellpattern.png, id=193, 770.88pt x 385.44pt>
 File: examples/shellpattern/shellpattern.png Graphic file (type png)
 
 <use examples/shellpattern/shellpattern.png>
 Package pdftex.def Info: examples/shellpattern/shellpattern.png used on input l
-ine 814.
+ine 826.
 (pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
- [6.6]
-Underfull \vbox (badness 1237) has occurred while \output is active []
-
- [7.7 <./examples/shellpattern/shellpattern.png>]
+ [6.6] [7.7 <./examples/shellpattern/shellpattern.png>]
 <examples/iris/good-nosharing/good-nosharing.png, id=220, 770.88pt x 385.44pt>
 File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type png)
 
 <use examples/iris/good-nosharing/good-nosharing.png>
 Package pdftex.def Info: examples/iris/good-nosharing/good-nosharing.png used o
-n input line 887.
+n input line 901.
 (pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
 
 <examples/iris/plague/plague.png, id=221, 770.88pt x 385.44pt>
 File: examples/iris/plague/plague.png Graphic file (type png)
 
 <use examples/iris/plague/plague.png>
-Package pdftex.def Info: examples/iris/plague/plague.png used on input line 895
+Package pdftex.def Info: examples/iris/plague/plague.png used on input line 909
 .
 (pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
 
@@ -801,7 +798,7 @@ File: examples/iris/sharing3/sharing3white.png Graphic file (type png)
 
 <use examples/iris/sharing3/sharing3white.png>
 Package pdftex.def Info: examples/iris/sharing3/sharing3white.png used on input
- line 942.
+ line 956.
 (pdftex.def)             Requested size: 241.14555pt x 113.80917pt.
  [8.8 <./examples/iris/good-nosharing/good-nosharing.png> <./examples/iris/plag
 ue/plague.png> <./examples/iris/sharing3/sharing3white.png (PNG copy)>] Process
@@ -827,13 +824,13 @@ LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 130.
  ) 
 Here is how much of TeX's memory you used:
- 11948 strings out of 494113
- 178279 string characters out of 6154997
- 344470 words of memory out of 5000000
+ 11950 strings out of 494113
+ 178293 string characters out of 6154997
+ 344481 words of memory out of 5000000
  14633 multiletter control sequences out of 15000+600000
- 25288 words of font info for 194 fonts, out of 8000000 for 9000
+ 25339 words of font info for 195 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
- 60i,12n,94p,679b,424s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 60i,11n,94p,679b,411s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/home/oblivia/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}<
 /home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></ho
 me/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></home/o
@@ -865,7 +862,7 @@ f-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></home/oblivia/texlive/texmf-di
 st/fonts/type1/public/amsfonts/cm/cmtt9.pfb></home/oblivia/texlive/texmf-dist/f
 onts/type1/public/cm-super/sfrm0700.pfb></home/oblivia/texlive/texmf-dist/fonts
 /type1/public/cm-super/sfrm0900.pfb>
-Output written on roper_gecco_sigconf.pdf (9 pages, 552205 bytes).
+Output written on roper_gecco_sigconf.pdf (9 pages, 553542 bytes).
 PDF statistics:
  361 PDF objects out of 1000 (max. 8388607)
  306 compressed objects within 4 object streams

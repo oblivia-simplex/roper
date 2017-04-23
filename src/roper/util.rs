@@ -4,6 +4,7 @@ use roper::phylostructs::*;
 use rand::*;
 use std::cmp::*;
 use capstone::*;
+use roper::statistics::*;
 
 
 fn cs_insn_to_string (insn: &Insn) -> String {
@@ -128,20 +129,13 @@ pub fn count_matches (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
 // STILL BUGGY
 pub fn arith_distance (x: &Vec<u64>, y: &Vec<u64>) -> f32 {
   assert_eq!(x.len(), y.len());
-  let n = x.len();
-  ((0..n).map(|i| {
-    let (a,b) = if x[i] > y[i] {
-      (x[i],y[i])
-    } else {
-      (y[i],x[i])
-    };
-    let d = (a & 0xFFFFFFFF) - (b & 0xFFFFFFFF);
-    if d > 0x80000000 {
-      (d - 0x80000000) as f64 / 0x80000000 as f64
-    } else {
-      d as f64 / 0x80000000 as f64
-    } 
-  }).sum::<f64>() / n as f64) as f32
+  let n = x.len() as f32;
+  x.iter()
+   .zip(y.iter())
+   .map(|(x,y)| ((*x as i64 & 0xFFFFFFFF) 
+                 - (*y as i64 & 0xFFFFFFFF)).abs())
+   .map(|d| (d as f32 / 4294967296.0))
+   .sum::<f32>() / n
 }
 
 

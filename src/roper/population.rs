@@ -483,8 +483,8 @@ pub fn patch_population (tr: &TournementResult,
 //  println!(">> fitness_deltas: {:?}", fitness_deltas);
   if verbose { println!("{}",tr.display); };
   if population.best == None 
-    || (tr.best.crashes == Some(false)
-        && tr.best.ab_fitness < population.best_abfit()) {
+    || (//tr.best.crashes == Some(false) &&  // throw caution to the wind
+        tr.best.ab_fitness < population.best_abfit()) {
     population.best = Some(tr.best.clone());
     println!("NEW BEST\n{}\n", &tr.best);
     (Some(tr.best.clone()), fitness_deltas)

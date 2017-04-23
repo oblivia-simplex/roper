@@ -141,8 +141,9 @@ the lens of compiler design, grasping the set of gadgets
 extracted from a binary as the instruction set of a baroque and
 supervenient virtual machine. %% Maybe add a quote or two. 
 
-We are aware of two such projects at the moment. The first, named
-\emph{Q} \cite{shacham07}. The second, \textsc{ropc}, grew out of
+We are aware of two such projects at the moment:
+\emph{Q} \cite{shacham07}, which is able to compile instructions in a simple scripting language into ROP chains, and which has been shown to perform well,
+even with relative small gadget sets, and \textsc{ropc}, which grew out of
 its authors' attempts to reverse engineer $Q$, and extend its
 capabilities to the point where it could compile
 \textsc{rop}-chains for scripts written in a Turing-complete
@@ -242,7 +243,7 @@ constructing our initial population.
 To do this, we calculate the distance the stack pointer will shift
 when each gadget executes, $\Delta_{SP}(g)$, and then clump
 together each gadget pointer $g$ with a vector of
-$\Delta_{SP}(g)-1$ non-gadget values.%
+$\Delta_{SP}(g)-1$ non-gadget values.
 \footnote{The pop instruction, \texttt{LDMIA! sp, \{r0, r7, 
   r9, pc\}},
   for example, has an $\Delta_{SP}$ of 4. If it's the only
@@ -262,6 +263,10 @@ $\Delta_{SP}(g)$ slots up from $g$.%
   In these instances, $\Delta{SP}(g)$ and the offset of the next
   gadget from $g$ are distinct. But this is a complication that
   we don't need to dwell on here.}
+These `clumps' will be the units from which our genotypes are composed,
+from the point of view of crossover (sexual reproduction). We will,
+however, allow the mutation operators to alter these clumps' internal structure. 
+
 
 \subsubsection{Variation Operators}
 \paragraph{Mutation}
@@ -294,7 +299,7 @@ non-adjacent gadgets.
 In single-point crossover between two specimens, $A$ and $B$, we
 randomly select a link index $i$ where $i < |A|$, and $j$ where $j
 < |B|$. We then form one child whose first $i$ genes are taken
-from the the beginning of $A$, and whose next $j$ genes are taken
+from the beginning of $A$, and whose next $j$ genes are taken
 from the end of $B$, and another child using the complimentary
 choice of genes. 
 %% Diagram would be handy here
@@ -670,7 +675,7 @@ population of 2048 chains, with a 45\,\% mutation rate, spread over
 pointers are listed in the left-hand margin, with immediate
 values extending to the right. 
 \begin{table}
-\caption{Contents of a successful payload: address pointers on
+\caption{Contents of a successful payload (abridged): address pointers on
 the left-hand margin, literals extending to the right. Each row
 is a `clump'.}
 \label{tab:clump}
@@ -685,28 +690,34 @@ is a `clump'.}
 000100fc 0002bc3e 0000000b 00000000 
 0000b49c 0002bc3e 0000000b 0002bc3e 0000000b 0002bc3e 
 0000b48c 0002bc3e 00000000 0002bc3e 0002bc3e 0002bc3e 
-0000b48c 0002bc3e 0002bc3e 0002bc3e 0002bc3e 00000000 
-00016918 0002bc3e 0000000b 0002bc3e 0002bc3e 0000000b 
-00015d24 0002bc3e 00000000 00000000 
-00012a78 0000000b 00000000 
-0000e0f8 00000000 
-000109b4 0002bc3e 0000000b 
-0000b48c 0002bc3e 0002bc3e 0002bc3e 0000000b 0002bc3e 
-000100fc 0002bc3e 00000000 00000000 
-000109b4 0002bc3e 0002bc3e 
-00016758 0000000b 
-0000e0f8 0002bc3e 
-000100fc 0002bc3e 00000000 0000000b 
-00012a78 0002bc3e 0002bc3e 
-0001569c 0000000b 0002bc3e 0002bc3e 
-0000bfc4 0002bc3e 0002bc3e 
-00013760 0000000b 0002bc3e 0000000b 0002bc3e 0000000b 
-0000bfc4 0002bc3e 0002bc3e 
-0000b49c 0000000b 00000000 0000000b 0000000b 0002bc3e 
-00016884 0002bc3e 
-00012a78 00000000 0000000b 
-00011fd8 0000000b 
-00016758 0002bc3e 
+/* -- SNIP -- */
+\end{verbatim}
+\iffalse
+%% 0000b48c 0002bc3e 0002bc3e 0002bc3e 0002bc3e 00000000
+%% 00016918 0002bc3e 0000000b 0002bc3e 0002bc3e 0000000b 
+%% 00015d24 0002bc3e 00000000 00000000 
+%% 00012a78 0000000b 00000000 
+%% 0000e0f8 00000000 
+%% 000109b4 0002bc3e 0000000b 
+%% 0000b48c 0002bc3e 0002bc3e 0002bc3e 0000000b 0002bc3e 
+%% 000100fc 0002bc3e 00000000 00000000 
+%% 000109b4 0002bc3e 0002bc3e 
+%% 00016758 0000000b 
+%% 0000e0f8 0002bc3e 
+%% 000100fc 0002bc3e 00000000 0000000b 
+%% 00012a78 0002bc3e 0002bc3e 
+%% 0001569c 0000000b 0002bc3e 0002bc3e 
+%% 0000bfc4 0002bc3e 0002bc3e 
+%% 00013760 0000000b 0002bc3e 0000000b 0002bc3e 0000000b 
+%% 0000bfc4 0002bc3e 0002bc3e 
+%% 0000b49c 0000000b 00000000 0000000b 0000000b 0002bc3e 
+%% 00016884 0002bc3e 
+%% 00012a78 00000000 0000000b 
+%% 00011fd8 0000000b 
+%% 0
+\fi
+\begin{verbatim}
+0016758 0002bc3e 
 0000e0f8 0002bc3e 
 00013760 00000000 0000000b 0002bc3e 0002bc3e 0002bc3e 
 \end{verbatim}
@@ -721,9 +732,10 @@ third starts writing to its own call stack by jumping
 backwards with a \texttt{bl} instruction, which loads the link
 register, and then pushing \texttt{lr} onto the stack, which it will later pop into
 the programme counter. From that point forward, we are
-off-script.  The next four `gadgets' (Deep Gadget 0 through 3)
-appear to have been discovered spontaneously. They were
-discovered in the environment, not supplied by the gene pool. 
+off-script. The next four `gadgets' appear to have been discovered
+spontaneously, found in the environment, and not inherited as such from the gene
+pool. We give the term `deep gadgets' to these units of code. They can be
+seen as contributing to the \emph{extended phenotype} of the chain.
 %The chain
 %nevertheless concludes without crashing, ending with a branch to
 %the pre-established halting address (\texttt{blx r2}, which
@@ -872,6 +884,8 @@ benchmark machine learning algorithms.
 %%%%%%%%%%%%%
 %% DETAILS %%
 %%%%%%%%%%%%%
+
+%%% TODO: Double check statistics. Explain that graphs track error rate. (lower the better), and replace last pair of graphs with the with/without fitness sharing graphs from the last raytheon slides, perhaps. Also try to improve the gnuplot scripts for better-looking graphs. 
 
 The fitness curve of our best
 specimens \textit{without fitness-sharing} typically took the form of long, shallow plateaus, against the backdrop of a population swayed more by evolutionary

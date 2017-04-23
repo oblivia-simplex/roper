@@ -35,6 +35,9 @@ mkdir -p $LOGDIR
 OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
 ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
 
+git log | head -n6 > $OUTFILE
+
+
 mkdir -p $PROJECT_ROOT/logs
 #gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
 ITERATION=1
