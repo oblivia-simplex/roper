@@ -4,7 +4,7 @@
 // * copy of thumb.rs. Edit to match arm requirements. 
 // * shouldn't take long. an hour, tops?
 
-const _DEBUG : u8 = 1;
+const _DEBUG : u8 = 2;
 const MIN_GAD_LEN : usize = 2;
 
 use roper::util::*;
@@ -36,21 +36,21 @@ enum Lay {
 }
 
 static MASK_VEC : &'static [(u32,u32,Lay)] = &[
-  (0b00001100000000000000000000000000,
-   0b00000000000000000000000000000000,
-   Lay::DP),
+  (0b00001111111111111111111111010000,
+   0b00000001001011111111111100010000,
+   Lay::BX), // Found a bug in the spec document?
   (0b00001111110000000000000011110000,
    0b00000000000000000000000010010000,
    Lay::MULT),
   (0b00001111100000000000000011110000,
    0b00000000100000000000000010010000,
    Lay::MULT_L),
+  (0b00001100000000000000000000000000,
+   0b00000000000000000000000000000000,
+   Lay::DP),
   (0b00001111101100000000111111110000,
    0b00000001000000000000000010010000,
    Lay::SDS),
-  (0b00001111111111111111111111110000,
-   0b00000001001011111111111100010000,
-   Lay::BX),
   (0b00001110010000000000111110010000,
    0b00000000000000000000000010010000,
    Lay::HDT_R),
@@ -210,7 +210,11 @@ pub fn is_arith (w: u32) -> bool {
     _ => false,
   };
   if _DEBUG >= 2 && res {
-    println!("is_arith >> {}", disas32(w, MachineMode::ARM));
+    println!("is_arith >> {}\t Layout: {:?}\t Word: {:b}", 
+             disas32(w, MachineMode::ARM),
+             what_layout(w),
+             w
+             );
   };
   res
 }
@@ -264,32 +268,24 @@ pub fn reap_arm_gadgets (code: &Vec<u8>,
     let mut arith_count = 0;
     let from : u32 = clump.words[0];
     let mut o = from.clone() as usize;
-    while o > 0 && o > (from as usize - 8) && !is_ctrl(insts[o-1]) {
+    while o > 0 && o > (from as usize - 16) && !is_ctrl(insts[o-1]) {
+      o -= 1;
       if is_arith(insts[o]) {
         arith_count += 1;
         println!("## insts[o] = {}; incrementing arith_count to {}",
                  disas32(insts[o], MachineMode::ARM), arith_count);
+        let a = start_addr + (4 * o as u32);
+        let c = Clump { 
+          sp_delta   : clump.sp_delta,
+          ret_offset : clump.ret_offset,
+          words      : vec![a],
+          ret_addr   : start_addr + (4 * from),
+          mode       : clump.mode,
+          exchange   : clump.exchange,
+          ..Default::default()
+        };
+        gads.push(c);
       };
-      o -= 1
-    }
-    let a = start_addr + (4 * o as u32);
-    let c = Clump { 
-      sp_delta   : clump.sp_delta,
-      ret_offset : clump.ret_offset,
-      words      : vec![a],
-      ret_addr   : start_addr + (4 * from),
-      mode       : clump.mode,
-      exchange   : clump.exchange,
-      ..Default::default()
-    };
-    // println!("{:?}",c);
-    if c.gadlen() >= MIN_GAD_LEN {
-      if _DEBUG >= 2 {
-        println!(">> c.gadlen() = {}; arith_count = {}", c.gadlen(), arith_count);
-      };
-      for _ in 0..arith_count {
-        gads.push(c.clone()); 
-      }
     }
   }
   gads
