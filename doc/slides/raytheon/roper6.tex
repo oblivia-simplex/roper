@@ -1,0 +1,199 @@
+\documentclass[9pt]{beamer}
+
+\usepackage[utf8x]{inputenc}
+
+\usetheme{Ampang}
+%%% XeLaTeX engine for Ubuntu Font support
+\usepackage{xltxtra}
+\setsansfont[
+BoldFont=Ubuntu-Bold.ttf,
+ItalicFont=Ubuntu-Italic.ttf,
+BoldItalicFont=Ubuntu-BoldItalic.ttf
+]
+{Ubuntu-Regular.ttf}
+\setmonofont{UbuntuMono-Regular.ttf}
+
+
+\title{ROPER:\\A Genetic ROP-Chain Compiler Targetting Embedded Devices}
+\author{Olivia Lucca Fraser}
+
+\institute{NIMS Lab, Dalhousie University}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}
+\begin{center}    
+    {\huge Progress Report \# 6:\\Flowers for Raytheon}
+    \vspace{.3cm}
+    
+    {\large February, 2017}
+    \end{center} 
+    
+\end{frame}
+
+\begin{frame}{6.0: It Lives}
+\begin{columns}
+\begin{column}{.4\textwidth}
+    \includegraphics[width=\textwidth]{roper.png}
+\end{column}
+\begin{column}{.6\textwidth}
+
+ROPER is now fully operational.
+
+\vspace{.25cm}
+
+It can solve two types of problems:
+    \vspace{.3cm}
+    \begin{enumerate}
+        \item Given a register pattern, it can evolve a ROP-chain that achieves the specified register state. This is useful in preparing the registers for a system call, which is a typical goal for an exploit payload. In this capacity, ROPER is just automating human labour.
+        \vspace{.3cm}
+        \item However, it turns out that ROPER is capable of much more than this. It can generate chains that show signs of \emph{adaptive} behaviour. Even now, with very little tuning, it evolves chains that can solve traditional machine-learning classification problems.
+    \end{enumerate}
+
+\end{column}
+
+
+
+\end{columns}
+    
+\end{frame}
+
+\begin{frame}[fragile]{6.1 Register Patterns}
+
+ROPER can now be viewed as a compiler for a very basic, declarative scripting language. At the moment, this language consists of only one type of expression: a pattern consisting of 12 or fewer symbols, which can be either signed hexidecimal integer values, or wildcard characters. These tell ROPER what the CPU context should look like at the end of a chain's execution. 
+
+\vspace{.25cm}
+
+For example:
+
+\begin{verbatim}
+"1 _ 2 _ _ deadbeef"
+\end{verbatim}
+
+will instruct ROPER to evolve a ROP-chain that places
+\begin{itemize}
+    \item 1 in register R0
+    \item 2 in register R2
+    \item 0xdeadbeef in register R5
+\end{itemize}
+
+\vspace{.2cm}
+
+Finding such a chain typically only takes a few generations, since it's usually just a matter of popping values from the stack and moving them around as needed.
+
+\vspace{.2cm}
+
+This automates most of the work a human must do in building a ROP chain that makes a particular system call, the most common use case of ROP-chains.
+
+\end{frame}
+
+\begin{frame}{6.2 Adaptive Classification (Flowers for Raytheon)}
+
+\begin{columns}
+\begin{column}{.5\textwidth}
+    \small
+    With ROPER's basic, pattern-matching functionality working, I wanted to see if, its genetic machinery could also be put to work on traditional machine-learning benchmarks. 
+    
+    \vspace{.25cm}
+    
+    One of the best-known such benchmarks is the classification of R.A. Fisher's Iris Data Set. The challenge is to predict the species of the iris on the basis of its measurements.
+    
+    \vspace{.25cm}
+    
+    \includegraphics[width=\textwidth]{iris2.png}
+\end{column}
+\begin{column}{.5\textwidth}
+    \includegraphics[width=\textwidth]{iris.png}
+    
+    \small
+    Remarkably, this worked, with just a minimal amount of tinkering with the engine that had so far only been used to evolve very simple, pattern-matching chains. It's far from efficient at this point, but ROPER has successfully evolved ROP-chains \emph{that can classify iris flowers with over 93\% accuracy}.
+    
+    \vspace{.25cm}
+    
+    This is, of course, only hints at the potential of adaptive payloads, that we can begin exploring with ROPER.
+    
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{6.3 Maintaining Diversity}
+
+One complication I faced was ensuring that ROPER's populations avoid getting trapped in local optima. This can happen whenever the diversity of the population flattens out.
+
+\vspace{.5cm}
+
+Two techniques were used to foster diversity, in this iteration:
+\begin{itemize}
+    \item A few of the safety features in the initial gadget harvest were removed, allowing a much wider variety of gadgets into the gene pool. Many of these are highly error-prone, so fitness penalties were introduced to discourage error-throwing chains from reproducing.
+    \item Every mating event now has a small probability of using an untested, purely random chain as one of the two parents. This provides a constant trickle of fresh blood into the gene pool.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{6.4 Novel Control Patterns}
+
+%%% Try to condense some of this. It's rather verbose.
+
+In an experiment aiming to broaden the gene pool, at the expense of increasing the error rate in the population, I removed a few of the filters I had placed in the gadget-harvesting functions, allowing chains to directly manipulate `special' registers (the instruction pointer, the stack pointer, etc.), perform branches, and push to the stack from which subsequent gadgets are popped. 
+
+\vspace{.5cm}
+
+This led to some extremely interesting and peculiar behaviour. Chains evolved that exploited strange and unexpected control patterns, deviating wildly from the expected pattern of repeatedly popping addresses from the stack into the PC.
+
+\vspace{.5cm}
+
+In two, very interesting cases, chains evolved that succeeded with dramatic detection rates (92\% and 98\%) against the iris.data dataset. In both cases, the chains edited their own address stack, exercising a surprising amount of control over their execution paths. 
+
+\end{frame}
+
+\begin{frame}[fragile]{6.5 Appendix: An Adaptive Classifier ROP-Chain}
+\tiny
+
+\begin{verbatim}
+Fitness: Some(0.07333333) (Approx. 93% accuracy)
+Generation: 73
+Link ages: [1, 6, 23, 0, 38, 5, 32, 29, 30, 28, 39, 39, 24, 20, 15, 37, 18, 1, 24, 24, 24, 24, 16, 17, 15, 14, 18, 18, 18, 18, 17, 20, 12, 27]
+Link fitnesses: [0.08506666, 0.085920006, 0.08606217, 0.07333333, 0.08626494, 0.08613333, 0.08616199, 0.086222745, 0.08622269, 0.08675211, 0.08627011, 0.08625403, 0.087577865, 0.15333334, 0.15333334, 0.18533334, 0.18533334, 1, 0.23333333, 0.23333333, 0.23333333, 0.23333333, 0.23333333, 0.27333334, 1, 1, 1, 1, 1, 1, 1, 0.6854402, 1, 0.6666666]
+Viscosities: [92, 92, 92, 93, 92, 92, 92, 92, 92, 92, 92, 92, 92, 85, 85, 82, 82, 85, 77, 77, 77, 77, 77, 73, 62, 34, 100, 100, 100, 100, 100, 32, 34, 34]
+Clumps:
+00025094 0000022f 0000023d 00000361 
+00021f9c 00000132 
+00038308 0000004b 
+00070ecc 00000100 000000fc 00000074 00000054 0000008c 0000000b 00000074 
+000877b4 00000050 0000003d 00000016 00000140 000001ab 0000014d 0000000c 
+00038308 0000004b 
+0001d270 0000001b 000001f5 0000008b 00000005 0000003f 0000003d 000000ab 00000280 00000024 
+000808b8 0000002a 00000049 00000173 00000074 00000054 00000003 0000008c 00000129 0000008b 
+00021f9c 00000132 
+0005cf4c 00000252 00000014 000001da 0000018a 000000a8 
+00038308 0000004b 
+00070ecc 00000100 000000fc 00000074 00000054 0000008c 0000000b 00000074 
+00011e04 00000133 
+000808b8 0000002a 00000049 00000173 00000074 00000054 00000003 0000008c 00000129 0000008b 
+000713b8 00000110 0000003b 000003bc 0000004b 00000187 00000158 0000031a 
+00038f10 00000050 000001b3 00000046 0000041b 00000028 00000352 0000001c 
+0003aaec 0000007e 00000048 00000167 00000087 000003bf 
+00038f10 00000050 000001b3 00000046 0000041b 00000028 00000352 0000001c 
+00070ecc 00000100 000000fc 00000074 00000054 0000008c 0000000b 00000074 
+00011e04 00000133 
+0003c814 00000145 
+00038f10 00000050 000001b3 00000046 0000041b 00000028 00000352 0000001c 
+0003aaec 0000007e 00000048 00000167 00000087 000003bf 
+00021f9c 00000132 
+00021f9c 00000132 
+000176a0 00000005 000000ca 00000075 00000003 00000186 00000019 00000056 
+00070ecc 00000100 000000fc 00000074 00000054 0000008c 0000000b 00000074 
+00011e04 00000133 
+0003c814 00000145 
+00038f10 00000050 000001b3 00000046 0000041b 00000028 00000352 0000001c 
+0003aaec 0000007e 00000048 00000167 00000087 000003bf 
+0002e890 000004f9 00000183 000001f7 
+00079740 00000080 00000372 00000196 
+00059360 000001ab 00000024 000000a9 
+
+\end{verbatim}
+\end{frame}
+\end{document}
+

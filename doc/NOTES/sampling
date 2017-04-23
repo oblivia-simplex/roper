@@ -1,0 +1,8 @@
+One interesting, and immediately noticeable, effect of evaluating
+the specimens on samples of the testing data (20%, say) is that 
+avg_gen is no longer a monotonic function of iteration. This can
+be seen in the graphs, where avg_gen measures the X-axis. the
+other lines twist in epicycles.
+
+it would be worth adding avg_gen/iteration back as a line on the
+right panel. 

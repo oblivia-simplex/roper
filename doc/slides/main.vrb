@@ -1,0 +1,23 @@
+\frametitle{4.4 Preliminary Sketch of Fitness Evaluation}
+This already gives us enough for a crude calculation of ``fitness'' -- a measure of how closely the CPU context resulting from the chain approximates our
+target context.
+\small
+\begin{verbatim}
+  type Goal = ([Int], [Int])
+
+  goal :: Goal
+  goal = ([0, 1, 12], [100, 2, 0xdeadbeef])
+
+  distance :: Goal -> [Int] -> Int
+  distance (idxs,target) out =
+    let focus = map (out !!) idxs
+    in  sum $ map abs $ zipWith (-) focus target
+
+  evalChain :: Emulator Engine -> [Gadget] -> IO Int
+  evalChain uc chain =
+    (distance goal . take 16) <$> hatchChain uc (unicornPack chain)
+\end{verbatim}
+\normal
+
+But we can get a much more fine-grained picture as well, and measure things like error-proneness, efficiency, contents of dereferenced pointers (and not just immediate values), etc., which our emulator makes readily available.
+
