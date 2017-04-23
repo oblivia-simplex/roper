@@ -188,11 +188,17 @@ fn eval_case (uc: &mut CpuARM,
       }
     } else {
       finished = true;
+      if verbose {
+        println!("[+] RAW SCORE: {}", score.as_ref().unwrap());
+      }
       output = vec![score.unwrap() as u64];
     }
     if finished {
       let (a,r) = problem.assess_output(&output);
       // println!(">> (af,rf) = ({},{})", a, r);
+      if verbose {
+        println!("[+] ABFIT SCORE: {}\n[+] RELFIT SCORE: {}", a, r);
+      }
       af = a; rf = r;
       break;
     }

@@ -237,11 +237,11 @@ fn main() {
       let mut gs = Vec::new();
       let mut num_classes = 0;
       for i in 0..game_seeds {
-        let radius = 8 + i % 4;
+        let radius = 8 + i % 3;
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, radius, radius * 8 +1, 0, 1+i%3, 4*i]
+                               params: vec![i, radius, radius * 8 +1, 0, 1+i%3, i/2]
                              })));
         num_classes += 1;
       }
@@ -419,7 +419,9 @@ fn main() {
           //let mean_fit_deltas = mean(&fit_deltas);
           if peek_path.exists() && champion != None {
             let champion = champion.clone();
-            println!("[*] Verbosely evaluating new champion...");
+            println!("[*] Verbosely evaluating new champion:\n{}",
+                     champion.as_ref()
+                             .expect("Failed to unwrap champion"));
             evaluate_fitness(debug_machinery.cluster[0]
                                              .unwrap_mut(),
                              &champion.expect("Failed to unwrap champion clone for peeking"),

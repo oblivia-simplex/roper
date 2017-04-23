@@ -1061,7 +1061,7 @@ impl Problem {
         if output.len() == 0 {
           let mut p = Vec::new();
           if verbose {
-            p.push(8);
+            p.push(2);
           } else {
             p.push(0);
           };
@@ -1106,7 +1106,7 @@ impl Problem {
       &Target::Game(_) => {
         let s = output[0].clone() as f32;
         let af = (1.0 / s).sqrt();
-        (af, af * (1.0 - self.difficulty().powi(4)))
+        (af, (af + (1.0 - self.difficulty().powi(4)))/2.0)
       }
     }
   }

@@ -47,18 +47,18 @@ pub enum GameState {
     Score (i32), // we'll use fixed point numbers to keep it simple
 }
 
-const okay: u8 = 0x00;
-const input: u8 = 0x10;
-const score: u8 = 0x20;
+const OKAY: u8 = 0x00;
+const INPUT: u8 = 0x10;
+const SCORE: u8 = 0x20;
 // outgoing packet headers
-const output: u8 = 0x30;
-const param: u8 = 0x40; 
+const OUTPUT: u8 = 0x30;
+const PARAM: u8 = 0x40; 
 
 fn encode_packet (gamestate: &GameState) -> Vec<u8> {
   let mut pkt : Vec<u8> = Vec::new();
   let (hdr,bdy) = match gamestate {
-    &GameState::Param(ref xs)  => ((param  | xs.len() as u8), xs),
-    &GameState::Output(ref xs) => ((output | xs.len() as u8), xs),
+    &GameState::Param(ref xs)  => ((PARAM  | xs.len() as u8), xs),
+    &GameState::Output(ref xs) => ((OUTPUT | xs.len() as u8), xs),
     _ => panic!("Unimplemented packet encoding for GameState"),
   };
   pkt.push(hdr);
@@ -109,7 +109,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
   stream.read(&mut hdr)
         .expect("Failed to read header from TCP stream.");
   let typ = hdr[0] & 0xF0;
-  let len = if typ == input {
+  let len = if typ == INPUT {
     (hdr[0] & 0x0F) as usize
   } else {
     1
@@ -117,7 +117,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
   let mut body = vec![0; len * 4];
   stream.read(&mut body)
         .expect(&format!("Failed to read packet body of length {} from TCP stream.", len));
-  /*
+ /* 
   print!("--> pkt: {:02x} ", &hdr[0]);
   for byte in body.iter() {
     print!("{:02x} ", byte);
@@ -125,7 +125,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
   println!("");
   */
   match typ {
-    input => {
+    INPUT => {
       let wordsize = 4;
       let mut i = 0;
       let mut words : Vec<i32> = Vec::new();
@@ -135,7 +135,7 @@ pub fn recv_packet (stream: &mut TcpStream) -> GameState {
       }
       GameState::Input(words)
     },
-    score => {
+    SCORE => {
       GameState::Score(get_word32le(&body, 0) as i32)
     },
     _ => panic!(format!("Unrecognized packet header: {:02x}", hdr[0])),
