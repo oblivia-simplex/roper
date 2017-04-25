@@ -74,8 +74,6 @@ fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
 fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   /* mutations will only affect the immediate part of the clump */
   /* we'll let shufflefuck handle the rest. */
-  if rng.gen::<f32>() > params.mutation_rate { return };
-//  println!("*** mutating ***");
   /* Add permutation operation, shuffling immeds */
   if chain.size() == 0 {
     panic!("chain.size() == 0. Why?");
@@ -122,6 +120,7 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
     let mut spawn = Chain::new(spawnclumps);
     mutate(&mut spawn, &params, rng);
     spawn.p_fitness = parents[i % 2].fitness;
+    spawn.generation = parents[i % 2].generation + 1;
     brood.push(spawn);
   }
   brood
@@ -140,9 +139,6 @@ fn mate (parents: &Vec<&Chain>,
                      params,
                      rng)
   };
-  for s in brood.iter_mut() {
-    mutate(s, params, rng)
-  }
   cull_brood(&mut brood, 2, uc, &params);
   brood
 }

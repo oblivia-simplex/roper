@@ -94,19 +94,19 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                -c 0.2 \
-                                -s 1.0 \
-                                -P 512 \
-                                -t 1 \
-                                -T 5 \
-                                -D 1 \
-                                -m 0.05 \
-                                -n 3 \
-                                -r 7 \
-                                -A 1 \
-                                -C 1 \
-                                -V \
-                                -R \
+                                --crossover=0.5 \
+                                --sample_ratio=1.0 \
+                                --population=512 \
+                                --threads=1 \
+                                --tsize=5 \
+                                --demes=1 \
+                                --migration=0.05 \
+                                --game_seeds=3 \
+                                --radius=7 \
+                                --apples=1 \
+                                --cacti=1 \
+                                --noviscosity \
+                                --random_override \
                                 -L $LABEL 
                                 
 }

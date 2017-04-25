@@ -759,7 +759,6 @@ pub struct Params {
   pub label            : String,
   pub ret_hooks        : bool,
   pub population_size  : usize,
-  pub mutation_rate    : f32,
   pub crossover_rate   : f32,
   pub max_iterations  : usize,
   pub selection_method : SelectionMethod,
@@ -835,8 +834,8 @@ impl Display for Params {
                         rem, self.ret_hooks));
     s.push_str(&format!("{} population_size: {}\n",
                         rem, self.population_size));
-    s.push_str(&format!("{} mutation_rate: {}\n",
-                        rem, self.mutation_rate));
+    s.push_str(&format!("{} crossover_rate: {}\n",
+                        rem, self.crossover_rate));
     s.push_str(&format!("{} max_iterations: {}\n",
                         rem, self.max_iterations));
     s.push_str(&format!("{} selection_method: {:?}\n",
@@ -889,7 +888,6 @@ impl Params {
       label:            label.to_string(),
       ret_hooks:        true,
       population_size:  2048,
-      mutation_rate:    0.90,
       crossover_rate:   0.10,
       max_iterations:   800000,
       selection_method: SelectionMethod::Tournement,

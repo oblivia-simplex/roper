@@ -117,7 +117,7 @@ fn main() {
   opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
   opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
   opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
-  opts.optflag("O", "randomization_override", "override random seeds sent to game with fresh seed from ROPER's rng");
+  opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
   opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
   opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
   opts.optflag("h", "help", "print this help menu");
@@ -468,8 +468,6 @@ fn main() {
                                                  .count() as f32 / fitness_deltas.cap() as f32);
         }
 
-        //mut_pop.params.mutation_rate = 
-        //  calc_mutrate(&class_stddev_difficulties);
       } // end mut block
      
       if champion != None && (season_change > 0 || iteration % printevery == 0) {
