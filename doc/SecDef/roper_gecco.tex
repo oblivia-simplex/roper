@@ -176,8 +176,8 @@ automates an attack that its developers term ``Blind
 Return-Oriented Programming", or \textsc{brop} \cite{bittau14}.
 \textsc{brop} solves the problem of developing ROP-chain
 attacks against processes where not only the source code but the
-binary itself in unknown. %% Perhaps add more details
-\emph{Braille} first uses a stack-reading technique to probe a
+binary itself in unknown.%% Perhaps add more details
+\footnote{\emph{Braille} first uses a stack-reading technique to probe a
 vulnerable process (one that is subject to a buffer overflow and
 which automatically restarts after crashing), to find enough
 gadgets, through trial and error, for a simple ROP chain
@@ -188,7 +188,7 @@ information obtained through stack-reading, to construct a more
 elaborate ROP-chain the old-fashioned way. It is an
 extremely interesting and clever technique, which could, perhaps,
 be fruitfully combined with the genetic techniques we will
-outline here. 
+outline here.} 
 
 To the best of our knowledge, neither evolutionary nor other
 machine-learning-driven techniques have been employed in the
@@ -208,23 +208,18 @@ given executable or library binary. A bird's eye view of the system
 can be found in figure~\ref{fig:architecture}. The executable binary
 (box 1) supplies the raw material from which a collection of gadgets
 is extracted (box 2), and is mapped into the memory of a virtual
-machine (box 5). Together with a set of constants (parsed out of
-user-supplied input or randomly generated), these gadgets make up the
-gene pool from which an initial, random population will be
-initialized. This brings us to the genetic process that forms the core
-of the system (box 4). The individuals' genotypes -- sequences of
-pointers into the executable (1), which now exists in the memory of
+machine (box 5). Together with a supplied set of constants , these
+gadgets make up the gene pool from which an initial, random population
+will be initialized. This brings us to the genetic process that forms
+the core of the system (box 4). The individuals' genotypes -- stacks
+of pointers into the executable (1), which now exists in the memory of
 the VM (5) -- are sent over to the VM to be mapped into their
-corresponding phenotypes. Their behaviour in the CPU and the resulting
-CPU context array is returned to the genetic process (4) to be passed
-to the fitness functions. The fitness functions assess the phenotype
-images projected back to (4) from (5), together with any information
-coming from the user (box 3: labelled data or other specifications).
-These determine the process of parent selection (a steady state
-tournament), after which the reproduction and variation functions go
-to work (all of this takes place in box 4 of our map). The cycle then
-repeats, with an ongoing exchange of genotypes for phenotypes between
-(4) and (5), until the completion criteria have been reached.
+corresponding phenotypes. The resulting CPU context is returned to the
+genetic process (4) to be passed to the fitness functions. These
+determine the process of parent selection (a steady state tournament),
+after which the reproduction and variation functions go to work (all
+of this takes place in box 4 of our map). The cycle then repeats until
+the completion criteria have been reached.
 
 \begin{figure}
   \includegraphics[width=\columnwidth,height=3.5cm]{architecture.png}
@@ -243,14 +238,13 @@ to be popped into the instruction pointer, or other values,
 to be popped into the CPU's other registers. 
 
 Returns, in ARM machine code, are frequently implemented as multi-pop
-instructions -- which pop an address from the stack while
-simultaneously popping a variable number of words into other registers
-as well. Depending on the target problem, the range of values that
-could potentially be made use of in the general purpose registers
-might be very different from the range of values where we find
-pointers into executable memory. Thus, it makes sense to interleaf
-address pointers and other values in a controlled fashion, when
-constructing our initial population.
+instructions, which pop an address from the stack while simultaneously
+popping a variable number of words into other registers. Depending on
+the target problem, the range of probably-useful immediate values
+might be very different from
+the range of values where we find executable memory pointers, so
+it makes sense to interleaf pointers and literals in
+a controlled fashion, when building our initial population.
 % also other pops
 
 To do this, we calculate the distance the stack pointer will shift
@@ -286,10 +280,12 @@ however, allow the mutation operators to alter these clumps' internal structure.
 Structuring the genotype in this way also
 lets us apply variation operators more intelligently. The
 genotype is much more tolerant of mutations to the non-gadget
-values in each clump than to the gadget address itself. The
-gadget address \emph{may} be safe to increment or decrement by a
-word or two, but negating, multiplying, or masking it would
-almost certainly result in a crash. The rest of the words in the
+values in each clump than to the gadget address itself.
+%The
+%gadget address \emph{may} be safe to increment or decrement by a
+%word or two, but negating, multiplying, or masking it would
+%almost certainly result in a crash.
+The rest of the words in the
 clump can be mutated much more freely, either arithmetically, or
 by indirection/dereference (we can replace a value with a pointer
 to that value, if one is available, or if a value can already be
@@ -297,7 +293,8 @@ read as a valid pointer, we can replace it with its referent).
 
 \paragraph{Crossover}
 Our second variation operator is single-point crossover, which
-operates at the level of `clumps', not words. We chose
+operates at the level of `clumps', not words.%
+\footnote{We chose
 single-point crossover over two-point or uniform crossover
 % check terminology
 to favour the most likely form gene linkage would take in this
@@ -307,8 +304,7 @@ the odds that the work performed by a gadget $g$ will be
 clobbered by a subsequent gadget $g'$ increases greatly with the
 distance of $g'$ from $g$. This means that adjacent gadgets are
 more likely to achieve a combined, fitness-relevant effect, than
-non-adjacent gadgets. 
-
+non-adjacent gadgets.}
 In single-point crossover between two specimens, $A$ and $B$, we
 randomly select a link index $i$ where $i < |A|$, and $j$ where $j
 < |B|$. We then form one child whose first $i$ genes are taken
@@ -386,7 +382,7 @@ The phenotype, here, is the CPU context resulting from the execution of the geno
 % unicorn vm
 The transformation of the genotype into its corresponding
 phenotype -- its `ontogenesis' -- takes place in one of a cluster
-of virtual machines set up for this purpose, using the Unicorn Engine emulation library.\footnote{\url{http://www.unicorn-engine.org}} A cluster of
+of virtual machines set up for this purpose, using Nguyen Anh Quynh's Unicorn Engine emulation library.\footnote{\url{http://www.unicorn-engine.org}} A cluster of
 emulator instances is initialized at the beginning of each run,
 and the binary that we wish to exploit is loaded into its memory.
 We enforce non-writeability for the process's entire memory, with
@@ -407,7 +403,9 @@ is uniquely determined by its composition and its inputs.%
   impossible to reconstruct or repeat, since its success had
   depended on some ephemeral corruption of its environment.}
 
-In order to map the genotype -- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process -- into its resulting CPU context, the following steps are taken:
+In order to map the genotype
+%-- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process --
+into its resulting CPU context, the following steps are taken:
 {\small
 \begin{enumerate} 
   \item serialize the individual's clumps into a sequence of bytes;
@@ -419,36 +417,35 @@ In order to map the genotype -- a stack of pointers into the executable memory (
 \end{enumerate}
 }
 The reason a ROP-chain controls the execution path,
-remember, is that each of the snippets of code (`gadgets') that
+remember, is that each of the gadgets 
 its pointers refer to ends with a return instruction, which pops
-an address into the instruction pointer from the stack. In ordinary,
-non-pathological cases, this address points to the instruction in
+an address into the instruction pointer from the stack. In 
+non-pathological cases this address points to the instruction in
 the code that comes immediately after a function call -- it is a
 bookmark that lets the CPU pick up where it left off,
-after returning from a function. The cases we are interested in --
-and engineering -- of course, \emph{are} pathological: here, the
+after returning from a function. But it's a pathological case
+we're interested in: 
+here, the
 address that the return instruction pops from the stack does not
 point to the place the function was called from, but to the next
-gadget that we want the machine to execute. This gadget, in turn,
+gadget we want the machine to execute. That gadget, in turn,
 will end by popping the stack into the instruction pointer, and so
 on, until the stack is exhausted, and a zero is popped into
 \texttt{PC}. So long as a specimen controls the stack, it is able
-to maintain control of the instruction pointer. 
-
-
-All that is necessary to initiate the process, therefore, is to
+to maintain control of the instruction pointer.%
+\footnote{All that is necessary to initiate the process, therefore, is to
 pop the first address in the chain into the instruction pointer --
 the resulting cascade of returns will handle the rest. In the
 wild, this fatal first step is usually accomplished by means of
 some form of memory corruption -- using a buffer overflow or,
 more common nowadays, a use-after-free vulnerability, to
 overwrite a saved return address or a vtable pointer,
-respectively.  The attacker leverages one of these
-vulnerabilities in order to write the first pointer in the chain
+respectively.  The attacker leverages some such
+vulnerability in order to write the first pointer in the chain
 to an address that will be unwittingly `returned to' or `called'
 by the process. In our set-up, this step is merely simulated. The
 rest, however, unfolds precisely as it would in an actual
-attack.
+attack.}
 
 %% Some of this stuff on how ROP chains work might be better to
 %% have in the BACKGROUND section. Then again, a bit of
@@ -467,14 +464,12 @@ a state that matches the pattern in question. The fitness of a
 chain's phenotype is defined as the average between
 {\small
 \begin{enumerate}
-  
-  \item the hamming distance between the non-wildcard target
+   \item the hamming distance between the non-wildcard target
     registers in the pattern, and the actual register values
     resulting from the chain's execution, and
   
   \item the arithmetical difference between the non-wildcard
     target registers and the resulting register values,
-
 \end{enumerate} 
 }
 as divided by 
@@ -485,22 +480,23 @@ as divided by
 and target register vectors, irrespective of place.
 \end{enumerate}
 }
-The reason
-for combining these three different metrics is that there is a
-wide variety of operations that can be carried out by our chains.
-Hence we would like our concept of difference to reflect,
-however vaguely, the number of steps that might be needed to
-reach our target, whether through numerical, bitwise, or move
-operations.
+%The reason
+%for combining these three different metrics is that there is a
+%wide variety of operations that can be carried out by our chains.
+%Hence we would like our concept of difference to reflect,
+%however vaguely, the number of steps that might be needed to
+%reach our target, whether through numerical, bitwise, or move
+%operations.
 
 This is a fairly simple task, but one that has immediate
 application in ROP-chain development, where the goal is
 often simply to set up the desired parameters for a system call
--- an \texttt{execve} call to open a shell, for example. Such
-rudimentary chains can be easily generated by \textsc{roper}. 
-In this capacity, \textsc{roper} can be seen as an automation
-tool, accomplishing with greater ease and speed what a might take
-a human programmer a few hours to accomplish, unaided. 
+-- an \texttt{execve} call to open a shell, for example.
+%Such
+%rudimentary chains can be easily generated by \textsc{roper}. 
+%In this capacity, \textsc{roper} can be seen as an automation
+%tool, accomplishing with greater ease and speed what a might take
+%a human programmer a few hours to accomplish, unaided. 
 
 \paragraph{Classification.} But \textsc{roper} is capable of
 more complex and subtle tasks than this, and these set it at some
@@ -529,27 +525,32 @@ in the next section.
 ROP-chains begins its life as an extraordinarily noisy
 and error-prone species, and so it is fairly likely that, at the
 beginning of a run, a chain will not have all of its gadgets
-executed before crashing. Crashing,
+executed before crashing.
+Crashing,
 for both tasks (pattern matching and classification),
 carries with it a penalty to fitness that is relative to the
 proportion of gadgets in the chain whose return instructions have
-not been reached. (This is measured by placing soft breakpoints at
-each gadget's return instruction, and incrementing a counter when
-each return is executed.) By not simply disqualifying chains that
+not been reached.
+%(This is measured by placing soft breakpoints at
+%each gadget's return instruction, and incrementing a counter when
+%each return is executed.)
+By not simply disqualifying chains that
 crash, or prohibiting instructions that are highly likely to
 result in a crash, we provide our population with a much richer
-array of materials to work with, and, in certain circumstances,
-dictated by competition with other chains, room to experiment
-with riskier tactics when it comes to control flow. At the same
-time, the moderate selective pressure that pushes \emph{against}
-crashes is typically enough to steer the population towards
-more stable solutions. 
+array of materials to work with, and
+room to experiment
+with riskier tactics when it comes to control flow.
+%The moderate selective pressure that pushes \emph{against}
+%crashes is typically enough to steer the population towards
+%more stable solutions. 
 
 \subsubsection{Fitness Sharing}
 
 The most serious problem that \textsc{roper} appears to
-encounter, particularly when grappling with complex and subtle
-problems, is a flattening out of diversity, which leaves the
+encounter,
+%particularly when grappling with complex and subtle
+%problems,
+is a flattening out of diversity, which leaves the
 population trapped in a local optimum without the means for
 escape -- aside from the slow and stochastic trickle of random
 mutation and parentage. 
@@ -603,17 +604,18 @@ effects of this strategy in \S~\ref{sec:empirical}.
 
 \subsection{Selection scheme}
 
-\paragraph{Tournament selection} The selection method used in
+The selection method used in
 these experiments is a fairly simple tournament scheme:
 \texttt{t\_size} specimens are selected randomly from a
 subpopulation or \emph{deme} and evaluated. The
 $\texttt{t\_size}-2$ worst performers are culled, and the two
 best become the parents of \texttt{brood\_size} offspring, via
-single-point crossover. This brood is evaluated on a small random
+single-point crossover. This brood (which we generally keep small)
+is evaluated on a small random
 sample of the training data, and the best $\texttt{t\_size} - 2$
 children are kept, replacing their fallen counterparts. 
 
-\paragraph{Migration between demes}
+%\paragraph{Migration between demes}
 With each random choice of tournament contestants, there is some
 probability, \texttt{migration\_rate}, that contestants may be
 drawn from the entire population, rather than just the active
@@ -622,22 +624,22 @@ subpopulation to another at a controlled rate. The hope is to
 inject diversity from one deme into another, without simply
 homogenizing the entire population. 
 
-\paragraph{Brood size}
-Hoping to preserve diversity, we have kept \texttt{brood\_size}
-relatively low. Crossover tends to be fairly destructive, and so
-applying overly harsh selective pressures to the brood has a
-tendency to filter out offspring that have lesser resemblance to
-their parents (whose fitness, at least with respect to the
-contestants chosen for the tournament) has already been
-established. 
+%\paragraph{Brood size}
+%Hoping to preserve diversity, we have kept \texttt{brood\_size}
+%relatively low. Crossover tends to be fairly destructive, and so
+%applying overly harsh selective pressures to the brood has a
+%tendency to filter out offspring that have lesser resemblance to
+%their parents (whose fitness, at least with respect to the
+%contestants chosen for the tournament) has already been
+%established. 
 
-\paragraph{Randomized parents}
-There is also a certain probability, in each tournament, that
-only $\texttt{t\_size} - 1$ contestants will be chosen, and that
-instead of being the second-best performer in the tournament, the
-second parent will be a new chain, randomly generated from
-scratch. This provides a constant trickle of fresh blood into the
-gene pool, and helps stave off stagnation.
+%\paragraph{Randomized parents}
+%There is also a certain probability, in each tournament, that
+%only $\texttt{t\_size} - 1$ contestants will be chosen, and that
+%instead of being the second-best performer in the tournament, the
+%second parent will be a new chain, randomly generated from
+%scratch. This provides a constant trickle of fresh blood into the
+%gene pool, and helps stave off stagnation.
 
 %The first of these is the classification of the well-known Iris dataset, and in the next section we'll look at how \textsc{roper} performed there.  
 

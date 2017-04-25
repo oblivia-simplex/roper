@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99996 (TeX Live 2016) (preloaded format=xelatex 2017.3.11)  25 APR 2017 01:16
+This is XeTeX, Version 3.14159265-2.6-0.99996 (TeX Live 2016) (preloaded format=xelatex 2017.3.11)  25 APR 2017 11:10
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -831,70 +831,68 @@ Overfull \hbox (4.1236pt too wide) in paragraph at lines 193--202
 \TU/lmr/m/n/9 other machine-learning-driven techniques have been employed
  []
 
-[2.2]
+
+Underfull \vbox (badness 5119) has occurred while \output is active []
+
+ [2.2]
 File: architecture.png Graphic file (type QTm)
- <use  "architecture.png" >
+
+<use  "architecture.png" >
 LaTeX Font Info:    Font shape `TU/lmss/m/it' in size <9> not available
-(Font)              Font shape `TU/lmss/m/sl' tried instead on input line 240.
+(Font)              Font shape `TU/lmss/m/sl' tried instead on input line 235.
  [3.3]
-Overfull \hbox (2.1125pt too wide) in paragraph at lines 415--416
+Overfull \hbox (2.1125pt too wide) in paragraph at lines 413--414
 []\TU/lmr/m/n/8 pop the first word on the stack into the instruction pointer
  []
 
 
-Overfull \hbox (7.97557pt too wide) in paragraph at lines 458--460
+Overfull \hbox (7.97557pt too wide) in paragraph at lines 455--457
  \TU/lmss/m/sl/9 3.2.2 Fitness Functions.[] \TU/lmr/m/n/9 Two different fitness
  functions have
  []
 
 [4.4]
-Overfull \hbox (9.88058pt too wide) in paragraph at lines 550--556
+Overfull \hbox (9.88058pt too wide) in paragraph at lines 549--557
  \TU/lmss/m/sl/9 3.2.3 Fitness Sharing.[] \TU/lmr/m/n/9 The most serious proble
 m that \TU/lmr/m/sc/9 roper
  []
 
-[5.5]
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 656.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 658.
 
-Underfull \hbox (badness 10000) in paragraph at lines 674--674
+Underfull \hbox (badness 10000) in paragraph at lines 676--676
 [][][]\TU/lmr/m/n/7 Available at []$[][][][][] [] [] [] [][][][][][][][][][][][
 ][][] [] [][][] [] [][][][][][][][][] [] [][][][][][] []
  []
 
+[5.5]
 File: examples/shellpattern/shellpattern.png Graphic file (type QTm)
-<use  "examples/shellpattern/shellpattern.png" > [6.6]
-Underfull \vbox (badness 6300) has occurred while \output is active []
-
-
-Overfull \hbox (4.8437pt too wide) in paragraph at lines 988--997
+ <use  "examples/shellpattern/shellpattern.png" > [6.6]
+Overfull \hbox (4.8437pt too wide) in paragraph at lines 990--999
 \TU/lmr/m/n/9 which the crash rate seems to be a fairly reliable index (crashes
 
  []
 
-[7.7]
 File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type QTm)
- <use  "examples/iris/good-nosharing/good-nosharing.png" >
+<use  "examples/iris/good-nosharing/good-nosharing.png" >
 File: examples/iris/plague/plague.png Graphic file (type QTm)
 
 <use  "examples/iris/plague/plague.png" >
+Underfull \vbox (badness 6300) has occurred while \output is active []
+
+ [7.7]
 File: examples/iris/sharing3/sharing3_white.png Graphic file (type QTm)
 
 <use  "examples/iris/sharing3/sharing3_white.png" >
 File: examples/iris/nosharing-diff/nosharing-white.png Graphic file (type QTm)
 
 <use  "examples/iris/nosharing-diff/nosharing-white.png" >
-Underfull \vbox (badness 1014) has occurred while \output is active []
-
- [8.8]
 Processing 'acks' comment.
 \openout3 = `comment.cut'.
 
  Comment 'acks' writing to comment.cut.
 Straight input of comment.cut. (./comment.cut)) (./roper_gecco_sigconf.bbl)
-[9.9
-
-]
+[8.8]
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 137.
 Package atveryend Info: Empty hook `AfterLastShipout' on input line 137.
  (./roper_gecco_sigconf.aux)
@@ -905,10 +903,10 @@ Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 137.
 Here is how much of TeX's memory you used:
  15619 strings out of 494253
  229494 string characters out of 6157137
- 475628 words of memory out of 5000000
+ 467628 words of memory out of 5000000
  19094 multiletter control sequences out of 15000+600000
  10552 words of font info for 67 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
  60i,12n,94p,664b,1136s stack positions out of 5000i,500n,10000p,200000b,20000s
 
-Output written on roper_gecco_sigconf.xdv (9 pages, 496488 bytes).
+Output written on roper_gecco_sigconf.xdv (8 pages, 470876 bytes).

@@ -117,6 +117,7 @@ fn main() {
   opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
   opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
   opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
+  opts.optflag("O", "randomization_override", "override random seeds sent to game with fresh seed from ROPER's rng");
   opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
   opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
   opts.optflag("h", "help", "print this help menu");
@@ -133,17 +134,11 @@ fn main() {
 
   let mut challenge : Challenge = Challenge::Undecided;
 
-  let use_viscosity = if matches.opt_present("V") {
-    false 
-  } else {
-    true
-  };
+  let use_viscosity = ! matches.opt_present("V");
+
+  let random_override = matches.opt_present("O");
    
-  let ret_hooks = if matches.opt_present("R") {
-    false
-  } else {
-    true 
-  };
+  let ret_hooks = ! matches.opt_present("R");
 
   let game_seeds = match matches.opt_str("n") {
     None => 9,
@@ -341,6 +336,7 @@ fn main() {
   params.binary_path = elf_path.clone();
   params.host_port = host_port; 
   params.season_divisor = 1;
+  params.random_override = random_override;
   params.set_init_difficulties();
 
   //params.io_targets.num_classes = params.outregs.len();

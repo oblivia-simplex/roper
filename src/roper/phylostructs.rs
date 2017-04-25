@@ -802,6 +802,7 @@ pub struct Params {
   pub fatal_crash      : bool,
   pub crash_penalty    : f32,
   pub host_port        : String,
+  pub random_override  : bool,
 }
     
 
@@ -872,6 +873,8 @@ impl Display for Params {
                         rem, self.fitness_sharing));
     s.push_str(&format!("{} fatal_crash: {}\n",
                         rem, self.fatal_crash));
+    s.push_str(&format!("{} random_override: {}\n",
+                        rem, self.random_override));
   
     write!(f, "{}",s)
   }
@@ -928,6 +931,7 @@ impl Params {
       fatal_crash:      false,
       crash_penalty:    0.2,
       host_port:        "127.0.0.1:8888".to_string(),
+      random_override:  false,
     }
   }
   pub fn calc_season_length (&self, iteration: usize) -> usize {
@@ -1055,6 +1059,7 @@ impl Problem {
 
   pub fn get_input<'a> (&'a self, 
                         output: &Vec<u64>, 
+                        random_override: bool,
                         verbose: bool) 
                       -> (Option<i32>, Vec<i32>) {
     match &self.target {
@@ -1068,7 +1073,9 @@ impl Problem {
           };
           p.extend_from_slice(&x.params);
           /*** RANDOMIZATION OVERRIDE ***/
-          p[1] = thread_rng().gen::<i32>();
+          if random_override {
+            p[1] = thread_rng().gen::<i32>();
+          }
           /******************************/
           (None, init_game(&p, &x.addr))
         } else {

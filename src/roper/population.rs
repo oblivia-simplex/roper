@@ -173,7 +173,7 @@ fn eval_case (uc: &mut CpuARM,
   let mut finished = problem.kind() != TargetKind::Game;
   let mut rounds = 0;
   loop {
-    if rounds > 1000 && verbose == false { 
+    if rounds > 10000 && verbose == false { 
       println!("This is taking a while. Let's see what's going on...");
       verbose = true;
       rounds = 0;
@@ -181,7 +181,7 @@ fn eval_case (uc: &mut CpuARM,
       output.truncate(0); // to trigger reset
     }
     rounds += 1;
-    let (score, input) = problem.get_input(&output, verbose);
+    let (score, input) = problem.get_input(&output, params.random_override, verbose);
     output.truncate(0);
     if score == None {
       if verbose {
