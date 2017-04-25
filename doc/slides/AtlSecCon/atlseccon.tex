@@ -1,7 +1,6 @@
 \documentclass[9pt]{beamer}
-
 \usepackage[utf8x]{inputenc}
-
+%\usepackage{enumitem}
 \usetheme{Ampang}
 %%% XeLaTeX engine for Ubuntu Font support
 \usepackage{xltxtra}
@@ -197,11 +196,13 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{frame}
 
 
-\begin{frame}{\theframenumber. How ROPER works}
+\begin{frame}[t]{\theframenumber. How ROPER works}
 
   \BackgroundImage[0.7]{../images/simplefarmer.png}
   \begin{columns}
     \begin{column}{.5\textwidth}
+     ROPER evolves a population of ROP chains through a process of natural selection.
+
     \end{column}
     \begin{column}{.5\textwidth}
 
@@ -211,34 +212,20 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 \begin{frame}{\theframenumber. Evolutionary computation}
   \begin{columns}
+   
     \begin{column}{.5\textwidth}
-      The idea of implementing evolution in code is almost as old as modern computing itself.
-      \vspace{8pt}
-
-      [POTTED HISTORY / TIMELINE]
-
-
-
-      The variety of evolutionary computation implemented by ROPER closely approximates linear genetic programming, with a few crucial differences.
 
     \end{column}
     \begin{column}{.5\textwidth}
 
-      A high-level outline of the algorithm it implements:
-      \begin{enumerate}
-      \item a set of gadgets is harvested from the target binary
-      \item an initial, random population of chains is generated
-      \item until a specified goal is achieved:
-        \begin{enumerate}
-        \item $n$ chains are selected at random
-        \item they are executed in a VM, and their behaviour is assessed for fitness
-        \item the fittest two chains are chosen to mate
-        \item and their offspring are inserted into the population
-        \item replacing the least fit chains in the competition
-        \end{enumerate}
-      \end{enumerate}
     \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}{\theframenumber. Genetic Algorithm with Tournament Selection}
+  \begin{center}
+  \includegraphics[height=.85\textheight,width=\textwidth]{../images/tournament.png}
+  \end{center}
 \end{frame}
 
 \begin{frame}{\theframenumber. Architecture of ROPER}
@@ -246,7 +233,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       \includegraphics[width=\textwidth]{../images/architecture-transparent.png}
 \end{frame}
 
-\begin{frame}{\theframenumber. Pattern matching}
+\begin{frame}[t]{\theframenumber. Pattern matching}
   \begin{columns}
     \begin{column}{.5\textwidth}
       The most basic type of problem that ROPER can breed a population of chains to solve is that achieving a determinate register state in the CPU, specified by a simple pattern consisting of integers and wildcards.
@@ -318,47 +305,59 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{center}
 \end{frame}
 
-\begin{frame}{\theframenumber. Deep Gadgets, Introns, \& Extended Phenotypes}
+\begin{frame}{\theframenumber. Deep Gadgets \& Introns} %, \& Extended Phenotypes}
   \BackgroundImage[0.15]{../images/exons.png}
   \begin{columns}
-
-
-    \begin{column}{.5\textwidth}
-      What makes this chain so interesting is that its execution path -- its
-      `behavioural phenotype' -- spends most of its time in gadgets that aren't
+    \begin{column}{.475\textwidth}
+      This chain is interesting because its execution path
+      spends most of its time in gadgets that aren't
       referenced in the chain itself (labelled `deep gadgets' on the last
-      slide). This is because gadget \#\,2 jumps backwards, writes to its own
-      call stack, and overrides the pointers in its own genome.
+      slide). Gadget \#\,2 jumps backwards, and writes to its own
+      stack, overriding the pointers in its genome.
       \vspace{8pt}
 
-      Chains like this emerge frequently from ROPER's populations, and are usually accompanied by spikes in the population's crash frequency -- jumping blindly to arbitrary addresses is hazardous.
+      Chains like this emerge frequently, usually accompanied by spikes in the population's crash frequency -- jumping blindly to arbitrary addresses is hazardous.
       \vspace{8pt}
 
+      What selection pressures could be responsible for this phenomenon? 
 
     \end{column}
 
-    \begin{column}{.5\textwidth}
-      What selection pressures could be responsible for this phenomenon? There
-      is, after all, a moderate fitness penalty for chains that crash (which
-      reduces their chances of breeding).
-      \vspace{8pt}
+    \begin{column}{.525\textwidth}
 
-      The reason I conjecture is that these chains 
+      Conjecture:
+
+      \begin{itemize}% [leftmargin=*]
+      \item genes are selected not just for fitness, but for heritability
+
+      \item our crossover operator has only weak/emergent respect for gene linkage, and none for homology
+
+      \item so good genes are always at risk of being broken up instead of passed on 
+
+      \item `introns' can pad important genes, and they decrease the chance that crossover will destroy them -- and so are selected for
+
+      \item by branching away from the ROP stack at Gadget 2, our specimen transforms about 90\% of its genome into introns
+      \end{itemize}
+
     \end{column}
   \end{columns}
 \end{frame}
 
 
-
 \begin{frame}{\theframenumber. Fleurs du Malware }
 
-  \tikz[remember picture,overlay]
-  \node[opacity=0.3, inner sep=0pt] at (current page.center)
-       {\includegraphics[width=\paperwidth,height=\paperheight]{../images/iris3.png}};
-       \clearpage
+  \BackgroundImage[0.2]{../images/iris3.png}
 
   \begin{columns}
     \begin{column}{.5\textwidth}
+
+      It seemed natural to see if ROPER could also tackle traditional
+      machine learning benchmarks, and generate ROP payloads that exhibit
+      subtle and adaptive behaviour. 
+      \vspace{8pt}
+
+      To the best of my knowledge, this has never been attempted before.
+      
 
     \end{column}
     \begin{column}{.5\textwidth}
@@ -474,8 +473,19 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   A detailed view of the intricate braiding of niche availability that takes place once we enable fitness sharing. The image is an enlargement of the right panel of the graph on the last slide, focussing on the region between iterations 3000 and 5000.
 \vspace{8pt}
 
+
   Because the environment perennially adjusts to the population's strengths and weaknesses, no specimen encounters the exact same fitness space as its distant ancestors, and cannot benefit from overfitting, or a diet of exclusively low-hanging fruit.
 \end{frame}
+
+\begin{frame}{\theframenumber. Snek!}
+
+  SNEK!
+  DEMO.
+
+
+\end{frame}
+
+
 
 \end{document}
 

@@ -20,7 +20,14 @@ pub fn disas (insts: &Vec<u8>, mode: MachineMode) -> String {
   let dissed : Vec<String> = 
     match cs.disasm(insts, 0, 0) {
       Some(s)  => s.iter().map(|x| cs_insn_to_string(&x)).collect(),
-      _        => vec!["[?]".to_string()]
+      _        => {
+        if insts.len() == 4 {
+          let w = get_word32le(&insts, 0);
+          vec![format!("[{:32b}]",w)]
+        } else {
+          vec!["[?]".to_string()]
+        }
+      }  
     };
   dissed.join("; ")      
 }

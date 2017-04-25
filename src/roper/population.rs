@@ -169,8 +169,18 @@ fn eval_case (uc: &mut CpuARM,
   let af; let rf;
   let mut output : Vec<u64> = Vec::new();
   let mut reset = true;
+  let mut verbose = verbose;
   let mut finished = problem.kind() != TargetKind::Game;
+  let mut rounds = 0;
   loop {
+    if rounds > 1000 && verbose == false { 
+      println!("This is taking a while. Let's see what's going on...");
+      verbose = true;
+      rounds = 0;
+      reset = true;
+      output.truncate(0); // to trigger reset
+    }
+    rounds += 1;
     let (score, input) = problem.get_input(&output, verbose);
     output.truncate(0);
     if score == None {
@@ -420,7 +430,7 @@ pub fn update_difficulties (params: &mut Params,
                             iteration: usize) -> usize {
 //    self.season_length = self.population_size /
 //      (self.t_size * self.threads * factor); 
-  let season_length = params.calc_season_length();
+  let season_length = params.calc_season_length(iteration);
   let mut io_targets = &mut params.io_targets;
   let reset = iteration > params.threads
     && iteration % season_length == 0;
@@ -433,6 +443,9 @@ pub fn update_difficulties (params: &mut Params,
                         .map(|p| p.predifficulty())
                         .sum::<f32>();
                         */
+    let sum_diff = io_targets.iter()
+                             .map(|p| p.predifficulty())
+                             .sum::<f32>();
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for ref mut problem in io_targets.iter_mut() {
       //if params.fitness_sharing {

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.3.11)  23 APR 2017 13:25
+This is XeTeX, Version 3.14159265-2.6-0.99996 (TeX Live 2016) (preloaded format=xelatex 2017.3.11)  25 APR 2017 01:16
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -136,12 +136,9 @@ LaTeX Info: Redefining \textls on input line 774.
 LaTeX Info: Redefining \textmicrotypecontext on input line 1310.
 \MT@listname@count=\count101
 
-(/home/oblivia/texlive/texmf-dist/tex/latex/microtype/microtype-pdftex.def
-File: microtype-pdftex.def 2016/05/14 v2.6a Definitions specific to pdftex (RS)
-
-LaTeX Info: Redefining \lsstyle on input line 916.
-LaTeX Info: Redefining \lslig on input line 916.
-\MT@outer@space=\skip51
+(/home/oblivia/texlive/texmf-dist/tex/latex/microtype/microtype-xetex.def
+File: microtype-xetex.def 2016/05/14 v2.6a Definitions specific to xetex (RS)
+LaTeX Info: Redefining \lsstyle on input line 255.
 )
 Package microtype Info: Loading configuration file microtype.cfg.
 
@@ -162,8 +159,8 @@ Package: trimspaces 2009/09/17 v1.1 Trim spaces around a token list
 ))
 (/home/oblivia/texlive/texmf-dist/tex/latex/natbib/natbib.sty
 Package: natbib 2010/09/13 8.31b (PWD, AO)
-\bibhang=\skip52
-\bibsep=\skip53
+\bibhang=\skip51
+\bibsep=\skip52
 LaTeX Info: Redefining \cite on input line 694.
 \c@NAT@ctr=\count102
 )
@@ -195,9 +192,10 @@ Package: kvdefinekeys 2016/05/16 v1.4 Define keys (HO)
 Package: pdftexcmds 2016/05/21 v0.22 Utility functions of pdfTeX for LuaTeX (HO
 )
 Package pdftexcmds Info: LuaTeX not detected.
+Package pdftexcmds Info: pdfTeX >= 1.30 not detected.
 Package pdftexcmds Info: \pdf@primitive is available.
 Package pdftexcmds Info: \pdf@ifprimitive is available.
-Package pdftexcmds Info: \pdfdraftmode found.
+Package pdftexcmds Info: \pdfdraftmode not found.
 Package: pdfescape 2016/05/16 v1.14 Implements pdfTeX's escape features (HO)
 Package: bigintcalc 2016/05/16 v1.4 Expandable calculations on big integers (HO
 )
@@ -269,19 +267,34 @@ LaTeX Info: Redefining \pageref on input line 6416.
 \c@Hfootnote=\count110
 )
 
-Package hyperref Message: Driver (autodetected): hpdftex.
+Package hyperref Message: Driver (autodetected): hxetex.
 
-(/home/oblivia/texlive/texmf-dist/tex/latex/hyperref/hpdftex.def
-File: hpdftex.def 2016/06/24 v6.83q Hyperref driver for pdfTeX
-\Fld@listcount=\count111
-\c@bookmark@seq@number=\count112
+(/home/oblivia/texlive/texmf-dist/tex/latex/hyperref/hxetex.def
+File: hxetex.def 2016/06/24 v6.83q Hyperref driver for XeTeX
+
+(/home/oblivia/texlive/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2016/06/24 v6.83q Hyperref: PDF Unicode definition (HO)
+)
+(/home/oblivia/texlive/texmf-dist/tex/generic/oberdiek/stringenc.sty
+Package: stringenc 2016/05/16 v1.11 Convert strings between diff. encodings (HO
+)
+)
+\pdfm@box=\box29
+\c@Hy@AnnotLevel=\count111
+\HyField@AnnotCount=\count112
+\Fld@listcount=\count113
+\c@bookmark@seq@number=\count114
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/oberdiek/rerunfilecheck.sty
 Package: rerunfilecheck 2016/05/16 v1.8 Rerun checks for auxiliary files (HO)
-Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
-82.
+Package rerunfilecheck Info: Feature \pdfmdfivesum is not available
+(rerunfilecheck)             (e.g. pdfTeX or LuaTeX with package `pdftexcmds').
+
+(rerunfilecheck)             Therefore file contents cannot be checked efficien
+tly
+(rerunfilecheck)             and the loading of the package is aborted.
 )
-\Hy@SectionHShift=\skip54
+\Hy@SectionHShift=\skip53
 )
 (/home/oblivia/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
 Package: graphicx 2014/10/28 v1.0g Enhanced LaTeX Graphics (DPC,SPQR)
@@ -295,11 +308,11 @@ Package: trig 2016/01/03 v1.10 sin cos tan (DPC)
 (/home/oblivia/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
-Package graphics Info: Driver file: pdftex.def on input line 99.
+Package graphics Info: Driver file: xetex.def on input line 99.
 
-(/home/oblivia/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
-File: pdftex.def 2017/01/12 v0.06k Graphics/color for pdfTeX
-\Gread@gobject=\count113
+(/home/oblivia/texlive/texmf-dist/tex/latex/graphics-def/xetex.def
+File: xetex.def 2016/07/11 v4.10 LaTeX color/graphics driver for XeTeX (L3/RRM/
+JK)
 ))
 \Gin@req@height=\dimen119
 \Gin@req@width=\dimen120
@@ -310,9 +323,8 @@ Package: xcolor 2016/05/11 v2.12 LaTeX color extensions (UK)
 (/home/oblivia/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg
 File: color.cfg 2016/01/02 v1.6 sample color configuration
 )
-Package xcolor Info: Driver file: pdftex.def on input line 225.
+Package xcolor Info: Driver file: xetex.def on input line 225.
 Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1348.
-Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1352.
 Package xcolor Info: Model `RGB' extended on input line 1364.
 Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1366.
 Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1367.
@@ -323,9 +335,9 @@ Package xcolor Info: Model `wave' substituted by `hsb' on input line 1371.
 )
 (/home/oblivia/texlive/texmf-dist/tex/latex/geometry/geometry.sty
 Package: geometry 2010/09/12 v5.6 Page Geometry
-\Gm@cnth=\count114
-\Gm@cntv=\count115
-\c@Gm@tempcnt=\count116
+\Gm@cnth=\count115
+\Gm@cntv=\count116
+\c@Gm@tempcnt=\count117
 \Gm@bindingoffset=\dimen121
 \Gm@wd@mp=\dimen122
 \Gm@odd@mp=\dimen123
@@ -345,11 +357,7 @@ Package: nccfoots 2005/02/03 v1.2 NCC Footnotes Package (NCC)
 \MFL@columnwidth=\dimen129
 )
 \footinscopyrightpermission=\insert198
-\c@footnotecopyrightpermission=\count117
-
-
-Class acmart Warning: You do not have libertine package installed. Please upgra
-de your TeX on input line 531.
+\c@footnotecopyrightpermission=\count118
 
 
 Class acmart Warning: You do not have zi4 package installed. Please upgrade you
@@ -456,24 +464,24 @@ Package caption3 Info: TeX engine: e-TeX on input line 67.
 \caption@hangindent=\dimen136
 )
 Package caption Info: AMS or SMF document class.
-\c@ContinuedFloat=\count118
+\c@ContinuedFloat=\count119
 Package caption Info: hyperref package is loaded.
 )
 (/home/oblivia/texlive/texmf-dist/tex/latex/float/float.sty
 Package: float 2001/11/08 v1.3d Float enhancements (AL)
-\c@float@type=\count119
+\c@float@type=\count120
 \float@exts=\toks29
-\float@box=\box29
+\float@box=\box30
 \@float@everytoks=\toks30
-\@floatcapt=\box30
+\@floatcapt=\box31
 )
 \@float@every@sidebar=\toks31
-\c@sidebar=\count120
+\c@sidebar=\count121
 \fulltextwidth=\dimen137
-\num@authorgroups=\count121
-\@ACM@badge@width=\skip55
-\@ACM@title@width=\skip56
-\@ACM@badge@skip=\skip57
+\num@authorgroups=\count122
+\@ACM@badge@width=\skip54
+\@ACM@title@width=\skip55
+\@ACM@badge@skip=\skip56
 Class acmart Info: Printing CSS on input line 1042.
 Class acmart Info: Printing bibformat on input line 1042.
 Class acmart Info: Suppressing folios on input line 1049.
@@ -482,103 +490,195 @@ Class acmart Info: Suppressing folios on input line 1049.
 \CommentStream=\write3
 
 Excluding comment 'comment') Excluding comment 'CCSXML'
-\mktitle@bx=\box31
-\@ACM@commabox=\box32
-\author@bx=\box33
+\mktitle@bx=\box32
+\@ACM@commabox=\box33
+\author@bx=\box34
 \author@bx@wd=\dimen138
-\author@bx@sep=\skip58
+\author@bx@sep=\skip57
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty
 Package: fancyhdr 2016/09/06 3.8 Extensive control of page headers and footers
-\fancy@headwidth=\skip59
-\f@ncyO@elh=\skip60
-\f@ncyO@erh=\skip61
-\f@ncyO@olh=\skip62
-\f@ncyO@orh=\skip63
-\f@ncyO@elf=\skip64
-\f@ncyO@erf=\skip65
-\f@ncyO@olf=\skip66
-\f@ncyO@orf=\skip67
+\fancy@headwidth=\skip58
+\f@ncyO@elh=\skip59
+\f@ncyO@erh=\skip60
+\f@ncyO@olh=\skip61
+\f@ncyO@orh=\skip62
+\f@ncyO@elf=\skip63
+\f@ncyO@erf=\skip64
+\f@ncyO@olf=\skip65
+\f@ncyO@orf=\skip66
 )
 \@folio@wd=\dimen139
 \@folio@ht=\dimen140
 \@folio@voffset=\dimen141
-\c@theorem=\count122
+\c@theorem=\count123
 
 Special comment 'acks' Excluding comment 'screenonly'
 Include comment 'printonly' Include comment 'anonsuppress')
+(/home/oblivia/texlive/texmf-dist/tex/latex/tools/multicol.sty
+Package: multicol 2016/04/07 v1.8p multicolumn formatting (FMi)
+\c@tracingmulticols=\count124
+\mult@box=\box35
+\multicol@leftmargin=\dimen142
+\c@unbalance=\count125
+\c@collectmore=\count126
+\doublecol@number=\count127
+\multicoltolerance=\count128
+\multicolpretolerance=\count129
+\full@width=\dimen143
+\page@free=\dimen144
+\premulticols=\dimen145
+\postmulticols=\dimen146
+\multicolsep=\skip67
+\multicolbaselineskip=\skip68
+\partial@page=\box36
+\last@line=\box37
+\maxbalancingoverflow=\dimen147
+\mult@rightbox=\box38
+\mult@grightbox=\box39
+\mult@gfirstbox=\box40
+\mult@firstbox=\box41
+\@tempa=\box42
+\@tempa=\box43
+\@tempa=\box44
+\@tempa=\box45
+\@tempa=\box46
+\@tempa=\box47
+\@tempa=\box48
+\@tempa=\box49
+\@tempa=\box50
+\@tempa=\box51
+\@tempa=\box52
+\@tempa=\box53
+\@tempa=\box54
+\@tempa=\box55
+\@tempa=\box56
+\@tempa=\box57
+\@tempa=\box58
+\c@columnbadness=\count130
+\c@finalcolumnbadness=\count131
+\last@try=\dimen148
+\multicolovershoot=\dimen149
+\multicolundershoot=\dimen150
+\mult@nat@firstbox=\box59
+\colbreak@box=\box60
+\mc@col@check@num=\count132
+)
+(/home/oblivia/texlive/texmf-dist/tex/latex/tools/calc.sty
+Package: calc 2014/10/28 v4.3 Infix arithmetic (KKT,FJ)
+\calc@Acount=\count133
+\calc@Bcount=\count134
+\calc@Adimen=\dimen151
+\calc@Bdimen=\dimen152
+\calc@Askip=\skip69
+\calc@Bskip=\skip70
+LaTeX Info: Redefining \setlength on input line 80.
+LaTeX Info: Redefining \addtolength on input line 81.
+\calc@Ccount=\count135
+\calc@Cskip=\skip71
+)
+(/home/oblivia/texlive/texmf-dist/tex/latex/listings/listings.sty
+\lst@mode=\count136
+\lst@gtempboxa=\box61
+\lst@token=\toks32
+\lst@length=\count137
+\lst@currlwidth=\dimen153
+\lst@column=\count138
+\lst@pos=\count139
+\lst@lostspace=\dimen154
+\lst@width=\dimen155
+\lst@newlines=\count140
+\lst@lineno=\count141
+\lst@maxwidth=\dimen156
+
+(/home/oblivia/texlive/texmf-dist/tex/latex/listings/lstmisc.sty
+File: lstmisc.sty 2015/06/04 1.6 (Carsten Heinz)
+\c@lstnumber=\count142
+\lst@skipnumbers=\count143
+\lst@framebox=\box62
+)
+(/home/oblivia/texlive/texmf-dist/tex/latex/listings/listings.cfg
+File: listings.cfg 2015/06/04 1.6 listings configuration
+))
+Package: listings 2015/06/04 1.6 (Carsten Heinz)
+
 (/home/oblivia/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty
 Package: booktabs 2016/04/27 v1.618033 publication quality tables
-\heavyrulewidth=\dimen142
-\lightrulewidth=\dimen143
-\cmidrulewidth=\dimen144
-\belowrulesep=\dimen145
-\belowbottomsep=\dimen146
-\aboverulesep=\dimen147
-\abovetopsep=\dimen148
-\cmidrulesep=\dimen149
-\cmidrulekern=\dimen150
-\defaultaddspace=\dimen151
-\@cmidla=\count123
-\@cmidlb=\count124
-\@aboverulesep=\dimen152
-\@belowrulesep=\dimen153
-\@thisruleclass=\count125
-\@lastruleclass=\count126
-\@thisrulewidth=\dimen154
+\heavyrulewidth=\dimen157
+\lightrulewidth=\dimen158
+\cmidrulewidth=\dimen159
+\belowrulesep=\dimen160
+\belowbottomsep=\dimen161
+\aboverulesep=\dimen162
+\abovetopsep=\dimen163
+\cmidrulesep=\dimen164
+\cmidrulekern=\dimen165
+\defaultaddspace=\dimen166
+\@cmidla=\count144
+\@cmidlb=\count145
+\@aboverulesep=\dimen167
+\@belowrulesep=\dimen168
+\@thisruleclass=\count146
+\@lastruleclass=\count147
+\@thisrulewidth=\dimen169
 )
 (./roper_gecco_sigconf.aux)
 \openout1 = `roper_gecco_sigconf.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 30.
-LaTeX Font Info:    Try loading font information for TS1+cmr on input line 30.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 37.
+LaTeX Font Info:    Try loading font information for TS1+cmr on input line 37.
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/base/ts1cmr.fd
 File: ts1cmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Try loading font information for U+msa on input line 30.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Try loading font information for U+msa on input line 37.
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 30.
+LaTeX Font Info:    Try loading font information for U+msb on input line 37.
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Info: Redefining \microtypecontext on input line 30.
-Package microtype Info: Generating PDF output.
+LaTeX Info: Redefining \microtypecontext on input line 37.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using default protrusion set `alltext'.
-Package microtype Info: Automatic font expansion enabled (level 2),
-(microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
-Package microtype Info: Using default expansion set `basictext'.
 Package microtype Info: No adjustment of tracking.
-Package microtype Info: No adjustment of interword spacing.
-Package microtype Info: No adjustment of character kerning.
+Package microtype Info: No adjustment of spacing.
+Package microtype Info: No adjustment of kerning.
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/microtype/mt-cmr.cfg
 File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
 (RS)
 )
+Package microtype Info: Loading generic settings for font family
+(microtype)             `lmr' (encoding: TU).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+
 ABD: EveryShipout initializing macros
-\AtBeginShipoutBox=\box34
-Package hyperref Info: Link coloring OFF on input line 30.
+\AtBeginShipoutBox=\box63
+Package hyperref Info: Link coloring OFF on input line 37.
 
 (/home/oblivia/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2016/05/21 v2.44 Cross-referencing by name of section
@@ -586,51 +686,21 @@ Package: nameref 2016/05/21 v2.44 Cross-referencing by name of section
 (/home/oblivia/texlive/texmf-dist/tex/generic/oberdiek/gettitlestring.sty
 Package: gettitlestring 2016/05/16 v1.5 Cleanup title references (HO)
 )
-\c@section@level=\count127
+\c@section@level=\count148
 )
-LaTeX Info: Redefining \ref on input line 30.
-LaTeX Info: Redefining \pageref on input line 30.
-LaTeX Info: Redefining \nameref on input line 30.
+LaTeX Info: Redefining \ref on input line 37.
+LaTeX Info: Redefining \pageref on input line 37.
+LaTeX Info: Redefining \nameref on input line 37.
 
 (./roper_gecco_sigconf.out) (./roper_gecco_sigconf.out)
 \@outlinefile=\write4
 \openout4 = `roper_gecco_sigconf.out'.
 
 
-(/home/oblivia/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
-[Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count128
-\scratchdimen=\dimen155
-\scratchbox=\box35
-\nofMPsegments=\count129
-\nofMParguments=\count130
-\everyMPshowfont=\toks32
-\MPscratchCnt=\count131
-\MPscratchDim=\dimen156
-\MPnumerator=\count132
-\makeMPintoPDFobject=\count133
-\everyMPtoPDFconversion=\toks33
-) (/home/oblivia/texlive/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
-Package: epstopdf-base 2016/05/15 v2.6 Base part for package epstopdf
-
-(/home/oblivia/texlive/texmf-dist/tex/latex/oberdiek/grfext.sty
-Package: grfext 2016/05/16 v1.2 Manage graphics extensions (HO)
-)
-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
-38.
-Package grfext Info: Graphics extension search list:
-(grfext)             [.png,.pdf,.jpg,.mps,.jpeg,.jbig2,.jb2,.PNG,.PDF,.JPG,.JPE
-G,.JBIG2,.JB2,.eps]
-(grfext)             \AppendGraphicsExtensions on input line 456.
-
-(/home/oblivia/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
-File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
-e
-))
 *geometry* driver: auto-detecting
-*geometry* detected driver: pdftex
+*geometry* detected driver: xetex
 *geometry* verbose mode - [ preamble ] result:
-* driver: pdftex
+* driver: xetex
 * paper: custom
 * layout: <same size as paper>
 * layoutoffset:(h,v)=(0.0pt,0.0pt)
@@ -663,10 +733,12 @@ e
 
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: float package is loaded.
+Package caption Info: listings package is loaded.
 Package caption Info: End \AtBeginDocument code.
+\c@lstlisting=\count149
 Excluding 'CCSXML' comment.
 Package microtype Info: Loading generic settings for font family
-(microtype)             `cmss' (encoding: OT1).
+(microtype)             `lmss' (encoding: TU).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
 
@@ -676,196 +748,167 @@ File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 (/home/oblivia/texlive/texmf-dist/tex/latex/microtype/mt-msb.cfg
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
+(/home/oblivia/texlive/texmf-dist/tex/generic/oberdiek/se-ascii-print.def
+File: se-ascii-print.def 2016/05/16 v1.11 stringenc: Printable ASCII characters
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\unskip' on input line 123.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\unskip' on input line 123.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\unskip' on input line 123.
+)
+Overfull \hbox (2.99051pt too wide) in paragraph at lines 130--130
+\TU/lmr/m/n/9 •\TU/lmr/bx/n/9 Computing methodologies $\OMS/cmsy/m/n/9 !$ \TU/l
+mr/bx/n/9 Genetic programming;
+ []
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Overfull \hbox (19.69095pt too wide) in paragraph at lines 130--130
+\TU/lmr/m/n/8 Olivia Lucca Fraser, Nur Zincir-Heywood, Malcolm Heywood, and Joh
+n
+ []
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\to' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\unskip' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\unskip' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\unskip' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\to' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\to' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `\to' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
 
 
-Package hyperref Warning: Token not allowed in a PDF string (PDFDocEncoding):
-(hyperref)                removing `math shift' on input line 123.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\to' on input line 130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\to' on input line 130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 130.
 
 (./roper_gecco.tex
-Underfull \vbox (badness 1077) has occurred while \output is active []
+Underfull \vbox (badness 1033) has occurred while \output is active []
 
 Package microtype Info: Loading generic settings for font family
-(microtype)             `cmtt' (encoding: OT1).
+(microtype)             `lmtt' (encoding: TU).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
- [1.1{/home/oblivia/texlive/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
 
-] [2.2]
-<architecture.png, id=121, 498.86375pt x 321.2pt>
-File: architecture.png Graphic file (type png)
- <use architecture.png>
-Package pdftex.def Info: architecture.png used on input line 217.
-(pdftex.def)             Requested size: 241.14175pt x 99.58566pt.
-
-
-LaTeX Font Warning: Font shape `OT1/cmss/m/it' in size <9> not available
-(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 227.
-
-
-LaTeX Font Info:    Try loading font information for OMS+cmtt on input line 252
-.
-LaTeX Font Info:    No file OMScmtt.fd. on input line 252.
-
-LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
-(Font)              using `OMS/cmsy/m/n' instead
-(Font)              for symbol `textbraceleft' on input line 252.
-
-[3.3 <./architecture.png>] [4.4] [5.5]
-Overfull \hbox (5.07646pt too wide) in paragraph at lines 604--611
-\OT1/cmr/m/n/9 (-20) na-ment con-tes-tants, there is some prob-a-bil-ity, \OT1/
-cmtt/m/n/9 migration[]rate\OT1/cmr/m/n/9 (-20) ,
+Overfull \hbox (7.36562pt too wide) in paragraph at lines 29--30
+[]\TU/lmr/m/n/9 redirecting the instruction pointer (the \TU/lmtt/m/n/9 rip \TU
+/lmr/m/n/9 on x86_64,
  []
 
-LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 643.
-
-Underfull \hbox (badness 10000) in paragraph at lines 661--661
-[][][]\OT1/cmr/m/n/7 (+20) Available at []$https : / / advancedtomato . com / d
-ownloads / router /
- []
-
-LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <6> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 753.
-<examples/shellpattern/shellpattern.png, id=193, 770.88pt x 385.44pt>
-File: examples/shellpattern/shellpattern.png Graphic file (type png)
-
-<use examples/shellpattern/shellpattern.png>
-Package pdftex.def Info: examples/shellpattern/shellpattern.png used on input l
-ine 826.
-(pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
- [6.6] [7.7 <./examples/shellpattern/shellpattern.png>]
-<examples/iris/good-nosharing/good-nosharing.png, id=220, 770.88pt x 385.44pt>
-File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type png)
-
-<use examples/iris/good-nosharing/good-nosharing.png>
-Package pdftex.def Info: examples/iris/good-nosharing/good-nosharing.png used o
-n input line 901.
-(pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
-
-<examples/iris/plague/plague.png, id=221, 770.88pt x 385.44pt>
-File: examples/iris/plague/plague.png Graphic file (type png)
-
-<use examples/iris/plague/plague.png>
-Package pdftex.def Info: examples/iris/plague/plague.png used on input line 909
-.
-(pdftex.def)             Requested size: 227.61935pt x 113.81102pt.
-
-<examples/iris/sharing3/sharing3white.png, id=225, 846.16125pt x 460.72125pt>
-File: examples/iris/sharing3/sharing3white.png Graphic file (type png)
-
-<use examples/iris/sharing3/sharing3white.png>
-Package pdftex.def Info: examples/iris/sharing3/sharing3white.png used on input
- line 956.
-(pdftex.def)             Requested size: 241.14555pt x 113.80917pt.
- [8.8 <./examples/iris/good-nosharing/good-nosharing.png> <./examples/iris/plag
-ue/plague.png> <./examples/iris/sharing3/sharing3white.png (PNG copy)>] Process
-ing 'acks' comment.
-\openout3 = `comment.cut'.
-
-
-Comment 'acks' writing to comment.cut. Straight input of comment.cut.
-(./comment.cut)) (./roper_gecco_sigconf.bbl) [9.9
+[1.1
 
 ]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 130.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 130.
+Overfull \hbox (4.1236pt too wide) in paragraph at lines 193--202
+\TU/lmr/m/n/9 other machine-learning-driven techniques have been employed
+ []
+
+[2.2]
+File: architecture.png Graphic file (type QTm)
+ <use  "architecture.png" >
+LaTeX Font Info:    Font shape `TU/lmss/m/it' in size <9> not available
+(Font)              Font shape `TU/lmss/m/sl' tried instead on input line 240.
+ [3.3]
+Overfull \hbox (2.1125pt too wide) in paragraph at lines 415--416
+[]\TU/lmr/m/n/8 pop the first word on the stack into the instruction pointer
+ []
+
+
+Overfull \hbox (7.97557pt too wide) in paragraph at lines 458--460
+ \TU/lmss/m/sl/9 3.2.2 Fitness Functions.[] \TU/lmr/m/n/9 Two different fitness
+ functions have
+ []
+
+[4.4]
+Overfull \hbox (9.88058pt too wide) in paragraph at lines 550--556
+ \TU/lmss/m/sl/9 3.2.3 Fitness Sharing.[] \TU/lmr/m/n/9 The most serious proble
+m that \TU/lmr/m/sc/9 roper
+ []
+
+[5.5]
+LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10.95> not available
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 656.
+
+Underfull \hbox (badness 10000) in paragraph at lines 674--674
+[][][]\TU/lmr/m/n/7 Available at []$[][][][][] [] [] [] [][][][][][][][][][][][
+][][] [] [][][] [] [][][][][][][][][] [] [][][][][][] []
+ []
+
+File: examples/shellpattern/shellpattern.png Graphic file (type QTm)
+<use  "examples/shellpattern/shellpattern.png" > [6.6]
+Underfull \vbox (badness 6300) has occurred while \output is active []
+
+
+Overfull \hbox (4.8437pt too wide) in paragraph at lines 988--997
+\TU/lmr/m/n/9 which the crash rate seems to be a fairly reliable index (crashes
+
+ []
+
+[7.7]
+File: examples/iris/good-nosharing/good-nosharing.png Graphic file (type QTm)
+ <use  "examples/iris/good-nosharing/good-nosharing.png" >
+File: examples/iris/plague/plague.png Graphic file (type QTm)
+
+<use  "examples/iris/plague/plague.png" >
+File: examples/iris/sharing3/sharing3_white.png Graphic file (type QTm)
+
+<use  "examples/iris/sharing3/sharing3_white.png" >
+File: examples/iris/nosharing-diff/nosharing-white.png Graphic file (type QTm)
+
+<use  "examples/iris/nosharing-diff/nosharing-white.png" >
+Underfull \vbox (badness 1014) has occurred while \output is active []
+
+ [8.8]
+Processing 'acks' comment.
+\openout3 = `comment.cut'.
+
+ Comment 'acks' writing to comment.cut.
+Straight input of comment.cut. (./comment.cut)) (./roper_gecco_sigconf.bbl)
+[9.9
+
+]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 137.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 137.
  (./roper_gecco_sigconf.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 130.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 130.
-Package rerunfilecheck Info: File `roper_gecco_sigconf.out' has not changed.
-(rerunfilecheck)             Checksum: 1FE44AB2A201366FF79384740F91BACD;780.
-
-
-LaTeX Font Warning: Some font shapes were not available, defaults substituted.
-
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 130.
+Package atveryend Info: Empty hook `AtVeryEndDocument' on input line 137.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 137.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 137.
  ) 
 Here is how much of TeX's memory you used:
- 11950 strings out of 494113
- 178293 string characters out of 6154997
- 344481 words of memory out of 5000000
- 14633 multiletter control sequences out of 15000+600000
- 25339 words of font info for 195 fonts, out of 8000000 for 9000
+ 15619 strings out of 494253
+ 229494 string characters out of 6157137
+ 475628 words of memory out of 5000000
+ 19094 multiletter control sequences out of 15000+600000
+ 10552 words of font info for 67 fonts, out of 8000000 for 9000
  591 hyphenation exceptions out of 8191
- 60i,11n,94p,679b,411s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/home/oblivia/texlive/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}<
-/home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></ho
-me/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx8.pfb></home/o
-blivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></home/obliv
-ia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></home/oblivia
-/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></home/oblivia/tex
-live/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></home/oblivia/texlive
-/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></home/oblivia/texlive/tex
-mf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></home/oblivia/texlive/texmf-d
-ist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></home/oblivia/texlive/texmf-dist/
-fonts/type1/public/amsfonts/cm/cmr10.pfb></home/oblivia/texlive/texmf-dist/font
-s/type1/public/amsfonts/cm/cmr12.pfb></home/oblivia/texlive/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr5.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/p
-ublic/amsfonts/cm/cmr6.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmr7.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsf
-onts/cm/cmr8.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/
-cm/cmr9.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
-ss9.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx
-10.pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi9.
-pfb></home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb>
-</home/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></ho
-me/oblivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></home/o
-blivia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></home/obliv
-ia/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti7.pfb></home/oblivia/t
-exlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb></home/oblivia/texli
-ve/texmf-dist/fonts/type1/public/amsfonts/cm/cmti9.pfb></home/oblivia/texlive/t
-exmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></home/oblivia/texlive/texm
-f-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></home/oblivia/texlive/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmtt9.pfb></home/oblivia/texlive/texmf-dist/f
-onts/type1/public/cm-super/sfrm0700.pfb></home/oblivia/texlive/texmf-dist/fonts
-/type1/public/cm-super/sfrm0900.pfb>
-Output written on roper_gecco_sigconf.pdf (9 pages, 553542 bytes).
-PDF statistics:
- 361 PDF objects out of 1000 (max. 8388607)
- 306 compressed objects within 4 object streams
- 80 named destinations out of 1000 (max. 500000)
- 33922 words of extra memory for PDF output out of 35830 (max. 10000000)
+ 60i,12n,94p,664b,1136s stack positions out of 5000i,500n,10000p,200000b,20000s
 
+Output written on roper_gecco_sigconf.xdv (9 pages, 496488 bytes).

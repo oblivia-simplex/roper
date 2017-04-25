@@ -1,4 +1,4 @@
-set terminal png size 1024,512
+set terminal png size 1024,640
 set datafile commentschars "%"
 set multiplot layout 1, 2 
 set key autotitle columnhead

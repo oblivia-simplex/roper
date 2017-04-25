@@ -9,10 +9,7 @@ Reallocated singl_function (elt_size=4) to 100 items from 50.
 Warning--empty publisher in bittau14
 Warning--empty address in bittau14
 Warning--empty address in brameier07
-Warning--empty publisher in buchanan08
-Warning--empty address in buchanan08
-Warning--empty publisher in checkoway10
-Warning--empty address in checkoway10
+Warning--empty address in dawkins99
 Warning--empty publisher in kayacik06
 Warning--empty address in kayacik06
 Warning--empty address in mckay00
@@ -20,45 +17,45 @@ Warning--empty publisher in pfaff15
 Warning--empty address in pfaff15
 Warning--empty publisher in shacham07
 Warning--empty address in shacham07
-You've used 10 entries,
+You've used 9 entries,
             5551 wiz_defined-function locations,
-            1344 strings with 16497 characters,
-and the built_in function-call counts, 10529 in all, are:
-= -- 1167
-> -- 386
+            1339 strings with 16281 characters,
+and the built_in function-call counts, 8812 in all, are:
+= -- 1007
+> -- 280
 < -- 0
-+ -- 114
-- -- 136
-* -- 725
-:= -- 1153
-add.period$ -- 51
-call.type$ -- 10
-change.case$ -- 66
-chr.to.int$ -- 10
-cite$ -- 24
-duplicate$ -- 959
-empty$ -- 678
-format.name$ -- 160
-if$ -- 2509
++ -- 80
+- -- 104
+* -- 568
+:= -- 962
+add.period$ -- 47
+call.type$ -- 9
+change.case$ -- 53
+chr.to.int$ -- 9
+cite$ -- 20
+duplicate$ -- 813
+empty$ -- 579
+format.name$ -- 120
+if$ -- 2104
 int.to.chr$ -- 1
 int.to.str$ -- 0
-missing$ -- 45
-newline$ -- 113
-num.names$ -- 80
-pop$ -- 413
+missing$ -- 37
+newline$ -- 107
+num.names$ -- 72
+pop$ -- 342
 preamble$ -- 1
-purify$ -- 116
+purify$ -- 98
 quote$ -- 0
-skip$ -- 269
+skip$ -- 232
 stack$ -- 0
-substring$ -- 806
-swap$ -- 100
+substring$ -- 688
+swap$ -- 84
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 134
-warning$ -- 14
-while$ -- 84
+type$ -- 114
+warning$ -- 11
+while$ -- 80
 width$ -- 0
-write$ -- 205
-(There were 14 warnings)
+write$ -- 190
+(There were 11 warnings)

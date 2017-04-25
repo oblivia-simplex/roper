@@ -930,12 +930,13 @@ impl Params {
       host_port:        "127.0.0.1:8888".to_string(),
     }
   }
-  pub fn calc_season_length (&self) -> usize {
-    if false && !self.fitness_sharing {
-      self.max_iterations
+  pub fn calc_season_length (&self, iteration: usize) -> usize {
+    let base = self.population_size /
+      (self.t_size * self.season_divisor);
+    if iteration < base {
+      base / 4
     } else {
-      self.population_size /
-        (self.t_size * self.season_divisor)
+      base
     }
   }
   pub fn set_season_divisor (&mut self, divisor: usize) {
@@ -1066,6 +1067,9 @@ impl Problem {
             p.push(0);
           };
           p.extend_from_slice(&x.params);
+          /*** RANDOMIZATION OVERRIDE ***/
+          p[1] = thread_rng().gen::<i32>();
+          /******************************/
           (None, init_game(&p, &x.addr))
         } else {
           let out = output.iter()
@@ -1184,7 +1188,7 @@ impl Classification {
   }
 }
 
-pub static DEFAULT_DIFFICULTY : f32 = 0.5; // don't hardcode
+pub static DEFAULT_DIFFICULTY : f32 = 0.0; // don't hardcode
 
 pub fn suggest_constants (iot: &IoTargets) -> Vec<i32> {
   let mut cons : Vec<i32> = Vec::new();
@@ -1529,11 +1533,12 @@ impl RPattern {
   }
   pub fn distance (&self, regs: &Vec<u64>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
-    let h = hamming_distance(&i, &o);
-  //  let a = arith_distance(&i, &o);
+    //let h = hamming_distance(&i, &o);
+    let a = arith_distance(&i, &o);
     //let m = count_matches(&i, &o);
     //(h + a) / 2.0 //(2.0 * m)
-    h   
+    //(h + a) / 2.0   
+    a
   }
 }
 pub const MAXPATLEN : usize = 12;

@@ -59,29 +59,13 @@
 \newblock
 
 
-\bibitem[\protect\citeauthoryear{Buchanan, Roemer, Shacham, and
-  Savage}{Buchanan et~al\mbox{.}}{2008}]%
-        {buchanan08}
-\bibfield{author}{\bibinfo{person}{E. Buchanan}, \bibinfo{person}{R. Roemer},
-  \bibinfo{person}{H. Shacham}, {and} \bibinfo{person}{S. Savage}.}
-  \bibinfo{year}{2008}\natexlab{}.
-\newblock \showarticletitle{When good instructions go bad: Generalizing
-  return-orientated programming to RISC}. In \bibinfo{booktitle}{{\em ACM
-  Conference on Computer and Communications Security}}.
-  \bibinfo{pages}{27--38}.
-\newblock
-
-
-\bibitem[\protect\citeauthoryear{Checkoway, Davi, Dmitrienko, Sadeghi, Shacham,
-  and Winandy}{Checkoway et~al\mbox{.}}{2010}]%
-        {checkoway10}
-\bibfield{author}{\bibinfo{person}{S. Checkoway}, \bibinfo{person}{L. Davi},
-  \bibinfo{person}{A. Dmitrienko}, \bibinfo{person}{A.-R. Sadeghi},
-  \bibinfo{person}{H. Shacham}, {and} \bibinfo{person}{M. Winandy}.}
-  \bibinfo{year}{2010}\natexlab{}.
-\newblock \showarticletitle{Return-orientated programming without returns}. In
-  \bibinfo{booktitle}{{\em ACM Conference on Computer and Communications
-  Security}}. \bibinfo{pages}{559--572}.
+\bibitem[\protect\citeauthoryear{Dawkins}{Dawkins}{1999}]%
+        {dawkins99}
+\bibfield{author}{\bibinfo{person}{R. Dawkins}.}
+  \bibinfo{year}{1999}\natexlab{}.
+\newblock \bibinfo{booktitle}{{\em The Extended Phenotype: The Long Reach of th
+  Gene}}.
+\newblock \bibinfo{publisher}{Oxford University Press}.
 \newblock
 
 

@@ -351,12 +351,7 @@ INPUT ../images/macgyver-transparent.png
 INPUT ../images/macgyver2-transparent.png
 INPUT ../images/AI_ooze_transparent.png
 INPUT ../images/simplefarmer.png
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmmi8.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmsy8.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
-INPUT /home/oblivia/texlive/texmf-dist/fonts/tfm/public/cm/cmr8.tfm
+INPUT ../images/tournament.png
 INPUT ../images/architecture-transparent.png
 INPUT ../images/exons.png
 INPUT ../images/iris3.png

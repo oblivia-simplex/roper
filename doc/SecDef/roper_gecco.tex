@@ -10,111 +10,126 @@ proposed a framework in which a genetic program was rewarded for
 finding `Smash the Stack' style shellcode attacks which
 simultaneously minimized IDS alarm rates
 \cite{kayacik06,kayacik11}. However, such attacks are only viable
-as long as stack (i.e., writable) memory is mapped as an
+as long as some region of memory (the stack or heap, for example)
+is mapped as
 executable. An attempt to redirect the instruction pointer to
-non-executeable memory will result in a relatively harmless
+non-executable memory will result in a relatively harmless
 segfault.\footnote{Still of concern as a potential DoS vector,
 but this is nowhere near as serious as the threat of arbitrary
-code execution.} Non-executable stacks, however, are today the
-rule rather than the exception, thanks to security features
-supported by most compilers (e.g.\ both \textsc{gcc} and \textsc{clang} provide this
-feature).
+code execution.} It is increasingly common, today, to find
+a strict separation between executable and writeable memory (i.e., $W\oplus X$).
+Thanks to security features
+supported by most architectures and OSes, and taken advantage of by
+most compilers (e.g.\ both \textsc{gcc} and \textsc{clang} provide
+this feature) and some kernels (OpenBSD, for instance, now enforces $W\oplus X$ in a filesystem-wide fashion, by default.).
 
-Mechanisms for circumnavigating the obstacle of non-executable stacks were demonstrated as early as 1997 when `Solar Designer' posted the return-into-libc technique to the
-Bugtraq mailing
+Broadly speaking, there are two parts to any remote code execution (RCE) attack:
+\begin{enumerate}
+\item composing the code to be executed
+\item redirecting the instruction pointer (the \texttt{rip} on x86\_64, \texttt{pc} on ARM) to that code -- perhaps by corrupting (``smashing'') the call stack, or corrupting a virtual method table pointer through a use-after-free, to give just a couple of examples 
+\end{enumerate}
+
+Traditional shellcode attacks compose supply part 1 directly, as a byte vector of assembled machine code that carries out the desired task. But for this to work, there has to be some location in memory that can be both written to and then executed -- locations that are becoming increasingly scarce.
+
+Mechanisms for circumnavigating $W\oplus X$
+were demonstrated as early as 1997 when Solar Designer
+posted the return-into-libc technique to the Bugtraq mailing
 list.\footnote{\url{http://seclists.org/bugtraq/1997/Aug/63}}
-Unlike traditional shellcode attacks, where the attacker places
-executable code onto the stack (either in an input buffer or an
-environment variable, for instance) and then redirects the
-instruction pointer to that code, Solar Designer's attack simply
-uses code that is already mapped to executable memory. Since libc
-is almost always going to be resident in the executable memory of
-a Unix process, it makes for a convenient target. And so,
-conceptually at least, all that is necessary is to redirect the
-instruction pointer to, say, the \texttt{system()} function, with
-the desired parameters (with may include, say, a pointer to the string
-\texttt{/bin/sh}). 
 
-Return-oriented-programming (\textsc{rop}) is a generalization of this
-technique. Instead of redirecting execution to already resident
-functions, \textsc{rop} targets a far more general class of instruction
-sequences. Specifically, new arbitrary programmes are constructed
-from \textit{scraps} of code sequences available in executable
-memory (or `gadgets'). The goal of the attacker is to assemble
-the gadgets into complex chains through judicious use of gadget
-return addresses, thus describing new arbitrary programmes. This
-was first demonstrated on the x86 \cite{shacham07} and then the
-\textsc{risc} architecture \cite{buchanan08}. More recently, an approach
-to \textsc{rop} under x86 and \textsc{arm} architectures was identified without
-using the return instruction \cite{checkoway10}, i.e.\ instruction
-sequences are identified that collectively mimic the return
-instruction, making detection more difficult.
+Rather than writing his attack code into memory, Solar Designer's
+attack satisfies the first requirement of RCE by simply reusing code
+that is already mapped to executable memory. Since libc is almost
+always going to be resident in the executable memory of a Unix
+process, it makes for a convenient target. And so, all that is
+necessary to spawn a shell, e.g., is to redirect the instruction
+pointer to the \texttt{system()} function, with the desired parameters
+on the stack (with may include, say, a pointer to the string
+\texttt{/bin/sh}).
 
-This work introduces \textsc{Roper}, a genetic compiler that evolves payloads for
-return-oriented programming (\textsc{rop}) attacks.%
+
+%% Instead of redirecting execution to already resident
+%% functions, ROP targets a far more general class of instruction
+%% sequences. Specifically, new arbitrary programmes are constructed
+%% from \textit{scraps} of code sequences available in executable
+%% memory (or `gadgets'). The goal of the attacker is to assemble
+%% the gadgets into complex chains through judicious use of gadget
+%% return addresses, thus describing new arbitrary programmes. This
+%% was first demonstrated on the x86 \cite{shacham07} and then the
+%% SPARC architecture \cite{buchanan08}. More recently, an approach
+%% to ROP under x86 and ARM architectures was identified that doesn't
+%% rely on using return instructions \cite{checkoway10} sequences.
+%% making detection more difficult.
+
+%% This work introduces \textsc{Roper}, a genetic compiler that evolves payloads for
+%% return-oriented programming (ROP) attacks.%
+%% \footnote{\url{https://github.com/oblivia-simplex/roper}}
+%% These are
+%% attacks that manipulate their host's control flow in subtle and
+%% fine-grained ways, and, unlike traditional shellcode attacks,
+%% they do this without at any point introducing foreign code,
+%% or writing to executable memory.
+
+%Since it is becoming
+%increasingly rare for processes to map \emph{any} segment of
+%% memory as both writeable and executable -- due to a defensive
+%% measure called `Data Execution Prevention' (\textsc{dep}) when
+%% implemented on Windows, or `Write xor Execute'
+%% %% mention also harvard bus architectures, etc. 
+%% ($W \oplus X$), when implemented in a Unix environment --
+%% return-oriented programming (or ROP) has become the
+%% industry standard approach to payloads in binary exploit
+%% development. 
+
+Return-oriented-programming (ROP) is a generalization of this
+technique. It works by sifting through the host process's executable
+memory -- its \texttt{.text} segment, in the case of \textsc{elf}
+binaries -- searching for chunks of code that can be rearranged in
+such a way that they carry out the attacker's wishes, rather than
+their intended design. For these chunks to be usable in an attack,
+however, it must be possible to jump from one to the other in a
+predetermined sequence. This is where the `return-oriented' nature of
+the attack comes in: most architectures implement subroutine or
+function calls by first pushing the address of the instruction
+\emph{after} the call onto the stack, and then jump to the first
+instruction of a subroutine that, itself, ends by popping the
+bookmarked `return address' from the stack (this is what the \texttt{return} instruction in C is typically compiled to). In a ROP attack, we
+exploit this way of implementing returns. We set things up so that
+the `return address' popped from the stack at the end of each `gadget'
+is just a pointer to the next gadget we wish to execute. This lets us
+chain together multiple gadgets in sequence. In principle, it is
+possible to implement complex attacks in this fashion, without ever
+needing to use any executable code that is not already there, waiting
+for us in the process's executable memory segment
+(\S~\ref{sec:RopBackgnd} summarizes recent ROP code bases).
+
+
+\textsc{Roper} is a genetic compiler that generates such chains by
+means of an evolutionary process that closely resembles linear
+genetic programming, with certain crucial distinctions (\S~\ref{sec:methodology}).%
 \footnote{\url{https://github.com/oblivia-simplex/roper}}
-These are
-attacks that manipulate their host's control flow in subtle and
-fine-grained ways, and, unlike traditional shellcode attacks,
-they do this without at any point introducing foreign code,
-or writing to executable memory. Since it is becoming
-increasingly rare for processes to map \emph{any} segment of
-memory as both writeable and executable -- due to a defensive
-measure called `Data Execution Prevention' (\textsc{dep}) when
-implemented on Windows, or `Write xor Execute'
-%% mention also harvard bus architectures, etc. 
-($W \oplus X$), when implemented in a Unix environment --
-return-oriented programming (or \textsc{rop}) has become the
-industry standard approach to payloads in binary exploit
-development. 
 
-\textsc{rop} works by sifting through the host process's executable memory
--- its \texttt{.text} segment, in the case of \textsc{elf} binaries -- and search for chunks of code that can be
-rearranged in such a way that they carry out the attacker's
-wishes, rather than their intended design. For these chunks to be
-usable in an attack, however, it must be possible to jump from
-one to the other in a predetermined sequence. This is where the
-`return-oriented' nature of the attack comes in: most
-architectures implement subroutine or function calls by first
-pushing the address of the instruction \emph{after} the call to
-the stack, and then jump to the first instruction of a
-subroutine that, itself, ends by popping the bookmarked `return
-address' from the stack. In a \textsc{rop} attack, we exploit
-this manner of implementing returns. We set things up so that
-the `return address' popped from the stack at the end of each
-`gadget' is just a pointer to the next gadget we wish to execute.
-This lets us chain together multiple \textsc{rop}
-gadgets in sequence. In principle, it is possible to
-implement complex attacks in this fashion, without ever needing
-to use any executable code that is not already there, waiting for
-us in the process's executable memory segment (\S~\ref{sec:RopBackgnd} summarizes recent \textsc{rop} code bases).
-
-These chains are the kind of entities that our engine evolves
-(\S~\ref{sec:methodology}). The genetic material consists of
+The raw genetic material that \textsc{Roper} works with is
 the set of gadgets extracted from a target executable binary --
 we focus for now on \textsc{elf} binaries compiled for 32-bit
-\textsc{arm} processors. The individual genotypes are
-\textsc{rop}-chains, formed from this material. The phenotype, on
+ARM processors. The individual genotypes are
+ROP-chains -- stacks of addresses pointing to gadgets-- assembled from this material. The phenotype, on
 which selection pressures are brought to bear, is the behaviour
-these genotypes exhibit when executed in a virtual (but
-realistic) \textsc{cpu}. The entire set up resembles a variation
-on linear genetic programming, but with a few key differences,
-required by the nature of the problem at hand. The goal is to not
-simply automate the tricky and time-consuming human task
-of assembling \textsc{rop}-chain payloads -- though
-\textsc{roper} does that quite well -- but to explore an entirely
-novel class of payloads: \textsc{rop}-chains that exhibit the
-sort of subtle and adaptive behaviour for which we normally turn
-to machine learning. 
+these genotypes exhibit when executed in a virtual CPU.
 
-As a proof of concept, we evolve \textsc{rop}-chain payloads that
+The goal is to not simply automate the tricky and time-consuming human
+task of assembling ROP-chain payloads -- though \textsc{Roper} does
+that quite well -- but to explore an entirely new class of payloads:
+ROP-chains that exhibit the sort of subtle and adaptive behaviour for
+which we normally employ machine learning.
+
+As a proof of concept, we evolve ROP-chain payloads that
 cannibalize arbitrary binaries into mosaics capable of solving a
-traditional benchmark classification problem, specifically with
+traditional benchmark classification problem, dealing with
 the famous Iris dataset (\S~\ref{sec:empirical}). Without
 injecting a single foreign instruction, we will coax system and
 backend binaries into tasks that resemble nothing they were
-designed to do, and nothing that has previously been attempted in
-low-level binary exploitation: in short, \textsc{Roper} will sort
+designed to do, and nothing that has been previously attempted in
+low-level binary exploitation: \textsc{Roper} will sort
 flowers. Section~\ref{sec:conclude} concludes the paper and
 identifies future work.
 
@@ -133,7 +148,7 @@ identifies future work.
 %\subsubsection{ROP-Chain Compilers}
 
 A handful of technologies have already been developed for the
-automatic generation of \textsc{rop}-chains. These range from
+automatic generation of ROP-chains. These range from
 tools that use one of several determinate recipes for assembling
 a chain -- such as the {Corelan Team}'s extraordinarily useful
 \texttt{mona.py} -- to tools\footnote{\url{https://github.com/corelan/mona}} which approach the problem through
@@ -146,72 +161,70 @@ We are aware of two such projects at the moment:
 even with relative small gadget sets, and \textsc{ropc}, which grew out of
 its authors' attempts to reverse engineer $Q$, and extend its
 capabilities to the point where it could compile
-\textsc{rop}-chains for scripts written in a Turing-complete
+ROP-chains for scripts written in a Turing-complete
 programming language.%
 \footnote{\url{https://github.com/pakt/ropc}} This latter project
 has since inspired a fork that aims to use \textsc{ropc}'s own
 intermediate language as an \textsc{llvm} backend, which, if
 successful, would let programmes written in any language that
 compiles to \textsc{llvm}'s intermediate language, compile to
-\textsc{ropc}-generated \textsc{rop}-chains as well.  
+\textsc{ropc}-generated ROP-chains as well.  
 
 Another, particularly interesting contribution in the field of
-automated \textsc{rop}-chain generation is \emph{Braille}, which
+automated ROP-chain generation is \emph{Braille}, which
 automates an attack that its developers term ``Blind
 Return-Oriented Programming", or \textsc{brop} \cite{bittau14}.
-\textsc{brop} solves the problem of developing \textsc{rop}-chain
+\textsc{brop} solves the problem of developing ROP-chain
 attacks against processes where not only the source code but the
 binary itself in unknown. %% Perhaps add more details
 \emph{Braille} first uses a stack-reading technique to probe a
 vulnerable process (one that is subject to a buffer overflow and
 which automatically restarts after crashing), to find enough
-gadgets, through trial and error, for a simple \textsc{rop} chain
+gadgets, through trial and error, for a simple ROP chain
 whose purpose will be to write the process's executable memory
 segment to a socket, sending that segment's data back to the
 attacker -- data that is then used, in conjunction with address
 information obtained through stack-reading, to construct a more
-elaborate \textsc{rop}-chain the old-fashioned way. It is an
+elaborate ROP-chain the old-fashioned way. It is an
 extremely interesting and clever technique, which could, perhaps,
 be fruitfully combined with the genetic techniques we will
 outline here. 
 
 To the best of our knowledge, neither evolutionary nor other
 machine-learning-driven techniques have been employed in the
-generation of \textsc{rop} attacks. Such techniques \emph{have},
-however, been put to use in order to defend against such attacks.
-The development of the HadROP detection system, by Pfaff et
-al., represents a recent contribution to this field \cite{pfaff15}, training support
-vector machines on the behaviour of hardware performance
-counters, to detect the control flow patterns that are
-characteristic of \textsc{rop} attacks.  
+generation of ROP attacks. Such techniques \emph{have}, however, been
+put to use in order to defend \emph{against} such attacks. The
+development of the HadROP detection system, by Pfaff et al.,
+represents a recent contribution to this field \cite{pfaff15}, which
+trains support vector machines on the behaviour of hardware
+performance counters to detect the control flow patterns 
+characteristic of ROP attacks.
 
 \section{Methodology}\label{sec:methodology}
 
-\textsc{Roper} is a complete system for the automatic evolution
-of \textsc{rop}-chains meeting a user-supplied specification, and
-targetting a given executable. A bird's eye view of the system
-can be found in figure~\ref{fig:architecture}. The executable
-binary (box 1) supplies the raw material from which a collection
-of gadgets is extracted (box 2), and is mapped into the memory
-of a virtual machine (box 5). Together with a set of constants
-(parsed out of user-supplied input or randomly generated), these
-gadgets make up the gene pool from which an initial, random
-population will be initialized. This brings us to the genetic
-process that forms the core of the system (box 4). The
-individuals' genotypes -- sequences of pointers into the
-executable (1), which now exists in the memory of the VM (5) --
-are sent over to the VM to be mapped into their corresponding
-phenotypes. Their behaviour in the \textsc{cpu} and the
-resulting \textsc{cpu} context array is returned to the
-genetic process (4) to be passed to the fitness functions.  The
-fitness functions assess the phenotype images returning to (4)
-from (5), together with any information coming from the user (box 3:
-labelled data or other specifications). These determine the
-process of parent selection (a steady state tournament), after which the
-reproduction and variation functions go to work (all of this
-takes place in box 4 of our map). The cycle then repeats, with an
-ongoing exchange of genotypes for phenotypes between (4) and (5),
-until the completion criteria have been reached. 
+\textsc{Roper} is a complete system for the automatic evolution of
+ROP-chains meeting a user-supplied specification, and targetting a
+given executable or library binary. A bird's eye view of the system
+can be found in figure~\ref{fig:architecture}. The executable binary
+(box 1) supplies the raw material from which a collection of gadgets
+is extracted (box 2), and is mapped into the memory of a virtual
+machine (box 5). Together with a set of constants (parsed out of
+user-supplied input or randomly generated), these gadgets make up the
+gene pool from which an initial, random population will be
+initialized. This brings us to the genetic process that forms the core
+of the system (box 4). The individuals' genotypes -- sequences of
+pointers into the executable (1), which now exists in the memory of
+the VM (5) -- are sent over to the VM to be mapped into their
+corresponding phenotypes. Their behaviour in the CPU and the resulting
+CPU context array is returned to the genetic process (4) to be passed
+to the fitness functions. The fitness functions assess the phenotype
+images projected back to (4) from (5), together with any information
+coming from the user (box 3: labelled data or other specifications).
+These determine the process of parent selection (a steady state
+tournament), after which the reproduction and variation functions go
+to work (all of this takes place in box 4 of our map). The cycle then
+repeats, with an ongoing exchange of genotypes for phenotypes between
+(4) and (5), until the completion criteria have been reached.
 
 \begin{figure}
   \includegraphics[width=\columnwidth,height=3.5cm]{architecture.png}
@@ -225,19 +238,19 @@ until the completion criteria have been reached.
 \subsubsection{Gadgets, Clumps, and Chains}
 
 Individuals, here, are essentially vectors of 32-bit words, which
-may be either pointers into executable memory addresses, intended
-to be popped into the program counter, or other values, intended
-to be popped into the \textsc{cpu}'s other registers. 
+may be either pointers into executable memory addresses, 
+to be popped into the instruction pointer, or other values, 
+to be popped into the CPU's other registers. 
 
-Returns, in \textsc{arm} machine code, are frequently implemented as
-multi-pop instructions -- which pop an address from the stack
-while simultaneously popping a variable number of additional
-words into the other registers. Depending on the target problem, the range of values that could potentially be
-made use of in the general purpose registers might be very
-different from the range of values where we find pointers into
-executable memory. Thus, it makes sense to interleaf address
-pointers and other values in a controlled fashion, when
-constructing our initial population. 
+Returns, in ARM machine code, are frequently implemented as multi-pop
+instructions -- which pop an address from the stack while
+simultaneously popping a variable number of words into other registers
+as well. Depending on the target problem, the range of values that
+could potentially be made use of in the general purpose registers
+might be very different from the range of values where we find
+pointers into executable memory. Thus, it makes sense to interleaf
+address pointers and other values in a controlled fashion, when
+constructing our initial population.
 % also other pops
 
 To do this, we calculate the distance the stack pointer will shift
@@ -251,26 +264,26 @@ $\Delta_{SP}(g)-1$ non-gadget values.
   $\Delta_{SP}(g) = 4$, and we will append 3 words to the clump
   that begins with a pointer to $g$.}
 These values will populate
-the \textsc{cpu}'s registers when the final, multipop instruction of the
-gadget is executed. The program counter (\texttt{PC}) is always
+the CPU's registers when the final, multipop instruction of the
+gadget is executed. The instruction pointer (\texttt{PC}) is always
 the final register populated through a multipop, and so the
 address of the next gadget $g'$ should be found exactly
 $\Delta_{SP}(g)$ slots up from $g$.%
-\footnote{\textsc{rop}ER also handles gadgets that end in a different
+\footnote{\textsc{roper} also handles gadgets that end in a different
   form of return: a pair of instructions that populates a series
   of registers from the stack, followed by an instruction that
   copies that address from one of those registers to \texttt{PC}.
   In these instances, $\Delta{SP}(g)$ and the offset of the next
   gadget from $g$ are distinct. But this is a complication that
   we don't need to dwell on here.}
-These `clumps' will be the units from which our genotypes are composed,
-from the point of view of crossover (sexual reproduction). We will,
+These `clumps' will be the units that make up the genotype,
+from the point of view of crossover. We will,
 however, allow the mutation operators to alter these clumps' internal structure. 
 
 
 \subsubsection{Variation Operators}
 \paragraph{Mutation}
-Structuring the basic units of our genotypes in this way also
+Structuring the genotype in this way also
 lets us apply variation operators more intelligently. The
 genotype is much more tolerant of mutations to the non-gadget
 values in each clump than to the gadget address itself. The
@@ -288,7 +301,7 @@ operates at the level of `clumps', not words. We chose
 single-point crossover over two-point or uniform crossover
 % check terminology
 to favour the most likely form gene linkage would take in this
-context. A single \textsc{rop}-gadget can transform the \textsc{cpu} context in
+context. A single ROP-gadget can transform the CPU context in
 fairly complex ways, and, combined with multipop instructions,
 the odds that the work performed by a gadget $g$ will be
 clobbered by a subsequent gadget $g'$ increases greatly with the
@@ -300,7 +313,7 @@ In single-point crossover between two specimens, $A$ and $B$, we
 randomly select a link index $i$ where $i < |A|$, and $j$ where $j
 < |B|$. We then form one child whose first $i$ genes are taken
 from the beginning of $A$, and whose next $j$ genes are taken
-from the end of $B$, and another child using the complimentary
+from the end of $B$, and another child using the complementary
 choice of genes. 
 %% Diagram would be handy here
 
@@ -330,7 +343,7 @@ final clump in the chain, then $f'(A[i])$ is initialized to
 
 Viscosity is calculated from link-fitness simply by substituting
 a default value ($50\,\%$) for \texttt{None}, or taking the
-complement of the link-fitness. This value is the probability at
+complement of the link-fitness when set. This value is the probability at
 which a link $i..i+1$ will be selected as the splice point in a
 crossover event. 
 
@@ -354,7 +367,7 @@ as we will see.
 %Like register-based linear \textsc{gp}, the execution of a chain
 %should be understood as imperative and stateful. The
 %`instructions' they make up are not strictly functional, unless
-%we view the entire \textsc{cpu} context as its argument, and the
+%we view the entire CPU context as its argument, and the
 %resulting register vector as its return value.% 
 %\footnote{The clump-structure that we use here, incidentally,
 %  means that each gadget gets its stack arguments from the clump
@@ -368,7 +381,7 @@ as we will see.
 
 
 \subsection{Phenotype Evaluation}
-The phenotype, here, is the \textsc{cpu} context resulting from the execution of the genotype (the \textsc{rop}-chain) in a virtual machine, passed through one of a handful of `fitness functions', as follows:
+The phenotype, here, is the CPU context resulting from the execution of the genotype (the ROP-chain) in a virtual machine, passed through one of a handful of `fitness functions', as follows:
 \subsubsection{Execution Environment}
 % unicorn vm
 The transformation of the genotype into its corresponding
@@ -378,10 +391,10 @@ emulator instances is initialized at the beginning of each run,
 and the binary that we wish to exploit is loaded into its memory.
 We enforce non-writeability for the process's entire memory, with
 the sole exception of the stack, where we will be writing our
-\textsc{rop}-chains. There are two reasons for this: first, since
-the task is to evolve pure \textsc{rop}-chain payloads, we might
+ROP-chains. There are two reasons for this: first, since
+the task is to evolve pure ROP-chain payloads, we might
 as well enforce $W \oplus X$ as rigorously as possible -- the
-very defensive measure that \textsc{rop} was invented to subvert.
+very defensive measure that ROP was invented to subvert.
 Second, it makes things far more reliable and efficient if we
 do not have to worry about any of our chains corrupting their
 shared execution environment by, say, overwriting instructions in
@@ -394,37 +407,37 @@ is uniquely determined by its composition and its inputs.%
   impossible to reconstruct or repeat, since its success had
   depended on some ephemeral corruption of its environment.}
 
-In order to map the genotype -- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process -- into its resulting \textsc{cpu} context, the following steps are taken:
+In order to map the genotype -- a stack of pointers into the executable memory (typically the \texttt{.text} segment) of the host process -- into its resulting CPU context, the following steps are taken:
 {\small
 \begin{enumerate} 
   \item serialize the individual's clumps into a sequence of bytes;
   \item copy this sequence over to the process's stack, followed by a long sequence of zeroes;
-  \item pop the first word on the stack into the program counter register (\texttt{R15} or \texttt{PC} on \textsc{arm});
+  \item pop the first word on the stack into the instruction pointer register (\texttt{R15} or \texttt{PC} on ARM);
   \item activate the machine;
-  \item execution stops when the program counter hits zero -- as will happen when it exhausts the addresses we wrote to its stack, when execution crashes, or when a predetermined number of steps have elapsed;
+  \item execution stops when the instruction pointer hits zero -- as will happen when it exhausts the addresses we wrote to its stack, when execution crashes, or when a predetermined number of steps have elapsed;
   \item we then read the values in the VM's register vector, and pass this vector to one of our fitness functions;
 \end{enumerate}
 }
-The reason a \textsc{rop}-chain controls the execution path,
+The reason a ROP-chain controls the execution path,
 remember, is that each of the snippets of code (`gadgets') that
 its pointers refer to ends with a return instruction, which pops
-an address into the program counter from the stack. In ordinary,
+an address into the instruction pointer from the stack. In ordinary,
 non-pathological cases, this address points to the instruction in
 the code that comes immediately after a function call -- it is a
-bookmark that lets the \textsc{cpu} pick up where it left off,
+bookmark that lets the CPU pick up where it left off,
 after returning from a function. The cases we are interested in --
 and engineering -- of course, \emph{are} pathological: here, the
 address that the return instruction pops from the stack does not
 point to the place the function was called from, but to the next
 gadget that we want the machine to execute. This gadget, in turn,
-will end by popping the stack into the program counter, and so
+will end by popping the stack into the instruction pointer, and so
 on, until the stack is exhausted, and a zero is popped into
 \texttt{PC}. So long as a specimen controls the stack, it is able
-to maintain control of the program counter. 
+to maintain control of the instruction pointer. 
 
 
 All that is necessary to initiate the process, therefore, is to
-pop the first address in the chain into the program counter --
+pop the first address in the chain into the instruction pointer --
 the resulting cascade of returns will handle the rest. In the
 wild, this fatal first step is usually accomplished by means of
 some form of memory corruption -- using a buffer overflow or,
@@ -437,7 +450,7 @@ by the process. In our set-up, this step is merely simulated. The
 rest, however, unfolds precisely as it would in an actual
 attack.
 
-%% Some of this stuff on how \textsc{rop} chains work might be better to
+%% Some of this stuff on how ROP chains work might be better to
 %% have in the BACKGROUND section. Then again, a bit of
 %% repetition never hurt anybody. 
 \subsubsection{Fitness Functions}
@@ -447,9 +460,9 @@ this setup.
 
 \paragraph{Pattern matching.} The first, and more immediately
 utilitarian, of the two is simply to converge on a precisely
-specified \textsc{cpu} context. A pattern consisting of 32-bit
+specified CPU context. A pattern consisting of 32-bit
 integers and wildcards is supplied to the engine, and the task is
-to evolve a \textsc{rop}-chain that brings the register vector to
+to evolve a ROP-chain that brings the register vector to
 a state that matches the pattern in question. The fitness of a
 chain's phenotype is defined as the average between
 {\small
@@ -481,7 +494,7 @@ reach our target, whether through numerical, bitwise, or move
 operations.
 
 This is a fairly simple task, but one that has immediate
-application in \textsc{rop}-chain development, where the goal is
+application in ROP-chain development, where the goal is
 often simply to set up the desired parameters for a system call
 -- an \texttt{execve} call to open a shell, for example. Such
 rudimentary chains can be easily generated by \textsc{roper}. 
@@ -491,14 +504,14 @@ a human programmer a few hours to accomplish, unaided.
 
 \paragraph{Classification.} But \textsc{roper} is capable of
 more complex and subtle tasks than this, and these set it at some
-distance from deterministic \textsc{rop}-chain compilers like
+distance from deterministic ROP-chain compilers like
 $Q$. As an initial foray in this direction, we set \textsc{roper}
 the task of attempting some standard, benchmark classification
 problems, commonly used in machine learning, beginning with some
 well-known, balanced datasets. In this context, \textsc{roper}'s
-task is to evolve a \textsc{rop}-chain that correctly classifies
+task is to evolve a ROP-chain that correctly classifies
 a given specimen when its $n$ attributes, normalized as integers,
-are loaded into $n$ of the virtual \textsc{cpu}'s registers
+are loaded into $n$ of the virtual CPU's registers
 (which we will term the `input registers') prior to launching the
 chain. $m$ separate registers are specified as `output
 registers', where $m$ is the number of classes that
@@ -513,7 +526,7 @@ We will look at the results of these classification experiments
 in the next section. 
 
 \paragraph{Crash rate.} Our population of random
-\textsc{rop}-chains begins its life as an extraordinarily noisy
+ROP-chains begins its life as an extraordinarily noisy
 and error-prone species, and so it is fairly likely that, at the
 beginning of a run, a chain will not have all of its gadgets
 executed before crashing. Crashing,
@@ -644,7 +657,7 @@ results we have been able to obtain so far have been encouraging.
 
 A simple and practical example of \textsc{roper}'s
 pattern-matching capability is to have it construct the sort of
-\textsc{rop} chain we would use if we wanted to, say, pop open a
+ROP chain we would use if we wanted to, say, pop open a
 shell with the host process' privileges. The usual way of
 doing this is to write a chain that sets up the system call
 $$\texttt{execv("/bin/sh", ["/bin/sh"], 0)}$$
@@ -655,8 +668,8 @@ system call. Once all of that is in place, we just jump to any
 \texttt{svc} instruction we like, and we have our shell.
 
 First, of course, we need to pick our mark. We'll use a small
-\textsc{http} server from an  \textsc{arm} router from \textsc{asus},
-\texttt{tomato-RT-N18U- httpd}.%
+\textsc{http} server from an  ARM router from \textsc{asus},
+\texttt{tomato-RT-N18U-httpd}.%
 \footnote{Available at
 \url{https://advancedtomato.com/downloads/router/rt-n18u}.}
 After a bit of exploration with
@@ -734,8 +747,10 @@ register, and then pushing \texttt{lr} onto the stack, which it will later pop i
 the programme counter. From that point forward, we are
 off-script. The next four `gadgets' appear to have been discovered
 spontaneously, found in the environment, and not inherited as such from the gene
-pool. We give the term `deep gadgets' to these units of code. They can be
-seen as contributing to the \emph{extended phenotype} of the chain.
+pool. We give the term `extended gadgets' to these units of code, meant
+to suggest analogies with Dawkin's notion of the extended phenotype
+\cite{dawkins99}.
+
 %The chain
 %nevertheless concludes without crashing, ending with a branch to
 %the pre-established halting address (\texttt{blx r2}, which
@@ -746,55 +761,138 @@ disassembly of the chain as it wound its way through the
 out the state of the four registers we're interested in, i.e. \texttt{R0, R1, R2, R7}.
  
 \begin{table*}
-\caption{Gadget to state relation for standard and deep gadgets. ** indicates where the pattern is completed. }\label{tbl:gadget}
-\begin{center}
-{\scriptsize
-\begin{tabular}{|l|l|l|} \hline
-\textbf{\texttt{;; Gadget 0}} 			& \textbf{\texttt{;; Deep Gadget 0}}				& \textbf{\texttt{;; Deep Gadget 1}} \\ 
-\texttt{[000100fc]  mov r0, r6} 	& \texttt{[00016890]  str r0, [r4, \#0x1c]}		& \texttt{[00012780]  bne \#0x18} \\
-\texttt{[00010100]  ldrb r4, [r6], \#1} & \texttt{[00016894]  mov r0, r4}		& \texttt{[00012784]  add r5, r5, r7} \\
-\texttt{[00010104]  cmp r4, \#0}	& \texttt{[00016898]  pop \{r4, lr\}}			& \texttt{[00012788]  rsb r4, r7, r4} \\
-\texttt{[00010108]  bne \#4294967224} & \texttt{[0001689c]  b \#4294966744}	& \texttt{[0001278c]  cmp r4, \#0} \\
-\texttt{[0001010c]  rsb r5, r5, r0}	& \texttt{[00016674]  push \{r4, lr\}}		& \texttt{[00012790]  bgt \#4294967240} \\
-\texttt{[00010110]  cmp r5, \#0x40} & \texttt{[00016678]  mov r4, r0}		& \texttt{[00012794]  b \#8} \\
-\texttt{[00010114]  movgt r0, \#0}	& \texttt{[0001667c]  ldr r0, [r0, \#0x18]}	& \texttt{[0001279c]  mov r0, r7} \\
-\texttt{[00010118]  movle r0, \#1}	& \texttt{[00016680]  ldr r3, [r4, \#0x1c]}	& \texttt{[000127a0]  pop \{r3, r4, r5, r6, r7, pc\}} \\
-\texttt{[0001011c]  pop \{r4, r5, r6, pc\}} & \texttt{[00016684]  cmp r0, \#0}		& \\
- 					& \texttt{[00016688]  ldrne r1, [r0, \#0x20]}	& \texttt{R0: 0002bc3e} \\
-\texttt{R0: 00000001} 			& \texttt{[0001668c]  moveq r1, r0}		& \texttt{R1: 00000000} \\
-\texttt{R1: 00000001} 			& \texttt{[00016690]  cmp r3, \#0}		& \texttt{R2: 00000000} \\
-\texttt{R2: 00000001} 			& \texttt{[00016694]  ldrne r2, [r3, \#0x20]}	& \texttt{R7: 0000000b} \\
-\texttt{R7: 0002bc3e} 			& \texttt{[00016698]  moveq r2, r3}		& \\
- 					& \texttt{[0001669c]  rsb r2, r2, r1}		& \texttt{;; Deep Gadget 2} \\
-\textbf{\texttt{;; Gadget 1}} 		& \texttt{[000166a0]  cmn r2, \#1}		& \texttt{[000155ec]  b \#0x1c} \\
-\texttt{[00012780]  bne \#0x18}	& \texttt{[000166a4]  bge \#0x48}			& \texttt{[00015608]  add sp, sp, \#0x58} \\
-\texttt{[00012798]  mvn r7, \#0}	& \texttt{[000166ec]  cmp r2, \#1}			& \texttt{[0001560c]  pop \{r4, r5, r6, pc\}} \\
-\texttt{[0001279c]  mov r0, r7}	& \texttt{[000166f0]  ble \#0x44}			& \\
-\texttt{[000127a0]  pop \{r3, r4, r5, r6, r7, pc\}} & \texttt{[00016734]  mov r2, \#0} & \texttt{R0: 0002bc3e} \\
- 						& \texttt{[00016738]  cmp r0, r2}			& \texttt{R1: 00000000} \\
-\texttt{R0: ffffffff}			& \texttt{[0001673c]  str r2, [r4, \#0x20]}		& \texttt{R2: 00000000} \\
-\texttt{R1: 00000001}		& \texttt{[00016740]  beq \#0x10}			& \texttt{R7: 0000000b} \\
-\texttt{R2: 00000001}		& \texttt{[00016750]  cmp r3, \#0}			& \\
-\texttt{R7: ffffffff}			& \texttt{[00016754]  beq \#0x14}			& \textbf{\texttt{;; Deep Gadget 3}} \\
- 					& \texttt{[00016758]  ldr r3, [r3, \#0x20]}	& \texttt{[00016918]  mov r1, r5   **}\\
-\textbf{\texttt{;; Gadget 2}}		& \texttt{[0001675c]  ldr r2, [r4, \#0x20]}		& \texttt{[0001691c]  mov r2, r6} \\
-\texttt{[00016884]  beq \#0x1c}	& \texttt{[00016760]  cmp r3, r2}			& \texttt{[00016920]  bl \#4294967176} \\
-\texttt{[00016888]  ldr r0, [r4, \#0x1c]} & \texttt{[00016764]  strgt r3, [r4, \#0x20]} & \texttt{[000168a8]  push \{r4, r5, r6, r7, r8, lr\}} \\
-\texttt{[0001688c]  bl \#4294967280} & \texttt{[00016768]  ldr r3, [r4, \#0x20]}	& \texttt{[000168ac]  subs r4, r0, \#0} \\
-\texttt{[0001687c]  push \{r4, lr\}}	& \texttt{[0001676c]  mov r0, r4}		& \texttt{[000168b0]  mov r5, r1} \\
-\texttt{[00016880]  subs r4, r0, \#0} & \texttt{[00016770]  add r3, r3, \#1}		& \texttt{[000168b4]  mov r6, r2} \\
-\texttt{[00016884]  beq \#0x1c}	& \texttt{[00016774]  str r3, [r4, \#0x20]}		& \texttt{[000168b8]  beq \#0x7c} \\
-\texttt{[000168a0]  mov r0, r1}	& \texttt{[00016778]  pop \{r4, pc\}}			& \texttt{[000168bc]  mov r0, r1} \\
-\texttt{[000168a4]  pop \{r4, pc\}}	&							& \texttt{[000168c0]  mov r1, r4} \\
- 					&							& \texttt{[000168c4]  blx r2} \\
-\texttt{R0: 00000001}			& \texttt{R0: 0000000b}				& \\
-\texttt{R1: 00000001}			& \texttt{R1: 00000000}				& \texttt{R0: 0002bc3e} \\
-\texttt{R2: 00000001}			& \texttt{R2: 00000000}				& \texttt{R1: 0002bc3e} \\
-\texttt{R7: 0002bc3e}				& \texttt{R7: 0002bc3e}				& \texttt{R2: 00000000} \\
-					&							& \texttt{R7: 0000000b} \\ \hline
-\end{tabular}
-}
-\end{center}
+\setlength\columnsep{2pt}
+\begin{multicols}{5}
+\tiny%
+\begin{lstlisting}
+;; Gadget 0
+[000100fc]  mov r0,r6
+[00010100]  ldrb r4,[r6],#1
+[00010104]  cmp r4,#0
+[00010108]  bne #4294967224
+[0001010c]  rsb r5,r5,r0
+[00010110]  cmp r5,#0x40
+[00010114]  movgt r0,#0
+[00010118]  movle r0,#1
+[0001011c]  pop {r4,r5,r6,pc}
+
+R0: 00000001
+R1: 00000001
+R2: 00000001
+R7: 0002bc3e
+
+;; Gadget 1
+[00012780]  bne #0x18
+[00012798]  mvn r7,#0
+[0001279c]  mov r0,r7
+[000127a0]  pop {r3,r4,r5,r6,r7,pc}
+
+R0: ffffffff
+R1: 00000001
+R2: 00000001
+R7: ffffffff
+(*\columnbreak *)
+;; Gadget 2
+[00016884]  beq #0x1c
+[00016888]  ldr r0,[r4,#0x1c]
+(*\color{red} [0001688c]\ \ bl \#4294967280*)
+(*\color{red} [0001687c]\ \ push {r4,lr}*)
+[00016880]  subs r4,r0,#0
+[00016884]  beq #0x1c
+[000168a0]  mov r0,r1
+[000168a4]  pop {r4,pc}
+
+R0: 00000001
+R1: 00000001
+R2: 00000001
+R7: 0002bc3e
+
+;; Extended Gadget 0
+[00016890]  str r0,[r4,#0x1c]
+[00016894]  mov r0,r4
+[00016898]  pop {r4,lr}
+[0001689c]  b #4294966744
+[00016674]  push {r4,lr}
+[00016678]  mov r4,r0
+[0001667c]  ldr r0,[r0,#0x18]
+[00016680]  ldr r3,[r4,#0x1c]
+[00016684]  cmp r0,#0
+[00016688]  ldrne r1,[r0,#0x20]
+[0001668c]  moveq r1,r0
+[00016690]  cmp r3,#0
+[00016694]  ldrne r2,[r3,#0x20]
+[00016698]  moveq r2,r3
+[0001669c]  rsb r2,r2,r1
+[000166a0]  cmn r2,#1
+[000166a4]  bge #0x48
+[000166ec]  cmp r2,#1
+[000166f0]  ble #0x44
+[00016734]  mov r2,#0
+[00016738]  cmp r0,r2
+[0001673c]  str r2,[r4,#0x20]
+[00016740]  beq #0x10
+[00016750]  cmp r3,#0
+[00016754]  beq #0x14
+[00016758]  ldr r3,[r3,#0x20]
+[0001675c]  ldr r2,[r4,#0x20]
+[00016760]  cmp r3,r2
+[00016764]  strgt r3,[r4,#0x20]
+[00016768]  ldr r3,[r4,#0x20]
+[0001676c]  mov r0,r4
+[00016770]  add r3,r3,#1
+[00016774]  str r3,[r4,#0x20]
+[00016778]  pop {r4,pc}
+(*\columnbreak *)
+R0: 0000000b
+R1: 00000000
+R2: 00000000
+R7: 0002bc3e
+
+;; Extended Gadget 1
+[00012780]  bne #0x18
+[00012784]  add r5,r5,r7
+[00012788]  rsb r4,r7,r4
+[0001278c]  cmp r4,#0
+[00012790]  bgt #4294967240
+[00012794]  b #8
+[0001279c]  mov r0,r7
+[000127a0]  pop {r3,r4,r5,r6,r7,pc}
+
+R0: 0002bc3e
+R1: 00000000
+R2: 00000000
+R7: 0000000b
+
+;; Extended Gadget 2
+[000155ec]  b #0x1c
+[00015608]  add sp,sp,#0x58
+[0001560c]  pop {r4,r5,r6,pc}
+(*\columnbreak *)
+R0: 0002bc3e
+R1: 00000000
+R2: 00000000
+R7: 0000000b
+
+;; Extended Gadget 3
+(*\color{red} [00016918]\ \ mov r1,r5 ** *)
+[0001691c]  mov r2,r6
+[00016920]  bl #4294967176
+[000168a8]  push {r4,r5,r6,r7,r8,lr}
+[000168ac]  subs r4,r0,#0
+[000168b0]  mov r5,r1
+[000168b4]  mov r6,r2
+[000168b8]  beq #0x7c
+[000168bc]  mov r0,r1
+[000168c0]  mov r1,r4
+[000168c4]  blx r2
+
+R0: 0002bc3e
+R1: 0002bc3e
+R2: 00000000
+R7: 0000000b
+\end{lstlisting}
+\end{multicols}
+\caption{Disassembly of a succesful chain, with `extended gadgets'. ** indicates where the pattern is completed. }\label{tbl:gadget}
 \end{table*}%
 
 %{\footnotesize
@@ -817,7 +915,7 @@ dramatic improvements in fitness, since it decreases the odds
 that valuable gene linkages will be destroyed by crossover.%
 \footnote{The analysis of code bloat and introns that we are
   drawing on here is largely indebted to the theory of introns from Chapter 7, and \S{7.7} in particular \cite{brameier07}}
-We see this clearly enough in our champion \textsc{rop}-chain,
+We see this clearly enough in our champion ROP-chain,
 where 29 of its 32 gadgets do not contribute in any way to the
 chain's fitness -- though they do increase the odds that its
 fitness-critical gene linkages will be passed on to its
@@ -848,23 +946,23 @@ population's fittest specimens.
 
 %Such traits are even more common when we turn to a more complex
 %and nuanced problem set, and charge \textsc{roper} with the task
-%of evolving \textsc{rop}-chain classifiers -- exploits that
+%of evolving ROP-chain classifiers -- exploits that
 %exhibit subtle, adaptive behaviour. 
 
-\subsection{Classification of the Iris dataset}
+\subsection{Fleurs du Malware}
 %% start generating graphs for these. have the graph script also
 % output latex, please. 
 \textsc{Roper}'s pattern-matching capabilities allow it to
 automate tasks commonly undertaken
 by human hackers. The end result may not \emph{resemble} a
-\textsc{rop}-chain assembled by human hands (or even by a
+ROP-chain assembled by human hands (or even by a
 deterministic compiler), but its function is essentially the same
-as the ones carried out by most human-crafted \textsc{rop}-chains:
-to prepare the \textsc{cpu} context for this or that system call,
+as the ones carried out by most human-crafted ROP-chains:
+to prepare the CPU context for this or that system call,
 so that we can spawn a shell, open a socket, write to a file,
 dump a region of memory, etc.  In this domain,
 \textsc{roper} is not alone -- several other tools exist for
-automating \textsc{rop}-chain construction (\S~\ref{sec:RopBackgnd}). 
+automating ROP-chain construction (\S~\ref{sec:RopBackgnd}). 
 
 In this section, we'll see that \textsc{roper} is also capable of
 evolving chains that are, in both form and function, entirely
@@ -889,14 +987,16 @@ benchmark machine learning algorithms.
 
 The fitness curve of our best
 specimens \textit{without fitness-sharing} typically took the form of long, shallow plateaus, against the backdrop of a population swayed more by evolutionary
-drift than selective pressure.  In addition, a second-order selective pressure appeared that encourages intron formation,
+drift than selective pressure.  A second-order selective pressure appeared to encourage intron formation,
 of which the crash rate seems to be a fairly reliable index
 (crashes are the casualties of a certain method of intron
 formation, in this context). This is what we see unfolding in
 figure~\ref{fig:good-nosharing}. A dip in average length coincides with the peak in the crash rate, around phylogenic generation 350 -- though there is a great deal of
 back-and-forth between the two curves, as if the two strategies
-for intron-formation are competing.%: pad the genome with junk gadgets, or sidestep your genome by placing your bets on an extended phenotype found in the host process' memory?
+for intron-formation -- bloat and branching -- are in competition.%: pad the genome with junk gadgets, or sidestep your genome by placing your bets on an extended phenotype found in the host process' memory?
 
+%% Remove this figure, and replace it with the one compared against the
+%% fitness-sharing results in the slides. 
 \begin{figure}
   \includegraphics[height=4cm]{examples/iris/good-nosharing/good-nosharing.png}
   \caption{ROPER's classification of the Iris data set, without
@@ -920,44 +1020,59 @@ penalties into the raw fitness passed to the sharing formula,
 instead of applying them after the fact. We also overlooked a
 loophole that would reduce the penalty for crashing to near zero,
 so long as the return counter approached the number of gadgets
-expected. There is, however, a serious vulnerability in our
-implementation of the return counter. It lives in the emulator engine's
-own memory space, which can be, in principle, corrupted by one of
-the very \textsc{rop}-chains it is supposed to be monitoring. If
+expected. Now, there's a vulnerability in our
+implementation of the return counter -- it lives in the VM's
+own memory space, which can be corrupted by
+the very ROP-chains it's supposed to be monitoring. If
 this is exploited, a specimen can artificially increment its
 return counter, making it appear as if it executed its payload to
 completion, while still segfaulting and raising an exception in
-the virtual \textsc{cpu}. If our population was able to exploit
+the VM. If our population was able to exploit
 this feature, then it would have been able to enjoy the
 protective benefits of navigating its way through a network of
-deep gadgets -- resistance to destructive crossover events --
+extended gadgets -- resistance to destructive crossover events --
 with relative ease and abandon, and no real pressure to refrain
 from crashing. The result was a complete takeover of the
 population by dominant, crashing genotypes: a congenital plague of
 segfaults. The population was nevertheless able to achieve an 82\,\%
-detection rate against Iris. 
+detection rate against Iris. (Note that the \textsc{best-abfit} curve in these
+figures reflects error rate, the complement of detection rate -- the
+lower, the fitter.)
 
 Modifying the crash penalty -- making it proportional to the
 prevalence of crashes in the population, a sort of segfault
 thermostat -- subdued the
 pressures that encouraged the population to crash, just enough to
 prevent behaviour of figure~\ref{fig:plague}.
+
 The result was a superb run -- achieving 96.6\,\% detection rate on
 the training set in 27,724 tournaments, 216 seasons of
 difficulty rotation, and an average
 phylogenic generation of 91.3. Figure~\ref{fig:okay} shows the
 course the evolution took, with the right-hand panel showing the
-responding environmental pressures -- the \texttt{difficulty}
-scores associated
+responding environmental pressures -- the \texttt{difficulty} scores associated
 with each class, showing both mean and standard deviation.
 
+This run can be fruitfully compared with the one illustrated in fig.~\ref{fig:nosharing}.
+Note the tight interbraiding of problem difficulties in fig.~\ref{fig:okay}, as compared to their
+gaping -- but still, slowly, fluctuating -- disparity in fig.~\ref{fig:nosharing}. The 
+ballooning standard deviation of difficulty by class in fig.~\ref{fig:okay} also suggests
+a dramatic increase in behavioural diversity in the population, which is precisely what
+we aimed for with fitness sharing.
 
 \begin{figure}
-  \includegraphics[height=4cm,width=\columnwidth]{examples/iris/sharing3/sharing3white.png}
+  \includegraphics[height=4cm,width=\columnwidth]{examples/iris/sharing3/sharing3_white.png}
   \caption{Sharing both fitness and crash-penalties on the Iris
   data set, with chains from tomato-RT-N18U-httpd: 96.6\,\%
   detection rate on training set after 27,724 tournaments}
   \label{fig:okay}
+\end{figure}
+
+\begin{figure}
+  \includegraphics[height=4cm, width=\columnwidth]{examples/iris/nosharing-diff/nosharing-white.png}
+  \caption{A run with parameters identical to run charted in fig.~\ref{fig:okay}, with fitness sharing
+    deactivated.}
+  \label{fig:nosharing}
 \end{figure}
 
 \section{Conclusion}\label{sec:conclude}
@@ -965,7 +1080,7 @@ with each class, showing both mean and standard deviation.
 We demonstrate that return-oriented programming is a
 domain in which genetic programming can be naturally and
 effectively applied. Most of the techniques from
-linear genetic programming can be transferred to \textsc{rop} in
+linear genetic programming can be transferred to ROP in
 a straightforward fashion. This confluence is of extreme interest
 for matters of information security. It brings a host of powerful
 evolutionary techniques to bear on a prevalent and persistent
@@ -974,7 +1089,7 @@ mode of exploit development.%
 That we are able to classify the Iris dataset is not, in
 itself, remarkable. What is interesting is that this is, to our
 knowledge, the first time such a thing has been carried out with
-\textsc{rop}-chains -- not because there is any
+ROP-chains -- not because there is any
 sort of demand for clandestine, \textsc{dep}-subverting
 flower-sorters, but because of what it shows is possible:
 attacks that introduce no foreign code into a process, which
@@ -988,7 +1103,7 @@ clumsy.% With these parlour tricks \textsc{roper} has made the first, stumbling 
 A problem for which \textsc{roper} would be particularly
 well-suited, and which we hope to explore in future work, is to
 train our system to evade the detection of intelligent
-\textsc{rop}-detectors like HadROP \cite{pfaff15},  
+ROP-detectors like HadROP \cite{pfaff15},  
 -- with the possibility of sparking a coevolutionary
 arms-race that would accelerate the development and detection of
 attacks. 

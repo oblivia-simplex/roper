@@ -109,10 +109,14 @@ fn main() {
   opts.optopt("P", "population", "set population size", "<positive integer>");
   opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
   opts.optopt("L", "label", "set a label for the trial", "<string>");
+  opts.optopt("l", "init-length", "set initial length for snek", "<integer>");
   opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
   opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
   opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
   opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
+  opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
+  opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
+  opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
   opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
   opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
   opts.optflag("h", "help", "print this help menu");
@@ -144,6 +148,26 @@ fn main() {
   let game_seeds = match matches.opt_str("n") {
     None => 9,
     Some(n) => n.parse::<i32>().expect("Failed to parse game_seeds parameter (-n)"),
+  };
+
+  let radius = match matches.opt_str("r") {
+    None => 6,
+    Some(n) => n.parse::<i32>().expect("Failed to parse radius parameter (-r)"),
+  };
+  
+  let init_length = match matches.opt_str("l") {
+    None => 3,
+    Some(n) => n.parse::<i32>().expect("Failed to parse init_length parameter (-l)"),
+  };
+
+  let cacti = match matches.opt_str("C") {
+    None => 1,
+    Some(n) => n.parse::<i32>().expect("Failed to parse cacti parameter (-C)"),
+  };
+  
+  let apples = match matches.opt_str("A") {
+    None => 1,
+    Some(n) => n.parse::<i32>().expect("Failed to parse cacti parameter (-A)"),
   };
 
   let host_port = match matches.opt_str("a") {
@@ -232,16 +256,15 @@ fn main() {
     },
     Challenge::Game => {
       /* This should be read from a per-game config file */
-      params.inregs = vec![3,4,5,6,7,8,9];
-      params.outregs= vec![0,1,2];
+      params.inregs = vec![3,4,5,6,7,8,9,10];
+      params.outregs= vec![1,0,2];
       let mut gs = Vec::new();
       let mut num_classes = 0;
       for i in 0..game_seeds {
-        let radius = 8 + i % 3;
         gs.push(Problem::new(vec![0,0,0],
                              Target::Game(GameData {
                                addr: host_port.clone(),
-                               params: vec![i, radius, radius * 8 +1, 0, 1+i%3, i/2]
+                               params: vec![i, radius, radius * 8 +1, 0, apples, cacti, init_length]
                              })));
         num_classes += 1;
       }
@@ -318,7 +341,6 @@ fn main() {
   params.binary_path = elf_path.clone();
   params.host_port = host_port; 
   params.season_divisor = 1;
-  println!("[*] Season length set to {}", params.calc_season_length());
   params.set_init_difficulties();
 
   //params.io_targets.num_classes = params.outregs.len();
@@ -374,7 +396,7 @@ fn main() {
     let mut iteration = pop_local.read()
                                  .expect("Failed to open read lock on pop_local")
                                  .iteration;
-    let show_every = 4 * params.calc_season_length();
+    let show_every = 4 * params.calc_season_length(iteration);
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
     let n_jobs    = machinery.cluster.len();
@@ -417,7 +439,7 @@ fn main() {
             champion = updated.clone();
           };
           //let mean_fit_deltas = mean(&fit_deltas);
-          if peek_path.exists() && champion != None {
+          if updated != None || (peek_path.exists() && champion != None) {
             let champion = champion.clone();
             println!("[*] Verbosely evaluating new champion:\n{}",
                      champion.as_ref()

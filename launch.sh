@@ -2,7 +2,7 @@
 PROJECT_ROOT=`pwd`
 
 BINARY=$1
-[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-AC3200-ARM-132-AIO-httpd
+[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/ldconfig.real
 function labelmaker () 
 {
   SRC=/dev/urandom
