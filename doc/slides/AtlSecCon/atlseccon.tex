@@ -1,5 +1,6 @@
 \documentclass[9pt]{beamer}
 \usepackage[utf8x]{inputenc}
+\usepackage{chronology}
 %\usepackage{enumitem}
 \usetheme{Ampang}
 %%% XeLaTeX engine for Ubuntu Font support
@@ -12,6 +13,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 ]
 {UbuntuMono-Regular.ttf}
 \setmonofont{UbuntuMono-Regular.ttf}
+{\ttfamily \hyphenchar\the\font=`\-}
 
 \newcommand\Wider[2][3em]{%
 \makebox[\linewidth][c]{%
@@ -26,6 +28,15 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   \node[opacity=#1, inner sep=0pt] at (current page.center)
        {\includegraphics[width=\paperwidth,height=\paperheight]{#2}};
        \clearpage
+}
+
+\usetikzlibrary{chains}
+\makeatletter
+\tikzset{west below/.code=\tikz@lib@place@handle@{#1}{north west}{0}{-1}{south west}{1}}
+
+\tikzset{
+  typnode/.style={anchor=north west, text width=\textwidth, inner sep=0mm},
+  data/.style={draw=gray, rectangle, font=\scriptsize, inner sep=0.5mm},
 }
 
 \title{Return Oriented Program Evolution with ROPER}
@@ -195,6 +206,38 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
     \end{columns}
 \end{frame}
 
+%% \begin{frame}{\theframenumber. Timeline}
+%%   \begin{tikzpicture}[x=1cm, y=-7mm]
+%%     %draw horizontal line
+%%     \foreach \xValue in {0,34}
+%%     \path (\xValue,0) edge[-latex] ++(0,39)
+%%     edge[dashed] ++ (down:1);
+
+%%     %%draw years
+%%     \foreach \y [evaluate=\y as \xear using int(1600+\y*10)] in {0,1,...,38}{
+%%       \node[left=2pt,anchor=east,xshift=0,font=\scriptsize] at (0,\y) {$\xear$};
+%%       \draw (-0.1,\y) -- (0.1,\y); \draw (0,\y+.5) -- (0.1,\y+.5);
+%%     }
+
+%%     \begin{scope}[start chain=ch1 going west below, node distance=+1em]
+%%       \foreach \Year/\Text in {%
+        
+%%        % 1603/{King James VI of Scotland ascends to the English throne, becoming James I of England and uniting the crowns - but not the parliaments - of the two kingdoms},
+%%       %  1605/{\textbf{5 November} - Gunpowder Plot: A plot in which Guy Fawkes and other Catholic associates conspired to blow up King James VI and I and the Parliament of England was uncovered.},
+%%       }
+%%                {
+%%                  \node[typnode, at=(right:5cm), on chain=ch1, alias=Text] {\Text};
+%%                  \node[data,    base left=+2em of Text, alias=Year] {\Year};
+%%                  \draw[-|] (Year.east) -- ++(right:3mm);
+%%                  \draw     (Year.west) -- ++(left:3mm)
+%%                  -- ([shift=(right:3mm)] 0,{(\Year-1600)/10})
+%%                  --                     (0,{(\Year-1600)/10});
+%%                }
+%%     \end{scope}
+%%   \end{tikzpicture}~
+%% \end{frame}
+
+
 
 \begin{frame}[t]{\theframenumber. How ROPER works}
 
@@ -211,13 +254,22 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{frame}
 
 \begin{frame}{\theframenumber. Evolutionary computation}
+  \BackgroundImage[0.175]{../images/finches.png}
   \begin{columns}
    
     \begin{column}{.5\textwidth}
+      The strategies ROPER adopts are drawn from the field of {evolutionary computation}, a broad class of approaches to the problem of machine intelligence that exploits the abstractness of natural selection by instantiating it in code.
+      \vspace{8pt}
 
+      In particular, ROPER draws on the tradition of genetic programming, which treats a stochastically generated set of programmes as the genotypes of a population, and their performance when executed as their phenotypes. \vspace{8pt}
+
+     %% add timeline image, perhaps 
     \end{column}
     \begin{column}{.5\textwidth}
+      Selective pressures are brought to bear on the phenotypes, in order to decide which genotypes are allowed to reproduce. Variation operators are applied to the genotypes, spawning new individuals into the population. 
+      \vspace{8pt}
 
+      Here, the genotypes are ROP-chains -- stacks of pointers into gadgets existing in executable memory -- and the phenotypes are the behavioural profiles those chains exhibit when hijacking the instruction pointer of the exploited process.
     \end{column}
   \end{columns}
 \end{frame}
@@ -234,6 +286,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{frame}
 
 \begin{frame}[t]{\theframenumber. Pattern matching}
+  \BackgroundImage[0.4]{../images/mario-shell.png}
   \begin{columns}
     \begin{column}{.5\textwidth}
       The most basic type of problem that ROPER can breed a population of chains to solve is that achieving a determinate register state in the CPU, specified by a simple pattern consisting of integers and wildcards.
@@ -357,11 +410,20 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       \vspace{8pt}
 
       To the best of my knowledge, this has never been attempted before.
-      
+      \vspace{8pt}
+
+      I decided to start with the well-known Iris dataset, compiled by
+      Ronald Fisher \& Edgar Anderson in 1936. 
 
     \end{column}
     \begin{column}{.5\textwidth}
+      Each ROP-chain in the population would be passed the petal and sepal measurements of each specimen in the Iris dataset.
+      \vspace{8pt}
 
+      The fitness of the chains was made relative to the accuracy with which they could predict the species of iris from those predictions.
+      \vspace{8pt}
+
+      Given time, the population would be able to recognize iris species with an accuracy of about 96\,\%, as an effect of evolution alone.
     \end{column}
     \end{columns}
 
@@ -420,6 +482,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 
 \begin{frame}{\theframenumber. Implementing Niching through Fitness Sharing}
+  \BackgroundImage[0.2]{../images/overpop.png}
   \begin{columns}
     \begin{column}{.5\textwidth}
       \begin{itemize}
@@ -444,6 +507,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{frame}
 
 \begin{frame}{\theframenumber. Crowding Implemented as Fitness Sharing}
+  \BackgroundImage[0.2]{../images/2ropers.png}
   \begin{columns}
     \begin{column}{.5\textwidth}
       \begin{itemize}
@@ -478,13 +542,30 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{frame}
 
 \begin{frame}{\theframenumber. Snek!}
+  \BackgroundImage{../images/snake.png}
+  The next step, which I'm currently working on, is to have ROPER evolve populations that can respond to dynamic environments. A good sandbox for this sort of thing is to have ROPER's populations play games.
+  \vspace{8pt}
 
-  SNEK!
-  DEMO.
+  They're currently learning how to play an implementation of Snake that I hacked together (\url{github.com/oblivia-simplex/snek}).
+  \vspace{8pt}
 
+  Please join me in this prayer to the demo gods.
 
 \end{frame}
 
+\begin{frame}{\theframenumber. Horizons and Applications}
+  \BackgroundImage[0.3]{../images/roper-mini.png}
+  What potential uses are there for adaptive or intelligent ROP-chain payloads?
+  \begin{itemize}
+  \item GOOD: IDS subversion and training through AI arms races -- can ROPER evolve payloads that evade the detection of AIs trained to recognize ROP execution? Can we use these to train better IDS AIs?
+  \item EVIL: a component of complex, context-sensitive malware, on the scale of Stuxnet, using feature-recognizing ROP-chains to sense weaknesses or opportunities in a network 
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \BackgroundImage[1]{../images/roper.png}
+\end{frame}
 
 
 \end{document}

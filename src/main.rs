@@ -109,7 +109,7 @@ fn main() {
   opts.optopt("P", "population", "set population size", "<positive integer>");
   opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
   opts.optopt("L", "label", "set a label for the trial", "<string>");
-  opts.optopt("l", "init-length", "set initial length for snek", "<integer>");
+  opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
   opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
   opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
   opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");

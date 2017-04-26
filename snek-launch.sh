@@ -94,18 +94,18 @@ function run () {
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
-                                --crossover=0.5 \
+                                --crossover=0.3 \
                                 --sample_ratio=1.0 \
-                                --population=512 \
+                                --population=4096 \
                                 --threads=1 \
                                 --tsize=5 \
-                                --demes=1 \
+                                --demes=4 \
                                 --migration=0.05 \
-                                --game_seeds=3 \
-                                --radius=7 \
-                                --apples=1 \
-                                --cacti=1 \
-                                --noviscosity \
+                                --game_seeds=12 \
+                                --radius=9 \
+                                --init_length=5 \
+                                --apples=2 \
+                                --cacti=2 \
                                 --random_override \
                                 -L $LABEL 
                                 
