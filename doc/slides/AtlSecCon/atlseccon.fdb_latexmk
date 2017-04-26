@@ -1,9 +1,9 @@
 # Fdb version 3
-["xdvipdfmx"] 1493212513 "atlseccon.xdv" "atlseccon.pdf" "atlseccon" 1493212522
-  "atlseccon.xdv" 1493212513 184840 6731e7c7bbf3ca28c2036af8e429a8ed "xelatex"
+["xdvipdfmx"] 1493213586 "atlseccon.xdv" "atlseccon.pdf" "atlseccon" 1493213595
+  "atlseccon.xdv" 1493213585 185080 629435456d77a81da285e2d21e459086 "xelatex"
   (generated)
   "atlseccon.pdf"
-["xelatex"] 1493212510 "atlseccon.tex" "atlseccon.xdv" "atlseccon" 1493212522
+["xelatex"] 1493213583 "atlseccon.tex" "atlseccon.xdv" "atlseccon" 1493213595
   "../../examples/iris/nosharing-diff/nosharing.png" 1492783265 56273 b114d3d3d5cc4ab28577a41c31c8d1e6 ""
   "../../examples/iris/sharing3/sharing3-black.png" 1492782884 124338 ab265c4249ebc5f08fd9eab1b17104f8 ""
   "../images/2ropers.png" 1493210672 57892 08fced0f180e34901325cce9256f2fba ""
@@ -219,10 +219,10 @@
   "/home/oblivia/texlive/texmf-dist/web2c/texmf.cnf" 1488495668 32024 319bf8a79fafbc1d95eafac6b6c6658b ""
   "/home/oblivia/texlive/texmf-var/web2c/xetex/xelatex.fmt" 1489255182 3292989 b9d183f31f705e0a5db56b69903c9f83 ""
   "/home/oblivia/texlive/texmf.cnf" 1492994600 538 cdc64ede8e9999e79bfdef5f819c35ac ""
-  "atlseccon.aux" 1493212513 4918 2da84f696f534516314c2ea065dbfd11 ""
-  "atlseccon.nav" 1493212513 2224 36334e7f53b361db2ecbe9eedb11aab8 ""
-  "atlseccon.out" 1493212512 0 d41d8cd98f00b204e9800998ecf8427e ""
-  "atlseccon.tex" 1493212508 24776 c8592e6e100f5b2ade4be6a1727592dc ""
+  "atlseccon.aux" 1493213585 4918 2da84f696f534516314c2ea065dbfd11 ""
+  "atlseccon.nav" 1493213585 2224 36334e7f53b361db2ecbe9eedb11aab8 ""
+  "atlseccon.out" 1493213584 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "atlseccon.tex" 1493213582 24800 5d8873475706f54ac321f548059daedc ""
   "beamerthemeAmpang.sty" 1492885495 661 3a320b27bbfab7eb6dfbb5111e82b869 ""
   (generated)
   "atlseccon.log"

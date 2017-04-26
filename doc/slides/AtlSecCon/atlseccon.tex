@@ -310,7 +310,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   
     {\tiny
       \begin{tabular}{l l l} \hline
-        \textbf{\texttt{;; Gadget 0}} 			& \textbf{\texttt{;; Deep Gadget 0}}				& \textbf{\texttt{;; Deep Gadget 1}} \\ 
+        \textbf{\texttt{;; Gadget 0}} 			& \textbf{\texttt{;; Extended Gadget 0}}				& \textbf{\texttt{;; Extended Gadget 1}} \\ 
         \texttt{[000100fc]  mov r0, r6} 	& \texttt{[00016890]  str r0, [r4, \#0x1c]}		& \texttt{[00012780]  bne \#0x18} \\
         \texttt{[00010100]  ldrb r4, [r6], \#1} & \texttt{[00016894]  mov r0, r4}		& \texttt{[00012784]  add r5, r5, r7} \\
         \texttt{[00010104]  cmp r4, \#0}	& \texttt{[00016898]  pop \{r4, lr\}}			& \texttt{[00012788]  rsb r4, r7, r4} \\
@@ -325,7 +325,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
         \texttt{R1: 00000001} 			& \texttt{[00016690]  cmp r3, \#0}		& \texttt{R2: 00000000} \\
         \texttt{R2: 00000001} 			& \texttt{[00016694]  ldrne r2, [r3, \#0x20]}	& \texttt{R7: 0000000b} \\
         \texttt{R7: 0002bc3e} 			& \texttt{[00016698]  moveq r2, r3}		& \\
-        & \texttt{[0001669c]  rsb r2, r2, r1}		& \texttt{;; Deep Gadget 2} \\
+        & \texttt{[0001669c]  rsb r2, r2, r1}		& \texttt{;; Extended Gadget 2} \\
         \textbf{\texttt{;; Gadget 1}} 		& \texttt{[000166a0]  cmn r2, \#1}		& \texttt{[000155ec]  b \#0x1c} \\
         \texttt{[00012780]  bne \#0x18}	& \texttt{[000166a4]  bge \#0x48}			& \texttt{[00015608]  add sp, sp, \#0x58} \\
         \texttt{[00012798]  mvn r7, \#0}	& \texttt{[000166ec]  cmp r2, \#1}			& \texttt{[0001560c]  pop \{r4, r5, r6, pc\}} \\
@@ -335,7 +335,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
         \texttt{R0: ffffffff}			& \texttt{[0001673c]  str r2, [r4, \#0x20]}		& \texttt{R2: 00000000} \\
         \texttt{R1: 00000001}		& \texttt{[00016740]  beq \#0x10}			& \texttt{R7: 0000000b} \\
         \texttt{R2: 00000001}		& \texttt{[00016750]  cmp r3, \#0}			& \\
-        \texttt{R7: ffffffff}			& \texttt{[00016754]  beq \#0x14}			& \textbf{\texttt{;; Deep Gadget 3}} \\
+        \texttt{R7: ffffffff}			& \texttt{[00016754]  beq \#0x14}			& \textbf{\texttt{;; Extended Gadget 3}} \\
  					& \texttt{[00016758]  ldr r3, [r3, \#0x20]}	& \texttt{[00016918]  mov r1, r5   **}\\
         \textbf{\texttt{;; Gadget 2}}		& \texttt{[0001675c]  ldr r2, [r4, \#0x20]}		& \texttt{[0001691c]  mov r2, r6} \\
         \texttt{[00016884]  beq \#0x1c}	& \texttt{[00016760]  cmp r3, r2}			& \texttt{[00016920]  bl \#4294967176} \\
@@ -358,13 +358,13 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \end{center}
 \end{frame}
 
-\begin{frame}{\theframenumber. Deep Gadgets \& Introns} %, \& Extended Phenotypes}
+\begin{frame}{\theframenumber. Extended Gadgets \& Introns} %, \& Extended Phenotypes}
   \BackgroundImage[0.15]{../images/exons.png}
   \begin{columns}
     \begin{column}{.475\textwidth}
       This chain is interesting because its execution path
       spends most of its time in gadgets that aren't
-      referenced in the chain itself (labelled `deep gadgets' on the last
+      referenced in the chain itself (labelled `extended gadgets' on the last
       slide). Gadget \#\,2 jumps backwards, and writes to its own
       stack, overriding the pointers in its genome.
       \vspace{8pt}
