@@ -252,7 +252,7 @@ fn main() {
     Challenge::Game => {
       /* This should be read from a per-game config file */
       params.inregs = vec![3,4,5,6,7,8,9,10];
-      params.outregs= vec![1,0,2];
+      params.outregs= vec![0,1,2];
       let mut gs = Vec::new();
       let mut num_classes = 0;
       for i in 0..game_seeds {

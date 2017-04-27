@@ -647,6 +647,15 @@ impl Population {
     }
     addrs
   }
+  pub fn entry_addrs (&self) -> Vec<u32> {
+    let mut addrs = Vec::new();
+    for chain in &self.deme {
+      for clump in &chain.clumps {
+        addrs.push(clump.words[0]);
+      }
+    }
+    addrs
+  }
   pub fn size (&self) -> usize {
     self.deme.len()
   }

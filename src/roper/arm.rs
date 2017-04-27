@@ -139,7 +139,7 @@ fn bdt_type (w: u32) -> (BDT, usize) {
   }, writeback)
 }   
 */
-fn bdt_stack_direction (w: u32) -> i32 {
+fn bdt_stack_direction (w: u31) -> i32 {
   if ((w & (0x0F << 16)) >> 16) != SP as u32 {
     0
   } else {
