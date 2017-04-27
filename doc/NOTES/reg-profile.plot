@@ -12,4 +12,4 @@ set style histogram clustered
 set boxwidth 0.25
 set xtics (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)
 #set style fill transparent solid 1.0
-plot for [i=2:5] "/tmp/ldconfig.profile" u (($1)+(i * 0.25)):i with boxes
+plot for [i=2:5] filename u (($1)+(i * 0.25)):i with boxes
