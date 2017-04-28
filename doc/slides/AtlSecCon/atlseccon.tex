@@ -25,7 +25,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 \newcommand{\BackgroundImage}[2][0.3] {
   \tikz[remember picture,overlay]
-  \node[opacity=#1, inner sep=0pt] at (current page.center)
+  \node[opacity=#1+0.1, inner sep=0pt] at (current page.center)
        {\includegraphics[width=\paperwidth,height=\paperheight]{#2}};
        \clearpage
 }
@@ -72,7 +72,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
         \begin{tabular}{l}
           \\
           \texttt{Olivia Lucca Fraser} \\
-          \url{oluccafraser@tenable.com} \\
+          \url{oblivia@paranoici.org} \\
           \url{https://github.com/oblivia-simplex} \\
           \texttt{AtlSecCon, Halifax, April 28, 2017} \\
           \\
@@ -528,7 +528,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
     \end{column}
     \begin{column}{.5\textwidth}
       \begin{itemize}
-      \item All that we need to do is to scale the fitness points awareded for each problem with respect to that problem's difficulty. The rewards for solving `difficult' problems (uncrowded niches) will be greater than those awarded for solving `easy' problems (crowded niches). 
+      \item All that we need to do is to scale the fitness points awarded for each problem with respect to that problem's difficulty. The rewards for solving `difficult' problems (uncrowded niches) will be greater than those awarded for solving `easy' problems (crowded niches). 
       \end{itemize}
     \end{column}
     \end{columns}
@@ -560,7 +560,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   They're currently learning how to play an implementation of Snake that I hacked together (\url{github.com/oblivia-simplex/snek}).
   \vspace{8pt}
 
-  Please join me in this prayer to the demo gods.
+  
 
 \end{frame}
 
@@ -595,3 +595,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 %%     \end{columns}
 
 %% \end{frame}
+
+%% TODO:
+%% describe fitness functions in more detail. put uneven materials sec
+%% at the end?
