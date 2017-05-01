@@ -103,9 +103,9 @@ function run () {
                                 --migration=0.05 \
                                 --game_seeds=12 \
                                 --radius=9 \
-                                --init_length=5 \
-                                --apples=2 \
-                                --cacti=2 \
+                                --init_length=1 \
+                                --apples=3 \
+                                --cacti=3 \
                                 --random_override \
                                 -L $LABEL 
                                 
