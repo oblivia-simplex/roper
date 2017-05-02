@@ -616,17 +616,19 @@ error code as the second."
                  (funcall fn uc address size user-data)))))
 
 (defun uc-hook-add (engine fn begin end
-                    &key (hook-type :code) (user-data-ptr))
+                    &key (hook-type :code)
+                      (user-data (foreign-alloc :pointer)))
   (let* ((handle (foreign-alloc :pointer))
          (callback-ptr (fn->callback fn))
          (errcode (%uc-hook-add engine handle
-                                (foreign-enum-value 'uc-hook-type hook-type)
+                                (foreign-enum-value 'uc-hook-type
+                                                    hook-type)
                                 callback-ptr
-                                user-data-ptr
+                                user-data
                                 begin
                                 end)))
     (values handle errcode)))
-        
+
 
 
 ;;;;;;;;;;;;;;;;;
@@ -636,20 +638,13 @@ error code as the second."
   #(#x37 #x00 #xa0 #xe3   ;; mov r0, #x037
     #x03 #x10 #x42 #xe0)) ;; sub r1, r2, r3
 
-(defcallback hook-block-test :void
-    ((uc unicorn-engine)
-     (address :uint64)
-     (block-size :uint32)
-     (user-data :pointer))
-  (format t ">>> Tracing basic block at ~X, block size = ~X~%"
-          address block-size))
-
 (defun code-hook-show-inst (uc address size user-data)
   (let ((inst (uc-mem-read uc address size))
         (regs (uc-reg-read-batch uc (range 0 16))))
-    (format t "## ~X => ~S => ~S~%"
+    ;; a much better way to send data back!
+    (incf (mem-aref user-data :uint64 0))
+    (format t "[~4X] ~S => ~S~%"
             address inst regs)))
-
 
 (defun set-up-tester ()
   (setf *uc* (uc-open :arm :arm))
