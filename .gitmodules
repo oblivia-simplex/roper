@@ -1,3 +1,6 @@
 [submodule "libs/unicorn"]
 	path = libs/unicorn
 	url = https://github.com/unicorn-engine/unicorn
+[submodule "lisp/cl-unicorn"]
+	path = lisp/cl-unicorn
+	url = git@github.com:oblivia-simplex/cl-unicorn
