@@ -1,2 +1,5 @@
 doc/* linguist-documentation=true
 logs/* linguist-generated=true
+*.sty linguist-vendored=true
+*.ttf linguist-vendored=true
+
