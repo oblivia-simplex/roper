@@ -11,6 +11,17 @@ doc/nonpublic/
 *.so
 *.o
 *.hi
+*.aux
+*latexmk
+*.fls
+*.log
+*.vrb
+*.toc
+*.xdv
+*.snm
+logs/
+
+
 
 
 scratch
