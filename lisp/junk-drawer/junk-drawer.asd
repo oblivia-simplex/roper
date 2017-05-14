@@ -7,6 +7,7 @@
   :depends-on (#:cffi)
   :components ((:file "package")
                (:file "pointers")
+               (:file "glue")
                (:file "stringification")
                (:file "utils")))
 
