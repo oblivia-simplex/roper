@@ -35,7 +35,7 @@
   '((#b100000 :add) ;; rd, rs, rt
     (#b100001 :addu) ;; rd, rs, rt
     (#b100100 :and) ;; rd, rs, rt
-    (#b001101 :break) ;; 
+    (#b001101 :break) ;;
     (#b011010 :div) ;; rs, rt
     (#b011011 :divu) ;; rs, rt
     (#b001001 :jalr) ;; rd, rs
@@ -58,7 +58,7 @@
     (#b000110 :srlv) ;; rd, rt, rs
     (#b100010 :sub) ;; rd, rs, rt
     (#b100011 :subu) ;; rd, rs, rt
-    (#b001100 :syscall) ;; 
+    (#b001100 :syscall) ;;
     (#b100110 :xor))) ;; rd, rs, rt
 
 (defparameter +func-map+

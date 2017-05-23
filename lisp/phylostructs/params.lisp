@@ -1,0 +1,42 @@
+(in-package :phylostructs)
+
+(defparameter *params*
+  (list :label "ROPER"
+        :ret-hooks t
+        :population-size #x1000
+        :crossover-rate 0.3
+        :max-iterations #x10000
+        :selection-method :tournament
+        :t-size 4
+        :code nil
+        :code-addr nil
+        :data nil
+        :data-addr nil
+        :brood-size 2
+        :min-start-len 2
+        :max-start-len 16
+        :max-len #x100
+        :constants nil
+        :stack-input-sampling nil
+        :fitness-goal 0.1
+        :season-divisor 1
+        :training-problems nil
+        :testing-problems nil
+        :sample-ratio 1.0
+        :cuck-rate 0.05
+        :verbose nil
+        :date-dir ""
+        :csv-path ""
+        :pop-path ""
+        :threads 1
+        :num-demes 1
+        :migration 0.01
+        :save-period #x1000
+        :use-viscosity t
+        :outregs nil
+        :inregs nil
+        :binary-path ""
+        :fatal-crash nil
+        :crash-penalty nil
+        :host-port ""
+        :random-override t))

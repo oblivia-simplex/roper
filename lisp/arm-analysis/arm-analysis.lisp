@@ -139,8 +139,10 @@
 (defvar +pop-dir+ +1)
 (defvar +push-dir+ -1)
  ;       ((zerop (read-bit w 21)) 0)
-        ((zerop (read-bit w 23)) +push-dir+)
-        (t +pop-dir+)))
+(defun bdt-stack-dir (w)
+  (if (zerop (read-bit w 23))
+      +push-dir+
+      +pop-dir+))
 
 
 (defun tally-arith-reg (insts)
