@@ -4,6 +4,7 @@
   :serial t
   :description "Constraint-solving tool for extracting gadgets"
   :depends-on (#:arm-analysis
+	       #:mips-analysis
                #:read-binary
                #:elf
                #:screamer

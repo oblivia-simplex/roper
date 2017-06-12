@@ -70,6 +70,16 @@
 ;; Generic Interface
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+(export 'jumpp)
+(defun jumpp (w)
+  (member (what-layout w)
+	  '(:Lay=BX :Lay=BR)))
+
+(export 'syscallp)
+(defun syscallp (w)
+  (eq (what-layout w) :Lay=SWI))
+
+(export 'jump-reg)
 (defun jump-reg (w)
   (let ((layout (what-layout w)))
     (cond ((eq layout :Lay=BX)
@@ -93,10 +103,16 @@
              (= (bdt-stack-dir w) +push-dir+))
     (bdt-rlist w)))
 
+(export 'foo)
+(defun foo (w)
+  (format t "hello from foo! ~S~%" w))
+
 (export 'retp)
 (defun retp (w)
-  (and (eq (what-layout w) :Lay=BDT)
-       (< 0 (logand (ash 1 +pc+) w))))
+  (when w
+    (and (eq (what-layout w) :Lay=BDT)
+	 (eq (ldb (byte 4 16) w) +sp+)
+         (< 0 (logand (ash 1 +pc+) w)))))
 
 ;(defun stack-delta-rlist (w)
 ;  (if (eq (what-layout w) :Lay=BDT)
@@ -106,17 +122,28 @@
 
 (junk-drawer:def-bitcounter 16)
 (defun stack-delta (w)
-  (if (eq (what-layout w) :Lay=BDT)
-      (* bdt-stack-dir w
-         (bitcounter-16 w))))
+  (if (and (eq (what-layout w) :Lay=BDT)
+	   (eq (ldb (byte 4 16) w) +sp+) ;; is a push/pop
+	   (eq (ldb (byte 1 21) w) 1)) ;; writeback
+      (* (bdt-stack-dir w)
+         (bitcounter-16 w))
+      0))
 
-(defun arith-dst-reg (w)
-  (ldb (byte 4 12) w))
+(export 'pop-offset)
+(defun pop-offset (w r)
+  (position r (reverse (pop-regs w)) :test #'=))
 
+(export 'arith-dst-reg)
+(defun arith-dst-regs (w)
+  (when (eq (what-layout w) :Lay=DP)
+    (list (ldb (byte 4 12) w))))
+
+(export 'arith-src-regs)
 (defun arith-src-regs (w)
-  (let ((lst (list (ldb (byte 4 16) w))))
-    (when (not (dp-immediate w))
-      (ldb (byte 4 0) w))))
+  (when (eq (what-layout w) :Lay=DP)
+    (let ((lst (list (ldb (byte 4 16) w))))
+      (when (not (dp-immediate w))
+	(push (ldb (byte 4 0) w) lst)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -139,6 +166,8 @@
 (defvar +pop-dir+ +1)
 (defvar +push-dir+ -1)
  ;       ((zerop (read-bit w 21)) 0)
+
+
 (defun bdt-stack-dir (w)
   (if (zerop (read-bit w 23))
       +push-dir+

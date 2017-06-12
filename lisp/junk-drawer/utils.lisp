@@ -11,7 +11,7 @@
     dword))
 
 (defun get-words (bytes &key (width 4))
-  (loop for i below (length bytes) by width
+  (loop for i below (- (length bytes) 1) by width
         collect
         (bytes->dword bytes i :width width)))
 

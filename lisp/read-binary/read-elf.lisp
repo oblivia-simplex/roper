@@ -12,14 +12,22 @@
                     :element-type '(unsigned-byte 8)
                     :initial-contents bytes)
    :type (array (unsigned-byte 8)))
+  (words (make-array (floor (/ (length bytes) 4))
+                     :element-type '(unsigned-byte 32)
+                     :initial-contents (get-words bytes))
+   :type (array (unsigned-byte 32)))
+  ;; parameterize word width. this is a shortcut for now. 
   (addr address :type integer))
 ;  (perm perms :type (cons keyword)))
 
+(export 'word-at)
 (defun word-at (section address &optional (width 4))
   (when (<= (sec-addr section)
             address
             (1- (+ (sec-addr section)
                    (length (sec-data section)))))
+    ;;(aref (sec-words section)
+    ;;      (floor (/ (- address (sec-addr section)) width)))))
     (bytes->dword (sec-data section)
                   (- address (sec-addr section))
                   :width width)))
@@ -44,7 +52,6 @@
                         'list
                         (segment-perm s1)
                         (segment-perm s2)))))
-
 ;; TODO: do this properly, in log n time, using a mergesort-like
 ;; strategy. This linear sweep is dumb and lazy. 
 (defun merge-segments (seglist)

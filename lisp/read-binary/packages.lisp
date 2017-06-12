@@ -4,12 +4,13 @@
   (:export :get-elf-sections
    :get-loadable-elf-segments
            :secs-in-segs
-   :segment-addr
-           :segment-size
-   :segment-perm
+   :seg-addr
+           :seg-size
+   :seg-perm
            :segment-addr
-   :section-addr
-           :section-data
-   :section-name
+   :sec-addr
+           :sec-data
+   :sec-name
+   :sec-words
    :merge-segments
    ))
