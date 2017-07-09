@@ -1,8 +1,22 @@
 (in-package #:2ndvariety)
 
+
+(export '*word-size*)
 (defparameter *word-size* 4)
 
+(export '*arch*)
 (defparameter *arch* :ARM)
+
+;(defstruct clump
+;  (words () :type (or null (cons fixnum)))
+;  (sp-delta 0 :type fixnum)
+;  (ret-offset 0 :type fixnum)
+;  (ret-addr 0 :type fixnum)
+;  (viscosity 50 :type fixnum)
+;  (input-slots)
+;  (mode)
+;  (link-age 0 :type fixnum)
+;  (link-fit nil :type (or null float)))
 
 (defmacro defdispatch (name arglist)
   (let ((fn (gensym "FN")))
@@ -32,9 +46,7 @@
 
 (defdispatch pop-offset (w r))
 
-(defun text-sec (path)
-  (find '.text (get-elf-sections (elf:read-elf path))
-        :key #'read-elf::sec-name))
+
 
 (defun is-ret (addr sec &key (arch *arch*))
   (let ((w (word-at sec addr)))
@@ -126,6 +138,7 @@
       (assert! (is-ret addr sec :arch arch))
       (cons addr 0))))
 
+(export 'find-gadgets)
 (defun find-gadgets (sec &key (word-size *word-size*)
 			   (arch *arch*))
   (let ((exits (concatenate 'list
@@ -137,7 +150,7 @@
 					 :arch arch))))
 
     (remove-if (lambda (g)
-		 (< (getf g :sp-delta) 0))
+		 (<= (phylostructs::cl-sp-delta g) 0))
 	       (apply #'append
 		      (mapcar (lambda (x) (dilate-gadget x sec))
 			      exits)))))
@@ -162,16 +175,14 @@
 	 (incf sp-delta (stack-delta
 			 (word-at sec a word-size)
 			 :arch arch))
-	 (push `(:addr ,a
-		 :sp-delta ,sp-delta
-		 :ret-offset ,retoffset
-		 :ret-addr ,addr) entries))
+	 (push (phylostructs::make-clump :words (list a)
+			   :sp-delta sp-delta
+			   :ret-offset retoffset
+			   :ret-addr addr)
+	       entries))
+	 ;(push `(:addr ,a
+		; :sp-delta ,sp-delta
+		 ;:ret-offset ,retoffset
+		 ;:ret-addr ,addr) entries))
     entries))
-
-
-;; TODO:
-;; * saturate-gadgets with constants
-;; * create initial populations
-;; * rewrite tournament and fitness sharing functions,
-;;   borrowing from GENLIN and rust implementation of ROPER
 

@@ -1,15 +1,32 @@
 (in-package :junk-drawer)
 
+(export 'range)
 (defun range (lo hi)
   (loop for i from lo to (1- hi) collect i))
 
+(export 'bytes->dword)
 (defun bytes->dword (vec offset &key (width 4))
   (let ((dword 0))
-    (loop for i below width do
+    (loop for i below width
+       while (< (+ i offset) (length vec)) do
       (incf dword
             (ash (aref vec (+ i offset)) (* i 8))))
     dword))
 
+(export 'dwords->bytes)
+(defun dwords->bytes (dwords &key (endian :little))
+  (let ((bytes)
+	(lo (if (eq endian :little) 0 3))
+	(hi (if (eq endian :little) 3 0))
+	(step (if (eq endian :little) #'1+ #'1-)))
+    (loop for word in dwords do
+	 (let ((i lo))
+	   (loop while (/= i (funcall step hi)) do;; generalize
+		(push (ldb (byte 8 (* i 8)) word) bytes)
+		(setq i (funcall step i)))))
+    (reverse bytes)))
+
+(export 'get-words)
 (defun get-words (bytes &key (width 4))
   (loop for i below (- (length bytes) 1) by width
         collect

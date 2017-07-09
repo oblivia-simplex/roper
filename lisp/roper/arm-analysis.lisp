@@ -86,7 +86,7 @@
            (ldb (byte 4 0) w))
           ((and (eq layout :Lay=DP)
                 (= (ldb (byte 1 25) w) 0) ;; immediate flag
-                (= (arith-dst-reg w) +pc+)
+                (member +pc+ (arith-dst-regs w) :test #'=)
                 (= (dp-opcode w) #b1101) ;; MOV
                 (= (ldb (byte 8 4) w) 0)) ;; no shift. simplification
            (ldb (byte 4 0) w)))))
