@@ -63,19 +63,28 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
           \texttt{P\,R\,O\,G\,R\,A\,M\,M\,E} \\
           \texttt{E\,V\,O\,L\,U\,T\,I\,O\,N}~{\large \texttt{with}} \\
           \texttt{R\,O\,P\,E\,R} \\
-          \\
-          \\
-          \\
+          
+%          \\
+%          \\
         \end{tabular}
       }
       {\large
+        \begin{tabular}{l l}
+          \\
+          \texttt{Olivia Lucca Fraser} 
+          & \url{ofraser@dal.ca} \\
+          \texttt{Nur Zincir-Heywood} 
+          & \url{zincir@cs.dal.ca} \\
+          \texttt{Malcolm Heywood}
+          & \url{mheywood@cs.dal.ca} \\
+          \texttt{John T. Jacobs}
+          & \url{John_T_Jacobs@raytheon.com} \\
+        \end{tabular}
         \begin{tabular}{l}
           \\
-          \texttt{Olivia Lucca Fraser} \\
-          \url{oblivia@paranoici.org} \\
+          \texttt{NIMS Laboratory @ Dalhousie University}\\
+          \texttt{Raytheon Space \& Airborne Systems}\\
           \url{https://github.com/oblivia-simplex} \\
-          \texttt{SecDef @ GECCO} \\
-          \\
           \\
         \end{tabular}
       }
@@ -126,13 +135,28 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       {\Large ~Questions: }
       \begin{itemize}
       \item What is return oriented programming?
-      \item What is genetic programming?
+      \item How might evolutionary methods be applied to ROP?
       \item How do we best cultivate the evolution of ROP payloads?
       \item What sort of things are they capable of? 
 
       \end{itemize}
     \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}{\theframenumber. The Basic Idea}
+  ROPER is a system for evolving populations of ROP-chains for a target executable. 
+\end{frame}
+
+
+\begin{frame}{\theframenumber. Bird's-Eye View of ROPER}
+  %% ROPER's pattern matching functionality
+      \includegraphics[width=\textwidth]{../images/architecture-transparent.png}
+\end{frame}
+
+\begin{frame}{\theframenumber. Bird's-Eye View of ROPER}
+  %% ROPER's pattern matching functionality
+      \includegraphics[width=\textwidth]{../images/architecture-transparent-gadget-extraction.png}
 \end{frame}
 
 \begin{frame}{\theframenumber. A Quick Introduction to Return Oriented Programming}
@@ -149,6 +173,18 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
     \end{column}
     \end{columns}
 \end{frame}
+
+%\begin{frame}{\theframenumber. Quick Primer on Call Stacks}
+
+  % return to libc
+  % structure of call stack
+  % diagram of overwritten return address.
+%\end{frame}
+
+%\begin{frame}{\theframenumber. Return-to-libc}
+%  One tactic, made famous by Solar Designer, is to simply reuse entire functions that have been loaded into executable memory. [bit more on this, and why it's not enough nowadays]
+%\end{frame}
+
 
 \begin{frame}{\theframenumber. What is a ROP chain?}
 
@@ -180,31 +216,59 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 \end{frame}
 
-
-\begin{frame}{\theframenumber. An Equally Quick Introduction to Genetic Programming}
-
-
-  \tikz[remember picture,overlay]
-  \node[opacity=0.6, inner sep=0pt] at (current page.center)
-       {\includegraphics[width=\paperwidth,height=\paperheight]{../images/AI_ooze_transparent.png}};
-       \clearpage
-
-%  \includegraphics[width=\textwidth]{../images/AI_ooze_transparent.png}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      What is necessary in order for natural selection to take place?
-      \begin{enumerate}
-      \item Reproduction with mutation 
-      \item Variation in performance
-      \item Selection by performance
-      \end{enumerate}
-      Anything that implements these traits can implement Darwinian evolution. 
-    \end{column}
-    \begin{column}{.5\textwidth}
-      % will appear on mulder's mouth % Including malware?
-    \end{column}
-    \end{columns}
+\begin{frame}{\theframenumber. Generalization of the Gadget Concept}
+  % JOP, etc.
+  % free branch
+  \begin{itemize}
+  \item the precise meaning of a `return' instruction is architecture-dependent; not all architectures implement \textbf{return} as a pop into PC (MIPS, e.g.)
+    
+  \item the essential idea we're after is \textbf{stack-controlled jumps}
+  \item this means we don't need to limit our search to `return's
+  \item we can broaden it to include any sequence of instructions that culminates in a jump to a location that's determined by the data on the stack
+  \item this gives us what's commonly called `JOP', or jump-oriented programming
+  \end{itemize}
+  
+  
 \end{frame}
+
+
+
+\begin{frame}{\theframenumber. Uneven Raw Materials}
+
+  \begin{center}
+    Register usage in tomato-RT-N18U-httpd, an ARM router HTTP daemon
+    \includegraphics[width=\textwidth]{../images/tomato.png}
+    \end{center}
+  Unlike classical linear genetic programming, where you have the clean slate of a customized instruction set and VM, here, we're dealing with the rough ground of already-compiled machine code (for the ARM processor), and stuck with its idiosyncracies.
+
+\end{frame}
+
+
+%% \begin{frame}{\theframenumber. An Equally Quick Introduction to Genetic Programming}
+
+
+%%   \tikz[remember picture,overlay]
+%%   \node[opacity=0.6, inner sep=0pt] at (current page.center)
+%%        {\includegraphics[width=\paperwidth,height=\paperheight]{../images/AI_ooze_transparent.png}};
+%%        \clearpage
+
+%% %  \includegraphics[width=\textwidth]{../images/AI_ooze_transparent.png}
+%%   \begin{columns}
+%%     \begin{column}{.5\textwidth}
+%%       What is necessary in order for natural selection to take place?
+%%       \begin{enumerate}
+%%       \item Reproduction with mutation 
+%%       \item Variation in performance
+%%       \item Selection by performance
+%%       \end{enumerate}
+%%       Anything that implements these traits can implement Darwinian evolution. 
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+%%       % will appear on mulder's mouth % Including malware?
+%%     \end{column}
+%%     \end{columns}
+%% \
+%% end{frame}
 
 %% \begin{frame}{\theframenumber. Timeline}
 %%   \begin{tikzpicture}[x=1cm, y=-7mm]
@@ -239,39 +303,40 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 
 
-\begin{frame}[t]{\theframenumber. How ROPER works}
 
-  \BackgroundImage[0.7]{../images/simplefarmer.png}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-     ROPER evolves a population of ROP chains through a process of natural selection.
-
-    \end{column}
-    \begin{column}{.5\textwidth}
-
-    \end{column}
-    \end{columns}
-\end{frame}
-
-\begin{frame}{\theframenumber. Evolutionary computation}
-  \BackgroundImage[0.175]{../images/finches.png}
-  \begin{columns}
+%% \begin{frame}{\theframenumber. Evolutionary computation}
+%%   \BackgroundImage[0.175]{../images/finches.png}
+%%   \begin{columns}
    
-    \begin{column}{.5\textwidth}
-      The strategies ROPER adopts are drawn from the field of {evolutionary computation}, a broad class of approaches to the problem of machine intelligence that exploits the abstractness of natural selection by instantiating it in code.
-      \vspace{8pt}
+%%     \begin{column}{.5\textwidth}
+%%       The strategies ROPER adopts are drawn from the field of {evolutionary computation}, a broad class of approaches to the problem of machine intelligence that exploits the abstractness of natural selection by instantiating it in code.
+%%       \vspace{8pt}
 
-      In particular, ROPER draws on the tradition of genetic programming, which treats a stochastically generated set of programmes as the genotypes of a population, and their performance when executed as their phenotypes. \vspace{8pt}
+%%       In particular, ROPER draws on the tradition of genetic programming, which treats a stochastically generated set of programmes as the genotypes of a population, and their performance when executed as their phenotypes. \vspace{8pt}
 
-     %% add timeline image, perhaps 
-    \end{column}
-    \begin{column}{.5\textwidth}
-      Selective pressures are brought to bear on the phenotypes, in order to decide which genotypes are allowed to reproduce. Variation operators are applied to the genotypes, spawning new individuals into the population. 
-      \vspace{8pt}
+%%      %% add timeline image, perhaps 
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+%%       Selective pressures are brought to bear on the phenotypes, in order to decide which genotypes are allowed to reproduce. Variation operators are applied to the genotypes, spawning new individuals into the population. 
+%%       \vspace{8pt}
 
-      Here, the genotypes are ROP-chains -- stacks of pointers into gadgets existing in executable memory -- and the phenotypes are the behavioural profiles those chains exhibit when hijacking the instruction pointer of the exploited process.
-    \end{column}
-  \end{columns}
+%%       Here, the genotypes are ROP-chains -- stacks of pointers into gadgets existing in executable memory -- and the phenotypes are the behavioural profiles those chains exhibit when hijacking the instruction pointer of the exploited process.
+%%     \end{column}
+%%   \end{columns}
+%% \end{frame}
+
+%% have more details on the implementation, instead. answer the questions
+%% you want answered when you read someone else's genetic programming paper.
+%% > representation
+%% > variation operators
+%% > selection operators
+%% > fitness functions
+
+
+
+\begin{frame}{\theframenumber. Bird's-Eye View of ROPER}
+  %% ROPER's pattern matching functionality
+      \includegraphics[width=\textwidth]{../images/architecture-transparent-genetic-emulation.png}
 \end{frame}
 
 \begin{frame}{\theframenumber. Genetic Algorithm with Tournament Selection}
@@ -280,21 +345,62 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   \end{center}
 \end{frame}
 
-\begin{frame}{\theframenumber. Architecture of ROPER}
-  %% ROPER's pattern matching functionality
-      \includegraphics[width=\textwidth]{../images/architecture-transparent.png}
+\begin{frame}{\theframenumber. Genotype Representation}
+  \begin{itemize}
+    \item Individuals are represented as lists of 32-bit words, which may be either pointers to gadgets in the target binary, or immediate values.
+    \item These words are grouped, internally, into `clumps', that loosely bind a gadget pointer to $n/4$ immediate values, where $n$ is the distance that the stack pointer is expected to shift when the gadget executes.
+    \item This grouping allows us to apply the variation operators in a more controlled fashion.
+  \end{itemize}
 \end{frame}
 
 
-\begin{frame}{\theframenumber. Uneven Raw Materials}
-
-  \begin{center}
-    Register usage in tomato-RT-N18U-httpd, an ARM router HTTP daemon
-    \includegraphics[width=\textwidth]{../images/tomato.png}
-    \end{center}
-  Unlike classical linear genetic programming, where you have the clean slate of a customized instruction set and VM, here, we're dealing with the rough ground of already-compiled machine code (for the ARM processor), and stuck with its idiosyncracies.
-
+%% TOP ALIGN THIS FRAME. (TODO)
+\begin{frame}[t]{\theframenumber. Variation Operators}
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      Crossover \& Macromutation
+      \begin{itemize}
+      \item \textbf{single-point crossover} is used
+      %% \item unit: \textbf{clumps}, not individual pointers or values
+      \item the crossover point (the clump link to sever) is selected using a weighted roulette wheel
+      \item the weights for each link (their `viscosity') are proportionate the fitnesses of the ancestors in which those links occurred
+      % \item we refer to this value as the link's `viscosity'
+      \item objective: preservation of beneficial gene linkages
+      \item there is a small chance that one parent is generated randomly, instead of being selected (`headless chicken crossover')
+      \end{itemize}
+      
+    \end{column}
+    \begin{column}{.5\textwidth}
+      Micromutation
+      \begin{itemize}
+      \item alternatively, we may sometimes simply clone the parents while mutating them in the process
+      \item our mutation operators preserve the clump sequence, and instead tweak the values \textbf{inside} one or more clumps
+      \item the operations used include:
+        \begin{itemize}
+        \item bitwise and arithmetical operations
+        \item permutations
+        \item reference and dereference, in the value is a valid pointer
+        \end{itemize}
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
+
+\begin{frame}{\theframenumber. Phenotype Representation}
+  The phenotype, in this context, can be broken down into two parts:
+  \begin{itemize}
+  \item the outcome of the individual's execution, as a ROP-chain, in the host executable's environment, as represented by the resulting CPU context (emulated)
+  \item the image of this context after being passed through one or more fitness functions
+  \end{itemize}
+  The fitness functions, too, can be broken down into three parts:
+  \begin{itemize}
+  \item a crash penalty, applied when the chain crashes the host process, proportionate to the frequency of crashes in the general population
+  \item a metric reflecting degree of success in the chosen task (which may vary widely -- we have experimented with basic pattern matching, classification, and interactive games)
+  \item a fitness-sharing modifier used to disincentivize crowding or overexploitation of low-hanging fruit, and to encourage niching and diversity
+  \end{itemize}
+  
+\end{frame}
+
 
 \begin{frame}[t]{\theframenumber. Pattern matching}
   \BackgroundImage[0.4]{../images/mario-shell.png}
@@ -314,6 +420,76 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       One of ROPER's more peculiar solutions to this problem -- using gadgets from a Tomato router's HTTP daemon -- is on the next slide...
     \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}{\theframenumber. Example of a Compiled Shell-Popping ROP-chain\\ (by ROPeMe, not ROPER)}
+  
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      Payload:
+      
+      00002d38~deadbeef \\
+      0000bb3d~00000000~4b4e554b \\
+      000256f9~00000000~4b4e554b~4b4e554c \\
+      0000bb3d~00000000~0000000b \\
+      00001804~4b4e554a~0000000b \\
+      
+    \end{column}
+    \begin{column}{.5\textwidth}
+
+Runtime:
+
+00002d38 pop \{r0, pc\}\\
+0000bb3d pop \{r1, r7, pc\}\\
+000256f9 pop \{r2, r3, r6, pc\}\\
+0000bb3d pop \{r1, r7, pc\}\\
+00001804 svc 0x0\\
+00001808 pop \{r4, r8\}\\
+0000180C bx lr  \\
+    \end{column}
+  \end{columns}
+  \vspace{12pt}
+  Source: Long Le, ARM Exploitation ROPMAP, Blackhat 2011
+  
+\end{frame}
+
+\begin{frame}{\theframenumber. Specimen generated by ROPER}
+  Payload:
+  \\
+  
+000100fc 0002bc3e 0002bc3e 0002bc3e \\
+00012780 0000000b 0000000b 0000000b 0000000b 0002bc3e \\
+00016884 0002bc3e \\
+00012780 0002bc3e 0002bc3e 0002bc3e 0002bc3e 0000000b \\
+000155ec 00000000 0000000b 0002bc3e \\
+000100fc 0002bc3e 0000000b 00000000 \\
+0000b49c 0002bc3e 0000000b 0002bc3e 0000000b 0002bc3e \\
+0000b48c 0002bc3e 00000000 0002bc3e 0002bc3e 0002bc3e \\
+0000b48c 0002bc3e 0002bc3e 0002bc3e 0002bc3e 00000000 \\
+00016918 0002bc3e 0000000b 0002bc3e 0002bc3e 0000000b \\
+00015d24 0002bc3e 00000000 00000000 \\
+00012a78 0000000b 00000000 \\
+0000e0f8 00000000 \\
+000109b4 0002bc3e 0000000b \\
+0000b48c 0002bc3e 0002bc3e 0002bc3e 0000000b 0002bc3e \\
+000100fc 0002bc3e 00000000 00000000 \\
+000109b4 0002bc3e 0002bc3e \\
+00016758 0000000b \\
+0000e0f8 0002bc3e \\
+000100fc 0002bc3e 00000000 0000000b \\
+00012a78 0002bc3e 0002bc3e \\
+0001569c 0000000b 0002bc3e 0002bc3e \\
+0000bfc4 0002bc3e 0002bc3e \\
+00013760 0000000b 0002bc3e 0000000b 0002bc3e 0000000b \\
+0000bfc4 0002bc3e 0002bc3e \\
+0000b49c 0000000b 00000000 0000000b 0000000b 0002bc3e \\
+00016884 0002bc3e \\
+00012a78 00000000 0000000b \\
+00011fd8 0000000b \\
+00016758 0002bc3e \\
+0000e0f8 0002bc3e \\
+00013760 00000000 0000000b 0002bc3e 0002bc3e 0002bc3e \\
+
 \end{frame}
 
 \begin{frame}{} %{\theframenumber. Strange Paths \& Dark Gadgets}
@@ -541,6 +717,18 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   \end{center}
 \end{frame}
 
+%% The result was a superb run – achieving 96.6 % detection rate
+%% on the training set in 27,724 tournaments, 216 seasons of difficulty
+%% rotation, and an average phylogenic generation of 91.3. Figure 5
+%% shows the course the evolution took, with the right-hand panel
+%% showing the responding environmental pressures – the difficulty
+%% scores associated with each class, showing both mean and standard
+%% deviation.
+
+%% \begin{frame}{\theframenumber. Classification Results}
+%%   do up a nice table or something
+%% \end{frame}
+
 \begin{frame}{\theframenumber. Dynamic Braiding of Difficulty by Niche}
   \begin{figure}
     \includegraphics[width=\textwidth]{../images/braiding.png}
@@ -599,3 +787,22 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 %% TODO:
 %% describe fitness functions in more detail. put uneven materials sec
 %% at the end?
+
+%% \begin{frame}[t]{\theframenumber. How ROPER works}
+
+%%   \BackgroundImage[0.7]{../images/simplefarmer.png}
+%%   \begin{columns}
+%%     \begin{column}{.5\textwidth}
+%%      ROPER evolves a population of ROP chains through a process of natural selection.
+
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+
+%%     \end{column}
+%%     \end{columns}
+%% \end{frame}
+
+%% TODO:
+% plague of segfaults slide
+% params slide
+% numerical results table
