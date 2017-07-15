@@ -159,6 +159,27 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       \includegraphics[width=\textwidth]{../images/architecture-transparent-gadget-extraction.png}
 \end{frame}
 
+\begin{frame}{\theframenumber. $W\oplus X$, or: Smashing the Stack with neither Fun nor Profit}
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      \begin{itemize}
+      \item The classic shellcode attack worked by
+        \begin{itemize}
+        \item writing instructions to a target processes memory, \& then
+        \item corrupting the instruction pointer so that the CPU would execute those instructions
+        \end{itemize}
+      \item This is now rarely possible, thanks to DEP or $W\oplus X$, which prevents any page of memory from being mapped as \textbf{both} executable \textbf{and} writeable.
+      %\item So, assuming that you're able to corrupt the instruction pointer, how do you take control of the exploited process, if you \textbf{cannot introduce any foreign code}?
+      \end{itemize}
+    \end{column}
+    \begin{column}{.5\textwidth}
+      \includegraphics[width=\textwidth]{../images/mem-map.png}
+    \end{column}
+  \end{columns}
+  
+\end{frame}
+
+
 \begin{frame}{\theframenumber. A Quick Introduction to Return Oriented Programming}
   \begin{columns}
     \begin{column}{.4\textwidth}
@@ -167,8 +188,8 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
     \begin{column}{.6\textwidth}
       \begin{itemize}
       \item SITUATION: You have found an exploitable vulnerability in a target process, and are able to corrupt the instruction pointer.
-        \item PROBLEM: The system or process enforces $W\oplus X$: you can't write to executable memory, and you can't execute writeable memory. Old-school shellcode attacks won't work. 
-        \item SOLUTION: You can't introduce any code of your own, but you \emph{can} reuse little `gadgets' of code that have already been mapped to executable memory. The trick is rearranging these gadgets into something useful.
+        \item PROBLEM: You can't write to executable memory, and you can't execute writeable memory. Old-school shellcode attacks won't work. 
+        \item SOLUTION: You can't introduce any code of your own, but you \textbf{can} reuse pieces of memory that are already executable. The trick is rearranging them into something useful.
       \end{itemize}
     \end{column}
     \end{columns}
@@ -186,7 +207,7 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 %\end{frame}
 
 
-\begin{frame}{\theframenumber. What is a ROP chain?}
+\begin{frame}{\theframenumber. What is a ROP gadget?}
 
   \BackgroundImage[0.15]{../images/macgyver2-transparent.png}
 
@@ -198,10 +219,30 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
         \begin{enumerate}
         \item[1.] is already mapped to executable memory
         \item[2.] allows us to regain control of the instruction pointer after it executes
+        \item[3.] in virtue of controlling certain data in memory (typically the stack)
         \end{enumerate}
+      \end{itemize}
+    \end{column}
+    \begin{column}{.5\textwidth}
+      \begin{itemize}
+      \item this lets us chain `gadgets' together, into what's called a `ROP chain'
+      \item in a ROP chain, each gadget performs its operation, and then sends the instruction pointer to the next gadget in the chain
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
 
-      \item The way a ROP gadget lets us regain control is that it ends with a particular form of RETURN statement -- those that pop an address off the stack into the instruction pointer.  
-      \item Ordinarily, the address popped from the stack is a `bookmark' pointing to the site in the code from which a function was called...
+\begin{frame}{\theframenumber. What is a ROP chain?}
+
+  \BackgroundImage[0.15]{../images/macgyver2-transparent.png}
+
+  \begin{columns}
+    \begin{column}{.5\textwidth}
+      \begin{itemize}
+
+      \item `\textbf{Return}-oriented programming' gets its name from using a certain type of RETURN instruction to regain control of the instruction pointer:
+      \item RETURN instructions that work by popping the top of the stack into the instruction pointer
+      \item The address popped from the stack by RETURN is meant to be a sort of `bookmark', pointing to the site from which a function was called...
       \end{itemize}
 
     \end{column}
@@ -212,25 +253,20 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       \end{itemize}
     \end{column}
   \end{columns}
-
-
 \end{frame}
 
-\begin{frame}{\theframenumber. Generalization of the Gadget Concept}
-  % JOP, etc.
-  % free branch
+
+%% transparent background image: junkyard
+\begin{frame}{\theframenumber. Challenges ROP Poses for GP}
+
+  \BackgroundImage[0.15]{../images/2ropers.png}
   \begin{itemize}
-  \item the precise meaning of a `return' instruction is architecture-dependent; not all architectures implement \textbf{return} as a pop into PC (MIPS, e.g.)
-    
-  \item the essential idea we're after is \textbf{stack-controlled jumps}
-  \item this means we don't need to limit our search to `return's
-  \item we can broaden it to include any sequence of instructions that culminates in a jump to a location that's determined by the data on the stack
-  \item this gives us what's commonly called `JOP', or jump-oriented programming
+  \item Genetic Programming often makes use of a highly specialized virtual machine, with a small and purposeful instruction set.
+  \item Our `instruction set' is the set of gadgets extracted from a target binary.
+  \item It is not small, typically numbering over 300.
+  \item It is not purposeful, but a disordered scrap heap of ill-fitting parts. 
   \end{itemize}
-  
-  
 \end{frame}
-
 
 
 \begin{frame}{\theframenumber. Uneven Raw Materials}
@@ -239,7 +275,8 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
     Register usage in tomato-RT-N18U-httpd, an ARM router HTTP daemon
     \includegraphics[width=\textwidth]{../images/tomato.png}
     \end{center}
-  Unlike classical linear genetic programming, where you have the clean slate of a customized instruction set and VM, here, we're dealing with the rough ground of already-compiled machine code (for the ARM processor), and stuck with its idiosyncracies.
+  Operations are unevenly distributed across registers.
+  %Unlike classical linear genetic programming, where you have the clean slate of a customized instruction set and VM, here, we're dealing with the rough ground of already-compiled machine code (for the ARM processor), and stuck with its idiosyncracies.
 
 \end{frame}
 
@@ -345,116 +382,127 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   \end{center}
 \end{frame}
 
-\begin{frame}{\theframenumber. Genotype Representation}
-  \begin{itemize}
-    \item Individuals are represented as lists of 32-bit words, which may be either pointers to gadgets in the target binary, or immediate values.
-    \item These words are grouped, internally, into `clumps', that loosely bind a gadget pointer to $n/4$ immediate values, where $n$ is the distance that the stack pointer is expected to shift when the gadget executes.
-    \item This grouping allows us to apply the variation operators in a more controlled fashion.
-  \end{itemize}
-\end{frame}
+%% \begin{frame}{\theframenumber. Genotype Representation}
+%%   \begin{itemize}
+%%     \item Individuals are represented as lists of 32-bit words, which may be either pointers to gadgets in the target binary, or immediate values.
+%%     \item These words are grouped, internally, into `clumps', that loosely bind a gadget pointer to $n/4$ immediate values, where $n$ is the distance that the stack pointer is expected to shift when the gadget executes.
+%%     \item This grouping allows us to apply the variation operators in a more controlled fashion.
+%%   \end{itemize}
+%% \end{frame}
 
 
-%% TOP ALIGN THIS FRAME. (TODO)
-\begin{frame}[t]{\theframenumber. Variation Operators}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      Crossover \& Macromutation
-      \begin{itemize}
-      \item \textbf{single-point crossover} is used
-      %% \item unit: \textbf{clumps}, not individual pointers or values
-      \item the crossover point (the clump link to sever) is selected using a weighted roulette wheel
-      \item the weights for each link (their `viscosity') are proportionate the fitnesses of the ancestors in which those links occurred
-      % \item we refer to this value as the link's `viscosity'
-      \item objective: preservation of beneficial gene linkages
-      \item there is a small chance that one parent is generated randomly, instead of being selected (`headless chicken crossover')
-      \end{itemize}
+%% %% TOP ALIGN THIS FRAME. (TODO)
+%% \begin{frame}[t]{\theframenumber. Variation Operators}
+%%   \begin{columns}
+%%     \begin{column}{.5\textwidth}
+%%       Crossover \& Macromutation
+%%       \begin{itemize}
+%%       \item \textbf{single-point crossover} is used
+%%       %% \item unit: \textbf{clumps}, not individual pointers or values
+%%       \item the crossover point (the clump link to sever) is selected using a weighted roulette wheel
+%%       \item the weights for each link (their `viscosity') are proportionate the fitnesses of the ancestors in which those links occurred
+%%       % \item we refer to this value as the link's `viscosity'
+%%       \item objective: preservation of beneficial gene linkages
+%%       \item there is a small chance that one parent is generated randomly, instead of being selected (`headless chicken crossover')
+%%       \end{itemize}
       
-    \end{column}
-    \begin{column}{.5\textwidth}
-      Micromutation
-      \begin{itemize}
-      \item alternatively, we may sometimes simply clone the parents while mutating them in the process
-      \item our mutation operators preserve the clump sequence, and instead tweak the values \textbf{inside} one or more clumps
-      \item the operations used include:
-        \begin{itemize}
-        \item bitwise and arithmetical operations
-        \item permutations
-        \item reference and dereference, in the value is a valid pointer
-        \end{itemize}
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+%%       Micromutation
+%%       \begin{itemize}
+%%       \item alternatively, we may sometimes simply clone the parents while mutating them in the process
+%%       \item our mutation operators preserve the clump sequence, and instead tweak the values \textbf{inside} one or more clumps
+%%       \item the operations used include:
+%%         \begin{itemize}
+%%         \item bitwise and arithmetical operations
+%%         \item permutations
+%%         \item reference and dereference, in the value is a valid pointer
+%%         \end{itemize}
+%%       \end{itemize}
+%%     \end{column}
+%%   \end{columns}
+%% \end{frame}
 
-\begin{frame}{\theframenumber. Phenotype Representation}
-  The phenotype, in this context, can be broken down into two parts:
-  \begin{itemize}
-  \item the outcome of the individual's execution, as a ROP-chain, in the host executable's environment, as represented by the resulting CPU context (emulated)
-  \item the image of this context after being passed through one or more fitness functions
-  \end{itemize}
-  The fitness functions, too, can be broken down into three parts:
-  \begin{itemize}
-  \item a crash penalty, applied when the chain crashes the host process, proportionate to the frequency of crashes in the general population
-  \item a metric reflecting degree of success in the chosen task (which may vary widely -- we have experimented with basic pattern matching, classification, and interactive games)
-  \item a fitness-sharing modifier used to disincentivize crowding or overexploitation of low-hanging fruit, and to encourage niching and diversity
-  \end{itemize}
+%% \begin{frame}{\theframenumber. Phenotype Representation}
+%%   The phenotype, in this context, can be broken down into two parts:
+%%   \begin{itemize}
+%%   \item the outcome of the individual's execution, as a ROP-chain, in the host executable's environment, as represented by the resulting CPU context (emulated)
+%%   \item the image of this context after being passed through one or more fitness functions
+%%   \end{itemize}
+%%   The fitness functions, too, can be broken down into three parts:
+%%   \begin{itemize}
+%%   \item a crash penalty, applied when the chain crashes the host process, proportionate to the frequency of crashes in the general population
+%%   \item a metric reflecting degree of success in the chosen task (which may vary widely -- we have experimented with basic pattern matching, classification, and interactive games)
+%%   \item a fitness-sharing modifier used to disincentivize crowding or overexploitation of low-hanging fruit, and to encourage niching and diversity
+%%   \end{itemize}
+
+\begin{frame}{\theframenumber. Implementation Details}
+
+  \begin{tabular}{l | l}
+    GENOTYPE REPRESENTATION & stack of gadget pointers \& immediates\\
+    \\ \\
+    VARIATION OPERATORS & single-point crossover (fitness weighted) \\
+                        & or cloning with micromutation \\
+    \\ \\
+    PHENOTYPE REPRESENTATION & behaviour of ROP-chain in virtual CPU,\\
+                             & loaded with target executable \\
+    \\ \\
+    FITNESS FUNCTIONS & crowding-modulated crash penalty \\
+                      & performance in task \\
+                      & niching/fitness-sharing modifier \\
+  \end{tabular}
   
 \end{frame}
+%% \end{frame}
 
+%% collapse 3 prev slides into one
+%% nice table
 
-\begin{frame}[t]{\theframenumber. Pattern matching}
+%% Add new slide answering John's questions
+%% state which binary is being used
+%% explain general nature of tool
+\begin{frame}{\theframenumber. Pattern matching}
   \BackgroundImage[0.4]{../images/mario-shell.png}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      The most basic type of problem that ROPER can breed a population of chains to solve is that achieving a determinate register state in the CPU, specified by a simple pattern consisting of integers and wildcards.
-      \vspace{8pt}
+%      The most basic type of problem that ROPER can breed a population of chains to solve is that achieving a determinate register state in the CPU, specified by a simple pattern consisting of integers and wildcards.
+  %    \vspace{8pt}
 
-      This isn't the most intriguing thing that ROPER can do, but it is fairly useful, automating the ordinary, human task of assembling a ROP chain that prepares the CPU for a system call -- to spawn a process, write to a file, open a socket, etc.
-    \end{column}
-    \begin{column}{.5\textwidth}
-      For example, suppose we wanted to prime the CPU for the call
+%      This isn't the most intriguing thing that ROPER can do, but it is fairly useful, automating the ordinary, human task of assembling a ROP chain that prepares the CPU for a system call -- to spawn a process, write to a file, open a socket, etc.
+      Suppose we wanted to prime the CPU for the call
       $$\texttt{execv("/bin/sh", ["/bin/sh"], 0);}$$
       We'd need a ROP chain that sets \texttt{r0} and \texttt{r1} to point to some memory location that contains \texttt{"/bin/sh"}, sets \texttt{r2} to 0, and \texttt{r7} to 11. Once that's in place spawning a shell is as simple as jumping to any given address that contains an \texttt{svc} instruction.
       \vspace{8pt}
 
       One of ROPER's more peculiar solutions to this problem -- using gadgets from a Tomato router's HTTP daemon -- is on the next slide...
-    \end{column}
-  \end{columns}
 \end{frame}
 
-\begin{frame}{\theframenumber. Example of a Compiled Shell-Popping ROP-chain\\ (by ROPeMe, not ROPER)}
+\begin{frame}{\theframenumber. Example of a Handwritten ROP-Chain on tomato-RT-N18U-httpd}
   
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      Payload:
-      
-      00002d38~deadbeef \\
-      0000bb3d~00000000~4b4e554b \\
-      000256f9~00000000~4b4e554b~4b4e554c \\
-      0000bb3d~00000000~0000000b \\
-      00001804~4b4e554a~0000000b \\
-      
-    \end{column}
-    \begin{column}{.5\textwidth}
+      \textbf{Payload}: \\
 
-Runtime:
+      00013200~0002bc3e~0002bc3e~00000000~deba5e12~d000dl3d \\
+      00015330~deba5e12~feedc0de~badb17e5~0000000b \\
+      0001c64c \\
 
-00002d38 pop \{r0, pc\}\\
-0000bb3d pop \{r1, r7, pc\}\\
-000256f9 pop \{r2, r3, r6, pc\}\\
-0000bb3d pop \{r1, r7, pc\}\\
-00001804 svc 0x0\\
-00001808 pop \{r4, r8\}\\
-0000180C bx lr  \\
-    \end{column}
-  \end{columns}
-  \vspace{12pt}
-  Source: Long Le, ARM Exploitation ROPMAP, Blackhat 2011
+      \vspace{12pt}
+\textbf{Runtime}: \\ 
+
+00013200 pop \{r0, r1, r2, r3, r4, pc\} \\
+R0: 0002bc3e \\
+R1: 0002bc3e \\
+R2: 00000000 \\
+R7: ???????? \\
+00015330 pop \{r4, r5, r6, r7, pc\} \\
+R0: 0002bc3e \\
+R1: 0002bc3e \\
+R2: 00000000 \\
+R7: 0000000b \\
+0001c64c svcpl 0x00707070 \\ % CHECK!
+
   
 \end{frame}
 
 \begin{frame}{\theframenumber. Specimen generated by ROPER}
-  Payload:
+  \textbf{Payload}:
   \\
   
 000100fc 0002bc3e 0002bc3e 0002bc3e \\
@@ -492,6 +540,7 @@ Runtime:
 
 \end{frame}
 
+%% Colour code like in the paper
 \begin{frame}{} %{\theframenumber. Strange Paths \& Dark Gadgets}
 \begin{center}
   
@@ -545,25 +594,17 @@ Runtime:
 \end{center}
 \end{frame}
 
+
+%% point form def. of ``intron''
+%% 
 \begin{frame}{\theframenumber. Extended Gadgets \& Introns} %, \& Extended Phenotypes}
   \BackgroundImage[0.15]{../images/exons.png}
-  \begin{columns}
-    \begin{column}{.475\textwidth}
-      This chain is interesting because its execution path
-      spends most of its time in gadgets that aren't
-      referenced in the chain itself (labelled `extended gadgets' on the last
-      slide). Gadget \#\,2 jumps backwards, and writes to its own
-      stack, overriding the pointers in its genome.
-      \vspace{8pt}
 
       Chains like this emerge frequently, usually accompanied by spikes in the population's crash frequency -- jumping blindly to arbitrary addresses is hazardous.
       \vspace{8pt}
 
       What selection pressures could be responsible for this phenomenon? 
 
-    \end{column}
-
-    \begin{column}{.525\textwidth}
 
       Conjecture:
 
@@ -579,8 +620,6 @@ Runtime:
       \item by branching away from the ROP stack at Gadget 2, our specimen transforms about 90\% of its genome into introns
       \end{itemize}
 
-    \end{column}
-  \end{columns}
 \end{frame}
 
 
@@ -668,24 +707,24 @@ Runtime:
 
 
 
-\begin{frame}{\theframenumber. Implementing Niching through Fitness Sharing}
-  \BackgroundImage[0.2]{../images/overpop.png}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      \begin{itemize}
-      \item In order to address this issue, we first need to keep track of where, in the problem space, the overfitting occurs. Where is the low-hanging fruit?
-      \item To do this, we tag each problem in our space with a `difficulty' field, which keeps track of how our specimens perform on it, on average. 
-      \end{itemize}
-    \end{column}
-    \begin{column}{.5\textwidth}
-      \begin{itemize}
-      \item Since the whole point of tracking difficulty is to have it transform dynamically over the course of the evolution, we'll update these scores every so many iterations.
-      \item On the next slide, we plot the progress of the population's best and average fitness scores on the left, and the difficulty rations of our problems on the right -- plotted by class mean and standard deviation. 
-      \end{itemize}
+%% \begin{frame}{\theframenumber. Implementing Niching through Fitness Sharing}
+%%   \BackgroundImage[0.2]{../images/overpop.png}
+%%   \begin{columns}
+%%     \begin{column}{.5\textwidth}
+%%       \begin{itemize}
+%%       \item In order to address this issue, we first need to keep track of where, in the problem space, the overfitting occurs. Where is the low-hanging fruit?
+%%       \item To do this, we tag each problem in our space with a `difficulty' field, which keeps track of how our specimens perform on it, on average. 
+%%       \end{itemize}
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+%%       \begin{itemize}
+%%       \item Since the whole point of tracking difficulty is to have it transform dynamically over the course of the evolution, we'll update these scores every so many iterations.
+%%       \item On the next slide, we plot the progress of the population's best and average fitness scores on the left, and the difficulty rations of our problems on the right -- plotted by class mean and standard deviation. 
+%%       \end{itemize}
 
-    \end{column}
-    \end{columns}
-\end{frame}
+%%     \end{column}
+%%     \end{columns}
+%% \end{frame}
 
 \begin{frame}{\theframenumber. Tracking Niches without Crowding}
   \begin{center}
@@ -693,23 +732,23 @@ Runtime:
   \end{center}
 \end{frame}
 
-\begin{frame}{\theframenumber. Crowding Implemented as Fitness Sharing}
-  \BackgroundImage[0.2]{../images/2ropers.png}
-  \begin{columns}
-    \begin{column}{.5\textwidth}
-      \begin{itemize}
-      \item We haven't yet changed anything in the way each specimen's fitness is evaluated. The graph only shows us how the population is performing, with respect to each class of problems.
-      \item But we can use this information to tweak our fitness function in ways relevant to niching.
-      \end{itemize}
-    \end{column}
-    \begin{column}{.5\textwidth}
-      \begin{itemize}
-      \item All that we need to do is to scale the fitness points awarded for each problem with respect to that problem's difficulty. The rewards for solving `difficult' problems (uncrowded niches) will be greater than those awarded for solving `easy' problems (crowded niches). 
-      \end{itemize}
-    \end{column}
-    \end{columns}
+%% \begin{frame}{\theframenumber. Crowding Implemented as Fitness Sharing}
+%%   \BackgroundImage[0.2]{../images/2ropers.png}
+%%   \begin{columns}
+%%     \begin{column}{.5\textwidth}
+%%       \begin{itemize}
+%%       \item We haven't yet changed anything in the way each specimen's fitness is evaluated. The graph only shows us how the population is performing, with respect to each class of problems.
+%%       \item But we can use this information to tweak our fitness function in ways relevant to niching.
+%%       \end{itemize}
+%%     \end{column}
+%%     \begin{column}{.5\textwidth}
+%%       \begin{itemize}
+%%       \item All that we need to do is to scale the fitness points awarded for each problem with respect to that problem's difficulty. The rewards for solving `difficult' problems (uncrowded niches) will be greater than those awarded for solving `easy' problems (crowded niches). 
+%%       \end{itemize}
+%%     \end{column}
+%%     \end{columns}
 
-\end{frame}
+%% \end{frame}
 
 \begin{frame}{\theframenumber. Niching with Crowding}
   \begin{center}
@@ -762,10 +801,57 @@ Runtime:
 \end{frame}
 
 
+\begin{frame}{\theframenumber. Thank you!}
+
+   \BackgroundImage[0.25]{../images/simplefarmer.png}
+        \begin{tabular}{l l}
+          \\
+          \texttt{Olivia Lucca Fraser} 
+          & \url{ofraser@dal.ca} \\
+          \\
+          \texttt{Nur Zincir-Heywood} 
+          & \url{zincir@cs.dal.ca} \\
+          \texttt{Malcolm Heywood}
+          & \url{mheywood@cs.dal.ca} \\
+          \texttt{John T. Jacobs}
+          & \url{John_T_Jacobs@raytheon.com} \\
+        \end{tabular}
+        \vspace{80pt}
+        
+        \begin{tabular}{l}
+          \\
+          \texttt{NIMS Laboratory @ Dalhousie University}\\
+          \texttt{Raytheon Space \& Airborne Systems}\\
+          \url{https://github.com/oblivia-simplex/roper} \\
+          \\
+        \end{tabular}
+ 
+  
+\end{frame}
+
 \begin{frame}
+  
   \BackgroundImage[1]{../images/roper.png}
 \end{frame}
 
+\begin{frame}
+  \begin{center}
+    LEFTOVERS
+  \end{center}
+\end{frame}
+
+\begin{frame}{\theframenumber. Generalization of the Gadget Concept}
+  % JOP, etc.
+  % free branch
+  \begin{itemize}
+  \item the precise meaning of a `return' instruction is architecture-dependent; not all architectures implement \textbf{return} as a pop into PC (MIPS, e.g.)
+    
+  \item the essential idea we're after is \textbf{stack-controlled jumps}
+  \item this means we don't need to limit our search to `return's
+  \item we can broaden it to include any sequence of instructions that culminates in a jump to a location that's determined by the data on the stack
+  \item this gives us what's commonly called `JOP', or jump-oriented programming
+  \end{itemize}
+\end{frame}
 
 \end{document}
 
@@ -806,3 +892,10 @@ Runtime:
 % plague of segfaults slide
 % params slide
 % numerical results table
+
+
+%% Add a thank you slide!
+%% with name and contact info, github, youtube link, etc.
+
+
+%% try to get it down to 15 talking slides

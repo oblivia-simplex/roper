@@ -71,6 +71,8 @@
   (setq &cb (cffi:get-callback (unicorn::fn->callback '%counter-cb)))
   t)
 
+;; you're confusing BSS and the stack
+;; they're actually different. fix this. 
 (export 'hatch-chain)
 (defun hatch-chain (&key
                       (emu)
