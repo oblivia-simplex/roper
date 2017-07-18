@@ -67,9 +67,9 @@
 
 (defparameter &cb (cffi:get-callback (unicorn::fn->callback '%counter-cb)))
 
-(defun set-cb ()
-  (setq &cb (cffi:get-callback (unicorn::fn->callback '%counter-cb)))
-  t)
+;(defun set-cb ()
+;  (setq &cb (cffi:get-callback (unicorn::fn->callback '%counter-cb)))
+;  t)
 
 ;; you're confusing BSS and the stack
 ;; they're actually different. fix this. 
@@ -93,7 +93,6 @@
          (start (car (cl-words (car (ch-clumps chain)))))
          (cb-handles
 	  (progn
-	    (set-cb)
 	    (loop for ret in (remove-duplicates (chain-rets chain))
 	       collect (progn
 			 (format t "placing hook at ~X~%" ret)
@@ -113,7 +112,6 @@
 					      :count +max-steps+))
            (counted (mem-ref counter :uint64))
 	   (pc (ldb (byte 32 0) (unicorn::uc-reg-read uc :pc))))
-      (foreign-free &cb)
       (loop for h in cb-handles do
 	   (format t "trying to delete cb hook ~S~%" h)
 	   (ok! (unicorn::uc-hook-del uc h))

@@ -59,3 +59,6 @@
 	:phylostructs
 	:2ndvariety
 	:read-elf))
+
+(defpackage :ropush
+  (:use :common-lisp))
