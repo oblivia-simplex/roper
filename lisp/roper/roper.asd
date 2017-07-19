@@ -17,4 +17,5 @@
 	       (:file "2ndvariety")
 	       (:file "hatchery")
 	       (:file "roper")
-	       (:file "ropush")))
+	       (:file "ropush")
+	       (:file "ropush-gad"))

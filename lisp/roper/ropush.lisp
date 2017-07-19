@@ -1,4 +1,4 @@
-;bool pushGP variant for ROPER
+;: efop ool pushGP variant for ROPER
 ;; individual isn't a ROP chain, but a ROP chain builder
 
 ;; data representation:
@@ -12,7 +12,19 @@
 (defvar $stacks)
 (defvar $counter)
 
-(defparameter *debug* t)
+(defvar *operations* ())
+
+#.(defparameter *debug* t)
+
+
+(defmacro defop (name &key sig ret func)
+  `(progn
+     (defparameter ,name (make-operation
+			  :sig (quote ,sig)
+			  :ret (quote ,ret)
+			  :func ,func))
+     (push ,name *operations*)))
+
 
 (defmacro defstackfn (name arglist &rest body)
   `(defun ,name ,arglist
@@ -78,15 +90,10 @@
 			      :pointer
 			      :dword
 			      :bool
+			      :list
 			      :exec
 			      :string
 			      :code))
-
-(defun test (things)
-  (with-stacks #.*stack-types*
-    (loop for thing in things do
-	 (funcall $push thing))
-    (format t "Stacks are now: ~S~%" $stacks)))
 
 (defstruct (operation (:conc-name op-))
   (sig () :type (or null (cons keyword)))
@@ -122,13 +129,30 @@
 (defmacro def-generic-op (suffix param-arity ret-arity arglist &rest body)
   (cons 'progn
 	(loop for type in *stack-types* collect
-	     `(defparameter ,(intern (format nil "!~A-~A" type suffix))
-		(make-operation
-		 :sig (quote ,(loop for i below param-arity collect type))
-		 :ret (quote ,(loop for i below ret-arity collect type))
-		 :func (lambda ,arglist
-			 (progn
-			   ,@body)))))))
+	     `(progn
+		(defparameter ,(intern (format nil "!~A-~A" type suffix))
+		  (make-operation
+		   :sig (quote ,(loop for i below param-arity collect type))
+		   :ret (quote ,(loop for i below ret-arity collect type))
+		   :func (lambda ,arglist
+			   (progn
+			     ,@body))))
+		(push ,(intern (format nil "!~A-~A" type suffix))
+		      *operations*)))))
+
+(defmacro def-move-op (dest)
+  (cons 'progn
+	(loop for type in (remove-if (lambda (x) (eq x dest))
+				     *stack-types*)
+	   collect
+	     `(progn
+		(defparameter ,(intern (format nil "!~A->~A" type dest))
+		  (make-operation
+		   :sig (quote ,(list type))
+		   :ret (quote ,(list dest))
+		   :func #'list))
+		(push ,(intern (format nil "!~A->~A" type dest))
+		      *operations*)))))
 
 (def-generic-op rot 3 3
 		(x y z)
@@ -142,32 +166,68 @@
 		(x)
 		(list x x))
 
+(def-move-op :code)
 
-;;; testing
-;;;
+(def-move-op :exec)
 
+(defop !int->dword
+    :sig (:int)
+    :ret (:dword)
+    :func (lambda (x)
+	    (list (ldb (byte 32 0) x))))
 
-(defparameter !plus (make-operation
-		:sig '(:int :int)
-		:ret '(:string)
-		:func (lambda (x y)
-			(list (format nil "The answer is ~D" (+ x y))))))
+(defop !pointer->dword
+    :sig (:pointer)
+    :ret (:dword)
+    :func #'list)
 
-(defparameter !strlen (make-operation
-		       :sig '(:string)
-		       :ret '(:int)
-		       :func (lambda (x) (list (length x)))))
+(defop !int-plus
+    :sig (:int :int)
+    :ret (:int)
+    :func (lambda (x y)
+	    (list (+ x y))))
 
+(defop !int-string-plus
+    :sig (:int :int)
+    :ret (:string)
+    :func (lambda (x y)
+	    (list (format nil "The answer is ~D" (+ x y)))))
 
-(defparameter !store-code (make-operation
-			   :sig '(:exec)
-			   :ret '(:code)
-			   :func #'list))
+(defop !list-len
+    :sig (:list)
+    :ret (:int)
+    :func (lambda (x) (list (length x))))
 
-(defparameter !load-code (make-operation
-			  :sig '(:code)
-			  :ret '(:exec)
-			  :func #'list))
+(defop !list-len
+    :sig (:list)
+    :ret (:int)
+    :func (lambda (x) (list (length x))))
+
+(defop !string-len
+    :sig (:string)
+    :ret (:int)
+    :func (lambda (x) (list (length x))))
+
+(defop !store-code
+    :sig (:exec)
+    :ret (:code)
+    :func #'list)
+
+(defop !load-code
+    :sig (:code)
+    :ret (:exec)
+    :func #'list)
+
+(defun run (exec-stack)
+  (with-stacks #.*stack-types*
+    ($clear)
+    ($load-exec exec-stack)
+    (loop while (cdr (assoc :exec $stacks)) do
+	 ($exec ($pop :exec)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;                        Test Functions                      ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test2 (script)
   (with-stacks (:gadget :int :bool :string :code :exec)
@@ -179,12 +239,7 @@
     ($clear)
     (mapcar #'$exec exec-stack)))
 
-(defun test4 (exec-stack)
-  (with-stacks #.*stack-types*
-    ($clear)
-    ($load-exec exec-stack)
-    (loop while (cdr (assoc :exec $stacks)) do
-	 ($exec ($pop :exec)))))
+
 
 (defparameter script1
   '(progn
@@ -192,8 +247,8 @@
       ($push `(:string . "hello, world!"))
       ($call-op !strlen)
       ($call-op !strlen)
-      ($call-op !plus)
-      ($call-op !plus)
+      ($call-op !int-string-plus)
+      ($call-op !int-string-plus)
       ($push `(:int . 32))
       ($push `(:int . 16))
       ($call-op !int-swap)
