@@ -6,15 +6,6 @@
 ;; e.g. (:gadget . gad)
 (in-package :ropush)
 
-(defvar $$push)
-(defvar $$pop)
-(defvar $$peek)
-(defvar $stacks)
-(defvar $counter)
-
-(defvar *operations* ())
-
-#.(defparameter *debug* t)
 
 
 (defmacro defop (name &key sig ret func)
@@ -48,6 +39,9 @@
 (defstackfn $pop (typ)
   (funcall $$pop typ))
 
+(defstackfn $pop-keep-types (typ)
+  (funcall $$pop typ :keep-types t))
+
 (defstackfn $clear ()
   (mapcar (lambda (x) (setf (cdr x) nil)) $stacks))
 
@@ -75,8 +69,10 @@
 	      (lambda (type.val)
 		(setf ($stackf (car type.val)) (cdr type.val))))
 	     ($$pop
-	      (lambda (type)
-		(pop (cdr (assoc type $stacks)))))
+	      (lambda (type &key keep-types)
+		(if keep-types
+		    (cons type (pop (cdr (assoc type $stacks))))
+		    (pop (cdr (assoc type $stacks))))))
 	     ($$peek
 	      (lambda (type)
 		(cdr (assoc type $stacks)))))
@@ -85,30 +81,30 @@
 	 ,@body)
 	 $stacks))))
 
-(defparameter *stack-types* '(:gadget
-			      :int
-			      :pointer
-			      :dword
-			      :bool
-			      :list
-			      :exec
-			      :string
-			      :code))
 
 (defstruct (operation (:conc-name op-))
   (sig () :type (or null (cons keyword)))
   (ret () :type (or null (cons keyword)))
   (func))
 
+
 (defun %$call-op (op)
-  (let ((args (mapcar #'$peek (op-sig op))))
-    (unless (some #'null args)
-      (let ((args (mapcar #'$pop (op-sig op))))
-	(mapcar
-	 (lambda (x y)
-	   ($push (cons x y)))
-	 (op-ret op)
-	 (apply (op-func op) args))))))
+  (let ((peek-args (mapcar #'$peek (op-sig op))))
+    (unless (some #'null peek-args)
+      (let ((args (mapcar (lambda (x)
+			    (if (member (car (op-ret op)) '(:list))
+				($pop-keep-types x)
+				($pop x)))
+			  
+			  (op-sig op))))
+	(format t ">> args: ~S~%" args)
+	(if (eq (op-ret op) :unpack-list)
+	    (mapcar #'$push (apply (op-func op) args))
+	    (mapcar
+	     (lambda (x y)
+	       ($push (cons x y)))
+	     (op-ret op)
+	     (apply (op-func op) args)))))))
 					;($push
 	; (cons (op-ret op)
 	;       (apply (op-func op) args)))))))
@@ -198,11 +194,6 @@
     :ret (:int)
     :func (lambda (x) (list (length x))))
 
-(defop !list-len
-    :sig (:list)
-    :ret (:int)
-    :func (lambda (x) (list (length x))))
-
 (defop !string-len
     :sig (:string)
     :ret (:int)
@@ -218,6 +209,44 @@
     :ret (:exec)
     :func #'list)
 
+(defun 2list (x y)
+  (list (list y x)))
+
+(defop !int->list
+    :sig (:int :int)
+    :ret (:list)
+    :func #'2list)
+
+(defop !gadget->list
+    :sig (:gadget :gadget)
+    :ret (:list)
+    :func #'2list)
+
+(defop !pointer->list
+    :sig (:dword :dword)
+    :ret (:list)
+    :func #'2list)
+
+(defop !exec->list
+    :sig (:exec :exec)
+    :ret (:list)
+    :func #'2list)
+
+(defop !list-merge
+    :sig (:list :list)
+    :ret (:list)
+    :func (lambda (x y)
+	    (list (append y x))))
+
+(defop !list-reverse
+    :sig (:list)
+    :ret (:list)
+    :func (lambda (x)
+	    (list (reverse x))))
+
+
+    
+(export 'run)
 (defun run (exec-stack)
   (with-stacks #.*stack-types*
     ($clear)
@@ -239,14 +268,12 @@
     ($clear)
     (mapcar #'$exec exec-stack)))
 
-
-
 (defparameter script1
   '(progn
       ($push `(:string . "goodbye, world!"))
       ($push `(:string . "hello, world!"))
-      ($call-op !strlen)
-      ($call-op !strlen)
+      ($call-op !string-len)
+      ($call-op !string-len)
       ($call-op !int-string-plus)
       ($call-op !int-string-plus)
       ($push `(:int . 32))
@@ -263,11 +290,13 @@
 	`(:bool . t)
 	!int-dup
 	!exec-dup
+	`(:list . ((:string . "already in a list") (:string . "in a list too")))
 	!exec-rot
 	!store-code
 	`(:string . "am i code?")
 	!int-rot
+	!int->list
 	!store-code
 	!string-dup
-	!strlen
+	!string-len
 	`(:string . "done")))

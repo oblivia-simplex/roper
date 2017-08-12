@@ -140,6 +140,7 @@ Packed:~%~A
     (setf (cl-words sat) (nreverse words)) 
     sat))
 
+;; Move this somewhere more general
 (export 'make-random-dispenser)
 (defun make-random-dispenser (constants seed)
   (let ((constants (make-array (length constants)
@@ -235,13 +236,15 @@ Packed:~%~A
 			  (max-size 16)
 			  (arch 2ndvariety::*arch*)
 			  (endian :little))
-  (make-population :deme (make-chains (2ndvariety::find-gadgets section :arch arch)
-				      :constants constants
-				      :number number
-				      :seed seed
-				      :min-size min-size
-				      :max-size max-size
-				      :endian endian)))
+  (make-population :deme
+		   (make-chains
+		    (2ndvariety::find-gadgets section :arch arch)
+		    :constants constants
+		    :number number
+		    :seed seed
+		    :min-size min-size
+		    :max-size max-size
+		    :endian endian)))
 
 
 (export '(population

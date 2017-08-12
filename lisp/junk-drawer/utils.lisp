@@ -336,3 +336,7 @@ must be disjoint."
 
 (defun square (x)
   (expt x 2))
+
+(export 'label-list)
+(defun label-list (label list)
+  (mapcar #'cons (loop repeat (length list) collect label) list))

@@ -3,9 +3,14 @@ name = "roper"
 version = "0.1.0"
 authors = ["oblivia simplex <oblivia@paranoici.org>"]
 
+[target.x86_64-unknown-linux-gnu.unicorn]
+rustc-link-search = ["/usr/lib/libunicorn.so"]
+rustc-link-lib = ["foo"]
+
 
 [dependencies]
-unicorn = "0.4.1"
+unicorn = "0.7.0"
+libunicorn-sys = "0.7.0"
 capstone = "0.0.4"
 elf      = "0.0.10"
 byteorder = "0.5.3"
