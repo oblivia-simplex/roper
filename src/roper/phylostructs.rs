@@ -102,7 +102,8 @@ pub struct Clump {
   pub viscosity:   i32,
   pub input_slots: Vec<(usize,usize)>, // (offset, input#)
   pub link_age:    i32,
-  pub link_fit:    Option<f32>,
+  pub link_fit:    Option<f32>, // 
+  pub enabled:     bool, // disabling a clump makes it into an explicit intron
 }
 
 // UPDATE THIS to_json with new fields TODO
@@ -118,6 +119,7 @@ impl ToJson for Clump {
     b.insert("viscosity".to_string(), self.viscosity.to_json());
     b.insert("link_fit".to_string(),
       format!("{:?}",self.link_fit).to_json());
+    b.insert("enabled".to_string(), self.enabled.to_json());
     Json::Object(b)
   }
 }
@@ -133,6 +135,7 @@ impl Display for Clump {
     let mut s = String::new();
     let vp : f32 = self.viscosity as f32 / MAX_VISC as f32;
     s.push_str("CLUMP:\n");
+    s.push_str(&format!("enabled:    {:?}\n", self.enabled));
     s.push_str(&format!("mode:       {:?}\n", self.mode));
     s.push_str(&format!("sp_delta:   0x{:x}\n", self.sp_delta));
     s.push_str(&format!("ret_offset: 0x{:x}\n", self.ret_offset));
@@ -161,6 +164,7 @@ impl Default for Clump {
       viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
       link_age:   0,
       link_fit:   None, // (MAX_FIT/2),
+      enabled:    true,
     }
   }
 }

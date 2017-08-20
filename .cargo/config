@@ -1,0 +1,4 @@
+[target.x86_64-unknown-linux-gnu.unicorn]
+rustc-link-search = ["/usr/lib/"]
+rustc-link-lib = ["unicorn"]
+

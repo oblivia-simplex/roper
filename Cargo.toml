@@ -2,10 +2,7 @@
 name = "roper"
 version = "0.1.0"
 authors = ["oblivia simplex <oblivia@paranoici.org>"]
-
-[target.x86_64-unknown-linux-gnu.unicorn]
-rustc-link-search = ["/usr/lib/libunicorn.so"]
-rustc-link-lib = ["foo"]
+# build = "build.rs"
 
 
 [dependencies]
