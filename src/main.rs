@@ -16,10 +16,10 @@ use std::io::prelude::*;
 use std::io;
 mod roper;
 
-use rand::{thread_rng,Rng,Generator};
+use rand::{thread_rng,Rng};
 
 use std::path::{Path,PathBuf};
-use std::sync::{Mutex,Arc,RwLock};
+use std::sync::{Arc,RwLock};
 use std::cmp::Ordering;
 use unicorn::*;
 // use std::io;
@@ -30,7 +30,6 @@ use roper::util::*;
 use roper::population::*;
 use roper::hatchery::*;
 use roper::phylostructs::*;
-use roper::evolution::*;
 use roper::ontostructs::*;
 use roper::csv_reader::*;
 
@@ -39,14 +38,7 @@ fn print_usage (program: &str, opts: Options) {
   print!("{}", opts.usage(&brief));
 }
 
-fn load_file (path: &str) -> Vec<u8>
-{
-  let mut f = File::open(path)
-                .expect("Failed to open path");
-  let mut buf : Vec<u8> = Vec::new();
-  f.read_to_end(&mut buf);
-  buf
-}
+
 
 fn get_elf_addr_data (path: &str, 
                       secs: &Vec<&str>) 
@@ -91,7 +83,6 @@ enum Challenge {
 /* Just a debugging stub */
 fn main() {
   let verbose = false;
-  let disas_path = "/tmp/roper_disassembly.txt"; 
   let args: Vec<String> = env::args().collect();
   let program = args[0].clone();
 
@@ -304,15 +295,10 @@ fn main() {
   let text_data = &elf_addr_data[0].data;
   let rodata_addr = elf_addr_data[1].addr;
   let rodata_data = &elf_addr_data[1].data;
-  let wordvec_elf = u8s_to_u16s(&text_data, Endian::LITTLE);
   
   let mode = MachineMode::ARM;
 
-  //let iris_data = sample_root.clone() + "/iris.data";
-
-
   let constants = suggest_constants(&io_targets);
-  let num_targets = io_targets.len();
   params.ret_hooks = ret_hooks;
   params.code = text_data.clone();
   params.code_addr = text_addr as u32;
@@ -392,7 +378,6 @@ fn main() {
     let mut iteration = pop_local.read()
                                  .expect("Failed to open read lock on pop_local")
                                  .iteration;
-    let show_every = 4 * params.calc_season_length(iteration);
     let (tx, rx)  = channel();
     let n_workers = threads as u32;
     let n_jobs    = machinery.cluster.len();
@@ -507,8 +492,8 @@ fn main() {
         println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                  standard_deviation(&dprof));
         println!("[+] MEAN DIFFICULTIES BY CLASS:");
+        
         let mut c = 0;
-        /*
         for d in pop_local.read()
                           .expect("Failed to open read lock on pop_local")
                           .params
@@ -517,14 +502,14 @@ fn main() {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
-        *
-         * println!("[+] STDDEV DIFFICULTIES BY CLASS:");
+        
+        println!("[+] STDDEV DIFFICULTIES BY CLASS:");
         let mut c = 0;
         for d in class_stddev_difficulties {
           println!("    {} -> {:1.6}", c, d);
           c += 1;
         }
-        */
+        
         println!("[+] STANDARD DEVIATION OF AB_FIT: {}", stddev_abfit);
       } else {
         print!("\r[{}]                 ",iteration);

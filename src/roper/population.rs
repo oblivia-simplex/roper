@@ -110,6 +110,14 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
   };
 }
 
+fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
+  for ref mut clump in &mut chain.clumps {
+    if rng.gen::<f32>() < params.edi_toggle_rate {
+      clump.enabled = !clump.enabled; 
+    }
+  }
+}
+
 fn clone_and_mutate (parents: &Vec<&Chain>,
                      params:  &Params,
                      rng:     &mut ThreadRng) -> Vec<Chain> {
@@ -119,6 +127,7 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
     let spawnclumps = parents[i % 2].clumps.clone();
     let mut spawn = Chain::new(spawnclumps);
     mutate(&mut spawn, &params, rng);
+    mutate_edi(&mut spawn, &params, rng);
     spawn.p_fitness = parents[i % 2].fitness;
     spawn.generation = parents[i % 2].generation + 1;
     brood.push(spawn);
@@ -424,31 +433,19 @@ pub fn patch_io_targets (tr: &TournementResult,
 
 pub fn update_difficulties (params: &mut Params,
                             iteration: usize) -> usize {
-//    self.season_length = self.population_size /
-//      (self.t_size * self.threads * factor); 
   let season_length = params.calc_season_length(iteration);
   let mut io_targets = &mut params.io_targets;
-  let reset = iteration > params.threads
-    && iteration % season_length == 0;
+  let reset = iteration > params.threads 
+              && iteration % season_length == 0;
   if reset {
     let divisor = (season_length * params.t_size) as f32
                   * (1.0 - params.cuck_rate);
-    /*
-    let divisor = params.io_targets
-                        .iter()
-                        .map(|p| p.predifficulty())
-                        .sum::<f32>();
-                        */
     let sum_diff = io_targets.iter()
                              .map(|p| p.predifficulty())
                              .sum::<f32>();
     println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
     for ref mut problem in io_targets.iter_mut() {
-      //if params.fitness_sharing {
-        problem.rotate_difficulty(divisor);
-      //} else {
-      //  problem.set_difficulty(1.0);
-      //}
+      problem.rotate_difficulty(divisor);
     }
     1
   } else {

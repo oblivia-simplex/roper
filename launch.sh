@@ -56,12 +56,15 @@ AVG_LEN=13
 BEST_LEN=14
 BEST_TIME=15
 UNSEEN=16
-CLASS0_MEANDIF=17
-CLASS0_STDDEVDIF=18
-CLASS1_MEANDIF=19
-CLASS1_STDDEVDIF=20
-CLASS2_MEANDIF=21
-CLASS2_STDDEVDIF=22
+ENABLED_RATE=17
+C=17
+
+CLASS0_MEANDIF=$(( C + 0 ))
+CLASS0_STDDEVDIF=$(( C + 1 ))
+CLASS1_MEANDIF=$(( C + 2 ))
+CLASS1_STDDEVDIF=$(( C + 3 ))
+CLASS2_MEANDIF=$(( C + 4 ))
+CLASS2_STDDEVDIF=$(( C + 5 ))
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
@@ -88,7 +91,7 @@ function run () {
                                 -g $GOAL \
                                 -c 0.2 \
                                 -s 1.0 \
-                                -P 2048 \
+                                -P 4096 \
                                 -t 12 \
                                 -D 4 \
                                 -m 0.05 \
@@ -176,6 +179,7 @@ set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $AVG_ABFIT), \
   "" $(popplotline $AVG_CRASH), \
+  "" $(popplotline $ENABLED_RATE), \
   "" $(popplotline $MIN_FIT), \
   "" $(popplotline $BEST_FIT),  \
   "" $(popplotline $MIN_ABFIT), \

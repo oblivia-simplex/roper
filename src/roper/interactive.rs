@@ -25,18 +25,9 @@ use roper::util::*;
 use roper::thumb::{reap_thumb_gadgets};
 use roper::arm::{reap_arm_gadgets};
 use roper::ontostructs::*;
-use roper::population::*;
 
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpStream};
 
-
-fn handle_stream_and_eval (stream: TcpStream,
-                           chain:  &Chain,
-                           params: &Params) -> Option<EvalResult> {
-  
-
-  None
-}
 
 #[derive(Debug,PartialEq)]
 pub enum GameState {
@@ -47,7 +38,6 @@ pub enum GameState {
     Score (i32), // we'll use fixed point numbers to keep it simple
 }
 
-const OKAY: u8 = 0x00;
 const INPUT: u8 = 0x10;
 const SCORE: u8 = 0x20;
 // outgoing packet headers

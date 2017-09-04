@@ -55,6 +55,8 @@
   (:use :common-lisp
 	:mersenne
 	:phylostructs))
+;; impt to first load ropush-vars, then ropush, then ropush-gad
+;; and finally ropush-test, to play with it in the repl.
 
 (defpackage :roper
   (:use :common-lisp

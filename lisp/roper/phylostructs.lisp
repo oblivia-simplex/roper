@@ -14,12 +14,15 @@
 
 (export '(make-clump
 	  clump
+	  copy-clump
 	  cl-sp-delta
 	  cl-ret-offset
 	  cl-ret-addr
 	  cl-words
 	  cl-mode
 	  cl-visc
+	  cl-activation-threshold
+	  cl-activation-influence
 	  cl-link-age
 	  cl-link-fit))
 (defstruct (clump
@@ -30,9 +33,18 @@
   (ret-addr 0 :type integer)
   (words nil :type word-list)
   (mode :arm :type keyword)
-  (visc 50 :type integer)
+  (visc 1/2 :type ratio)
   (link-age 0 :type integer)
-  (link-fit nil :type maybe-float))
+  (link-fit nil :type maybe-float)
+  (activation-threshold 1/2 :type ratio)
+  (activation-influence 1/2 :type ratio))
+
+;; new EDI schema:
+;; a clump is "activated" if the sum of the activation influences
+;; of its two neighbours (in a virtual ring topology) > its
+;; activation-threshold, where the sum has a hard ceiling of 1.
+;; a permanent EDI has an activation-threshold of 1.
+
 
 (deftype clump-list () '(or null (cons clump)))
 

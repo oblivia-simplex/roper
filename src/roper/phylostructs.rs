@@ -231,12 +231,9 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
                         .map(|ref x| x.words.len())
                         .sum();
   let mut c = vec![0; s];
-  //println!("s = {}; c.len() = {}", s, c.len());
-  //let mut spd = 0;
   let mut rto = 0 as usize;
   let mut exchange = false;
   let mut i = 0;
-  //let last = clumps.len()-1;
   for ref gad in clumps {
     /* for debugging */
     /*****************/
@@ -244,26 +241,23 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
       panic!("Attempting to concatenate unsaturated clumps");
     }
     assert!(gad.sp_delta >= 0);
-    //if i == last { 
-   //   c[rto] = gad.words[0].clone();
-   //   //
-   // } else {
+    /* If clump is not enabled, don't pack it into the payload */
+    if !gad.enabled {
+      continue;
+    }
     let t : usize = rto + gad.sp_delta as usize;
     &c[rto..t].clone_from_slice(&(gad.words));
-   // }
     if exchange && (gad.mode == MachineMode::THUMB) {
       /* If we BX, the LSB of the addr decides machine mode */
       c[rto] |= 1;
-//      println!("*** exchange: adding 1 mask ***");
     }
     rto += gad.ret_offset as usize;
-    //spd += gad.sp_delta as usize;
     exchange = gad.exchange;
-//    println!("[{}] ==> {}",rto,gad);
     i += 1;
   }
   c[..rto].to_vec()
 }
+
 #[derive(Clone,Debug)]
 pub struct Chain {
   pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
@@ -279,10 +273,10 @@ pub struct Chain {
   pub fingerprint: Fingerprint,
   pub runtime: Option<f32>,
   i: usize,
-//  pub p_fitness: Vec<i32>,
   // space-consuming, but it'll give us some useful data on
   // the destructiveness of the shufflefuck operator
 }
+
 impl ToJson for Chain {
   fn to_json (&self) -> Json {
     let mut b = BTreeMap::new();
@@ -294,6 +288,7 @@ impl ToJson for Chain {
     Json::Object(b)
   }
 }
+
 impl Display for Chain {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();
@@ -328,6 +323,9 @@ impl Display for Chain {
                         &self.input_slots));
     s.push_str("Clumps:\n");
     for clump in &self.clumps {
+      if !clump.enabled {
+        s.push_str("[DISABLED] ");
+      }
       s.push_str(&format!("<{:08x}> ", clump.ret_addr));
       let mut i = 0;
       for word in &clump.words {
@@ -370,15 +368,16 @@ impl Default for Chain {
       runtime: None,
       fingerprint: Fingerprint::new(),
       i: 0,
-    //  p_fitness: Vec::new(),
     }
   } 
 }
+
 impl PartialEq for Chain {
   fn eq (&self, other: &Chain) -> bool {
     self.fitness == other.fitness
   }
 }
+
 impl Eq for Chain {}
 
 impl PartialEq for Clump {
@@ -395,12 +394,14 @@ impl Indexable<Clump> for Chain {
     self.clumps.iter().position(|x| x == &t)
   }
 }
+
 impl Index <usize> for Chain {
   type Output = Clump;
   fn index (&self, index: usize) -> &Clump {
     &(self.clumps[index])
   }
 }
+
 impl IndexMut <usize> for Chain {
   fn index_mut (&mut self, index: usize) -> &mut Clump {
     &mut (self.clumps[index])
@@ -420,6 +421,7 @@ impl Chain {
     chain.collate_input_slots();
     chain
   }
+
   pub fn collate_input_slots (&mut self) {
     self.input_slots = Vec::new();
     let mut offset = 0;
@@ -430,61 +432,45 @@ impl Chain {
       offset += clump.ret_offset;
     }
   }
+
   pub fn pack (&mut self) {
     let conc  = concatenate(&self.clumps);
     self.packed = pack_word32le_vec(&conc);
   }
+
   pub fn size (&self) -> usize {
     self.clumps.len()
   }
+
   pub fn set_fitness (&mut self, n: f32) {
     self.fitness = Some(n);
   }
+
   pub fn excise (&mut self, idx: usize) {
     self.clumps.remove(idx);
     self.pack();
+  }
+
+  pub fn enabled_ratio (&self) -> f32 {
+    self.clumps.iter().filter(|ref c| c.enabled).count() as f32 /
+      (self.size() as f32)
   }
 }
 
 impl PartialOrd for Chain {
   fn partial_cmp (&self, other: &Chain) -> Option<Ordering> {
     self.fitness.partial_cmp(&other.fitness)
-    /*
-    match (self.fitness, other.fitness) {
-      (Some(a), Some(b)) => Some(a.cmp(&b)), // Note reversal
-      (Some(_), None)    => Some(Ordering::Less),
-      (None, Some(_))    => Some(Ordering::Greater),
-      _                  => None,
-    }
-    */
   }
 }
+
 impl Ord for Chain {
   fn cmp (&self, other: &Chain) -> Ordering {
     self.partial_cmp(other).unwrap_or(Ordering::Equal)
   }
 }
 
-
 const POPSIZE : usize = 400;
-pub type Pod<T> = RwLock<T>;
-/*
-#[derive(Clone,Debug)]
-pub struct Pod<T> {
-  nucleus: T,
-}
-impl <T> Pod <T>{
-  pub fn new (t: T) -> Pod<T> {
-    Pod {nucleus: t}
-  }
-  pub fn open_r (&self) -> T {
-    self.nucleus
-  }
-  pub fn open_w (&mut self) -> T {
-    self.nucleus
-  }
-}
-*/
+
 #[derive(Clone)]
 pub struct Population  {
   pub deme: Vec<Chain>,
@@ -494,8 +480,8 @@ pub struct Population  {
   pub params: Params,
   pub primordial_ooze: Vec<Clump>,
 }
+
 unsafe impl Send for Population {}
-//unsafe impl Sync for Population {}
 
 impl Population {
   pub fn new (params: &Params, engine: &mut Engine) -> Population {
@@ -552,6 +538,7 @@ impl Population {
       primordial_ooze: clumps,
     }
   }
+
   pub fn random_spawn (&self) -> Chain {
     let mut mangler = Mangler::new(&self.params.constants);
     random_chain(&self.primordial_ooze,
@@ -559,6 +546,7 @@ impl Population {
                  &mut mangler,
                  &mut thread_rng())
   }
+
   pub fn avg_gen (&self) -> f32 {
    self.deme
        .iter()
@@ -566,6 +554,7 @@ impl Population {
        .sum::<u32>() as f32 / 
           self.params.population_size as f32
   }
+
   pub fn avg_len (&self) -> f32 {
     self.deme
         .iter()
@@ -573,6 +562,7 @@ impl Population {
         .sum::<f32>() / 
           self.params.population_size as f32
   }
+
   pub fn proportion_unseen (&self, season: usize) -> f32 {
     self.deme
         .iter()
@@ -581,6 +571,7 @@ impl Population {
         .count() as f32 / 
           self.params.population_size as f32
   }
+
   pub fn crash_rate (&self) -> f32 {
     let cand = self.deme
                    .iter()
@@ -594,6 +585,7 @@ impl Population {
         .sum::<f32>() /
           cand as f32
   }
+
   pub fn min_abfit (&self) -> f32 {
     self.deme
         .iter()
@@ -602,6 +594,7 @@ impl Population {
         .min_by_key(|&x| (x * 100000.0) as usize)
         .unwrap_or(1.0)
   }
+
   pub fn min_fit (&self, season: usize) -> f32 {
     self.deme
         .iter()
@@ -611,6 +604,7 @@ impl Population {
         .min_by_key(|&x| (x * 100000.0) as usize)
         .unwrap_or(1.0)
   }
+
   pub fn avg_fit (&self, season: usize) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.fitness != None 
@@ -624,6 +618,7 @@ impl Population {
         .sum::<f32>() / 
           cand as f32
   }
+
   pub fn stddev_abfit (&self) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.ab_fitness != None)
@@ -631,6 +626,7 @@ impl Population {
                    .collect();
     standard_deviation(&cand)
   }
+
   pub fn avg_abfit (&self) -> f32 {
     let cand = self.deme.iter()
                    .filter(|ref c| c.ab_fitness != None)
@@ -642,6 +638,7 @@ impl Population {
         .sum::<f32>() / 
           cand as f32
   }
+
   pub fn ret_addrs (&self) -> Vec<u32> {
     let mut addrs = Vec::new();
     for chain in &self.deme {
@@ -651,6 +648,7 @@ impl Population {
     }
     addrs
   }
+
   pub fn entry_addrs (&self) -> Vec<u32> {
     let mut addrs = Vec::new();
     for chain in &self.deme {
@@ -660,30 +658,36 @@ impl Population {
     }
     addrs
   }
+
   pub fn size (&self) -> usize {
     self.deme.len()
   }
+
   pub fn best_abfit (&self) -> Option<f32> {
     match self.best {
       Some(ref x) => x.ab_fitness,
       _           => None,
     }
   }
+
   pub fn best_crashes (&self) -> Option<bool> {
     match self.best {
       Some(ref x) => x.crashes,
       _           => None,
     }
   }
+
   pub fn set_best (&mut self, i: usize) {
     self.best = Some(self.deme[i].clone());
   }
+
   pub fn periodic_save (&self) {
     if self.iteration % self.params.save_period == 0 {
       println!("[*] Saving population to {}", &self.params.pop_path);
       self.save();
     }
   }
+
   pub fn save (&self) {
     let mut json_file = OpenOptions::new()
                                     .truncate(true)
@@ -695,6 +699,8 @@ impl Population {
     json_file.write(json_string.as_bytes());
     json_file.flush();
   }
+
+  /* Needs some refactoring. Maybe a macro. */
   pub fn log (&self, first: bool) -> bool {
     if self.best == None {
       return true;
@@ -707,7 +713,7 @@ impl Population {
     let nclasses = self.params.io_targets.num_classes;
     // todo: don't hardcode the number of classes
     let row = if first {
-      let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN",
+      let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,ENABLED-RATE",
               self.params);
       for i in 0..nclasses {
         s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -716,24 +722,28 @@ impl Population {
       s
     } else { "".to_string() };
     let season = self.season;
-    let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-                      row,
-                      self.iteration.clone(),
-                      season,
-                      self.avg_gen(),
-                      self.avg_fit(season),
-                      self.avg_abfit(),
-                      self.min_fit(season),
-                      self.min_abfit(),
-                      self.crash_rate(),
-                      best.generation,
-                      best.fitness.unwrap(),
-                      best.ab_fitness.unwrap(),
-                      if best.crashes == Some(true) { 1 } else { 0 },
-                      self.avg_len(),
-                      best.size(),
-                      best.runtime.unwrap(),
-                      self.proportion_unseen(season));
+    let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+                          row,
+                          self.iteration.clone(),
+                          season,
+                          self.avg_gen(),
+                          self.avg_fit(season),
+                          self.avg_abfit(),
+                          self.min_fit(season),
+                          self.min_abfit(),
+                          self.crash_rate(),
+                          best.generation,
+                          best.fitness.unwrap_or(1.0),
+                          best.ab_fitness.unwrap_or(1.0),
+                          if best.crashes == Some(true) { 1 } else { 0 },
+                          self.avg_len(),
+                          best.size(),
+                          best.runtime.unwrap_or(0.0),
+                          self.proportion_unseen(season),
+                          /* Tracking EDIs */
+                          mean(&self.deme.iter()
+                               .map(|ref x| x.enabled_ratio())
+                               .collect::<Vec<f32>>()));
     let c_mn_dif = self.params.io_targets
                          .class_mean_difficulties();
     let c_sd_dif = self.params.io_targets
@@ -815,6 +825,8 @@ pub struct Params {
   pub crash_penalty    : f32,
   pub host_port        : String,
   pub random_override  : bool,
+  pub edi_toggle_rate         : f32,
+  pub initial_edi_rate : f32,
 }
     
 
@@ -822,25 +834,7 @@ impl Display for Params {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new(); 
     let rem = "% ";
-/*
-    let inside_braces = Regex::new(r"^\{(.+)\}$").unwrap();
-    let dbgstring = format!("{:?}", self);
-    let stuff = &inside_braces.captures_iter(&dbgstring)
-                             .nth(0).unwrap()[1];
-    let dump_innards = inside_braces.replace_all(&stuff, "...");
-    let re = Regex::new(r"([A-Za-z_0-9]+):[ ]*([^, \[{]+)")
-      .expect("Trouble compiling regex.");
-    for cap in re.captures_iter(&dump_innards) {
-      let field = &cap[1];
-      let value = &cap[2];
-      if value.len() < 60 {
-        s.push_str(&format!("{} {}\n", &rem, &field));
-      } else {
-        s.push_str(&format!("{} {} [elided]\n", &rem, &field));
-      }
-    }
-          
-*/
+
     s.push_str(&format!("{} label: {}\n",
                         rem, self.label));
     s.push_str(&format!("{} ret_hooks: {}\n",
@@ -887,6 +881,10 @@ impl Display for Params {
                         rem, self.fatal_crash));
     s.push_str(&format!("{} random_override: {}\n",
                         rem, self.random_override));
+    s.push_str(&format!("{} edi_toggle_rate: {}\n",
+                        rem, self.edi_toggle_rate));
+    s.push_str(&format!("{} initial_edi_rate: {}\n",
+                        rem, self.initial_edi_rate));
   
     write!(f, "{}",s)
   }
@@ -901,7 +899,7 @@ impl Params {
       label:            label.to_string(),
       ret_hooks:        true,
       population_size:  2048,
-      crossover_rate:   0.10,
+      crossover_rate:   0.50,
       max_iterations:   800000,
       selection_method: SelectionMethod::Tournement,
       t_size:           7,
@@ -921,7 +919,7 @@ impl Params {
       fitness_sharing:  true,
       season_divisor:    4,
       constants:        Vec::new(),
-      stack_input_sampling: 0.5,
+      stack_input_sampling: 0.1,
       cuck_rate:        0.15,
       verbose:          false,
       date_dir:         datepath.clone(),
@@ -943,6 +941,8 @@ impl Params {
       crash_penalty:    0.2,
       host_port:        "127.0.0.1:8888".to_string(),
       random_override:  false,
+      edi_toggle_rate:  0.01,
+      initial_edi_rate: 0.5,
     }
   }
   pub fn calc_season_length (&self, iteration: usize) -> usize {
@@ -1649,6 +1649,9 @@ pub fn random_chain (clumps:  &Vec<Clump>,
                                 params.inregs.len()));
                               
       }
+    }
+    if rng.gen::<f32>() < params.initial_edi_rate {
+      clump.enabled = false;
     }
     genes.push(clump);
   }
