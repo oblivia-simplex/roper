@@ -39,6 +39,23 @@
   (activation-threshold 1/2 :type ratio)
   (activation-influence 1/2 :type ratio))
 
+;; a smaller struct, for use in ropush
+
+(export '(gadget
+	  make-gadget
+	  gad-sp-delta
+	  gad-ret-offset
+	  gad-ret-addr
+	  gad-entry))
+(defstruct (gadget
+	     (:conc-name gad-))
+  (sp-delta 0 :type integer)
+  (ret-offset 0 :type integer)
+  (ret-addr 0 :type integer)
+  (entry 0 :type integer))
+	     
+
+
 ;; new EDI schema:
 ;; a clump is "activated" if the sum of the activation influences
 ;; of its two neighbours (in a virtual ring topology) > its
@@ -48,6 +65,9 @@
 
 (deftype clump-list () '(or null (cons clump)))
 
+
+
+;; we need a second order individual, after ropush comes into play
 
 (export '(chain
 	  make-chain
@@ -69,6 +89,24 @@
   (parfit nil :type maybe-float)
   (gen 0 :type integer)
   (verbose nil :type boolean)
+  (crashes nil :type boolean)
+  (season 0 :type integer))
+
+(export '(creature
+	  cr-exec
+	  cr-relfit
+	  cr-absfit
+	  cr-gen
+	  cr-crashes
+	  cr-season
+	  copy-creature))
+(defstruct (creature
+	     (:conc-name cr-))
+  (exec () :type list) ;; the ROPUSH instructions
+  (relfit nil :type maybe-float)
+  (absfit nil :type maybe-float)
+  (parfit nil :type maybe-float)
+  (gen 0 :type integer)
   (crashes nil :type boolean)
   (season 0 :type integer))
 
@@ -142,7 +180,6 @@ Packed:~%~A
     words))
 
 
-
 (export 'saturate-clump)
 (defun saturate-clump (clump constant-dispenser)
   (let ((sat (copy-structure clump))
@@ -161,6 +198,17 @@ Packed:~%~A
 	(rng (mersenne:make-mt seed)))
     (lambda ()
       (aref constants (mod (mersenne:mt-gen rng) len)))))
+
+(export 'make-cyclical-dispenser)
+(defun make-cyclical-dispenser (constants)
+  (let ((constants (make-array (length constants)
+			       :initial-contents constants))
+	(len (length constants))
+	(counter -1))
+    (lambda ()
+      (progn
+	(incf counter)
+	(aref constants (mod counter len))))))
 
 ;; TODO:
 ;; * saturate-gadgets with constants
@@ -239,6 +287,9 @@ Packed:~%~A
 (defun chain-rets (chain)
   (mapcar #'clump-ret (ch-clumps chain)))
 
+
+
+;; THESE NEED TO BE REWRITTEN 
 (export 'init-population)
 (defun init-population (&key section
 			  constants

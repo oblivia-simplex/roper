@@ -10,6 +10,7 @@
 	       #:cffi
 	       #:screamer)
   :components ((:file "packages")
+	       (:file "params")
 	       (:file "read-elf")
 	       (:file "phylostructs")
 	       (:file "mips-analysis")

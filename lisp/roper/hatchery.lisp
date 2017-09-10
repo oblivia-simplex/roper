@@ -27,9 +27,13 @@
 
 
 (export 'init-engine)
-(defun init-engine (arch mode elf-obj &key (merge t))
+(defun init-engine (&key
+		      (arch <cpu-arch>)
+		      (mode <cpu-mode>)
+		      (elf-obj elf-obj)
+		      (merge t))
   (let* ((uc (unicorn::uc-open arch mode))
-         (segs%  (get-loadable-elf-segments elf-obj :align t))
+         (segs%  (get-loadable-elf-segments elf :align t))
 	 (segs (if merge (merge-segments segs%) segs%))
          (secs (secs-in-segs (get-elf-sections elf-obj) segs)))
     (mapc (lambda (s) (mem-map-seg uc s)) segs)
@@ -41,11 +45,8 @@
 ;; TODO: hatch-chain
 
 (defvar +stop-addr+ #x00000000)
-(defvar +max-steps+ #x10000)
+(defparameter +max-steps+ <max-emu-steps>)
 (defvar +max-time+  #x10000000)
-
-
-
 
 (export 'get-stack)
 (defun get-stack (emu &key (stack-name :.BSS))
@@ -58,7 +59,6 @@
 (export 'get-stack-data)
 (defun get-stack-data (emu &key (stack-name :.BSS))
   (sec-data (get-stack emu :stack-name stack-name)))
-
 
 (defun %counter-cb (uc address size user-data)
   (declare (ignore uc size))
@@ -76,10 +76,10 @@
 (export 'hatch-chain)
 (defun hatch-chain (&key
                       (emu)
-                      (chain)  ;; a chain struct/object
+		      (payload)
                       (input)  ;; list of fixnums
-                      (inregs) ;; list of fixnums -- reg indexes
-                      (outregs) ;;
+                      (inregs <inregs>) ;; list of fixnums -- reg indexes
+                      (outregs <outregs>) ;;
                       (reset t)
                       (stack-addr)
                       (stack-ptr)) ;; boolean))
@@ -89,8 +89,9 @@
 	 (stack-data (if reset (get-stack-data emu :stack-name :.bss) nil))
 	 (uc (emu-engine emu))
 	 (counter (foreign-alloc :uint64))
-         (stack (ch-packed chain))
-         (start (car (cl-words (car (ch-clumps chain)))))
+         (stack (dwords->bytes payload :endian <endian>))
+         (start (car payload))
+	 #+unicorn-callbacks
          (cb-handles
 	  (progn
 	    (loop for ret in (remove-duplicates (chain-rets chain))
@@ -99,7 +100,8 @@
 			 (unicorn::uc-hook-add uc ret (+ ret 4)
 					       :callback-ptr &cb
 					       :hook-type :code
-					       :user-data counter)))))) ;; get first word from first clump
+					       :user-data counter)))))
+	 )
     (setf (mem-ref counter :uint64) #x0000000000000000)
     (unicorn::uc-reg-write-batch uc inregs input)
     (when reset
@@ -112,16 +114,16 @@
 					      :count +max-steps+))
            (counted (mem-ref counter :uint64))
 	   (pc (ldb (byte 32 0) (unicorn::uc-reg-read uc :pc))))
+      #+unicorn-callbacks
       (loop for h in cb-handles do
 	   (format t "trying to delete cb hook ~S~%" h)
 	   (ok! (unicorn::uc-hook-del uc h))
 	   ) ;; implement!
       (foreign-free counter)
+      ;; returns: register-list, error-code, pc, counted
       (values (mapcar (lambda (x) (ldb (byte 32 0) x))
 		      (unicorn::uc-reg-read-batch uc outregs))
-              error-code
-              counted
-	      pc))))
+              error-code pc counted))))
 
 ;; TODO:
 ;; - implement chain and clump structs, and related functions/methods

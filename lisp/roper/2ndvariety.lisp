@@ -149,13 +149,11 @@
 					 :word-size word-size
 					 :arch arch))))
 
-    (remove-if (lambda (g)
-		 (<= (phylostructs::cl-sp-delta g) 0))
-	       (apply #'append
-		      (mapcar (lambda (x) (dilate-gadget x sec))
-			      exits)))))
+    (apply #'append
+	   (mapcar (lambda (x) (dilate-gadget x sec))
+		   exits))))
 
-
+;; returns list of gadget structs
 (defun dilate-gadget (addr.retoffset sec &key
 					   (word-size *word-size*)
 					   (arch *arch*)
@@ -175,14 +173,11 @@
 	 (incf sp-delta (stack-delta
 			 (word-at sec a word-size)
 			 :arch arch))
-	 (push (phylostructs::make-clump :words (list a)
-			   :sp-delta sp-delta
-			   :ret-offset retoffset
-			   :ret-addr addr)
-	       entries))
-	 ;(push `(:addr ,a
-		; :sp-delta ,sp-delta
-		 ;:ret-offset ,retoffset
-		 ;:ret-addr ,addr) entries))
+	 (when (> sp-delta 0)
+	   (push (phylostructs::make-gadget :entry a
+					    :sp-delta sp-delta
+					    :ret-offset retoffset
+					    :ret-addr addr)
+		 entries)))
     entries))
 

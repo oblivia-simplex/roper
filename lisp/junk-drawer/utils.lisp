@@ -340,3 +340,16 @@ must be disjoint."
 (export 'label-list)
 (defun label-list (label list)
   (mapcar #'cons (loop repeat (length list) collect label) list))
+
+
+;;; functional stuff
+
+(defun compose2 (f1 f2)
+  (lambda (&rest args)
+    (multiple-value-call f1 (apply f2 args))))
+
+(export 'compose)
+(defun compose (&rest functions)
+  (if functions
+    (reduce #'compose2 functions)
+    #'values))

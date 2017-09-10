@@ -29,33 +29,10 @@
 ;; a proper front-end/entry point still needs to be written.         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *typed-ropush-minlens*
-  `((:gadget 4)
-    (:dword 12)
-    (:int 3)))
 
-;; PLACEHOLDER
-(defun pth (p)
-  (merge-pathnames p #P"/home/oblivia/src/lisp/roper/ropush-constants/"))
 
-;; EXAMPLE VALUE
-(defparameter *elf* (elf:read-elf "/home/oblivia/Projects/roper/data/tomato-RT-AC3200-ARM-132-AIO-httpd"))
 
-(defun %constants (key)
-  (cons key (load-constants-from-file (pth (format nil "~A" key)))))
 
-;; EXAMPLE VALUE
-(defparameter *typed-stacks*
-  (cons (cons :gadget (extract-gadgets-from-elf *elf*))
-	(mapcar #'%constants '(:int :dword :ratio))))
-
-(defparameter *rnd-stack-example*
-  (ropush:random-stack *typed-stacks*
-		       :seed #xDEAD5EED
-		       :typed-minlens `((:gadget 4)
-					(:dword 12)
-					(:int 3))))
-;; some handy testing values
 
 ;; (setq *print-base* 16)
 

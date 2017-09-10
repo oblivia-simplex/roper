@@ -1,7 +1,13 @@
 
+(defpackage :params
+  (:use
+   :params
+   :common-lisp))
+
 
 (defpackage :mips-analysis
   (:use
+   :params
    :common-lisp
    :junk-drawer
    ))
@@ -9,13 +15,16 @@
 
 (defpackage :arm-analysis
   (:use
+   :params
    :common-lisp
    :junk-drawer
    ))
 
 (defpackage :read-elf
-  (:use :common-lisp
-	:junk-drawer)
+  (:use
+   :params
+   :common-lisp
+   :junk-drawer)
   (:export :get-elf-sections
 	   :get-loadable-elf-segments
            :secs-in-segs
@@ -31,19 +40,25 @@
 	   ))
 
 (defpackage :2ndvariety
-  (:use :common-lisp
-	:junk-drawer
-	:screamer
-	:read-elf
-	))
+  (:use
+   :params
+   :common-lisp
+   :junk-drawer
+   :screamer
+   :read-elf
+   ))
 
 (defpackage :phylostructs
-  (:use :common-lisp
-	:2ndvariety
-        :junk-drawer))
+  (:use
+   :params
+   :common-lisp
+   :2ndvariety
+   :junk-drawer))
 
 (defpackage :hatchery
-  (:use :common-lisp
+  (:use
+   :params
+   :common-lisp
    :read-elf
    :phylostructs
    :cffi
@@ -52,18 +67,28 @@
 
 
 (defpackage :ropush
-  (:use :common-lisp
-	:mersenne
-	:phylostructs))
+  (:use
+   :params
+   :common-lisp
+   :mersenne
+   :junk-drawer
+   :phylostructs
+   ))
 ;; impt to first load ropush-vars, then ropush, then ropush-gad
 ;; and finally ropush-test, to play with it in the repl.
 
 (defpackage :roper
-  (:use :common-lisp
-	:hatchery
-	:junk-drawer
-	:unicorn
-	:phylostructs
-	:2ndvariety
-	:read-elf))
+  (:use
+   :params
+   :common-lisp
+   :hatchery
+   :junk-drawer
+   :unicorn
+   :phylostructs
+   :2ndvariety
+   :read-elf))
 
+(defpackage :frontend
+  (:use
+   :params
+   :common-lisp))

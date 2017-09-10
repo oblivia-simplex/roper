@@ -1,4 +1,4 @@
-;: ushGP variant for ROPER
+;: PushGP variant for ROPER
 ;; individual isn't a ROP chain, but a ROP chain builder
 
 ;; data representation:
@@ -12,7 +12,9 @@
   (name 'unnamed-operation :type symbol)
   (sig () :type (or null (cons keyword)))
   (ret () :type (or null (cons keyword)))
-  (func))
+  (peek nil :type bool)
+  (fetch)
+  (func #'identity))
 
 (defun mangle-symbols (syms)
   (let ((i 0)
@@ -21,24 +23,64 @@
 	 (push (intern (format nil "_~A_~D" sym i)) mangs)
 	 (incf i))
     mangs))
-	 
 
-(defmacro encaps-fn (sig fn)
-  "Takes a function and a signature list, then returns a new function
-that returns the value of the old function, wrapped in a list"
-  (let ((mang (mangle-symbols sig)))
-    `(lambda ,mang
-       (list (apply ,fn `(,,@mang)))))
-  )
+;; deprecated -- using #'compose from junk-drawer now
+;(defmacro encaps-fn (sig fn)
+;  "Takes a function and a signature list, then returns a new function
+;that returns the value of the old function, wrapped in a list"
+;  (let ((mang (mangle-symbols sig)))
+;    `(lambda ,mang
+;       (list (apply ,fn `(,,@mang))))))
 
-(defmacro defop (name &key sig ret func)
-  `(progn
-     (defparameter ,name (make-operation
-			  :name (quote ,name)
-			  :sig (quote ,sig)
-			  :ret (quote ,ret)
-			  :func ,func))
-     (push ,name *operations*)))
+(defun %mk-arg-fetch (sig ret peek)
+  (let ((topf (if peek
+		  #'$peek
+		  (if (member (car ret) '(:list))
+		      #'$pop-keep-types
+		      #'$pop))))
+    (lambda ()
+      (nreverse (mapcar topf sig)))))
+
+(defmacro defop (name &key sig ret func peek (encaps t))
+  (let ((fn (if encaps
+		`(compose #'list ,func)
+		func)))
+    `(progn
+       (defparameter ,name (make-operation
+			    :name (quote ,name)
+			    :sig (quote ,(reverse sig))
+			    :ret (quote ,ret)
+			    :fetch (%mk-arg-fetch (quote ,sig)
+						  (quote ,ret)
+						  (quote ,peek))
+			    :func ,fn))
+       (push ,name *operations*)
+       ,name)))
+
+(defmacro def-unpacker-op (type)
+  (let ((name (intern (format nil "!LIST->~A" type))))
+    `(defop ,name
+	 :sig (:list)
+	 :ret ()
+	 :peek nil
+	 :func (mk-unpacker ,type))))
+
+;; Some standard functions
+
+(defmacro def-generic-op (suffix &key sig ret peek encaps func)
+  ;; new syntax
+  (labels ((wildcard (type s)
+	     (mapcar (lambda (x) (if (eq x '*) type x)) s)))
+    (cons 'progn
+	  (loop for type in *stack-types*
+	     collect
+	       (let ((name (intern (format nil "!~A-~A" type suffix))))
+		 `(defop ,name
+		      :sig ,(wildcard type sig)
+		      :ret ,(wildcard type ret)
+		      :peek ,peek
+		      :encaps ,encaps
+		      :func ,func))))))
 
 (defun repr (unit)
   (when unit
@@ -78,8 +120,8 @@ that returns the value of the old function, wrapped in a list"
 			       (abridge-to-str (list ,@arglist))
 			       (abridge-to-str __res)
 			       (repr-stack-tops $stacks)
-			       )
-		       (incf $counter)))
+			       )))
+       (incf $counter)
        __res)))
 
 (defstackfn $push (typ.val)
@@ -90,6 +132,7 @@ that returns the value of the old function, wrapped in a list"
 
 (defstackfn $pop (typ)
   (funcall $$pop typ))
+
 
 (defstackfn $pop-keep-types (typ)
   (funcall $$pop typ :keep-types t))
@@ -105,14 +148,23 @@ that returns the value of the old function, wrapped in a list"
 
 ;; modify this so that it can handle symbols denoting lists for stack-keywords,
 ;; as well as literal lists (as it exclusively does now)
-(defmacro with-stacks (stack-keywords &rest body)
+
+;; supply input as special stack, which can only be accessed by $emu
+(defmacro with-stacks (stack-keywords unicorn &rest body)
+  ;; the unicorn parameter can be either nil, or point to a unicorn
+  ;; engine, to be used in evaluating certain gadget expressions
   `(let (($counter 0)
+	 ($halt nil)
+	 ($unicorn ,unicorn)
 	 ($stacks
 	  (quote ,(loop for key in stack-keywords
 		    collect
 			`(,key . ())))))
+     (declare (ignorable $halt
+			 $unicorn))
      (labels (($stackf (key)
 		(cdr (assoc key $stacks)))
+	      ;; bit of a hack here: this "setf" works like a push.
 	      ((setf $stackf) (new-value key)
 		(setf (cdr (assoc key $stacks))
 		      (cons new-value (cdr (assoc key $stacks))))))
@@ -133,26 +185,22 @@ that returns the value of the old function, wrapped in a list"
 	 $stacks))))
 
 
-
-
+  
+;; i don't like the keep-types hack... but i don't see a way around it yet
 (defun %$call-op (op)
   (let ((peek-args (mapcar #'$peek (op-sig op))))
     (unless (some #'null peek-args)
-      (let ((args (mapcar (lambda (x)
-			    (if (member (car (op-ret op)) '(:list))
-				($pop-keep-types x)
-				($pop x)))
-			  
-			  (op-sig op))))
-	(format t "********** calling ~A ************~%" (op-name op))
-	(format t ">> args: ~S~%" args)
-	(if (eq (op-ret op) :unpack-list)
-	    (mapcar #'$push (apply (op-func op) args))
-	    (mapcar
-	     (lambda (x y)
-	       ($push (cons x y)))
-	     (op-ret op)
-	     (apply (op-func op) args)))))))
+      (let ((args (funcall op-fetch)))
+;;	(format t "********** calling ~A ************~%" (op-name op))
+;;	(format t ">> args: ~S~%" args)
+	;; abandoned this unpack-list type, i think.
+	;(if (eq (op-ret op) :unpack-list)
+	 ;   (mapcar #'$push (apply (op-func op) args))
+	(mapcar
+	 (lambda (x y)
+	   ($push (cons x y)))
+	 (op-ret op)
+	 (apply (op-func op) args))))))
 					;($push
 	; (cons (op-ret op)
 	;       (apply (op-func op) args)))))))
@@ -169,46 +217,30 @@ that returns the value of the old function, wrapped in a list"
 ;(defstruct unit
 ;  (kind nil :type (or null keyword))
 					;  (body
-;; Some standard functions
-(defmacro def-generic-op (suffix param-arity ret-arity arglist &rest body)
-  (cons 'progn
-	(loop for type in *stack-types* collect
-	     `(progn
-		(defparameter ,(intern (format nil "!~A-~A" type suffix))
-		  (make-operation
-		   :name (quote ,(intern (format nil "!~A-~A" type suffix)))
-		   :sig (quote ,(loop for i below param-arity collect type))
-		   :ret (quote ,(loop for i below ret-arity collect type))
-		   :func (lambda ,arglist
-			   (progn
-			     ,@body))))
-		(push ,(intern (format nil "!~A-~A" type suffix))
-		      *operations*)))))
 
-(defmacro def-move-op (dest)
-  (cons 'progn
-	(loop for type in (remove-if (lambda (x) (eq x dest))
-				     *stack-types*)
-	   collect
-	     `(progn
-		(defparameter ,(intern (format nil "!~A->~A" type dest))
-		  (make-operation
-		   :name (quote ,(intern (format nil "!~A->~A" type dest)))
-		   :sig (quote ,(list type))
-		   :ret (quote ,(list dest))
-		   :func #'list))
-		(push ,(intern (format nil "!~A->~A" type dest))
-		      *operations*)))))
 
+(defparameter *halt-hooks* '())
 
 (export 'run)
-(defun run (exec-stack)
-  (with-stacks #.*stack-types*
+(defun run (exec-stack &key (max-push-steps <max-push-steps>)
+			 (unicorn nil))
+  (with-stacks #.*stack-types* unicorn
     ($clear)
+    (print 'hi)
     ($load-exec exec-stack)
-    (loop while (cdr (assoc :exec $stacks)) do
-	 ($exec ($pop :exec)))))
+    (loop while (and (not $halt)
+		     (cdr (assoc :exec $stacks))
+		     (< $counter max-push-steps))
+       do
+	 ($exec ($pop :exec)))
+    (loop for hook in *halt-hooks* do
+	 ($exec hook))))
 
+
+
+;;;;;;;;;;;;; put the following in its own file. it
+;; has to do with individual generation, and not with the
+;; ropush logic itself
 
 ;; To make a random individual exec-stack:
 
@@ -256,3 +288,5 @@ that returns the value of the old function, wrapped in a list"
   (mapc (lambda (x)
 	  (format t "* ~A~%" (repr x))) es)
   nil)
+
+

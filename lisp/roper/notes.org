@@ -1,0 +1,47 @@
+* ROPUSHER (PROPER?)
+** types and ops:
+*** gadget
+**** _sp-delta -> integer
+**** _ret-offset -> integer
+**** _subsumes -> bool
+*** code/exec
+**** _if
+**** _when
+**** _do*while 
+**** _do*range integer integer
+**** _do*times integer
+**** _do*list list
+*** integer (meta numbers)
+*** dword (object numbers)
+**** _bitor
+**** _bitand
+**** _bitxor
+**** _bitnot
+**** _lshift integer
+**** _rshift integer
+*** data pointer
+**** _deref
+**** _inc
+**** _dec
+*** bool
+**** _and
+**** _or
+**** _xor
+**** _not
+*** list
+*** <generic>
+**** combinators
+***** _k
+***** _y
+***** _s
+**** forth operators
+***** _dup
+***** _swap
+***** _shove
+***** _yank
+***** _shovedup
+***** _yankdup
+***** _rot
+***** _stackdepth -> integer
+***** _eq -> bool
+***** _empty -> bool
