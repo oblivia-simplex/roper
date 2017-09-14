@@ -5,7 +5,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun test2 (script)
-  (with-stacks (:gadget :int :bool :string :code :exec)
+  (with-stacks (:gadget :int :bool :string :womb :exec)
     ($clear)
     (eval script)))
 
@@ -36,14 +36,19 @@
 	`(:bool . t)
 	`(:op . ,!int-dup)
 	`(:op . ,!exec-dup)
-	`(:list . ((:string . "already in a list") (:string . "in a list too")))
-	`(:op . ,!exec-rot+)
-	`(:op . ,!store-code)
-	`(:string . "am i code?")
+	`(:op . ,!exec-over)
+	`(:op . ,!store-womb)
+	`(:string . "am i womb?")
 	`(:op . ,!int-rot+)
-	`(:op . ,!int->list)
-	`(:op . ,!store-code)
+	`(:op . ,!store-womb)
 	`(:op . ,!string-dup)
 	`(:op . ,!string-len)
 	`(:string . "done")))
 
+(defparameter exec-stack-2
+  (list (cons :int 3)
+	(cons :int 4)
+	(cons :int 5)
+	(cons :op !int-plus)
+	(cons :op !int-dup)
+	(cons :op !int-rot+)))

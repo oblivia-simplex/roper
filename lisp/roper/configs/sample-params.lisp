@@ -34,6 +34,8 @@
   :ARM
   "The CPU architecture to target. Currently supported are ARM and (to a lesser extent) MIPS.")
 
+(defparameter <word-size> 32
+  "The word size, in bits, for the architecture and mode being used. This should probably be derived automatically. Don't fuss with it.")
 
 (defparameter <cpu-mode>
   :ARM

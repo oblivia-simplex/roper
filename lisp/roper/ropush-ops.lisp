@@ -1,4 +1,9 @@
 (in-package :ropush)
+
+(defun safemod (number divisor)
+  (if (zerop divisor) 0
+      (mod number divisor)))
+
 ;; SPECIAL OPS
 (defop !!halt
     :sig ()
@@ -8,51 +13,95 @@
 
 ;; GENERIC OPS
 (def-generic-op rot+
-    :sig (* * *)
-    :ret (* * *)
+    :sig (? ? ?)
+    :ret (? ? ?)
     :encaps nil
     :func (lambda (x y z)
 	    (list z x y)))
 
+;; = rot rot
 (def-generic-op rot-
-    :sig (* * *)
-    :ret (* * *)
+    :sig (? ? ?)
+    :ret (? ? ?)
     :encaps nil
     :func (lambda (x y z)
 	    (list y z x)))
 
 (def-generic-op swap
-    :sig (* *)
-    :ret (* *)
+    :sig (? ?)
+    :ret (? ?)
     :encaps nil
     :func (lambda (x y)
 	    (list y x)))
 
 (def-generic-op dup
-    :sig (*)
-    :ret (* *)
+    :sig (?)
+    :ret (? ?)
     :encaps nil
     :func (lambda (x)
 	    (list x x)))
 
 (def-generic-op over
-    :sig (* *)
-    :ret (* * *)
+    :sig (? ?)
+    :ret (? ? ?)
     :encaps nil
     :func (lambda (a b)
-	    (list )))
+	    (list b a b)))
 
-;; STANDARD OPS
-(defop !int->dword
-    :sig (:int)
-    :ret (:dword)
+(def-generic-op drop
+    :sig (?)
+    :ret ()
+    :func (lambda (x)))
+
+(def-generic-op reload
+    :sig (?)
+    :ret (:exec)
     :func (lambda (x)
-	    (ldb (byte 32 0) x)))
+	    (cons (car sig) x))) ;; anaphoric reference
 
-(defop !pointer->dword
-    :sig (:pointer)
-    :ret (:dword)
-    :func #'list)
+(def-generic-op ==
+    :sig (? ?)
+    :ret (:bool)
+    :func (lambda (x y)
+	    (equalp x y)))
+
+(def-generic-op flush
+    :sig (?)
+    :ret ()
+    :func (lambda (_)
+	    (declare (ignore _))
+	    (setf ($stack-of (car sig)) ())))
+
+(def-generic-op yank
+    :sig (:int)
+    :ret (?);; add point display to mode-line construct
+    :peek t ;; to prevent indexing errors
+    :func (lambda (i)
+	    (let ((stk))
+	      (setq stk ($stack-of (car ret)))
+	      (excise stk (safemod i (length stk))))))
+
+(def-generic-op shove 
+    :sig (:int ?)
+    :ret ()
+    :peek t
+    :func (lambda (i thing)
+	    (let ((stk))
+	      ;; lisp doesn't like me putting car or sig in the let decl
+	      (setq stk ($stack-of (cadr sig)))
+	      (insert stk
+		      (safemod i (length stk))
+		      ;; consing together with type info, again,
+		      ;; since the return action is nonstandard
+		      (cons (cadr sig) thing)))))
+
+(def-generic-op height
+    :sig (?)
+    :ret (:int)
+    :peek t
+    :func (lambda (_)
+	    (declare (ignore _))
+	    ($height (car sig))))
 
 (defop !int-plus
     :sig (:int :int)
@@ -66,67 +115,22 @@
     :func (lambda (x y)
 	    (format nil "The answer is ~D" (+ x y))))
 
-(defop !list-len
-    :sig (:list)
-    :ret (:int)
-    :func (lambda (x) (length x)))
 
 (defop !string-len
     :sig (:string)
     :ret (:int)
-    :func (lambda (x) (length x)))
+    :func #'length)
 
-(defop !store-code
-    :sig (:exec)
-    :ret (:code)
-    :func #'list)
+(defop !store-womb
+    :sig (:int)
+    :ret (:womb)
+    :strip nil
+    :func #'identity)
 
-(defop !load-code
-    :sig (:code)
+(defop !load-womb
+    :sig (:womb)
     :ret (:exec)
-    :func #'list)
-
-(defun 2list (x y)
-  (list y x))
-
-(defop !int->list
-    :sig (:int :int)
-    :ret (:list)
-    :func #'2list)
-
-(defop !list->ints
-    :sig (:list)
-    :ret () ;; OVERRIDE
-    :func (mk-unpacker :int))
-
-
-(defop !gadget->list
-    :sig (:gadget :gadget)
-    :ret (:list)
-    :func #'2list)
-
-(defop !pointer->list
-    :sig (:pointer :pointer)
-    :ret (:list)
-    :func #'2list)
-
-
-(defop !exec->list
-    :sig (:exec :exec)
-    :ret (:list)
-    :func #'2list)
-
-(defop !list-merge
-    :sig (:list :list)
-    :ret (:list)
-    :func (lambda (x y)
-	    (append y x)))
-
-(defop !list-reverse
-    :sig (:list)
-    :ret (:list)
-    :func (lambda (x)
-	    (reverse x)))
+    :func #'identity)
 
 (defop !ratio->int
     :sig (:ratio)

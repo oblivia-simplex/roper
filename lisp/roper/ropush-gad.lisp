@@ -17,9 +17,12 @@
 
 ;; SPECIAL OPS
 
+(defparameter *gadget-emu-cost* 2)
+
 (defop !!emu-1
     :sig ()
     :ret ()
+    :gas (*gadget-emu-cost*)
     :func (lambda ()
 	    ($emu nil ;; halt
 		  1   ;; num
@@ -28,6 +31,7 @@
 (defop !!emu-all
     :sig ()
     :ret ()
+    :gas (* *gadget-emu-cost* ($height :gadget))
     :func (lambda ()
 	    ($emu nil nil)))
 
@@ -106,7 +110,9 @@
 (defun push-stacks->payload (stacks &optional num)
   "Generates an attack payload from the state of the stacks."
   (let ((gadgets (cdr (assoc :gadget stacks)))
-	(dispense (make-cyclical-dispenser (cdr (assoc :int stacks))))
+	(dispense (make-cyclical-dispenser
+		   (mapcar (lambda (n) (ldb (byte <word-size> 0) n))
+			   (cdr (assoc :int stacks)))))
 	(payload ()))
     (if (and num (< num (length gadgets)))
 	(setq gadgets (subseq gadgets 0 num)))

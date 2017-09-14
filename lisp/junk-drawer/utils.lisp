@@ -353,3 +353,19 @@ must be disjoint."
   (if functions
     (reduce #'compose2 functions)
     #'values))
+
+(export 'excise)
+(defun excise (lst index)
+  (let ((p lst))
+    (loop repeat index do
+	 (setq p (cdr p)))
+    (setf (cdr p) (cddr p))
+    (values (car p) lst)))
+
+(export 'insert)
+(defun insert (lst index thing)
+  (let ((p lst))
+    (loop repeat index do
+	 (setq p (cdr p)))
+    (setf (cdr p) (cons thing (cdr p)))
+    lst))

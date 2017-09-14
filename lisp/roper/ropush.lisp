@@ -1,9 +1,6 @@
 ;: PushGP variant for ROPER
 ;; individual isn't a ROP chain, but a ROP chain builder
 
-;; data representation:
-;; cons pairs. first element is keyword indicating stack, second is data
-;; e.g. (:gadget . gad)
 (in-package :ropush)
 
 (defparameter *operations* '())
@@ -13,6 +10,7 @@
   (sig () :type (or null (cons keyword)))
   (ret () :type (or null (cons keyword)))
   (peek nil :type bool)
+  (gas 1) ;; ripping off ethereum here.
   (fetch)
   (func #'identity))
 
@@ -24,72 +22,21 @@
 	 (incf i))
     mangs))
 
-;; deprecated -- using #'compose from junk-drawer now
-;(defmacro encaps-fn (sig fn)
-;  "Takes a function and a signature list, then returns a new function
-;that returns the value of the old function, wrapped in a list"
-;  (let ((mang (mangle-symbols sig)))
-;    `(lambda ,mang
-;       (list (apply ,fn `(,,@mang))))))
 
-(defun %mk-arg-fetch (sig ret peek)
-  (let ((topf (if peek
-		  #'$peek
-		  (if (member (car ret) '(:list))
-		      #'$pop-keep-types
-		      #'$pop))))
-    (lambda ()
-      (nreverse (mapcar topf sig)))))
 
-(defmacro defop (name &key sig ret func peek (encaps t))
-  (let ((fn (if encaps
-		`(compose #'list ,func)
-		func)))
-    `(progn
-       (defparameter ,name (make-operation
-			    :name (quote ,name)
-			    :sig (quote ,(reverse sig))
-			    :ret (quote ,ret)
-			    :fetch (%mk-arg-fetch (quote ,sig)
-						  (quote ,ret)
-						  (quote ,peek))
-			    :func ,fn))
-       (push ,name *operations*)
-       ,name)))
-
-(defmacro def-unpacker-op (type)
-  (let ((name (intern (format nil "!LIST->~A" type))))
-    `(defop ,name
-	 :sig (:list)
-	 :ret ()
-	 :peek nil
-	 :func (mk-unpacker ,type))))
 
 ;; Some standard functions
-
-(defmacro def-generic-op (suffix &key sig ret peek encaps func)
-  ;; new syntax
-  (labels ((wildcard (type s)
-	     (mapcar (lambda (x) (if (eq x '*) type x)) s)))
-    (cons 'progn
-	  (loop for type in *stack-types*
-	     collect
-	       (let ((name (intern (format nil "!~A-~A" type suffix))))
-		 `(defop ,name
-		      :sig ,(wildcard type sig)
-		      :ret ,(wildcard type ret)
-		      :peek ,peek
-		      :encaps ,encaps
-		      :func ,func))))))
+(defvar ?)
 
 (defun repr (unit)
   (when unit
-    (if (listp unit)
-	(let ((val-str (if (eq (car unit) :op)
-			   (format nil "~A" (op-name (cdr unit)))
-			   (format nil "~A" unit))))
-	  val-str)
-	(format nil "~A" unit))))
+    (let ((val-str 
+	   (cond ((operation-p unit) (format nil "~A " (op-name unit)))
+		 ((listp unit) (case (car unit)
+				 ((:op) (format nil "~A " (op-name (cdr unit))))
+				 (otherwise (format nil "~S " unit))))
+		 (t (format nil "~S " unit)))))
+      val-str)))
 
 (defun repr-stack-tops (stacks)
   (let ((fstr (make-array '(0) :element-type 'base-char
@@ -97,10 +44,11 @@
 			  :adjustable t)))
     (with-output-to-string (s fstr)
       (loop for stack in stacks do
-	   (format s "  ~A: ~A [top of ~D]~%" (car stack) (repr (cadr stack)) (length (cdr stack)))))
+	   ;(format s "  ~A: ~A [top of ~D]~%" (car stack) (repr (cadr stack)) (length (cdr stack)))))
+	   (format s "~A: ~A~A~%" (car stack) #\Tab (apply #'concatenate 'string (mapcar #'repr (cdr stack))))))
     fstr))
 
-(defun abridge-to-str (lst &optional (maxlen 4))
+(defun abridge-to-str (lst &optional (maxlen 10))
   (if (and (listp lst) (listp (cdr lst)))
       (if (< (length lst) maxlen)
 	  (format nil "~S" lst)
@@ -109,7 +57,13 @@
 		  (length lst)))
       (format nil "~S" lst)))
 
+(defmacro defstackfn-inc (name increment arglist &rest body)
+  `(%defstackfn ,name ,increment ,arglist ,@body))
+
 (defmacro defstackfn (name arglist &rest body)
+  `(%defstackfn ,name 1 ,arglist ,@body))
+
+(defmacro %defstackfn (name increment arglist &rest body)
   `(defun ,name ,arglist
      (let ((__res (progn
 		    ,@body)))
@@ -117,12 +71,17 @@
 		       (format t "[~D] ~A ~A -> ~A~%~A~%"
 			       $counter
 			       (quote ,name)
-			       (abridge-to-str (list ,@arglist))
-			       (abridge-to-str __res)
+			       (apply #'concatenate 'string (mapcar #'repr (list ,@arglist)))
+			       (if (listp __res)
+				   (repr __res) ;(apply #'concatenate 'string (mapcar #'repr __res))
+				   (repr __res))
 			       (repr-stack-tops $stacks)
 			       )))
-       (incf $counter)
+       (incf $counter ,increment)
        __res)))
+
+(defstackfn-inc $inc 0 (n)
+		(incf $counter n))
 
 (defstackfn $push (typ.val)
   (funcall $$push typ.val))
@@ -133,7 +92,15 @@
 (defstackfn $pop (typ)
   (funcall $$pop typ))
 
+(defstackfn $height (typ)
+  (funcall $$height typ))
 
+(defstackfn $stack-of (typ)
+  (funcall $$stack-of typ))
+
+(defun (setf $stack-of) (lst typ)
+       (setf (cdr (assoc typ $stacks)) lst))
+#+ropush-list-support
 (defstackfn $pop-keep-types (typ)
   (funcall $$pop typ :keep-types t))
 
@@ -148,6 +115,9 @@
 
 ;; modify this so that it can handle symbols denoting lists for stack-keywords,
 ;; as well as literal lists (as it exclusively does now)
+
+(defun untyped-stack-p (s)
+  (member s *untyped-stacks*))
 
 ;; supply input as special stack, which can only be accessed by $emu
 (defmacro with-stacks (stack-keywords unicorn &rest body)
@@ -170,44 +140,37 @@
 		      (cons new-value (cdr (assoc key $stacks))))))
        (let (($$push
 	      (lambda (type.val)
-		(setf ($stackf (car type.val)) (cdr type.val))))
+		(setf ($stackf (car type.val)) type.val)))
+	     ($$height
+	      (lambda (type)
+		(length ($stackf type))))
 	     ($$pop
-	      (lambda (type &key keep-types)
-		(if keep-types
-		    (cons type (pop (cdr (assoc type $stacks))))
-		    (pop (cdr (assoc type $stacks))))))
+	      (lambda (type)
+		(pop (cdr (assoc type $stacks)))))
+	     ($$stack-of
+	      (lambda (type)
+	       (cdr (assoc type $stacks))))
 	     ($$peek
 	      (lambda (type)
-		(cdr (assoc type $stacks)))))
+	        (cadr (assoc type $stacks)))))
 	 (progn
-	 `(declare (ignore $push $pop))
+	 `(declare (ignorable $$height $$push $$pop $$peek))
 	 ,@body)
 	 $stacks))))
 
 
   
-;; i don't like the keep-types hack... but i don't see a way around it yet
 (defun %$call-op (op)
   (let ((peek-args (mapcar #'$peek (op-sig op))))
     (unless (some #'null peek-args)
-      (let ((args (funcall op-fetch)))
-;;	(format t "********** calling ~A ************~%" (op-name op))
-;;	(format t ">> args: ~S~%" args)
-	;; abandoned this unpack-list type, i think.
-	;(if (eq (op-ret op) :unpack-list)
-	 ;   (mapcar #'$push (apply (op-func op) args))
+      (let ((args (funcall (op-fetch op))))
 	(mapcar
-	 (lambda (x y)
-	   ($push (cons x y)))
-	 (op-ret op)
-	 (apply (op-func op) args))))))
-					;($push
-	; (cons (op-ret op)
-	;       (apply (op-func op) args)))))))
-      ;; do the rest here
+	 #'$push
+	 (print (apply (op-func op) args)))))))
 
-(defstackfn $call-op (op)
-  (%$call-op op))
+(defstackfn-inc $call-op 0 (op)
+		($inc (eval (op-gas op)))
+		(%$call-op op))
 
 (defstackfn $load-exec (exec-stack)
   (setf (cdr (assoc :exec $stacks)) exec-stack))
@@ -226,7 +189,6 @@
 			 (unicorn nil))
   (with-stacks #.*stack-types* unicorn
     ($clear)
-    (print 'hi)
     ($load-exec exec-stack)
     (loop while (and (not $halt)
 		     (cdr (assoc :exec $stacks))
@@ -236,7 +198,81 @@
     (loop for hook in *halt-hooks* do
 	 ($exec hook))))
 
+;; THIS is where the type-stripping should happen,
+;; since it's easy to configure from the op. 
+(defun %mk-arg-fetch (sig peek strip)
+  (let* ((%topf (if peek #'$peek #'$pop))
+	 (topf (if strip
+		   (compose #'cdr %topf)
+		   %topf)))
+    (lambda ()
+      (print (nreverse (mapcar topf sig))))))
 
+(defmacro defop (name &key
+			sig
+			ret
+			func
+			peek
+			(strip t) 
+			(gas 1)
+			(encaps t))
+  (let* ((strip (if (or (not encaps) (untyped-stack-p (car ret)))
+		    nil
+		    strip))
+	 (type-pre (if (and strip ret)
+		       (lambda (x) (cons (car ret) x))
+		       #'identity))
+	 (encaps-pre (if (and encaps ret)
+			 #'list
+			 #'identity))
+	 (fn `(compose ,encaps-pre ,type-pre ,func)))
+    `(progn
+       (defparameter ,name (make-operation
+			    :name (quote ,name)
+			    :sig (quote ,(reverse sig))
+			    :ret (quote ,ret)
+			    :gas (quote ,gas)
+			    :fetch (%mk-arg-fetch (quote ,sig)
+						  (quote ,peek)
+						  (quote ,strip))
+			    :func (let ((sig ',sig)
+					(ret ',ret))
+				    (declare (ignorable sig ret))
+				    ,fn)))
+       (push ,name *operations*)
+       ,name)))
+
+(defun mk-unpacker (type)
+  (lambda (lst)
+    (mapcar #'$push
+	    (remove-if-not (lambda (y) (eq (car y) type))
+			   lst))))
+
+;(defmacro def-unpacker-op (type)
+;  (let ((name (intern (format nil "!LIST->~A" type))))
+;    `(defop ,name
+	 ;; :sig (:list)
+	 ;; :ret ()
+	 ;; :peek nil
+	 ;; :encaps nil
+;;	 :func (mk-unpacker ,type))))
+
+(defmacro def-generic-op (suffix &key sig ret peek encaps func (strip t))
+  ;; new syntax
+  ;(labels ((wildcard (type s)
+;	     (mapcar (lambda (x) (if (eq x '*) type x)) s)))
+    (cons 'progn
+	  (loop for __type in *stack-types*
+	     collect
+	       (let ((name (intern (format nil "!~A-~A" __type suffix)))
+		     (? __type))
+		 `(defop ,name
+		      :sig ,(mapcar #'symbol-value sig)
+		      :ret ,(mapcar #'symbol-value ret)
+		      :peek ,peek
+		      :encaps ,encaps
+		      :strip ,strip
+		      :func ,func)))))
 
 ;;;;;;;;;;;;; put the following in its own file. it
 ;; has to do with individual generation, and not with the
