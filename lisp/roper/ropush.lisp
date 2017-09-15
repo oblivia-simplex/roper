@@ -38,6 +38,10 @@
 		 (t (format nil "~S " unit)))))
       val-str)))
 
+
+(defparameter *longest-stack-name-length*
+  (reduce #'max (mapcar (compose #'length #'symbol-name) *stack-types*)))
+
 (defun repr-stack-tops (stacks)
   (let ((fstr (make-array '(0) :element-type 'base-char
 			  :fill-pointer 0
@@ -45,7 +49,15 @@
     (with-output-to-string (s fstr)
       (loop for stack in stacks do
 	   ;(format s "  ~A: ~A [top of ~D]~%" (car stack) (repr (cadr stack)) (length (cdr stack)))))
-	   (format s "~A: ~A~A~%" (car stack) #\Tab (apply #'concatenate 'string (mapcar #'repr (cdr stack))))))
+	   (format s "~A:~A ~A~A~%"
+		   (car stack)
+		   (coerce (loop repeat
+				(- *longest-stack-name-length*
+				   (length (symbol-name (car stack))))
+			      collect #\Space)
+			   'string)
+		   #\Space
+		   (apply #'concatenate 'string (mapcar #'repr (cdr stack))))))
     fstr))
 
 (defun abridge-to-str (lst &optional (maxlen 10))
@@ -90,7 +102,10 @@
   (funcall $$peek typ))
 
 (defstackfn $pop (typ)
-  (funcall $$pop typ))
+  ;; this might help
+  (funcall $$pop (if (eq typ :exec)
+		     :code
+		     typ)))
 
 (defstackfn $height (typ)
   (funcall $$height typ))
@@ -132,18 +147,24 @@
 			`(,key . ())))))
      (declare (ignorable $halt
 			 $unicorn))
-     (labels (($stackf (key)
-		(cdr (assoc key $stacks)))
+;     (labels (($stackf (key)
+		;(cdr (assoc key $stacks))))
 	      ;; bit of a hack here: this "setf" works like a push.
-	      ((setf $stackf) (new-value key)
-		(setf (cdr (assoc key $stacks))
-		      (cons new-value (cdr (assoc key $stacks))))))
+	      ;((setf $stackf) (new-value key)
+;		(setf (cdr (assoc key $stacks))
+		      ;(cons new-value (cdr (assoc key $stacks))))))
        (let (($$push
-	      (lambda (type.val)
-		(setf ($stackf (car type.val)) type.val)))
+	      ;(lambda (type.val)
+		;(setf ($stackf (car type.val)) type.val)))
+	      (lambda (type.val &optional override-type)
+		(let ((type (if override-type
+				override-type
+				(car type.val))))
+		  (push type.val
+			(cdr (assoc type $stacks))))))
 	     ($$height
 	      (lambda (type)
-		(length ($stackf type))))
+		(length (cdr (assoc type $stacks)))))
 	     ($$pop
 	      (lambda (type)
 		(pop (cdr (assoc type $stacks)))))
@@ -156,7 +177,7 @@
 	 (progn
 	 `(declare (ignorable $$height $$push $$pop $$peek))
 	 ,@body)
-	 $stacks))))
+	 $stacks)))
 
 
   
@@ -166,7 +187,7 @@
       (let ((args (funcall (op-fetch op))))
 	(mapcar
 	 #'$push
-	 (print (apply (op-func op) args)))))))
+	 (apply (op-func op) args))))))
 
 (defstackfn-inc $call-op 0 (op)
 		($inc (eval (op-gas op)))
@@ -184,6 +205,10 @@
 
 (defparameter *halt-hooks* '())
 
+(defun $step ()
+  (funcall $$push (funcall $$pop :exec) :code)
+  ($exec ($peek :code)))
+  
 (export 'run)
 (defun run (exec-stack &key (max-push-steps <max-push-steps>)
 			 (unicorn nil))
@@ -194,7 +219,7 @@
 		     (cdr (assoc :exec $stacks))
 		     (< $counter max-push-steps))
        do
-	 ($exec ($pop :exec)))
+	 ($step))
     (loop for hook in *halt-hooks* do
 	 ($exec hook))))
 
@@ -206,7 +231,7 @@
 		   (compose #'cdr %topf)
 		   %topf)))
     (lambda ()
-      (print (nreverse (mapcar topf sig))))))
+      (nreverse (mapcar topf sig)))))
 
 (defmacro defop (name &key
 			sig
