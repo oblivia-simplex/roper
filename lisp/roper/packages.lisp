@@ -1,7 +1,6 @@
 
 (defpackage :params
   (:use
-   :params
    :common-lisp))
 
 

@@ -9,7 +9,7 @@
   (name 'unnamed-operation :type symbol)
   (sig () :type (or null (cons keyword)))
   (ret () :type (or null (cons keyword)))
-  (peek nil :type bool)
+  (peek nil :type boolean)
   (gas 1) ;; ripping off ethereum here.
   (fetch)
   (func #'identity))
@@ -69,13 +69,7 @@
 		  (length lst)))
       (format nil "~S" lst)))
 
-(defmacro defstackfn-inc (name increment arglist &rest body)
-  `(%defstackfn ,name ,increment ,arglist ,@body))
-
 (defmacro defstackfn (name arglist &rest body)
-  `(%defstackfn ,name 1 ,arglist ,@body))
-
-(defmacro %defstackfn (name increment arglist &rest body)
   `(defun ,name ,arglist
      (let ((__res (progn
 		    ,@body)))
@@ -89,19 +83,18 @@
 				   (repr __res))
 			       (repr-stack-tops $stacks)
 			       )))
-       (incf $counter ,increment)
        __res)))
 
 (defstackfn-inc $inc 0 (n)
 		(incf $counter n))
 
-(defstackfn $push (typ.val)
+(defun $push (typ.val)
   (funcall $$push typ.val))
 
-(defstackfn $peek (typ)
+(defun $peek (typ)
   (funcall $$peek typ))
 
-(defstackfn $pop (typ)
+(defun $pop (typ)
   ;; this might help
   (funcall $$pop (if (eq typ :exec)
 		     :code
@@ -110,7 +103,7 @@
 (defstackfn $height (typ)
   (funcall $$height typ))
 
-(defstackfn $stack-of (typ)
+(defun $stack-of (typ)
   (funcall $$stack-of typ))
 
 (defun (setf $stack-of) (lst typ)
@@ -119,14 +112,16 @@
 (defstackfn $pop-keep-types (typ)
   (funcall $$pop typ :keep-types t))
 
-(defstackfn $clear ()
+(defun $clear ()
   (mapcar (lambda (x) (setf (cdr x) nil)) $stacks))
 
 ;; too noisy to make this a defstackfn
 (defun $exec (item)
-  (if (eq (car item) :op)
-      ($call-op (cdr item))
-      ($push item)))
+  (cond ((eq (car item) :op)
+	 (incf $counter (op-gas (cdr item)))
+	 ($call-op (cdr item)))
+	(t (incf $counter)
+	   ($push item))))
 
 ;; modify this so that it can handle symbols denoting lists for stack-keywords,
 ;; as well as literal lists (as it exclusively does now)
@@ -147,27 +142,17 @@
 			`(,key . ())))))
      (declare (ignorable $halt
 			 $unicorn))
-;     (labels (($stackf (key)
-		;(cdr (assoc key $stacks))))
-	      ;; bit of a hack here: this "setf" works like a push.
-	      ;((setf $stackf) (new-value key)
-;		(setf (cdr (assoc key $stacks))
-		      ;(cons new-value (cdr (assoc key $stacks))))))
        (let (($$push
-	      ;(lambda (type.val)
-		;(setf ($stackf (car type.val)) type.val)))
-	      (lambda (type.val &optional override-type)
-		(let ((type (if override-type
-				override-type
-				(car type.val))))
-		  (push type.val
-			(cdr (assoc type $stacks))))))
+	      (lambda (type.val)
+		(push (cdr type.val)
+		      (cdr (assoc (car type.val) $stacks)))))
 	     ($$height
 	      (lambda (type)
 		(length (cdr (assoc type $stacks)))))
 	     ($$pop
 	      (lambda (type)
-		(pop (cdr (assoc type $stacks)))))
+		(cons type 
+		      (pop (cdr (assoc type $stacks))))))
 	     ($$stack-of
 	      (lambda (type)
 	       (cdr (assoc type $stacks))))
@@ -189,11 +174,10 @@
 	 #'$push
 	 (apply (op-func op) args))))))
 
-(defstackfn-inc $call-op 0 (op)
-		($inc (eval (op-gas op)))
-		(%$call-op op))
+(defstackfn $call-op (op)
+  (%$call-op op))
 
-(defstackfn $load-exec (exec-stack)
+(defun $load-exec (exec-stack)
   (setf (cdr (assoc :exec $stacks)) exec-stack))
 
 
@@ -206,8 +190,8 @@
 (defparameter *halt-hooks* '())
 
 (defun $step ()
-  (funcall $$push (funcall $$pop :exec) :code)
-  ($exec ($peek :code)))
+  (funcall $$push (cons :code (cdr (funcall $$pop :exec))))
+  ($exec ($pop :code)))
   
 (export 'run)
 (defun run (exec-stack &key (max-push-steps <max-push-steps>)
@@ -245,11 +229,11 @@
 		    nil
 		    strip))
 	 (type-pre (if (and strip ret)
-		       (lambda (x) (cons (car ret) x))
-		       #'identity))
+		       '(lambda (x) (cons (car ret) x))
+		       '#'identity))
 	 (encaps-pre (if (and encaps ret)
-			 #'list
-			 #'identity))
+			 '#'list
+			 '#'identity))
 	 (fn `(compose ,encaps-pre ,type-pre ,func)))
     `(progn
        (defparameter ,name (make-operation

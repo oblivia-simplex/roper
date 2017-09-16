@@ -1,4 +1,4 @@
-(in-package #:asdf-user)
+;(in-package #:asdf-user)
 
 (asdf:defsystem #:roper
   :serial t

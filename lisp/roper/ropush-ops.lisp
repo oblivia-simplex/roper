@@ -19,7 +19,7 @@
     :func (lambda (x y z)
 	    (list z x y)))
 
-;; = rot rot
+
 (def-generic-op rot-
     :sig (? ? ?)
     :ret (? ? ?)
@@ -124,7 +124,6 @@
 (defop !store-womb
     :sig (:int)
     :ret (:womb)
-    :strip nil
     :func #'identity)
 
 (defop !load-womb

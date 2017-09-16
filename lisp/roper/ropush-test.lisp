@@ -35,7 +35,7 @@
 	`(:int . 1)
 	`(:bool . t)
 	`(:op . ,!int-dup)
-	`(:op . ,!string-dup)
+	`(:op . ,!code-dup)
 	`(:op . ,!int-over)
 	`(:op . ,!store-womb)
 	`(:string . "am i womb?")
