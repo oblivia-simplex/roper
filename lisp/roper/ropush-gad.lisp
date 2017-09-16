@@ -22,7 +22,7 @@
 (defop !!emu-1
     :sig ()
     :ret ()
-    :gas (*gadget-emu-cost*)
+    :gas 2
     :func (lambda ()
 	    ($emu nil ;; halt
 		  1   ;; num
@@ -96,16 +96,17 @@
 	  (hatchery:hatch-chain :emu $unicorn
 				:payload payload
 				;; it'd be nice to set input and output regs from here
-				:input (funcall $stackf :input!)) ;; ADJUSTABLE
+				:input (cdr (assoc :input! $stacks))) ;; ADJUSTABLE
 	;; now put these back on the stack
 	;; handle output
 	;; when halt flag is set, send 
 	($push (cons out pc))
-	 ($push (cons out errorcode))
-	 (mapcar (lambda (x)
-		   ($push (cons out x)))
-		 registers))
-      (when halt (setq $halt t)))))
+	($push (cons out (unicorn:errorcode->int errorcode)))
+	(mapcar (lambda (x)
+		  ($push (cons out x)))
+		registers))
+      (when halt (setq $halt t))
+      nil)))
   
 (defun push-stacks->payload (stacks &optional num)
   "Generates an attack payload from the state of the stacks."

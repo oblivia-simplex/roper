@@ -2,13 +2,24 @@
 
 
 
-(defun extract-gadgets-from-elf (elf-obj)
-  (let* ((secs (read-elf:get-elf-sections elf-obj))
+(defun extract-gadgets-from-elf (elf-path &key (save-path))
+  (let* ((elf-obj (elf:read-elf elf-path))
+	 (secs (read-elf:get-elf-sections elf-obj))
 	 (text (find :.text secs :key #'read-elf:sec-name))
 	 ;(rodata (find :.rodata secs :key #'read-elf:sec-name))
 	 (gadgets (find-gadgets text)))
-    gadgets))
-
+    (when save-path
+      (let ((*print-base* 16))
+	(with-open-file (s save-path :direction :output :if-exists :overwrite)
+	  (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
+	  (format s ";; Gadgets from ~A~%" elf-path)
+	  (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
+	  (loop for g in gadgets do
+	       (format s "~S~%" g))
+	  (format t "~D gadgets saved to ~A~%"
+		  (length gadgets)
+		  save-path)
+    gadgets)))))
 
 (defun load-constants-from-file (path &key (base 16))
   (let ((data ())
@@ -16,14 +27,13 @@
     (with-open-file (s path :direction :input)
       (loop for line = (read-line s nil)
 	 while line do
-	   (push (read-from-string line)
-		 data)))
+	   (let ((sexp (read-from-string line nil)))
+	     (when sexp
+	       (push sexp data)))))
     data))
 
-
-
-
-	 
+(defparameter *engine*
+  (hatchery:init-engine :elf (elf:read-elf <elf-path>)))	 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; At this point, this file just sets up some basic test-run stuff.  ;;
 ;; a proper front-end/entry point still needs to be written.         ;;

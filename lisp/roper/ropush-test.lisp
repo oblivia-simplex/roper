@@ -52,3 +52,13 @@
 	(cons :op !int-plus)
 	(cons :op !int-dup)
 	(cons :op !int-rot+)))
+
+(defparameter exec-stack-3
+  (list (cons :int 10)
+	(cons :gadget (make-gadget :SP-DELTA 6 :RET-OFFSET 3 :RET-ADDR #x16110 :ENTRY #x16108))
+	(cons :gadget (make-gadget :SP-DELTA 4 :RET-OFFSET 0 :RET-ADDR #x161BC :ENTRY #x161B0))
+	(cons :op !!emu-1)
+	(cons :op !gadget-dup)
+	(cons :op !gadget-height)
+	(cons :op !int-plus)))
+

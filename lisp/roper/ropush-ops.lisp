@@ -99,6 +99,7 @@
     :sig (?)
     :ret (:int)
     :peek t
+    :encaps t
     :func (lambda (_)
 	    (declare (ignore _))
 	    ($height (car sig))))

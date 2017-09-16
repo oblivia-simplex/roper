@@ -73,7 +73,7 @@
   `(defun ,name ,arglist
      (let ((__res (progn
 		    ,@body)))
-       ,(if *debug* `(progn
+       ,(if (and *debug* (eq name '$call-op)) `(progn
 		       (format t "[~D] ~A ~A -> ~A~%~A~%"
 			       $counter
 			       (quote ,name)
@@ -85,16 +85,14 @@
 			       )))
        __res)))
 
-(defstackfn-inc $inc 0 (n)
-		(incf $counter n))
 
-(defun $push (typ.val)
+(defstackfn $push (typ.val)
   (funcall $$push typ.val))
 
 (defun $peek (typ)
   (funcall $$peek typ))
 
-(defun $pop (typ)
+(defstackfn $pop (typ)
   ;; this might help
   (funcall $$pop (if (eq typ :exec)
 		     :code
@@ -153,12 +151,13 @@
 	      (lambda (type)
 		(cons type 
 		      (pop (cdr (assoc type $stacks))))))
-	     ($$stack-of
-	      (lambda (type)
-	       (cdr (assoc type $stacks))))
 	     ($$peek
 	      (lambda (type)
-	        (cadr (assoc type $stacks)))))
+	        (cons type
+		      (cadr (assoc type $stacks)))))
+	     ($$stack-of
+	      (lambda (type)
+		(cdr (assoc type $stacks)))))
 	 (progn
 	 `(declare (ignorable $$height $$push $$pop $$peek))
 	 ,@body)
@@ -191,7 +190,7 @@
 
 (defun $step ()
   (funcall $$push (cons :code (cdr (funcall $$pop :exec))))
-  ($exec ($pop :code)))
+  ($exec (cdr ($peek :code))))
   
 (export 'run)
 (defun run (exec-stack &key (max-push-steps <max-push-steps>)
@@ -235,7 +234,7 @@
 			 '#'list
 			 '#'identity))
 	 (fn `(compose ,encaps-pre ,type-pre ,func)))
-    `(progn
+    `(prog1
        (defparameter ,name (make-operation
 			    :name (quote ,name)
 			    :sig (quote ,(reverse sig))
@@ -248,8 +247,7 @@
 					(ret ',ret))
 				    (declare (ignorable sig ret))
 				    ,fn)))
-       (push ,name *operations*)
-       ,name)))
+       (push ,name *operations*))))
 
 (defun mk-unpacker (type)
   (lambda (lst)

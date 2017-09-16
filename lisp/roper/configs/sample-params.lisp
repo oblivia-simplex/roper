@@ -15,7 +15,7 @@
 
 
 (defparameter <elf-path>
-  #P"/home/oblivia/Projects/roper/data/tomato-RT-AC3200-132-AIO-httpd"
+  #P"/home/oblivia/Projects/roper/data/tomato-RT-AC3200-ARM-132-AIO-httpd"
   "Path to the ELF binary from which to extract gadgets.")
 
 (defparameter <typed-ropush-minlens>

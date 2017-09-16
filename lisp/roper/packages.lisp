@@ -61,6 +61,7 @@
    :read-elf
    :phylostructs
    :cffi
+   :junk-drawer
    :2ndvariety
    :unicorn))
 

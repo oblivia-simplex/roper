@@ -28,14 +28,14 @@
 
 (export 'init-engine)
 (defun init-engine (&key
+		      (elf)
 		      (arch <cpu-arch>)
 		      (mode <cpu-mode>)
-		      (elf-obj elf-obj)
 		      (merge t))
   (let* ((uc (unicorn::uc-open arch mode))
          (segs%  (get-loadable-elf-segments elf :align t))
 	 (segs (if merge (merge-segments segs%) segs%))
-         (secs (secs-in-segs (get-elf-sections elf-obj) segs)))
+         (secs (secs-in-segs (get-elf-sections elf) segs)))
     (mapc (lambda (s) (mem-map-seg uc s)) segs)
     (mapc (lambda (s) (mem-write-sec uc s)) secs)
     (make-emu :engine uc
