@@ -71,37 +71,21 @@
 		  (length lst)))
       (format nil "~S" lst)))
 
-(defmacro defstackfn (name arglist &rest body)
-  `(defun ,name ,arglist
-     (let ((__res (progn
-		    ,@body)))
-       ,(if (and *debug* (eq name '$call-op)) `(progn
-		       (format t "[~D] ~A ~A -> ~A~%~A~%"
-			       $counter
-			       (quote ,name)
-			       (apply #'concatenate 'string (mapcar #'repr (list ,@arglist)))
-			       (if (listp __res)
-				   (repr __res) ;(apply #'concatenate 'string (mapcar #'repr __res))
-				   (repr __res))
-			       (repr-stack-tops $stacks)
-			       )))
-       __res)))
 
-
-(defstackfn $push (typ.val)
+(defun $push (typ.val)
   (funcall $$push typ.val))
 
 (defun $peek (typ)
   (funcall $$peek typ))
 
-(defstackfn $pop (typ)
+(defun $pop (typ)
   ;; this might help
   (funcall $$pop typ))
 ;(if (eq typ :code);
 		    ; :exec
 		    ; typ)))
 
-(defstackfn $height (typ)
+(defun $height (typ)
   (funcall $$height typ))
 
 (defun $stack-of (typ)
@@ -109,9 +93,6 @@
 
 (defun (setf $stack-of) (lst typ)
        (setf (cdr (assoc typ $stacks)) lst))
-#+ropush-list-support
-(defstackfn $pop-keep-types (typ)
-  (funcall $$pop typ :keep-types t))
 
 (defun $clear ()
   (mapcar (lambda (x) (setf (cdr x) nil)) $stacks))
@@ -121,22 +102,21 @@
 ;; that return their own bodies.
 ;;;;;;;;
 (defun $exec (item)
-  (format t "~%---[ executing ~S~%---[ stacks before:~%~S~%" item $stacks) 
+  #+debugging
+  (format t "~A~%[~D]---[ executing ~S~%[~D]---[ stacks before:~%~S~%"
+	  (concatenate 'string (loop repeat 78 collect #\-))
+	  $counter item $counter $stacks) 
   (cond ((eq (car item) :op)
-	 ;(format t "$EXEC> ~A~%" (repr item))
 	 (incf $counter (op-gas (cdr item)))
-	 ;(let ((res ($call-op (cdr item))))
-	 ;  (when res (mapcar (lambda (x) ($push (cons :exec x))) res))))
 	 (mapcar (lambda (x) ($push (cons :exec x)))
 		 ($call-op (cdr item))))
 	((eq (car item) :list)
-	 ;(format t "$EXEC> ~A~%" (repr item))
 	 (incf $counter)
 	 (mapcar #'$exec (cdr item)))
-	(t ;(format t "$EXEC> ~A~%" (repr item))
-	   (incf $counter)
+	(t (incf $counter)
 	   ($push item)))
-  (format t "--[ stacks after:~%~S~%" $stacks))
+  #+debugging
+  (format t "[~D]---[ stacks after:~%~S~%" $counter $stacks))
 
 (defmacro with-stacks (stack-keywords unicorn &rest body)
   ;; the unicorn parameter can be either nil, or point to a unicorn
@@ -183,7 +163,7 @@
 	; #'$push
 	 (apply (op-func op) args)))))
 
-(defstackfn $call-op (op)
+(defun $call-op (op)
   (%$call-op op))
 
 (defun $load-code (code-stack)
