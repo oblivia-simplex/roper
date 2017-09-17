@@ -48,8 +48,7 @@
 (defparameter exec-stack-2
   (list (cons :int 3)
 	(cons :int 4)
-	(cons :int 5)
-	(cons :op !int-plus)
+	(list :list (cons :int 5) (cons :op !int-plus))
 	(cons :op !int-dup)
 	(cons :op !int-rot+)))
 

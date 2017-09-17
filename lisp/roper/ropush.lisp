@@ -33,7 +33,9 @@
     (let ((val-str 
 	   (cond ((operation-p unit) (format nil "~A " (op-name unit)))
 		 ((listp unit) (case (car unit)
-				 ((:op) (format nil "~A " (op-name (cdr unit))))
+				 ((:op) (format nil "(:OP . ~A) " (op-name (cdr unit))))
+				 ((:list) (format nil "[ ~A ] "
+						  (apply #'concatenate 'string (mapcar #'repr (cdr unit)))))
 				 (otherwise (format nil "~S " unit))))
 		 (t (format nil "~S " unit)))))
       val-str)))
@@ -94,9 +96,10 @@
 
 (defstackfn $pop (typ)
   ;; this might help
-  (funcall $$pop (if (eq typ :code)
-		     :exec
-		     typ)))
+  (funcall $$pop typ))
+;(if (eq typ :code);
+		    ; :exec
+		    ; typ)))
 
 (defstackfn $height (typ)
   (funcall $$height typ))
@@ -113,21 +116,23 @@
 (defun $clear ()
   (mapcar (lambda (x) (setf (cdr x) nil)) $stacks))
 
-;; too noisy to make this a defstackfn
+;;;;;
+;; better, homogeneous treatment: lists are just operations
+;; that return their own bodies.
+;;;;;;;;
 (defun $exec (item)
   (cond ((eq (car item) :op)
+	 ;(format t "$EXEC> ~A~%" (repr item))
 	 (incf $counter (op-gas (cdr item)))
-	 ($call-op (cdr item)))
-	(t (incf $counter)
+	 (mapcar #'$exec ($call-op (cdr item))))
+	((eq (car item) :list)
+	 ;(format t "$EXEC> ~A~%" (repr item))
+	 (incf $counter)
+	 (mapcar #'$exec (cdr item)))
+	(t ;(format t "$EXEC> ~A~%" (repr item))
+	   (incf $counter)
 	   ($push item))))
 
-;; modify this so that it can handle symbols denoting lists for stack-keywords,
-;; as well as literal lists (as it exclusively does now)
-
-(defun untyped-stack-p (s)
-  (member s *untyped-stacks*))
-
-;; supply input as special stack, which can only be accessed by $emu
 (defmacro with-stacks (stack-keywords unicorn &rest body)
   ;; the unicorn parameter can be either nil, or point to a unicorn
   ;; engine, to be used in evaluating certain gadget expressions
@@ -169,14 +174,15 @@
   (let ((peek-args (mapcar #'$peek (op-sig op))))
     (unless (some #'null peek-args)
       (let ((args (funcall (op-fetch op))))
-	(mapcar
-	 #'$push
-	 (apply (op-func op) args))))))
+;	(mapcar
+	; #'$push
+	 (apply (op-func op) args)))))
 
 (defstackfn $call-op (op)
   (%$call-op op))
 
 (defun $load-code (code-stack)
+  (print-stack code-stack)
   (setf (cdr (assoc :code $stacks)) code-stack))
 
 
@@ -190,7 +196,8 @@
 
 (defun $step ()
   (funcall $$push (cons :exec (cdr (funcall $$pop :code))))
-  ($exec (cdr ($peek :exec))))
+  (loop while (cdr ($peek :exec)) do
+       ($exec (cdr ($pop :exec)))))
   
 (export 'run)
 (defun run (code-stack &key (max-push-steps <max-push-steps>)
@@ -224,9 +231,9 @@
 			(strip t) 
 			(gas 1)
 			(encaps t))
-  (let* ((strip (if (or (not encaps) (untyped-stack-p (car ret)))
-		    nil
-		    strip))
+  (let* (;(strip (if (not encaps) 
+;		    nil
+;		    strip))
 	 (type-pre (if (and strip ret)
 		       '(lambda (x) (cons (car ret) x))
 		       '#'identity))
@@ -327,7 +334,7 @@
 	   
       
     
-(defun print-code-stack (es)
+(defun print-stack (es)
   (mapc (lambda (x)
 	  (format t "* ~A~%" (repr x))) es)
   nil)

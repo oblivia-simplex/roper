@@ -15,6 +15,7 @@
 (def-generic-op rot+
     :sig (? ? ?)
     :ret (? ? ?)
+    :strip nil
     :encaps nil
     :func (lambda (x y z)
 	    (list z x y)))
@@ -24,6 +25,7 @@
     :sig (? ? ?)
     :ret (? ? ?)
     :encaps nil
+    :strip nil
     :func (lambda (x y z)
 	    (list y z x)))
 
@@ -31,6 +33,7 @@
     :sig (? ?)
     :ret (? ?)
     :encaps nil
+    :strip nil
     :func (lambda (x y)
 	    (list y x)))
 
@@ -38,6 +41,7 @@
     :sig (?)
     :ret (? ?)
     :encaps nil
+    :strip nil
     :func (lambda (x)
 	    (list x x)))
 
@@ -45,6 +49,7 @@
     :sig (? ?)
     :ret (? ? ?)
     :encaps nil
+    :strip nil
     :func (lambda (a b)
 	    (list b a b)))
 
@@ -161,3 +166,18 @@
     :ret (:int)
     :func (lambda (x y)
 	    (* x y)))
+
+
+;;; Exec combinators ;;;
+
+#+ropush-combinators
+(defop !code-S
+    :sig (:code :code :code)
+    :ret (:code :code)
+    :encaps nil
+    :strip nil
+    :func (lambda (a b c)
+	    (declare (ignore a))
+	    (list :code
+		  `(:list ,b ,c)
+		  c)))
