@@ -170,7 +170,6 @@
 
 ;;; Exec combinators ;;;
 
-#+ropush-combinators
 (defop !code-S
     :sig (:code :code :code)
     :ret (:code :code)
@@ -178,6 +177,18 @@
     :strip nil
     :func (lambda (a b c)
 	    (declare (ignore a))
-	    (list :code
-		  `(:list ,b ,c)
-		  c)))
+	    (list 
+	     `(:list ,b ,c)
+	     c)))
+
+(defop !exec-S
+    :sig (:exec :exec :exec)
+    :ret (:exec :exec)
+    :encaps nil
+    :strip nil
+    :func (lambda (a b c)
+	    (list 
+	     `(:list ,b ,c)
+	     c
+	     a)))
+

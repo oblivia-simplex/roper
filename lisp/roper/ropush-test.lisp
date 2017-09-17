@@ -49,6 +49,7 @@
   (list (cons :int 3)
 	(cons :int 4)
 	(list :list (cons :int 5) (cons :op !int-plus))
+	(cons :op !code-s)
 	(cons :op !int-dup)
 	(cons :op !int-rot+)))
 

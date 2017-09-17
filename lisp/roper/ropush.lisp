@@ -121,17 +121,22 @@
 ;; that return their own bodies.
 ;;;;;;;;
 (defun $exec (item)
+  (format t "~%---[ executing ~S~%---[ stacks before:~%~S~%" item $stacks) 
   (cond ((eq (car item) :op)
 	 ;(format t "$EXEC> ~A~%" (repr item))
 	 (incf $counter (op-gas (cdr item)))
-	 (mapcar #'$exec ($call-op (cdr item))))
+	 ;(let ((res ($call-op (cdr item))))
+	 ;  (when res (mapcar (lambda (x) ($push (cons :exec x))) res))))
+	 (mapcar (lambda (x) ($push (cons :exec x)))
+		 ($call-op (cdr item))))
 	((eq (car item) :list)
 	 ;(format t "$EXEC> ~A~%" (repr item))
 	 (incf $counter)
 	 (mapcar #'$exec (cdr item)))
 	(t ;(format t "$EXEC> ~A~%" (repr item))
 	   (incf $counter)
-	   ($push item))))
+	   ($push item)))
+  (format t "--[ stacks after:~%~S~%" $stacks))
 
 (defmacro with-stacks (stack-keywords unicorn &rest body)
   ;; the unicorn parameter can be either nil, or point to a unicorn

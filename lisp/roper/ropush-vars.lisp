@@ -18,7 +18,7 @@
 (export '*operations*)
 (defvar *operations* ())
 
-(defparameter *debug* t)
+(defparameter *debug* nil)
 
 ;; the list provided in ropush-params is meant to be editable.
 ;; this list furnishes the defaults.
