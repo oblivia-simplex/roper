@@ -94,8 +94,8 @@
 
 (defstackfn $pop (typ)
   ;; this might help
-  (funcall $$pop (if (eq typ :exec)
-		     :code
+  (funcall $$pop (if (eq typ :code)
+		     :exec
 		     typ)))
 
 (defstackfn $height (typ)
@@ -176,8 +176,8 @@
 (defstackfn $call-op (op)
   (%$call-op op))
 
-(defun $load-exec (exec-stack)
-  (setf (cdr (assoc :exec $stacks)) exec-stack))
+(defun $load-code (code-stack)
+  (setf (cdr (assoc :code $stacks)) code-stack))
 
 
 ;; a unit will be either a type.val pair, or an op.
@@ -189,17 +189,17 @@
 (defparameter *halt-hooks* '())
 
 (defun $step ()
-  (funcall $$push (cons :code (cdr (funcall $$pop :exec))))
-  ($exec (cdr ($peek :code))))
+  (funcall $$push (cons :exec (cdr (funcall $$pop :code))))
+  ($exec (cdr ($peek :exec))))
   
 (export 'run)
-(defun run (exec-stack &key (max-push-steps <max-push-steps>)
+(defun run (code-stack &key (max-push-steps <max-push-steps>)
 			 (unicorn nil))
   (with-stacks #.*stack-types* unicorn
     ($clear)
-    ($load-exec exec-stack)
+    ($load-code code-stack)
     (loop while (and (not $halt)
-		     (cdr (assoc :exec $stacks))
+		     (cdr (assoc :code $stacks))
 		     (< $counter max-push-steps))
        do
 	 ($step))
@@ -285,7 +285,7 @@
 ;; has to do with individual generation, and not with the
 ;; ropush logic itself
 
-;; To make a random individual exec-stack:
+;; To make a random individual code-stack:
 
 ;; list of basic constants should be supplied with the first element
 ;; being a type keyword, and the rest being values of that type --
@@ -327,7 +327,7 @@
 	   
       
     
-(defun print-exec-stack (es)
+(defun print-code-stack (es)
   (mapc (lambda (x)
 	  (format t "* ~A~%" (repr x))) es)
   nil)

@@ -55,7 +55,7 @@
 
 (def-generic-op reload
     :sig (?)
-    :ret (:exec)
+    :ret (:code)
     :func (lambda (x)
 	    (cons (car sig) x))) ;; anaphoric reference
 
@@ -129,7 +129,7 @@
 
 (defop !load-womb
     :sig (:womb)
-    :ret (:exec)
+    :ret (:code)
     :func #'identity)
 
 (defop !ratio->int

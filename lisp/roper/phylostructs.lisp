@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;code;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Data structures for phylogenic process (Representation) ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package :phylostructs)
@@ -93,7 +93,7 @@
   (season 0 :type integer))
 
 (export '(creature
-	  cr-exec
+	  cr-code
 	  cr-relfit
 	  cr-absfit
 	  cr-gen
@@ -102,7 +102,7 @@
 	  copy-creature))
 (defstruct (creature
 	     (:conc-name cr-))
-  (exec () :type list) ;; the ROPUSH instructions
+  (code () :type list) ;; the ROPUSH instructions
   (relfit nil :type maybe-float)
   (absfit nil :type maybe-float)
   (parfit nil :type maybe-float)
