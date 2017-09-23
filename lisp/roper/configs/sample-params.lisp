@@ -53,9 +53,9 @@
   '(0 1 2)
   "List of integers indexing the output registers")
 
-(defparameter <max-push-steps>
+(defparameter <gas-limit>
   1024
-  "Maximum number of ROPUSH instructions to execute.")
+  "Computational resources allocated to PUSH programmes. Most instructions consume 1 unit of gas.")
 
 ;;; Now export muffed
 (defun export-tweakable ()

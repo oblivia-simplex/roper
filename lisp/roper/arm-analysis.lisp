@@ -235,7 +235,7 @@ which the text section begins, as a secondary value."
 (defun inst-words-from-file (path &key (width 4))
   (let* ((elf (elf:read-elf path))
          (text (extract-by-name elf ".text")))
-    (get-words text)))
+    (bytes->dwords text)))
 
 
 

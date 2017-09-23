@@ -4,21 +4,34 @@
 (defvar $$push nil)
 (defvar $$pop)
 (defvar $$peek)
-(defvar $$height)
+(defvar $$depth)
 (defvar $$stack-of)
 ;(defun $pop ())
 ;(defun $push ())
-;(defun $height ())
+;(defun $depth ())
 ;(defun $peek ())
 (defvar $stacks)
 (defvar $counter)
 (defvar $unicorn)
 (defvar $halt)
+(defvar $types)
+
+(deftype bytes () '(vector (unsigned-byte 8)))
+
+(defun debugging (&optional on)
+  (if (and (not on) (member :debugging *features*))
+      (progn
+	(format t "[-] DEBUGGING OFF~%")
+	(setq *features* (remove :debugging *features*)))
+      (progn
+	(format t "[+] DEBUGGING ON~%")
+	(if (not (member :debugging *features*))
+	    (push :debugging *features*)))))
+
+(debugging t)
 
 (export '*operations*)
 (defvar *operations* ())
-
-(defparameter *debug* nil)
 
 ;; the list provided in ropush-params is meant to be editable.
 ;; this list furnishes the defaults.
@@ -32,7 +45,7 @@
 			      :bool
 			      :int
 			      :ratio
-			      :string))
+			      :bytes))
 
 (export '*immutable-stacks*)
 (defparameter *immutable-stacks* '(:input!))

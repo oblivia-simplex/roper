@@ -18,7 +18,7 @@
                     :element-type '(unsigned-byte 8)
                     :initial-contents bytes)
    :type (array (unsigned-byte 8)))
-  (words (let ((words (get-words bytes)))
+  (words (let ((words (bytes->dwords bytes)))
 	   (make-array (length words)
 		       :element-type '(unsigned-byte 32)
 		       :initial-contents words))

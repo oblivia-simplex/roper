@@ -1,5 +1,7 @@
 (in-package :ropush)
 (use-package :phylostructs)
+(use-package :unicorn)
+(use-package :hatchery)
 
 
 (defmacro def-gadget-inspector (field-symbol &rest return-types)
@@ -31,7 +33,7 @@
 (defop !!emu-all
     :sig ()
     :ret ()
-    :gas (* *gadget-emu-cost* ($height :gadget))
+    :gas (* *gadget-emu-cost* ($depth :gadget))
     :func (lambda ()
 	    ($emu nil nil)))
 
@@ -69,9 +71,30 @@
     :peek t
     :func #'gad-entry)
 
-(defop !gadget-discard
-    :sig (:gadget)
-    :ret ())
+;;; Some operations that seek data from the unicorn ;;;
+
+(defop !emu-mem-read
+    :sig (:int :int)
+    :ret (:bytes)
+    :func (lambda (addr size)
+	    (uc-mem-read (emu-engine $unicorn) addr size)))
+
+(defop !emu-mem-read-int
+    :sig (:int)
+    :ret (:int)
+    :func (lambda (addr)
+	    (bytes->dword (uc-mem-read (emu-engine $unicorn) addr 4) 0 :endian <endian>)))
+
+;; ** > Add two untyped stacks, X and Y.
+;; these can be used as scratch space in runs
+;; and will be preloaded with the two parents in sexual reproduction
+;; * Autoconstruction:
+;; Load untyped stacks with parents
+;; Load :womb code into :code
+;; run :womb code
+;; child is whatever is left in :womb at the end.
+;; -- we can just use :womb for either x or y.
+;; -- so we just need one more additional stack.
 
 ;; Experiment plan:
 ;; * try varying the visibility of the input vector
@@ -84,7 +107,7 @@
 ;;   What if the input vector is visible only to $emu?
 ;;   What if it can be manipulated like the other stacks?
 
-(defstackfn $emu (halt num)
+(defun $emu (halt num)
   ;; may need to optimize this later
   ;; NOP if $unicorn unset
   (when $unicorn

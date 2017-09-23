@@ -12,7 +12,7 @@
 	    (setq $halt t)))
 
 ;; GENERIC OPS
-(def-generic-op rot+
+(defop rot+
     :sig (? ? ?)
     :ret (? ? ?)
     :strip nil
@@ -20,8 +20,15 @@
     :func (lambda (x y z)
 	    (list z x y)))
 
+(defop pair
+    :sig (? ?)
+    :ret (:list ?)
+    :strip nil
+    :encaps t
+    :func (lambda (x y)
+	    `(:list ,x ,y)))
 
-(def-generic-op rot-
+(defop rot-
     :sig (? ? ?)
     :ret (? ? ?)
     :encaps nil
@@ -29,7 +36,7 @@
     :func (lambda (x y z)
 	    (list y z x)))
 
-(def-generic-op swap
+(defop swap
     :sig (? ?)
     :ret (? ?)
     :encaps nil
@@ -37,7 +44,7 @@
     :func (lambda (x y)
 	    (list y x)))
 
-(def-generic-op dup
+(defop dup
     :sig (?)
     :ret (? ?)
     :encaps nil
@@ -45,7 +52,7 @@
     :func (lambda (x)
 	    (list x x)))
 
-(def-generic-op over
+(defop over
     :sig (? ?)
     :ret (? ? ?)
     :encaps nil
@@ -53,31 +60,33 @@
     :func (lambda (a b)
 	    (list b a b)))
 
-(def-generic-op drop
+(defop drop
     :sig (?)
     :ret ()
     :func (lambda (x)))
 
-(def-generic-op reload
+(defop reload
     :sig (?)
     :ret (:code)
+    :encaps t
+    :strip t
     :func (lambda (x)
-	    (cons (car sig) x))) ;; anaphoric reference
+	    (cons (car sig) x)))
 
-(def-generic-op ==
+(defop ==
     :sig (? ?)
     :ret (:bool)
     :func (lambda (x y)
 	    (equalp x y)))
 
-(def-generic-op flush
+(defop flush
     :sig (?)
     :ret ()
     :func (lambda (_)
 	    (declare (ignore _))
 	    (setf ($stack-of (car sig)) ())))
 
-(def-generic-op yank
+(defop yank
     :sig (:int)
     :ret (?);; add point display to mode-line construct
     :peek t ;; to prevent indexing errors
@@ -86,7 +95,7 @@
 	      (setq stk ($stack-of (car ret)))
 	      (excise stk (safemod i (length stk))))))
 
-(def-generic-op shove 
+(defop shove 
     :sig (:int ?)
     :ret ()
     :peek t
@@ -100,7 +109,7 @@
 		      ;; since the return action is nonstandard
 		      (cons (cadr sig) thing)))))
 
-(def-generic-op height
+(defop stackdepth
     :sig (?)
     :ret (:int)
     :peek t
@@ -109,33 +118,54 @@
 	    (declare (ignore _))
 	    ($height (car sig))))
 
-(defop !int-plus
-    :sig (:int :int)
-    :ret (:int)
-    :func (lambda (x y)
-	    (+ x y)))
+;;; combinators ;;;
 
-(defop !int-string-plus
-    :sig (:int :int)
-    :ret (:string)
-    :func (lambda (x y)
-	    (format nil "The answer is ~D" (+ x y))))
+(defop S
+    :sig (? ? ?)
+    :ret (? ?)
+    :encaps nil
+    :strip nil
+    :func (lambda (a b c)
+	    (declare (ignore a))
+	    (list 
+	     `(:list ,b ,c)
+	     c)))
 
+(defop K
+    :sig (? ? ?)
+    :ret (? ?)
+    :encaps nil
+    :strip nil
+    :func (lambda (a b c)
+	    (declare (ignore b))
+	    (list a c)))
 
-(defop !string-len
-    :sig (:string)
+;; byte ops
+
+;; Packs a byte to a series of integers, with the proper endian
+(defop !bytes->ints
+    :sig (:bytes)
+    :ret (:list :int) ;; of ints
+    :func (lambda (s) (bytes->dwords s :endian <endian>)))
+	  ;  (mapcar (lambda (x)
+;		      (cons :int x))
+
+(defop !bytes-len
+    :sig (:bytes)
     :ret (:int)
     :func #'length)
 
-(defop !store-womb
-    :sig (:int)
-    :ret (:womb)
-    :func #'identity)
+(defop !bytes-drop
+    :sig (:bytes :int)
+    :ret (:bytes)
+    :func (lambda (s i)
+	    (subseq s (min i (length s)))))
 
-(defop !load-womb
-    :sig (:womb)
-    :ret (:code)
-    :func #'identity)
+(defop !bytes-take
+    :sig (:bytes :int)
+    :ret (:bytes)
+    :func (lambda (s i)
+	    (subseq s 0 (min i (length s)))))
 
 (defop !ratio->int
     :sig (:ratio)
@@ -161,34 +191,148 @@
     :func (lambda (x y)
 	    (max *min-ratio* (* x y))))
 
+
+
+
+
+;;; Boolean operators
+
+(defun true (x) (/= x 0))
+(defun false (x) (= x 0))
+(defun bool (x) (if x 1 0))
+
+(defop !bool-or
+    :sig (:bool :bool)
+    :ret (:bool)
+    :func (lambda (x y)
+	    (or (true x)
+		(true y))))
+
+(defop !bool-and
+    :sig (:bool :bool)
+    :ret (:bool)
+    :func (lambda (x y)
+	    (and (true x) (true y))))
+
+(defop !bool-xor
+    :sig (:bool :bool)
+    :ret (:bool)
+    :func (lambda (x y)
+	    (and (or (true x) (true y))
+		 (or (false x) (false y)))))
+
+
+;;; Conditionals
+
+(defop !code-if-else
+    :sig (:bool :code :code)
+    :ret (:code)
+    :func (lambda (i th el)
+	    (if (true i) th el)))
+
+;;; integer operators
+
+
+(defop !int-plus
+    :sig (:int :int)
+    :ret (:int)
+    :func #'+)
+
+(defop !int-minus
+    :sig (:int :int)
+    :ret (:int)
+    :func #'-)
+
 (defop !int-mult
     :sig (:int :int)
     :ret (:int)
+    :func #'*)
+
+(defop !int-div
+    :sig (:int :int)
+    :ret (:int)
     :func (lambda (x y)
-	    (* x y)))
+	    (if (zerop y)
+		x
+		(/ x y))))
+
+(defop !int-mod
+    :sig (:int :int)
+    :ret (:int)
+    :func (lambda (x y)
+	    (if (zerop y)
+		x
+		(mod x y))))
+
+(defop !int-<
+    :sig (:int :int)
+    :ret (:bool)
+    :func (compose #'bool #'<))
+
+(defop !int->
+    :sig (:int :int)
+    :ret (:bool)
+    :func (compose #'bool #'>))
+
+(defop !int-<=
+    :sig (:int :int)
+    :ret (:bool)
+    :func (compose #'bool #'<=))
+
+(defop !int->=
+    :sig (:int :int)
+    :ret (:bool)
+    :func (compose #'bool #'>=))
+
+(defop !int-and
+    :sig (:int :int)
+    :ret (:int)
+    :func #'logand)
+
+(defop !int-xor
+    :sig (:int :int)
+    :ret (:int)
+    :func #'logxor)
+
+(defop !int-flip
+    :sig (:int)
+    :ret (:int)
+    :func (lambda (x)
+	    (ldb (byte 32 0) (lognot x))))
+
+(defop !int->bytes
+    :sig (:int)
+    :ret (:bytes)
+    :func #'dword->bytes)
+
+(defop !bytes-concat
+    :sig (:bytes :bytes)
+    :ret (:bytes)
+    :func (lambda (a b) (concatenate 'bytes a b)))
+
+(defop !bytes-aref
+    :sig (:bytes :int)
+    :ret (:int)
+    :func (lambda (b i)
+	    (aref b i)))
 
 
-;;; Exec combinators ;;;
-
-(defop !code-S
-    :sig (:code :code :code)
-    :ret (:code :code)
-    :encaps nil
+;;; Womb and Germ
+(defop >womb 
+    :sig (?)
+    :ret (:womb)
     :strip nil
-    :func (lambda (a b c)
-	    (declare (ignore a))
-	    (list 
-	     `(:list ,b ,c)
-	     c)))
+    :cast t
+    :encaps t
+    :func #'identity);(lambda (x)
+	  ;  (cons (car sig) x)))
 
-(defop !exec-S
-    :sig (:exec :exec :exec)
-    :ret (:exec :exec)
-    :encaps nil
-    :strip nil
-    :func (lambda (a b c)
-	    (list 
-	     `(:list ,b ,c)
-	     c
-	     a)))
+(defop !pop-womb
+    :sig (:womb)
+    :ret (:code)
+    :strip t
+    :cast t
+    :encaps t
+    :func #'identity)
 
+;; think about how to implement loops.

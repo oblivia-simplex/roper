@@ -4,14 +4,20 @@
 (defun range (lo hi)
   (loop for i from lo to (1- hi) collect i))
 
+(export 'bytes)
+(deftype bytes () '(vector (unsigned-byte 8)))
+
 (export 'bytes->dword)
-(defun bytes->dword (vec offset &key (width 4))
-  (let ((dword 0))
-    (loop for i below width
-       while (< (+ i offset) (length vec)) do
-      (incf dword
-            (ash (aref vec (+ i offset)) (* i 8))))
-    dword))
+(defun bytes->dword (vec offset &key (width 4) (endian :little))
+  ;; not implemented for big-endian yet
+  (if (eq endian :big)
+      (error "NOT IMPLEMENTED FOR BIG ENDIAN")
+      (let ((dword 0))
+	(loop for i below width
+	   while (< (+ i offset) (length vec)) do
+	     (incf dword
+		   (ash (elt vec (+ i offset)) (* i 8))))
+	dword)))
 
 (export 'dwords->bytes)
 (defun dwords->bytes (dwords &key (endian :little))
@@ -26,11 +32,31 @@
 		(setq i (funcall step i)))))
     (reverse bytes)))
 
-(export 'get-words)
-(defun get-words (bytes &key (width 4))
-  (loop for i below (- (length bytes) 1) by width
-        collect
-        (bytes->dword bytes i :width width)))
+(export 'dword->bytes)
+;; bit faster, but less flexible
+(defun dword->bytes (dword &key (endian :little))
+  (let ((res (map 'bytes (lambda (i) (ldb (byte 8 (* i 8)) dword))
+		  '(0 1 2 3))))
+    (if (eq endian :big) (reverse res) res)))
+
+(export 'bytes->dwords)
+(defun bytes->dwords (bytes &key (width 4) (endian :little))
+  (let* ((len (length bytes))
+	 (ext (mod len width)))
+    (if (zerop len)
+	'()
+	(let ((bytes
+	       (if (zerop (mod len width))
+		   bytes
+		   (let ((zeros (loop repeat (- width ext) collect 0))
+			 (stub (subseq bytes (- len ext))))
+		     (concatenate 'vector
+				  (subseq bytes 0 (- len ext))
+				  (if (eq endian :little) stub zeros)
+				  (if (eq endian :little) zeros stub))))))
+	  (loop for i below (- (length bytes) 1) by width
+	     collect
+	       (bytes->dword bytes i :width width))))))
 
 (defun read-bit (w i)
   (ldb (byte 1 i) w))
