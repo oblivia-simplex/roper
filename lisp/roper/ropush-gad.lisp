@@ -115,28 +115,32 @@
 					;(packed (dwords->bytes payload
 					;			:endian <endian>))
 	   (out (if halt :output! :int)))
-      (multiple-value-bind (registers errorcode pc)
-	  (hatchery:hatch-chain :emu $unicorn
-				:payload payload
-				;; it'd be nice to set input and output regs from here
-				:input (cdr (assoc :input! $stacks))) ;; ADJUSTABLE
-	;; now put these back on the stack
-	;; handle output
-	;; when halt flag is set, send 
-	($push (cons out pc))
-	($push (cons out (unicorn:errorcode->int errorcode)))
-	(mapcar (lambda (x)
-		  ($push (cons out x)))
-		registers))
-      (when halt (setq $halt t))
-      nil)))
-  
+      (when payload
+	(multiple-value-bind (registers errorcode pc)
+	    (hatchery:hatch-chain :emu $unicorn
+				  :payload payload
+				  ;; it'd be nice to set input and output regs from here
+				  :input (cdr (assoc :input! $stacks))) ;; ADJUSTABLE
+	  ;; now put these back on the stack
+	  ;; handle output
+	  ;; when halt flag is set, send 
+	  ($push (cons out pc))
+	  ($push (cons out (unicorn:errorcode->int errorcode)))
+	  (mapcar (lambda (x)
+		    ($push (cons out x)))
+		  registers))
+	(when halt (setq $halt t))
+	nil))))
+
+
+(defparameter *spare-constant* 1)
 (defun push-stacks->payload (stacks &optional num)
   "Generates an attack payload from the state of the stacks."
   (let ((gadgets (cdr (assoc :gadget stacks)))
 	(dispense (make-cyclical-dispenser
 		   (mapcar (lambda (n) (ldb (byte <word-size> 0) n))
-			   (cdr (assoc :int stacks)))))
+			   (cons *spare-constant*
+				 (cdr (assoc :int stacks))))))
 	(payload ()))
     (if (and num (< num (length gadgets)))
 	(setq gadgets (subseq gadgets 0 num)))

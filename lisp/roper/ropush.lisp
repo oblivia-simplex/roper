@@ -171,14 +171,11 @@
 	   (return-from spy nil)))
     t))
 
-(defun %$call-op (op)
+(defun $call-op (op)
   ;; NOP if not enough arguments on the stacks
   (when (%spy-args op)
     (let ((args (funcall (op-fetch op))))
       (apply (op-func op) args))))
-
-(defun $call-op (op)
-  (%$call-op op))
 
 (defun $load-code (code-stack)
   ;(print-stack code-stack)
@@ -309,7 +306,7 @@
 		       (total-maxlen))
   (unless (assoc :op typed-stacks)
     (push (cons :op operations) typed-stacks))
-  (let* ((typed-minlens (copy-seq typed-minlens))
+  (let* ((typed-minlens (mapcar #'copy-seq typed-minlens))
 	 (*std-prng* (mersenne:make-mt seed))
 	 (types (mapcar #'car typed-stacks))
 	 (stack ()))
@@ -325,6 +322,7 @@
 	     (max-crit ()
 	       (or (null total-maxlen)
 		   (>= (length stack) total-maxlen))))
+      (print typed-minlens)
       (loop while (not (and (min-crit) (max-crit))) do
 	   (let* ((typ (pick-type))
 		  (stk (cdr (assoc typ typed-stacks))))

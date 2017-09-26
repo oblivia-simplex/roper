@@ -57,6 +57,10 @@
   1024
   "Computational resources allocated to PUSH programmes. Most instructions consume 1 unit of gas.")
 
+(defparameter <autoconstruction>
+  t
+  "Whether or not to generate offspring through autoconstruction, as opposed to hardcoded genetic operators.")
+
 ;;; Now export muffed
 (defun export-tweakable ()
   (let ((thispkg (find-package :params)))

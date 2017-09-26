@@ -86,14 +86,17 @@
 	    (declare (ignore _))
 	    (setf ($stack-of (car sig)) ())))
 
-(defop yank
-    :sig (:int)
-    :ret (?);; add point display to mode-line construct
-    :peek t ;; to prevent indexing errors
-    :func (lambda (i)
-	    (let ((stk))
-	      (setq stk ($stack-of (car ret)))
-	      (excise stk (safemod i (length stk))))))
+;(defop yank
+;    :sig (:int ?)
+;    :ret (?);; add point display to mode-line construct
+;    :peek t ;; to prevent indexing errors
+;    :func (lambda (i _)
+;	    (let ((stk))
+;	      (declare (ignorable _))
+;	      (setq stk ($stack-of (car ret)))
+;	      (if (null stk)
+;		  _
+;		  (excise stk (safemod i (length stk)))))))
 
 (defop shove 
     :sig (:int ?)
@@ -116,7 +119,7 @@
     :encaps t
     :func (lambda (_)
 	    (declare (ignore _))
-	    ($height (car sig))))
+	    ($depth (car sig))))
 
 ;;; combinators ;;;
 
@@ -254,7 +257,7 @@
     :func (lambda (x y)
 	    (if (zerop y)
 		x
-		(/ x y))))
+		(round (/ x y)))))
 
 (defop !int-mod
     :sig (:int :int)

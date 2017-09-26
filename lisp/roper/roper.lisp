@@ -18,8 +18,8 @@
 	       (format s "~S~%" g))
 	  (format t "~D gadgets saved to ~A~%"
 		  (length gadgets)
-		  save-path)
-    gadgets)))))
+		  save-path))))
+    gadgets))
 
 (defun load-constants-from-file (path &key (base 16))
   (let ((data ())
