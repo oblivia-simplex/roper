@@ -101,13 +101,14 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
       }
       {\large
         \begin{tabular}{l l}
-          \\
+          \\ \\
           \texttt{Olivia Lucca Fraser} 
-          & \url{ofraser@dal.ca} \\
-          \texttt{Nur Zincir-Heywood} 
-          & \url{zincir@cs.dal.ca} \\
-          \texttt{Malcolm Heywood}
-          & \url{mheywood@cs.dal.ca} \\
+          & \url{oblivia@paranoici.org} \\
+          \\ \\ 
+%          \texttt{Nur Zincir-Heywood} 
+%          & \url{zincir@cs.dal.ca} \\
+%          \texttt{Malcolm Heywood}
+%          & \url{mheywood@cs.dal.ca} \\
           %\texttt{John T. Jacobs}
           %& \url{John_T_Jacobs@raytheon.com} \\
         \end{tabular}
@@ -350,7 +351,6 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
   \item<+-> with a new instruction set: the gadgets,
   \item<+-> a new ``instruction pointer'': the underlying machine's stack pointer,
   \item<+-> and a new mechanism of execution: popping the stack, and loading (directly or indirectly) the top value into PC.
-  %\item<+-> A ROP-chain is code for what the LangSec community calls a ``weird machine''.
   \item<+-> What it reveals is that the separation of data and code that $W\oplus X$ effects only holds at a particular level of abstraction...
   \item<+-> ... a level that leaks.
   \end{itemize}
@@ -359,13 +359,15 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 \begin{frame}{\theframenumber. Weird Machines}
   \BackgroundImage[0.15]{../images/macgyver2-transparent.png}
   \begin{itemize}
-    \item ``Exploitation is setting up, instantiating, and programming a weird
-      machine.'' -- Halvar Flake @ Infiltrate, 2011
+  \item<+-> A ROP-chain is code for what the LangSec community calls a ``weird machine''.
+  \item<+-> ``Weird machine'' here means ``a more powerful, programmable execution environment than intended or expected'', as Halvar Flake put it.
+  \item<+-> The concept is very general, \& provides a systematic way of thinking about exploitation. 
+  \item<+-> We could even say that ``Exploitation \textbf{is} setting up, instantiating, and programming a weird machine.'' (Halvar Flake @ Infiltrate, 2011)
   \end{itemize}
 \end{frame}
 
 \begin{frame}{\theframenumber. Evolving Code for Weird Machines}
-  \BackgroundImage[0.15]{../images/lifefindsaway.png}
+  \BackgroundImage[0.3]{../images/lifefindsaway.png}
   Why is this a good suitable problem space for evolutionary methods?
   \begin{itemize}
   \item<+-> we are exploring a poorly-understood, undocumented, \& quite unique machine model, each time
