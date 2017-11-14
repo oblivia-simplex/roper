@@ -2,7 +2,7 @@
 
 [ -n "$ROPER_THREADS" ] || ROPER_THREADS=12
 
-PROJECT_ROOT=`pwd`
+PROJECT_ROOT=`pwd`/..
 
 BINARY=$1
 [ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/ldconfig.real

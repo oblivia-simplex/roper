@@ -261,7 +261,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 #[derive(Clone,Debug)]
 pub struct Chain {
   pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
-  pub packed: Vec<u8>,
+  //pub packed: Vec<u8>,
   pub fitness: Option<f32>,
   pub ab_fitness: Option<f32>, // unshared
   pub p_fitness: Option<f32>,
@@ -341,7 +341,7 @@ impl Display for Chain {
     }
     s.push_str("Packed:\n");
     let mut j = 0;
-    for b in &self.packed {
+    for b in &self.pack() {
       s.push_str(&format!("{:02x} ",b));
       j += 1;
       if j % 4 == 0 { s.push_str(" "); };
@@ -423,7 +423,7 @@ impl Chain {
   }
 
   pub fn pack (&self) -> Vec<u8> {
-    pack_word32le_vec(&concatenate(&self.clumps)))
+    pack_word32le_vec(&concatenate(&self.clumps))
   }
 
   pub fn collate_input_slots (&mut self) {
