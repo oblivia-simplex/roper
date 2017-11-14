@@ -8,7 +8,7 @@
 (deftype bytes () '(vector (unsigned-byte 8)))
 
 (export 'bytes->dword)
-(defun bytes->dword (vec offset &key (width 4) (endian :little))
+(defun bytes->dword (vec &key (offset 0) (width 4) (endian :little))
   ;; not implemented for big-endian yet
   (if (eq endian :big)
       (error "NOT IMPLEMENTED FOR BIG ENDIAN")

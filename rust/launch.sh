@@ -1,4 +1,7 @@
 #! /bin/bash
+
+[ -n "$ROPER_THREADS" ] || ROPER_THREADS=12
+
 PROJECT_ROOT=`pwd`
 
 BINARY=$1
@@ -92,7 +95,7 @@ function run () {
                                 -c 0.2 \
                                 -s 1.0 \
                                 -P 4096 \
-                                -t 12 \
+                                -t $ROPER_THREADS \
                                 -D 4 \
                                 -m 0.05 \
                                 -V \
@@ -102,6 +105,12 @@ function run () {
   # Add -S flag to enable fitness sharing
                                 
 }
+
+if (( $BARE_RUN )) ; then
+  run
+  exit 0
+fi
+
 echo "[+] launching roper"
 run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
 roper_pid=$!

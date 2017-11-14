@@ -36,7 +36,7 @@
     ;;(aref (sec-words section)
     ;;      (floor (/ (- address (sec-addr section)) width)))))
     (bytes->dword (sec-data section)
-                  (- address (sec-addr section))
+                  :offset (- address (sec-addr section))
                   :width width)))
 
 (export '(segment

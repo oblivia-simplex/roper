@@ -122,8 +122,10 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
-  let mut stack = chain.packed.clone();
-
+  let mut stack = chain.pack();
+  
+  /* debugging */
+  println!("[*] packed chain len: >> {}\n", stack.len());
   // refactor ?
   let il = input.len();
   for &(off, inp) in chain.input_slots.iter() {

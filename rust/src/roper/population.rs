@@ -209,7 +209,7 @@ fn eval_case (uc: &mut CpuARM,
       output = vec![score.unwrap() as u64];
     }
     if finished {
-      let (a,r) = problem.assess_output(&output);
+      let (a,r) = problem.assess_output(&output, uc);
       // println!(">> (af,rf) = ({},{})", a, r);
       if verbose {
         println!("[+] ABFIT SCORE: {}\n[+] RELFIT SCORE: {}", a, r);

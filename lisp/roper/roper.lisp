@@ -32,8 +32,19 @@
 	       (push sexp data)))))
     data))
 
-(defparameter *engine*
-  (hatchery:init-engine :elf (elf:read-elf <elf-path>)))	 
+(defparameter *number-of-engines* 1) ;; should be a user-set param
+;; or be dependent on number of threads
+
+(defparameter *engine-pool*
+  (hatchery:init-engines :elf (elf:read-elf <elf-path>)
+			 :count *number-of-engines*
+			 :arch <cpu-arch>
+			 :mode <cpu-mode>
+			 :merge t))
+
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; At this point, this file just sets up some basic test-run stuff.  ;;
 ;; a proper front-end/entry point still needs to be written.         ;;

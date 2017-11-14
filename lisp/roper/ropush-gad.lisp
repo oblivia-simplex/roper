@@ -83,7 +83,9 @@
     :sig (:int)
     :ret (:int)
     :func (lambda (addr)
-	    (bytes->dword (uc-mem-read (emu-engine $unicorn) addr 4) 0 :endian <endian>)))
+	    (bytes->dword (uc-mem-read (emu-engine $unicorn) addr 4)
+			  :offset 0
+			  :endian <endian>)))
 
 ;; ** > Add two untyped stacks, X and Y.
 ;; these can be used as scratch space in runs

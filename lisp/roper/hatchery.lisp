@@ -26,21 +26,25 @@
   (secs))
 
 
-(export 'init-engine)
-(defun init-engine (&key
-		      (elf)
-		      (arch <cpu-arch>)
-		      (mode <cpu-mode>)
-		      (merge t))
-  (let* ((uc (unicorn::uc-open arch mode))
+(export 'init-engines)
+(defun init-engines (&key
+		       (elf)
+		       (arch <cpu-arch>)
+		       (mode <cpu-mode>)
+		       (merge t)
+		       (count 1))
+  (let* ((ucs (loop repeat count collect (unicorn::uc-open arch mode)))
          (segs%  (get-loadable-elf-segments elf :align t))
 	 (segs (if merge (merge-segments segs%) segs%))
          (secs (secs-in-segs (get-elf-sections elf) segs)))
-    (mapc (lambda (s) (mem-map-seg uc s)) segs)
-    (mapc (lambda (s) (mem-write-sec uc s)) secs)
-    (make-emu :engine uc
-	      :segs segs
-	      :secs secs)))
+    (loop for uc in ucs do
+	 (mapc (lambda (s) (mem-map-seg uc s)) segs)
+	 (mapc (lambda (s) (mem-write-sec uc s)) secs))
+    (mapcar (lambda (uc)
+	      (make-emu :engine uc
+			:segs segs
+			:secs secs))
+	    ucs)))
 
 ;; TODO: hatch-chain
 

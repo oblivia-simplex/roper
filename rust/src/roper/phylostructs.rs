@@ -356,7 +356,7 @@ impl Default for Chain {
   fn default () -> Chain {
     Chain {
       clumps: Vec::new(),
-      packed: Vec::new(),
+      // packed: Vec::new(),
       input_slots: Vec::new(),
       fitness: None,
       ab_fitness: None,
@@ -411,15 +411,19 @@ impl IndexMut <usize> for Chain {
 impl Chain {
   /* NB: a Chain::new(c) takes ownership of its clump vec */
   pub fn new (clumps: Vec<Clump>) -> Chain {
-    let conc = concatenate(&clumps);
-    let pack = pack_word32le_vec(&conc);
+    //let conc = concatenate(&clumps);
+    //let pack = pack_word32le_vec(&conc);
     let mut chain = Chain {
       clumps: clumps,
-      packed: pack,
+      //packed: pack,
       ..Default::default()
     };
     chain.collate_input_slots();
     chain
+  }
+
+  pub fn pack (&self) -> Vec<u8> {
+    pack_word32le_vec(&concatenate(&self.clumps)))
   }
 
   pub fn collate_input_slots (&mut self) {
@@ -431,11 +435,6 @@ impl Chain {
       }
       offset += clump.ret_offset;
     }
-  }
-
-  pub fn pack (&mut self) {
-    let conc  = concatenate(&self.clumps);
-    self.packed = pack_word32le_vec(&conc);
   }
 
   pub fn size (&self) -> usize {
@@ -1103,7 +1102,8 @@ impl Problem {
    * Dispatch the relevant problem-specific fitness function
    */
   pub fn assess_output (&self,
-                        output: &Vec<u64>) 
+                        output: &Vec<u64>,
+                        uc: &CpuARM) 
                        -> (f32, f32) {
     match &self.target {
       &Target::Exact(ref rp) => {
@@ -1548,6 +1548,10 @@ impl RPattern {
       ovec.push(val);
     }
     (ivec, ovec)
+  }
+  pub fn distance_deref (&self, regs: &Vec<u64>) -> f32 {
+  
+    1.0 /* placeholder */
   }
   pub fn distance (&self, regs: &Vec<u64>) -> f32 {
     let (i, o) = self.vec_pair(&regs);
