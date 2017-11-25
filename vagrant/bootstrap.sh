@@ -88,6 +88,221 @@ set -g status-bg magenta
 set -g status-fg black
 EOF
 
+cat > /home/$USER/.bashrc << EOF
+for rc in ~/.functions.rc ~/.colors.rc ~/.envvars ~/.aliases ~/.bash_prompt
+do
+    [ -f "$rc" ] && source $rc
+done
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# don't put duplicate lines or lines starting with space in the history.
+# See bash(1) for more options
+HISTCONTROL=ignoreboth
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=10000
+HISTFILESIZE=200000
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
+shopt -s globstar
+
+# make less more friendly for non-text input files, see lesspipe(1)
+#[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    alias dir='dir --color=auto'
+    alias vdir='vdir --color=auto'
+
+    alias grep='grep -P --color=auto'
+    #alias fgrep='fgrep --color=auto'
+    #alias egrep='egrep --color=auto'
+fi
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+EOF
+
+cat > $USERHOME/.bash_prompt << EOF
+function makeprompt {
+    EXITSTATUS="$?"
+    JOBS="$(jobs | wc -l | tr -d ' ')"
+    TIME="$(date +%R)"
+#    NESSUS="$(nessus_ver_running)"
+    GIT="$(git_branch)" # set prompt
+
+    DARKGREEN="\[\033[00;32m\]"
+    GREEN="\[\033[01;32m\]"
+    TEAL="\[\033[00;36m\]"
+    DARKGREY="\[\033[01;30m\]"
+    CYAN="\[\033[01;36m\]"
+    LIGHTGREY="\[\033[00;37m\]"
+    RED="\[\033[00;31m\]" #?
+    PINK="\[\033[01;31m\]" #?
+    BLACK="\[\033[00;30m\]"
+    BLUE="\[\033[01;34m\]"
+    DARKBLUE="\[\033[00;34m\]"
+    WHITE="\[\033[01;38m\]"
+    OFF="\[\033[m\]"
+
+    NAMECOLOR=$DARKGREEN
+    HICOLOR=$GREEN
+
+    PS1="${HICOLOR}-=oO( ${NAMECOLOR}${JOBS}${HICOLOR} )( $NAMECOLOR$TIME$HICOLOR )( $NAMECOLOR$GIT$HICOLOR )(${NAMECOLOR} \u@\h${HICOLOR} \W${HICOLOR} )Oo=-${NAMECOLOR}\n"
+
+    ## flag if error
+    if (( $EXITSTATUS == 0 )); then
+        PS1="${PS1}${HICOLOR}\$ ${OFF}"
+    else
+        PS1="${PS1}${RED}\$ ${OFF}"
+    fi
+
+    PS2="${RED}| ${OFF}"
+}
+
+PROMPT_COMMAND="history -a; history -n; makeprompt"
+set -o vi
+EOF
+
+cat > $USERHOME/.functions.rc <<EOF
+for rc in colors.rc; do
+  [ -f $rc ] && source ~/.${rc}
+done
+
+function swap ()
+{
+  t=`mktemp`
+  mv $1 $t && \
+  mv $2 $1 && \
+  mv $t $2 && \
+  echo "swapped $1 and $2"
+}
+
+function git_branch () {
+  [[ "$PWD" = "/" ]] && echo "no branch" && return
+  if [ ! -d "./.git" ]; then
+    (cd .. && git_branch)
+  else
+    git branch 2> /dev/null | grep -Po '(?<=\* ).+' 
+  fi
+}
+
+mkdir -p /tmp/trash
+function rm ()
+{
+  [ "x$1" = "x-rf" ] && shift
+  stamp=$(date +%F-%H-%M-%S)
+  d=/tmp/trash/${stamp}
+  mkdir -p $d
+  mv $* $d/ && echo "Moved $* to $d" || echo "${RED}Failed to move $* to trash"
+}
+
+function getmac ()
+{
+  ifconfig $1 | pcregrep -o '(?<=lladdr )([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]'
+}
+
+function changemac ()
+{
+  IF=$1
+  MAC=$2
+  b="${GREEN}[+]${DARKGREEN}"
+
+  if [ `getmac ${IF}` = ${MAC} ]; then
+    echo -e "${GREEN}MAC already set${RESET}"
+  else
+    echo -e "$b Taking down ${IF}..."
+    sudo ifconfig ${IF} down
+    echo -e "$b Changing mac address to ${MAC}" 
+    sudo ifconfig ${IF} lladdr ${MAC}
+    echo -e "$b Bringing ${IF} back up..."
+    sudo ifconfig ${IF} up
+    echo -e "$b Acquiring dhcp lease for ${IF}..."
+    sudo dhclient ${IF}
+  fi
+
+  echo "$b Testing..."
+  while : ; do
+    ping -c 1 google.com && break
+  done
+  echo -e "${GREEN}READY${RESET}"
+}
+
+function disasdiff ()
+{
+  filter="cut -d: -f2-" 
+  vimdiff <(objdump -D $1 | $filter ) <(objdump -D $2 | $filter )
+}
+
+function xxdiff ()
+{
+  filter="cut -d: -f2-" 
+  vimdiff <(xxd -g1 $1 | $filter) <(xxd -g1 $2)
+}
+
+function leet ()
+{
+  tr a-z A-Z | tr AELTSBGO 43175690
+}
+
+function :: ()
+{
+  echo Launching "$*" in background...
+  exe=$1
+  shift
+  nohup $exe "$*" &
+}
+EOF
+
+cat > $USERHOME << EOF
+## ANSI escape sequences for colours, zsh format
+export DARKGREEN=$'\e[00;32m'
+export GREEN=$'\e[01;32m'
+export TEAL=$'\e[00;36m'
+export DARKGREY=$'\e[01;30m'
+export CYAN=$'\e[01;36m'
+export LIGHTGREY=$'\e[00;37m'
+export RED=$'\e[00;31m' #?
+export PINK=$'\e[01;31m' #?
+export BLACK=$'\e[00;30m'
+export BLUE=$'\e[01;34m'
+export DARKBLUE=$'\e[00;34m'
+export WHITE=$'\e[01;38m'
+export RESET=$'\e[0m'
+export YELLOW=$'\e[01;33m'
+export MAGENTA=$'\e[01;35m'
+export PURPLE=$'\e[00;35m'
+EOF
+
 ################
 # Emacs Config #
 ################
