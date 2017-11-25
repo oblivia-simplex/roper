@@ -82,10 +82,10 @@ bind M set -g mouse on \\; display 'Mouse: OFF'
 set -g status-left-length 140
 set -g status-right-length 80
 set -g status-left ' #(date) | #(ip addr show dev eth1 | grep -oP "(?<=inet )[0-9./]+") | '
-set -g pane-border-fg magenta
-set -g pane-active-border-fg red
-set -g status-bg magenta
-set -g status-fg black
+set -g pane-border-fg green
+set -g pane-active-border-fg white
+set -g status-bg green
+set -g status-fg white
 EOF
 
 cat > /home/$USER/.bashrc << EOF
