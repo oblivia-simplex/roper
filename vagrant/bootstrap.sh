@@ -16,6 +16,7 @@ $INSTALLCMD gcc gdb rlwrap
 $INSTALLCMD libfixposix0 libfixposix-dev
 $INSTALLCMD libevent-dev libncurses5-dev
 
+#usermod -a -G vboxsf vagrant
 ##############
 # Vim Config #
 ##############
