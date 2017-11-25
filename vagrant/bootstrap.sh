@@ -2,6 +2,9 @@
 
 USER=vagrant
 USERHOME=/home/$USER
+hostname=roper.$(domainname)
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
 INSTALLCMD="apt-get install -y"
 REPOUPDATECMD="apt-get update && apt-get upgrade -y"
 
@@ -25,6 +28,7 @@ cd $USERHOME/.vim/bundle
 
 cat >> $USERHOME/.vimrc <<EOF
 execute pathogen#infect()
+colorscheme badwolf
 syntax on
 filetype plugin indent on
 set softtabstop=2
@@ -61,8 +65,6 @@ cat > $USERHOME/.tmux.conf << EOF
 unbind C-b
 set-option -g prefix C-t
 bind-key C-t send-prefix
-
-set-option -g historylimit 65036
 
 bind | split-window -h
 unbind %
