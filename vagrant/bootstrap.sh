@@ -83,7 +83,7 @@ set -g status-left-length 140
 set -g status-right-length 80
 set -g status-left ' #(date) | #(ip addr show dev eth1 | grep -oP "(?<=inet )[0-9./]+") | '
 set -g pane-border-fg green
-set -g pane-active-border-fg white
+set -g pane-active-border-fg black
 set -g status-bg green
 set -g status-fg white
 EOF
@@ -91,11 +91,11 @@ EOF
 cat > /home/$USER/.bashrc << EOF
 for rc in ~/.functions.rc ~/.colors.rc ~/.envvars ~/.aliases ~/.bash_prompt
 do
-    [ -f "$rc" ] && source $rc
+    [ -f "\$rc" ] && source \$rc
 done
 
 # If not running interactively, don't do anything
-case $- in
+case \$- in
     *i*) ;;
       *) return;;
 esac
@@ -120,17 +120,17 @@ shopt -s checkwinsize
 shopt -s globstar
 
 # make less more friendly for non-text input files, see lesspipe(1)
-#[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+#[ -x /usr/bin/lesspipe ] && eval "\$(SHELL=/bin/sh lesspipe)"
 
 # set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+if [ -z "\${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=\$(cat /etc/debian_chroot)
 fi
 
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    test -r ~/.dircolors && eval "\$(dircolors -b ~/.dircolors)" || eval "\$(dircolors -b)"
     alias ls='ls --color=auto'
     alias dir='dir --color=auto'
     alias vdir='vdir --color=auto'
@@ -154,11 +154,11 @@ EOF
 
 cat > $USERHOME/.bash_prompt << EOF
 function makeprompt {
-    EXITSTATUS="$?"
-    JOBS="$(jobs | wc -l | tr -d ' ')"
-    TIME="$(date +%R)"
-#    NESSUS="$(nessus_ver_running)"
-    GIT="$(git_branch)" # set prompt
+    EXITSTATUS="\$?"
+    JOBS="\$(jobs | wc -l | tr -d ' ')"
+    TIME="\$(date +%R)"
+#    NESSUS="\$(nessus_ver_running)"
+    GIT="\$(git_branch)" # set prompt
 
     DARKGREEN="\[\033[00;32m\]"
     GREEN="\[\033[01;32m\]"
@@ -174,19 +174,19 @@ function makeprompt {
     WHITE="\[\033[01;38m\]"
     OFF="\[\033[m\]"
 
-    NAMECOLOR=$DARKGREEN
-    HICOLOR=$GREEN
+    NAMECOLOR=\$DARKGREEN
+    HICOLOR=\$GREEN
 
-    PS1="${HICOLOR}-=oO( ${NAMECOLOR}${JOBS}${HICOLOR} )( $NAMECOLOR$TIME$HICOLOR )( $NAMECOLOR$GIT$HICOLOR )(${NAMECOLOR} \u@\h${HICOLOR} \W${HICOLOR} )Oo=-${NAMECOLOR}\n"
+    PS1="\${HICOLOR}-=oO( \${NAMECOLOR}\${JOBS}\${HICOLOR} )( \$NAMECOLOR\$TIME\$HICOLOR )( \$NAMECOLOR\$GIT\$HICOLOR )(\${NAMECOLOR} \u@\h\${HICOLOR} \W\${HICOLOR} )Oo=-\${NAMECOLOR}\n"
 
     ## flag if error
-    if (( $EXITSTATUS == 0 )); then
-        PS1="${PS1}${HICOLOR}\$ ${OFF}"
+    if (( \$EXITSTATUS == 0 )); then
+        PS1="\${PS1}\${HICOLOR}\\$ \${OFF}"
     else
-        PS1="${PS1}${RED}\$ ${OFF}"
+        PS1="\${PS1}\${RED}\\$ \${OFF}"
     fi
 
-    PS2="${RED}| ${OFF}"
+    PS2="\${RED}| \${OFF}"
 }
 
 PROMPT_COMMAND="history -a; history -n; makeprompt"
@@ -195,20 +195,20 @@ EOF
 
 cat > $USERHOME/.functions.rc <<EOF
 for rc in colors.rc; do
-  [ -f $rc ] && source ~/.${rc}
+  [ -f \$rc ] && source ~/.\${rc}
 done
 
 function swap ()
 {
   t=`mktemp`
-  mv $1 $t && \
-  mv $2 $1 && \
-  mv $t $2 && \
-  echo "swapped $1 and $2"
+  mv \$1 \$t && \
+  mv \$2 \$1 && \
+  mv \$t \$2 && \
+  echo "swapped \$1 and \$2"
 }
 
 function git_branch () {
-  [[ "$PWD" = "/" ]] && echo "no branch" && return
+  [[ "\$PWD" = "/" ]] && echo "no branch" && return
   if [ ! -d "./.git" ]; then
     (cd .. && git_branch)
   else
@@ -219,54 +219,54 @@ function git_branch () {
 mkdir -p /tmp/trash
 function rm ()
 {
-  [ "x$1" = "x-rf" ] && shift
-  stamp=$(date +%F-%H-%M-%S)
-  d=/tmp/trash/${stamp}
-  mkdir -p $d
-  mv $* $d/ && echo "Moved $* to $d" || echo "${RED}Failed to move $* to trash"
+  [ "x\$1" = "x-rf" ] && shift
+  stamp=\$(date +%F-%H-%M-%S)
+  d=/tmp/trash/\${stamp}
+  mkdir -p \$d
+  mv \$* \$d/ && echo "Moved \$* to \$d" || echo "\${RED}Failed to move \$* to trash"
 }
 
 function getmac ()
 {
-  ifconfig $1 | pcregrep -o '(?<=lladdr )([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]'
+  ifconfig \$1 | pcregrep -o '(?<=lladdr )([0-9a-f][0-9a-f]:){5}[0-9a-f][0-9a-f]'
 }
 
 function changemac ()
 {
-  IF=$1
-  MAC=$2
-  b="${GREEN}[+]${DARKGREEN}"
+  IF=\$1
+  MAC=\$2
+  b="\${GREEN}[+]\${DARKGREEN}"
 
-  if [ `getmac ${IF}` = ${MAC} ]; then
-    echo -e "${GREEN}MAC already set${RESET}"
+  if [ `getmac \${IF}` = \${MAC} ]; then
+    echo -e "\${GREEN}MAC already set\${RESET}"
   else
-    echo -e "$b Taking down ${IF}..."
-    sudo ifconfig ${IF} down
-    echo -e "$b Changing mac address to ${MAC}" 
-    sudo ifconfig ${IF} lladdr ${MAC}
-    echo -e "$b Bringing ${IF} back up..."
-    sudo ifconfig ${IF} up
-    echo -e "$b Acquiring dhcp lease for ${IF}..."
-    sudo dhclient ${IF}
+    echo -e "\$b Taking down \${IF}..."
+    sudo ifconfig \${IF} down
+    echo -e "\$b Changing mac address to \${MAC}" 
+    sudo ifconfig \${IF} lladdr \${MAC}
+    echo -e "\$b Bringing \${IF} back up..."
+    sudo ifconfig \${IF} up
+    echo -e "\$b Acquiring dhcp lease for \${IF}..."
+    sudo dhclient \${IF}
   fi
 
-  echo "$b Testing..."
+  echo "\$b Testing..."
   while : ; do
     ping -c 1 google.com && break
   done
-  echo -e "${GREEN}READY${RESET}"
+  echo -e "\${GREEN}READY\${RESET}"
 }
 
 function disasdiff ()
 {
   filter="cut -d: -f2-" 
-  vimdiff <(objdump -D $1 | $filter ) <(objdump -D $2 | $filter )
+  vimdiff <(objdump -D \$1 | \$filter ) <(objdump -D \$2 | \$filter )
 }
 
 function xxdiff ()
 {
   filter="cut -d: -f2-" 
-  vimdiff <(xxd -g1 $1 | $filter) <(xxd -g1 $2)
+  vimdiff <(xxd -g1 \$1 | \$filter) <(xxd -g1 \$2)
 }
 
 function leet ()
@@ -276,31 +276,31 @@ function leet ()
 
 function :: ()
 {
-  echo Launching "$*" in background...
-  exe=$1
+  echo Launching "\$*" in background...
+  exe=\$1
   shift
-  nohup $exe "$*" &
+  nohup \$exe "\$*" &
 }
 EOF
 
 cat > $USERHOME << EOF
 ## ANSI escape sequences for colours, zsh format
-export DARKGREEN=$'\e[00;32m'
-export GREEN=$'\e[01;32m'
-export TEAL=$'\e[00;36m'
-export DARKGREY=$'\e[01;30m'
-export CYAN=$'\e[01;36m'
-export LIGHTGREY=$'\e[00;37m'
-export RED=$'\e[00;31m' #?
-export PINK=$'\e[01;31m' #?
-export BLACK=$'\e[00;30m'
-export BLUE=$'\e[01;34m'
-export DARKBLUE=$'\e[00;34m'
-export WHITE=$'\e[01;38m'
-export RESET=$'\e[0m'
-export YELLOW=$'\e[01;33m'
-export MAGENTA=$'\e[01;35m'
-export PURPLE=$'\e[00;35m'
+export DARKGREEN=\$'\e[00;32m'
+export GREEN=\$'\e[01;32m'
+export TEAL=\$'\e[00;36m'
+export DARKGREY=\$'\e[01;30m'
+export CYAN=\$'\e[01;36m'
+export LIGHTGREY=\$'\e[00;37m'
+export RED=\$'\e[00;31m' #?
+export PINK=\$'\e[01;31m' #?
+export BLACK=\$'\e[00;30m'
+export BLUE=\$'\e[01;34m'
+export DARKBLUE=\$'\e[00;34m'
+export WHITE=\$'\e[01;38m'
+export RESET=\$'\e[0m'
+export YELLOW=\$'\e[01;33m'
+export MAGENTA=\$'\e[01;35m'
+export PURPLE=\$'\e[00;35m'
 EOF
 
 ################
