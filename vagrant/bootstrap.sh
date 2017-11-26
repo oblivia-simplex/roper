@@ -83,9 +83,9 @@ set -g status-left-length 140
 set -g status-right-length 80
 set -g status-left ' #(date) | #(ip addr show dev eth1 | grep -oP "(?<=inet )[0-9./]+") | '
 set -g pane-border-fg green
-set -g pane-active-border-fg black
+set -g pane-active-border-fg white
 set -g status-bg green
-set -g status-fg white
+set -g status-fg black
 EOF
 
 cat > /home/$USER/.bashrc << EOF
