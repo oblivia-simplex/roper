@@ -162,6 +162,9 @@ pub struct EvalResult {
   pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
+/* This is getting a bit convoluted, trying to cover too many
+ * kinds of evaluation at once. due for a major rewrite. 
+ */
 fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               problem: &Problem,
@@ -192,14 +195,15 @@ fn eval_case (uc: &mut CpuARM,
       if verbose {
         println!("\n==> Evaluating {:?}", input);
       };
-      result = hatch_chain(uc, 
-                           &chain,
-                           &input,
-                           &inregs,
-                           reset);
       reset = false;
-      for idx in outregs {
-        output.push(result.registers[*idx]);
+      if let Some(result) = hatch_chain(uc, 
+                                        &chain,
+                                        &input,
+                                        &inregs,
+                                        reset) {  
+        for idx in outregs {
+          output.push(result.registers[*idx]);
+        } 
       }
     } else {
       finished = true;
@@ -222,7 +226,8 @@ fn eval_case (uc: &mut CpuARM,
   let counter = result.counter;
   let crash = result.error != None;
 //  let final_pc = result.registers[15];
-
+    
+  println!("[*] [eval_case()] leaving function\n");
   EvalResult {
     fitness: if params.fitness_sharing {rf} else {af},
     ab_fitness: af,
@@ -348,7 +353,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
     //mean(&abfit_vec);
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
-  
+
+  println!("[*] [evaluate_fitness()] leaving function\n");
   EvalResult {
     fitness      : fitness,
     ab_fitness   : ab_fitness,
@@ -729,6 +735,7 @@ pub fn tournament (population: &Population,
   if t_best.fitness == None {
     panic!("t_best.fitness is None!");
   }
+  println!("[*] [tournament()] leaving function\n");
   TournementResult {
     graves:      vec![grave0, grave1],
     spawn:       offspring,

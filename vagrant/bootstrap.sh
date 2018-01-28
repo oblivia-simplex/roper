@@ -47,6 +47,7 @@ set smartindent
 set autoindent
 set autoread
 au CursorHold * checktime
+let g:rust_recommended_style = 0
 EOF
 
 ########
@@ -360,6 +361,8 @@ su $USER -c "wget https://beta.quicklisp.org/quicklisp.lisp"
 su $USER -c 'sbcl --load quicklisp.lisp --eval "(quicklisp-quickstart:install)"'
 su $USER -c 'sbcl --load "./quicklisp/setup.lisp" --eval "(ql-util::without-prompting (ql:add-to-init-file))"'
 
-
+ln -s $USERHOME/ROPER/lisp/roper $USERHOME/quicklisp/local_projects/roper
+ln -s $USERHOME/ROPER/lisp/cl-unicorn $USERHOME/quicklisp/local_projects/cl-unicorn
+ln -s $USERHOME/ROPER/lisp/junk-drawer $USERHOME/quicklisp/local_projects/junk-drawer
 # a lot of files in $USERHOME will belong to root now. fix that. 
 chown -R $USER:$USER $USERHOME/

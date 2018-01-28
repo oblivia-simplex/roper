@@ -44,6 +44,75 @@
 
 
 
+;; population is RO while in thread
+;; specification also RO while in thread
+;; but engines are each RW -- one per thread
+(defun dispatch-threads (specificiation population engines)
+  (loop for engine in engines do
+     ;; dispatch the threaded func
+       )
+  )
+
+
+(defstruct (island (:conc-name isle-))
+  deme
+  engine
+  lock)
+
+(defstruct (island-queue (:conc-name iq-))
+  islands
+  lock
+  logger)
+
+;;; now add a mutex check to these operations to make them atomic
+
+(defun iq-update-logs (iq isle)
+  )
+
+(defun iq-dequeue (iq)
+  ;; maybe get the lock first? 
+  (pop (iq-islands iq)))
+
+(defun iq-enqueue (iq isle)
+  (iq-update-logs iq isle)
+  (setf (iq-islands iq)
+	(nconc (iq-islands iq) (list isle))))
+
+(defun iq-ready (iq)
+  (car (iq-islands iq)))
+
+(defstruct pier
+  crowd
+  lock)
+
+(defparameter +sleeptime+ 1/100)
+
+;;; a sketch of the main loop.
+;;; start filling in these functions with the meat, and
+;;; you should be good to go!
+(defun main-loop (elf-path)
+  (let* ((gadgets (extract-gadgets-from-elf elf-path))
+	 (specification)
+	 (population)
+	 (engines)
+	 (island-queue (build-island-queue population engines))
+	 (thread-pool)
+	 (pier (make-pier)))
+    (prime-queue islands)
+    (loop while (stop-condition specification population) do
+	 (cond ((iq-ready island-queue)
+		(dispatch-thread thread-pool island-queue))
+	       (t (sleep +sleeptime+))))))
+;; update- functions should be modelled after what we did in rust,
+;; which worked fairly nicely. 
+;; BUT... the downside was that we had to wait for all threads to join
+;; before updating anything. maybe the GENLIN approach is better?
+;; * form islands (subpop/engine pairs), plus one pier
+;; * periodic migration between islands via mutexed pier.
+;; * maintain queue of ready islands. when a thread is available, it
+;;   grabs an island and works it.
+;; * global statistics can be processed while the island is in the queue
+;;   and logging can take place here as well. any brief, unthreaded ops. 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; At this point, this file just sets up some basic test-run stuff.  ;;

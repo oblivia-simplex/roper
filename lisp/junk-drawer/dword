@@ -1,7 +1,0 @@
-package.lisp:   :bytes->dword
-package.lisp:   :bytes->pointer
-utils.lisp:(export 'bytes->dword)
-utils.lisp:(defun bytes->dword (vec &key (offset 0) (width 4) (endian :little))
-utils.lisp:(export 'bytes->dwords)
-utils.lisp:(defun bytes->dwords (bytes &key (width 4) (endian :little))
-utils.lisp:	       (bytes->dword bytes i :width width))))))

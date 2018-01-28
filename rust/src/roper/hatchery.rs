@@ -118,14 +118,18 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             input: &Vec<i32>,
                             inregs:  &Vec<usize>,
                             reset: bool) 
-                            -> HatchResult {
+                            -> Option<HatchResult> {
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
   let mut stack = chain.pack();
   
   /* debugging */
-  println!("[*] packed chain len: >> {}\n", stack.len());
+  println!("[*] [hatch_chain()] packed chain len: >> {}", stack.len());
+  if (stack.len() == 0) {
+    println!("[X] returning null HatchResult from hatch_chain...\n");
+    return None;
+  }
   // refactor ?
   let il = input.len();
   for &(off, inp) in chain.input_slots.iter() {
@@ -157,6 +161,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     Err(e) => Some(err_encode(e)),
     _      => None,
   };
+  println!("[*] [hatch_chain()] leaving function.\n");
   HatchResult { registers: read_registers(&(uc.emu())),
                 error: e,
                 counter: 0,//read_counter(uc),

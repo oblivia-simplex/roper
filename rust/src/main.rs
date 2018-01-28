@@ -6,6 +6,9 @@ extern crate rand;
 extern crate getopts;
 extern crate scoped_threadpool;
 
+extern crate ctrlc;
+extern crate backtrace;
+
 use scoped_threadpool::Pool;
 use std::sync::mpsc::channel;
 use getopts::*;
@@ -14,6 +17,7 @@ use std::env;
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use std::io;
+use std::process;
 mod roper;
 
 use rand::{thread_rng,Rng};
@@ -85,6 +89,32 @@ fn main() {
   let verbose = false;
   let args: Vec<String> = env::args().collect();
   let program = args[0].clone();
+    
+  
+
+  ctrlc::set_handler(move || {
+
+    /*
+    backtrace::trace(|frame| {
+      let ip = frame.ip();
+      let sym_addr = frame.symbol_address();
+      /* Resolve this instruction pointer to a symbol name */
+      backtrace::resolve(ip, |sym| {
+        if let Some(name) = sym.name() {
+          if let Some(filename) = sym.filename() {
+            println!("=> {:?} in {:?}", name, filename);
+          } else {
+            println!("=> {:?}", name);
+          }
+        }
+      });
+      true // keep going to next frame
+    });
+    */  
+    println!("Goodbye!\n");
+    std::process::exit(1);
+  }).expect("Error setting ctrlc handler");
+  
 
   let mut opts = Options::new();
   opts.parsing_style(ParsingStyle::FloatingFrees);
@@ -411,6 +441,7 @@ fn main() {
         let mut mut_pop = &mut pop_local.write().expect("Failed to open write lock on population");
         iteration = mut_pop.iteration.clone();
         for tr in trs {
+          println!("[*] about to call patch_io_targets()");
           patch_io_targets(&tr, &mut mut_pop.params, iteration);
           let (updated, f_deltas) = patch_population(&tr,
                                                      mut_pop,
@@ -456,6 +487,7 @@ fn main() {
       } // end mut block
      
       if champion != None && (season_change > 0 || iteration % printevery == 0) {
+        println!("[+] in champion block of main loop");
         /**************************************************
          * Pretty-print some information for the viewers  *
          * huddled around the terminal, in hushed antici- *

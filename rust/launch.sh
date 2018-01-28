@@ -1,6 +1,7 @@
 #! /bin/bash
 
-[ -n "$ROPER_THREADS" ] || ROPER_THREADS=12
+[ -n "$ROPER_THREADS" ] || ROPER_THREADS=4
+[ -n "$BARE_RUN" ] && ROPER_THREADS=1
 
 PROJECT_ROOT=`pwd`/..
 

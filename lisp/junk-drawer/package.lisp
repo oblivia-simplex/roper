@@ -3,6 +3,4 @@
   (:export
    :bytes->dword
    :get-words
-   :bytes->pointer
-   :pointer->bytes
    :list->csv))

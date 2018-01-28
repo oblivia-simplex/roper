@@ -21,3 +21,6 @@ regex = "0.2"
 rustc-serialize = "0.3.22"
 chrono = "0.3.0"
 bit-vec = "0.4.3"
+
+ctrlc = "3.0.3"
+backtrace = "0.3.4"

@@ -56,7 +56,7 @@
 				  (if (eq endian :little) zeros stub))))))
 	  (loop for i below (- (length bytes) 1) by width
 	     collect
-	       (bytes->dword bytes i :width width))))))
+	       (bytes->dword bytes :offset i :width width))))))
 
 (defun read-bit (w i)
   (ldb (byte 1 i) w))
