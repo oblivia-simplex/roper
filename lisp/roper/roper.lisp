@@ -2,24 +2,22 @@
 
 
 
-(defun extract-gadgets-from-elf (elf-path &key (save-path))
-  (let* ((elf-obj (elf:read-elf elf-path))
-	 (secs (read-elf:get-elf-sections elf-obj))
-	 (text (find :.text secs :key #'read-elf:sec-name))
-	 ;(rodata (find :.rodata secs :key #'read-elf:sec-name))
-	 (gadgets (find-gadgets text)))
-    (when save-path
-      (let ((*print-base* 16))
-	(with-open-file (s save-path :direction :output :if-exists :overwrite)
-	  (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
-	  (format s ";; Gadgets from ~A~%" elf-path)
-	  (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
-	  (loop for g in gadgets do
-	       (format s "~S~%" g))
-	  (format t "~D gadgets saved to ~A~%"
-		  (length gadgets)
-		  save-path))))
-    gadgets))
+(defun extract-gadgets-from-elf (elf-obj &key (save-path))
+  (let ((secs (read-elf:get-elf-sections elf-obj))
+        (text (find :.text secs :key #'read-elf:sec-name))
+        (gadgets (find-gadgets text)))
+   (when save-path
+     (let ((*print-base* 16))
+       (with-open-file (s save-path :direction :output :if-exists :overwrite)
+         (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
+         (format s ";; Gadgets from ~A~%" elf-path)
+         (format s ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;~%")
+         (loop for g in gadgets do
+           (format s "~S~%" g))
+         (format t "~D gadgets saved to ~A~%"
+                 (length gadgets)
+                 save-path))))
+   gadgets))
 
 (defun load-constants-from-file (path &key (base 16))
   (let ((data ())
@@ -48,9 +46,10 @@
 ;; specification also RO while in thread
 ;; but engines are each RW -- one per thread
 (defun dispatch-threads (specificiation population engines)
-  (loop for engine in engines do
+  ;(loop for engine in engines do
      ;; dispatch the threaded func
-       )
+    
+   ;    )
   )
 
 
@@ -62,13 +61,40 @@
 (defstruct (island-queue (:conc-name iq-))
   islands
   lock
-  logger)
+  log)
+
+(defstruct (creature (:conc-name cr-))
+  stack
+  rel-fit
+  abs-fit
+  par-fit
+  )
+
+
+(defun partition (list numcells)
+  ;; error if list is not evenly divisible into numcells cells
+  (let ((len (length list)))
+    (multiple-value-bind (cell-size remainder) (floor (/ len numcells))
+      (assert (zerop remainder))
+      (loop for cell on list by (lambda (list) (nthcdr cell-size list))
+            collect (subseq cell 0 cell-size)))))
+
+
+(defun build-island-queue (population engines num)
+  (let* ((demes (partition population num))
+         (isles (mapcar (lambda (d e) (make-island :deme d
+                                              :engine e
+                                              :lock (bordeaux-threads:make-lock))
+                        demes
+                        engines))))
+    (make-island-queue :islands isles
+                       :log '()
+                       :lock (bordeaux-threads:make-lock))))
 
 ;;; now add a mutex check to these operations to make them atomic
 
-(defun iq-update-logs (iq isle)
+(defun iq-update-log (iq isle)
   )
-
 (defun iq-dequeue (iq)
   ;; maybe get the lock first? 
   (pop (iq-islands iq)))
@@ -87,21 +113,30 @@
 
 (defparameter +sleeptime+ 1/100)
 
+
+
 ;;; a sketch of the main loop.
 ;;; start filling in these functions with the meat, and
 ;;; you should be good to go!
-(defun main-loop (elf-path)
-  (let* ((gadgets (extract-gadgets-from-elf elf-path))
-	 (specification)
-	 (population)
-	 (engines)
-	 (island-queue (build-island-queue population engines))
-	 (thread-pool)
-	 (pier (make-pier)))
+(defun main-loop (elf-path &key
+                             (num-isles 2)
+                             (isle-pop 512)
+                             (random-seed <random-seed>))
+  (let* ((elf-obj (elf:read-elf elf-path))
+         (gadgets  (cons :gadget (extract-gadgets-from-elf elf-obj)))
+         (ints     (cons :int (fetch-int-primitives)))
+         (pointers (cons :pointer (fetch-pointer-primitives)))
+         (bools    (cons :bool (1 0)))
+         (population ) ;; TODO Define these fetchers (read from file)
+         ;; and TODO: interface with #'ropush:random-stack
+         (engines (init-engines :elf elf-obj :count num-isles))
+         (island-queue (build-island-queue population engines num-isles))
+         (thread-pool)
+         (pier (make-pier)))
     (prime-queue islands)
     (loop while (stop-condition specification population) do
 	 (cond ((iq-ready island-queue)
-		(dispatch-thread thread-pool island-queue))
+          (dispatch-thread thread-pool island-queue))
 	       (t (sleep +sleeptime+))))))
 ;; update- functions should be modelled after what we did in rust,
 ;; which worked fairly nicely. 

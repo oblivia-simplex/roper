@@ -35,16 +35,16 @@
 		       (count 1))
   (let* ((ucs (loop repeat count collect (unicorn::uc-open arch mode)))
          (segs%  (get-loadable-elf-segments elf :align t))
-	 (segs (if merge (merge-segments segs%) segs%))
+         (segs (if merge (merge-segments segs%) segs%))
          (secs (secs-in-segs (get-elf-sections elf) segs)))
     (loop for uc in ucs do
-	 (mapc (lambda (s) (mem-map-seg uc s)) segs)
-	 (mapc (lambda (s) (mem-write-sec uc s)) secs))
+      (mapc (lambda (s) (mem-map-seg uc s)) segs)
+      (mapc (lambda (s) (mem-write-sec uc s)) secs))
     (mapcar (lambda (uc)
-	      (make-emu :engine uc
-			:segs segs
-			:secs secs))
-	    ucs)))
+              (make-emu :engine uc
+                        :segs segs
+                        :secs secs))
+            ucs)))
 
 ;; TODO: hatch-chain
 

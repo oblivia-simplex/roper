@@ -1630,6 +1630,7 @@ pub fn test_clump (uc: &mut unicorn::CpuARM,
   let smooth = if res.error == None {2} else {0};
   differ | smooth
 }
+
 const NOCHANGE_CRASH_BUCKET    : usize = 0;
 const CHANGE_CRASH_BUCKET      : usize = 1;
 const NOCHANGE_NOCRASH_BUCKET  : usize = 2;

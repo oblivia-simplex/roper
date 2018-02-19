@@ -118,17 +118,17 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             input: &Vec<i32>,
                             inregs:  &Vec<usize>,
                             reset: bool) 
-                            -> Option<HatchResult> {
+                            -> HatchResult {
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
   let mut stack = chain.pack();
   
   /* debugging */
-  println!("[*] [hatch_chain()] packed chain len: >> {}", stack.len());
+  // println!("[*] [hatch_chain()] packed chain len: >> {}", stack.len());
   if (stack.len() == 0) {
     println!("[X] returning null HatchResult from hatch_chain...\n");
-    return None;
+    return HatchResult::null();
   }
   // refactor ?
   let il = input.len();
@@ -165,6 +165,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
   HatchResult { registers: read_registers(&(uc.emu())),
                 error: e,
                 counter: 0,//read_counter(uc),
+                null: false,
   }
 }
 
@@ -174,16 +175,33 @@ pub struct HatchResult {
   pub registers : Vec<u64>,
   pub error     : Option<ErrorCode>,
   pub counter   : usize,
+  pub null      : bool,
 }
+
 impl HatchResult {
   pub fn new () -> Self {
     HatchResult {
       registers : Vec::new(),
       error     : None,
       counter   : 0,
+      null      : false,
     }
   }
+  /* a convenience function for null results. */
+  pub fn null () -> Self {
+    HatchResult {
+      registers : Vec::new(),
+      error     : None,
+      counter   : 0,
+      null      : true,
+    }
+  }
+  pub fn isnull (&self) -> bool {
+    self.null
+  }
 }
+
+
 impl Display for HatchResult {
   fn fmt (&self, f: &mut Formatter) -> Result {
     let mut s = String::new();

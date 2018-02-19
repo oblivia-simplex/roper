@@ -196,14 +196,18 @@ fn eval_case (uc: &mut CpuARM,
         println!("\n==> Evaluating {:?}", input);
       };
       reset = false;
-      if let Some(result) = hatch_chain(uc, 
-                                        &chain,
-                                        &input,
-                                        &inregs,
-                                        reset) {  
+      result = hatch_chain(uc, 
+                           &chain,
+                           &input,
+                           &inregs,
+                           reset);
+      if !result.isnull() {
         for idx in outregs {
           output.push(result.registers[*idx]);
-        } 
+        }
+      } else {
+        println!("[x] Null hatch result.");
+        /* deal with this somehow if it becomes a problem */
       }
     } else {
       finished = true;
@@ -227,7 +231,7 @@ fn eval_case (uc: &mut CpuARM,
   let crash = result.error != None;
 //  let final_pc = result.registers[15];
     
-  println!("[*] [eval_case()] leaving function\n");
+  //println!("[*] [eval_case()] leaving function\n");
   EvalResult {
     fitness: if params.fitness_sharing {rf} else {af},
     ab_fitness: af,

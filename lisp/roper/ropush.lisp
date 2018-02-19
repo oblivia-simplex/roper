@@ -38,7 +38,7 @@
 ;; refactor, maybe
 (defun repr (unit)
   (when unit
-    (let ((val-str 
+    (let ((val-str
 	   (cond ((operation-p unit) (format nil "~A " (op-name unit)))
 		 ((listp unit) (case (car unit)
 				 ((:op) (format nil "(:OP . ~A) " (op-name (cdr unit))))
@@ -109,7 +109,7 @@
   #+debugging
   (format t "~A~%[~D]---[ executing ~A~%[~D]---[ stacks before:~%~A~%"
 	  (concatenate 'string (loop repeat 78 collect #\-))
-	  $counter (repr item) $counter (repr-stack-tops $stacks)) 
+	  $counter (repr item) $counter (repr-stack-tops $stacks))
   (cond ((eq (car item) :op)
 	 (decf $counter (op-gas (cdr item)))
 	 (mapcar (lambda (x) ($push (cons :exec x)))
@@ -144,7 +144,7 @@
 	       (length (cdr (assoc type $stacks)))))
 	    ($$pop
 	     (lambda (type)
-	       (cons type 
+	       (cons type
 		     (pop (cdr (assoc type $stacks))))))
 	    ($$peek
 	     (lambda (type)
@@ -165,7 +165,7 @@
   (block spy
     (loop for (type . card) in (op-sigcard op) do
        ;; i don't like that this evaluates the entire length of the stack
-	 
+	
 	 (when (or (not (member type $types))
 		   (< ($depth type) card))
 	   (return-from spy nil)))
@@ -190,7 +190,7 @@
   (funcall $$push (cons :exec (cdr (funcall $$pop :code))))
   (loop while (cdr ($peek :exec)) do
        ($exec (cdr ($pop :exec)))))
-  
+
 (export 'run)
 (defun run (code-stack &key (unicorn nil)
 			 (gas <gas-limit>)
@@ -208,7 +208,7 @@
 
 
 ;; this is where the type-stripping should happen,
-;; since it's easy to configure from the op. 
+;; since it's easy to configure from the op.
 (defun %mk-arg-fetch (sig peek strip)
   (let* ((%topf (if peek #'$peek #'$pop))
 	 (topf (if strip
@@ -223,7 +223,7 @@
 			func
 			peek
 			(cast)
-			(strip t) 
+			(strip t)
 			(gas 1)
 			(encaps t))
   (let* ((type-pre (if (and (or strip cast) ret)
@@ -261,7 +261,7 @@
 			   (gas 1)
 			   (types *stack-types*)
 			   (exclude-types `(:!output!))
-			   (encaps t) 
+			   (encaps t)
 			   (strip t)
 			   (cast))
   (cons 'progn
@@ -330,10 +330,8 @@
 	     (push (cons typ (elt stk (std-rndnum (length stk))))
 		   stack)))
       stack)))
-	     
-	   
-      
-    
+
+
 (defun print-stack (es)
   (mapc (lambda (x)
 	  (format t "* ~A~%" (repr x))) es)

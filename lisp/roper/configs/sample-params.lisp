@@ -61,6 +61,11 @@
   t
   "Whether or not to generate offspring through autoconstruction, as opposed to hardcoded genetic operators.")
 
+
+(defparameter <random-seed>
+  42
+  "The random seed to use for all PRNGs in the system. This should allow deterministic runs.")
+
 ;;; Now export muffed
 (defun export-tweakable ()
   (let ((thispkg (find-package :params)))

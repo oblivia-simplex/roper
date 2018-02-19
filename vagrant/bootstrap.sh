@@ -10,7 +10,7 @@ REPOUPDATECMD="apt-get update && apt-get upgrade -y"
 
 $REPOUPDATECMD
 # tools
-$INSTALLCMD vim-nox htop curl emacs-nox git
+$INSTALLCMD vim-nox htop curl emacs25-nox git
 $INSTALLCMD build-essential cmake python-dev python3-dev
 $INSTALLCMD gcc gdb rlwrap
 $INSTALLCMD libfixposix0 libfixposix-dev
@@ -361,6 +361,7 @@ su $USER -c "wget https://beta.quicklisp.org/quicklisp.lisp"
 su $USER -c 'sbcl --load quicklisp.lisp --eval "(quicklisp-quickstart:install)"'
 su $USER -c 'sbcl --load "./quicklisp/setup.lisp" --eval "(ql-util::without-prompting (ql:add-to-init-file))"'
 
+mkdir -p $USERHOME/quicklisp/local_projects
 ln -s $USERHOME/ROPER/lisp/roper $USERHOME/quicklisp/local_projects/roper
 ln -s $USERHOME/ROPER/lisp/cl-unicorn $USERHOME/quicklisp/local_projects/cl-unicorn
 ln -s $USERHOME/ROPER/lisp/junk-drawer $USERHOME/quicklisp/local_projects/junk-drawer
