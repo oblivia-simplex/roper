@@ -25,7 +25,7 @@ use std::io::prelude::*;
 use std::slice::{Iter,IterMut};
 use std::env;
 use roper::util::*;
-use roper::population::*;
+use roper::evolve::*;
 use roper::hatchery::*;
 use roper::ontostructs::*;
 use roper::statistics::*;

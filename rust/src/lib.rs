@@ -17,5 +17,5 @@ pub use roper::util::*;
 pub use roper::thumb::*;
 pub use roper::arm::*;
 pub use roper::phylostructs::*;
-pub use roper::population::*;
+pub use roper::evolve::*;
 pub use roper::csv_reader::*;

@@ -161,7 +161,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     Err(e) => Some(err_encode(e)),
     _      => None,
   };
-  println!("[*] [hatch_chain()] leaving function.\n");
+  //println!("[*] [hatch_chain()] leaving function.\n");
   HatchResult { registers: read_registers(&(uc.emu())),
                 error: e,
                 counter: 0,//read_counter(uc),

@@ -22,7 +22,7 @@ pub use self::util::*;
 pub use self::hatchery::*;
 pub use self::thumb::*;
 pub use self::arm::*;
-pub use self::population::*;
+pub use self::evolve::*;
 pub use self::phylostructs::*;
 pub use self::csv_reader::*;
 //pub use self::hooks::*;

@@ -3,7 +3,7 @@
 //
 
 use roper::util::*;
-use roper::population::*;
+use roper::evolve::*;
 use roper::phylostructs::*;
 
 

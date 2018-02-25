@@ -207,6 +207,7 @@ fn eval_case (uc: &mut CpuARM,
         }
       } else {
         println!("[x] Null hatch result.");
+        finished = true;
         /* deal with this somehow if it becomes a problem */
       }
     } else {
@@ -228,7 +229,7 @@ fn eval_case (uc: &mut CpuARM,
   }
   if verbose { print!("{}", result); }
   let counter = result.counter;
-  let crash = result.error != None;
+  let crash = result.error != None || result.isnull();
 //  let final_pc = result.registers[15];
     
   //println!("[*] [eval_case()] leaving function\n");

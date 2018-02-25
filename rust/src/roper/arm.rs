@@ -8,7 +8,7 @@ const _DEBUG : u8 = 2;
 const MIN_GAD_LEN : usize = 2;
 
 use roper::util::*;
-use roper::population::*;
+use roper::evolve::*;
 use roper::phylostructs::*;
 
 static PC : usize = 15;
