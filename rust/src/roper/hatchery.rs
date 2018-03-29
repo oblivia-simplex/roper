@@ -30,10 +30,10 @@ pub fn set_registers (uc: &unicorn::Unicorn,
     if in_ptr < inregs.len() && i == inregs[in_ptr] { 
       in_ptr += 1;
       let val = input[in_ptr-1];
-      uc.reg_write_i32(REGISTERS[i].to_i32(), val);
+      uc.reg_write_i32(REGISTERS[i].to_i32(), val).unwrap();
     } else { 
       if reset {
-        uc.reg_write_i32(REGISTERS[i].to_i32(), 0);
+        uc.reg_write_i32(REGISTERS[i].to_i32(), 0).unwrap();
       }
     };
   }
@@ -122,6 +122,12 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                             //Vec<i32> {
   // Iinitalize the registers with reg_vec. This is input.
   // For single-case runs, it might just be set to 0..0. 
+  
+  /* The problem here is that we don't know until right after
+   * this call whether or not the /packed/ chain will be empty.
+   * A packed chain will be empty if it turns out to consist
+   * entirely of *explicitly defined* introns. 
+   */
   let mut stack = chain.pack();
   
   /* debugging */

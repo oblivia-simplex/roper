@@ -1,0 +1,23 @@
+--- translate.c	2018-03-29 19:02:04.744789660 +0000
++++ /vagrant/translate-patched.c	2018-03-29 19:01:28.630742000 +0000
+@@ -798,16 +798,16 @@
+         tcg_temp_free_i32(tcg_ctx, tmp);
+         gen_set_label(tcg_ctx, inv);
+         break;
+-    case 13: /* le: Z || N != V */
++    default: // case 13: /* le: Z || N != V */
+         tcg_gen_brcondi_i32(tcg_ctx, TCG_COND_EQ, tcg_ctx->cpu_ZF, 0, label);
+         tmp = tcg_temp_new_i32(tcg_ctx);
+         tcg_gen_xor_i32(tcg_ctx, tmp, tcg_ctx->cpu_VF, tcg_ctx->cpu_NF);
+         tcg_gen_brcondi_i32(tcg_ctx, TCG_COND_LT, tmp, 0, label);
+         tcg_temp_free_i32(tcg_ctx, tmp);
+         break;
+-    default:
+-        fprintf(stderr, "Bad condition code 0x%x\n", cc);
+-        abort();
++    //default:
++    //    fprintf(stderr, "Bad condition code 0x%x\n", cc);
++    //    abort();
+     }
+ }
+ 

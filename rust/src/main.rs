@@ -441,7 +441,6 @@ fn main() {
         let mut mut_pop = &mut pop_local.write().expect("Failed to open write lock on population");
         iteration = mut_pop.iteration.clone();
         for tr in trs {
-          println!("[*] about to call patch_io_targets()");
           patch_io_targets(&tr, &mut mut_pop.params, iteration);
           let (updated, f_deltas) = patch_population(&tr,
                                                      mut_pop,

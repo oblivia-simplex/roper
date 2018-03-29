@@ -3,6 +3,7 @@
 //
 // * copy of thumb.rs. Edit to match arm requirements. 
 // * shouldn't take long. an hour, tops?
+#![allow(bad_style)]
 
 const _DEBUG : u8 = 2;
 const MIN_GAD_LEN : usize = 2;

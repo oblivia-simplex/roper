@@ -88,7 +88,7 @@ fn load_file (path: &str) -> Vec<u8> {
   let mut f = File::open(path)
                 .expect("Failed to open path");
   let mut buf : Vec<u8> = Vec::new();
-  f.read_to_end(&mut buf);
+  f.read_to_end(&mut buf).unwrap();
   buf
 }
 fn get_elf_addr_data (path: &str, 

@@ -1,3 +1,5 @@
+#![allow(bad_style)]
+
 extern crate rand;
 extern crate unicorn;
 extern crate time;
@@ -28,8 +30,8 @@ use roper::util::*;
 use roper::evolve::*;
 use roper::hatchery::*;
 use roper::ontostructs::*;
-use roper::statistics::*;
 use roper::interactive::*;
+use roper::statistics::*;
 pub const MAX_VISC : i32 = 100;
 pub const MIN_VISC : i32 = 0;
 pub const VISC_DROP_THRESH : i32 = 10;
@@ -226,6 +228,7 @@ pub fn saturated (gad: &Clump) -> bool {
   gad.words.len() as i32 == gad.sp_delta
 }
 
+/* why isn't this a trait? */
 fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
   let s : usize = clumps.iter()
                         .map(|ref x| x.words.len())
@@ -695,8 +698,8 @@ impl Population {
                                     .open(&self.params.pop_path)
                                     .unwrap();
     let json_string = format!("{}\n",self.deme.to_json());
-    json_file.write(json_string.as_bytes());
-    json_file.flush();
+    json_file.write(json_string.as_bytes()).unwrap();
+    json_file.flush().unwrap();
   }
 
   /* Needs some refactoring. Maybe a macro. */
@@ -756,8 +759,8 @@ impl Population {
                                    .create(true)
                                    .open(&self.params.csv_path)
                                    .unwrap();
-    csv_file.write(row.as_bytes());
-    csv_file.flush();
+    csv_file.write(row.as_bytes()).unwrap();
+    csv_file.flush().unwrap();
     false
   }
 }
@@ -765,10 +768,6 @@ impl Population {
 /**
  * Constants and parameters
  */
-
-type dword = u32;
-type halfword = u16;
-type byte = u8;
 
 #[derive(PartialEq,Debug,Clone,Copy)]
 pub enum SelectionMethod {

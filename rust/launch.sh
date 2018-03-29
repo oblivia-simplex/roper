@@ -3,7 +3,34 @@
 [ -n "$ROPER_THREADS" ] || ROPER_THREADS=4
 [ -n "$BARE_RUN" ] && ROPER_THREADS=1
 
+export RUSTFLAGS=-Awarnings
 PROJECT_ROOT=`pwd`/..
+SRV=${PROJECT_ROOT}/srv
+mkdir -p $SRV
+
+function webserver () 
+{
+  cd $SRV
+  echo "[+] Serving gnuplot pngs on port 8888..." >&2
+  python -m SimpleHTTPServer 8888 &> $SRV/httpd.log.txt &
+  echo "$?"
+}
+
+
+function cleanup ()
+{
+  trap - INT
+  echo "${YELLOW}Trapped SIGINT. Cleaning up...${RESET}"
+  kill $WEBSRV_PID
+  kill $gnuplot_pid
+  kill $roper_pid
+  cat $ERRORFILE
+  rm $OUTFILE
+  rm $ERRORFILE
+}
+
+trap cleanup INT
+
 
 BINARY=$1
 [ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/ldconfig.real
@@ -32,7 +59,6 @@ DATASTRING="-d $DATAFILE"
 GOAL="0.1"
 READEVERY=1
 LABEL=`labelmaker`
-TERMINALSTRING=""
 
 LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
 mkdir -p $LOGDIR
@@ -112,6 +138,7 @@ if (( $BARE_RUN )) ; then
   exit 0
 fi
 
+WEBSRV_PID=$(webserver)
 echo "[+] launching roper"
 run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
 roper_pid=$!
@@ -135,13 +162,9 @@ export TIMESTAMP
 ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
 ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
 PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
-if [ -n "$DISPLAY" ]; then
-  TERMINALSTRING="set terminal x11 background rgb \"black\""
-  OUTPUTSTRING=""
-else
-  TERMINALSTRING="set terminal png background rbg \"black\" size 1024,768"
-  OUTPUTSTRING="set output \"roper_${TIMESTAMP}.png\""
-fi
+
+TERMINALSTRING="set terminal png truecolor background rgb \"black\" size 1660,1024"
+OUTPUTSTRING="set output \"${SRV}/${LABEL}_${TIMESTAMP}.png\""
 
 function difplot ()
 {
@@ -198,7 +221,7 @@ plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "DIFFICULTY BY CLASS"
-set style fill transparent solid 0.5 
+set style fill transparent solid 0.3 
 plot "$PROJECT_ROOT/logs/$recent" $(difplot 0), \
   "" $(difplot 1), \
   "" $(difplot 2), \
@@ -206,10 +229,17 @@ plot "$PROJECT_ROOT/logs/$recent" $(difplot 0), \
   "" $(difplotline 1), \
   "" $(difplotline 2)
 
-pause 2 
 unset multiplot
+unset output
+pause 4.35 
 reread
 EOF
+
+cat > $SRV/index.html<<EOF
+<meta http-equiv="refresh" content="5">
+<img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
+EOF
+
 #plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
 #  "" u ${X1}:${AVG_LEN} w lines, \
 #  "" u ${X1}:${BEST_GEN} w lines, \
@@ -220,12 +250,9 @@ export PLOTFILE
 cd ..
 echo "[+] logging to $PROJECT_ROOT/logs/$recent"
 sleep 1
-( [ -n "$DISPLAY" ] && gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt) &
+gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt &
 gnuplot_pid=$!
 echo "[+] gnuplot PID is $gnuplot_pid"
 for i in {0..70}; do echo -n "="; done; echo
 tail -n 4096 -f $OUTFILE
-kill $roper_pid
 [ -n "$DISPLAY" ] && kill $gnuplot_pid
-rm $OUTFILE
-rm $ERRORFILE

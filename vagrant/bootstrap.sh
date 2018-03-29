@@ -342,6 +342,10 @@ cd ~
 [ -d "./unicorn" ] || git clone https://github.com/unicorn-engine/unicorn.git
 cd unicorn
 git pull
+# there's a bug here that we need to kludge away
+cd qemu/target-arm
+patch < /vagrant/translate.patch
+cd ../..
 ./make.sh 
 ./make.sh install
 

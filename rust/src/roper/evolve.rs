@@ -359,7 +359,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
   if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
   if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
 
-  println!("[*] [evaluate_fitness()] leaving function\n");
   EvalResult {
     fitness      : fitness,
     ab_fitness   : ab_fitness,
@@ -399,8 +398,8 @@ fn append_to_csv(path: &str, iter: usize,
                             .create(true)
                             .open(path)
                             .unwrap();
-  file.write(row.as_bytes());
-  file.flush();
+  file.write(row.as_bytes()).unwrap();
+  file.flush().unwrap();
 //  println!(">> {}",row);
 }
 
@@ -740,7 +739,6 @@ pub fn tournament (population: &Population,
   if t_best.fitness == None {
     panic!("t_best.fitness is None!");
   }
-  println!("[*] [tournament()] leaving function\n");
   TournementResult {
     graves:      vec![grave0, grave1],
     spawn:       offspring,
