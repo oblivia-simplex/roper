@@ -10,7 +10,8 @@ REPOUPDATECMD="apt-get update && apt-get upgrade -y"
 
 $REPOUPDATECMD
 # tools
-$INSTALLCMD vim-nox htop curl emacs25-nox git
+$INSTALLCMD git
+$INSTALLCMD vim-nox htop curl emacs25-nox 
 $INSTALLCMD build-essential cmake python-dev python3-dev
 $INSTALLCMD gcc gdb rlwrap
 $INSTALLCMD libfixposix0 libfixposix-dev
@@ -65,8 +66,8 @@ make clean
 
 cat > $USERHOME/.tmux.conf << EOF
 unbind C-b
-set-option -g prefix C-t
-bind-key C-t send-prefix
+set-option -g prefix C-f
+bind-key C-f send-prefix
 
 bind | split-window -h
 unbind %
