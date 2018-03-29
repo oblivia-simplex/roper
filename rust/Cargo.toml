@@ -6,8 +6,8 @@ authors = ["oblivia simplex <oblivia@paranoici.org>"]
 
 
 [dependencies]
-unicorn = "0.7.0"
-libunicorn-sys = "0.7.0"
+unicorn = "0.8.0"
+libunicorn-sys = "0.8.0"
 capstone = "0.0.4"
 elf      = "0.0.10"
 byteorder = "0.5.3"
