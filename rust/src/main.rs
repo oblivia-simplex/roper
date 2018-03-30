@@ -453,13 +453,14 @@ fn main() {
                     if updated != None || (peek_path.exists() && champion != None) {
                         let champion = champion.clone();
                         /* dump the champion's visited_map */
-                        let path = format!("{}/{}_champion_{}_visited.txt",
+                        let path = format!("{}/{}_champion_{}_{}_visited.txt",
                                            params.log_dir,
-                                           label,
+                                           label, 
+                                           &params.timestamp,
                                            iteration);
                         champion.as_ref()
                                 .expect("failed to unwrap champ to dump")
-                                .dump_visited_map(&path);
+                                .dump_visited_map(&path, &params.binary_path);
 
                         println!("[*] Verbosely evaluating new champion:\n{}",
                                           champion.as_ref()

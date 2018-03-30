@@ -23,4 +23,5 @@
 	       (:file "ropush-ops")
 	       (:file "ropush-test")
 	       (:file "roper")
+         (:file "visitmap-plot")
 	       ))

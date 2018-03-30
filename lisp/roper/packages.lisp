@@ -92,3 +92,9 @@
   (:use
    :params
    :common-lisp))
+
+
+(defpackage :visitmap-plot
+  (:use
+   :common-lisp
+   :read-elf))

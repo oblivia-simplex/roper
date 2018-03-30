@@ -505,47 +505,48 @@ impl Chain {
             self.crashes == None && self.stray_addr_rate() > 0.0
         }
 
+        fn get_intervals (&self) -> Vec<(u32,u32)> {
+            let mut intervals = self.clumps
+                                    .iter()
+                                    .map(|c| (c.entry(), c.exit()))
+                                    .collect::<Vec<(u32,u32)>>();
+            intervals.sort();
+            intervals
+        }
+
+        fn search_intervals(&self, intervals: &Vec<(u32,u32)>, addr: u32) -> bool {
+
+            let res = intervals.binary_search_by(
+                (|c| if c.0 <= addr && addr <= c.1 {
+                  //  println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                    Equal
+                } else if c.1 < addr {
+                //    println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                    Less
+                } else { 
+              //      println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                    Greater
+                }));
+            //println!("---> res: {:?}",res);
+            match res {
+                Ok(_)  => true,
+                Err(_) => false,
+            }
+        }
+
         pub fn stray_addr_rate (&self) -> f32 {
             // later do this nicely, with a binary search tree or smth
-            let mut intervals = &mut self.clumps
-                                     .iter()
-                                     .map(|c| (c.entry(), c.exit()))
-                                     .collect::<Vec<(u32,u32)>>();
-            intervals.sort();
+            let intervals = self.get_intervals();
             let mut strays = 0;
             let mut hits   = 0;
             let mut count  = 0;
             
             for p in self.visited_map.keys() {
                 let v = self.visited_map.get(p).unwrap();
-                //println!("crash? {:?}",self.crashes);
-                //println!("v> {:?}",v);
-                //println!("intervals: {:?}",intervals); 
-                for &addr in v.iter() {
-                    let res = intervals.binary_search_by(
-                        (|c| if c.0 <= addr && addr <= c.1 {
-                          //  println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
-                            Equal
-                        } else if c.1 < addr {
-                        //    println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
-                            Less
-                        } else { 
-                      //      println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
-                            Greater
-                        }));
-                    //println!("---> res: {:?}",res);
-                    count += 1;
-                    match res {
-                        Ok(_)  => hits += 1,
-                        Err(_) => {
-                            //println!("* {} not found in {:?}", addr, intervals);
-                            if self.crashes == None {
-                                println!("[!] Strayed but did not crash:\nv> {:?}\nintervals: {:?}", v, intervals);
-                            }
-                            strays += 1;
-                        },
-                    };
-                }
+                count  += v.len();
+                strays += v.iter()
+                           .filter(|&x| !self.search_intervals(&intervals, *x))
+                           .count();
             }
     //        println!(">> stray: {}, hit: {}, count: {}\n", strays, hits, count);
 
@@ -557,7 +558,7 @@ impl Chain {
             if edirat == 0.0 { 0.0 } else { self.stray_addr_rate() / edirat }
         }
 
-        pub fn dump_visited_map (&self, path: &str) {
+        pub fn dump_visited_map (&self, path: &str, binary: &str) {
             println!("DUMPING VISIT MAP TO {}",path);
             let mut file = OpenOptions::new()
                                        .truncate(true)
@@ -565,12 +566,22 @@ impl Chain {
                                        .create(true)
                                        .open(path)
                                        .unwrap();
+            file.write(&format!("[VISIT MAP FOR BINARY {}]\n", binary).as_bytes());
+            // let's dump the chain here too
+            file.write(&format!("--- BEGIN CHAIN DUMP ---\n").as_bytes());
+            file.write(&format!("{}\n", self).as_bytes());
+            file.write(&format!("--- END CHAIN DUMP ---\n").as_bytes());
             for p in self.visited_map.keys() {
                 let pname = p.identifier();
                 file.write(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
                                     pname).as_bytes());
+                let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
-                    file.write(&format!("{:0x}\n", addr).as_bytes());
+                    let is_stray = !self.search_intervals(&intervals, *addr);
+                    file.write(&format!("{:08x}{}\n", 
+                                        addr,
+                                        if is_stray { " stray"} else {""})
+                              .as_bytes());
                 }
                 file.write(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
                                     pname).as_bytes());
@@ -948,6 +959,7 @@ pub enum SelectionMethod {
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
         pub label            : String,
+        pub timestamp        : String,
         pub population_size  : usize,
         pub crossover_rate   : f32,
         pub max_iterations  : usize,
@@ -1039,6 +1051,7 @@ impl Params {
             let timestamp = t.format("%H-%M-%S").to_string();
             Params {
                 label:            label.to_string(),
+                timestamp:        timestamp.clone(),
                 population_size:  2048,
                 crossover_rate:   0.50,
                 max_iterations:   800000,
