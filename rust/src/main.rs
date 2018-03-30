@@ -403,8 +403,8 @@ fn main() {
                 || champion.as_ref().expect("Failed to unwrap champion reference (2)").ab_fitness > Some(params.fit_goal))
     {
         let mut iteration = pop_local.read()
-                                                                  .expect("Failed to open read lock on pop_local")
-                                                                  .iteration;
+                                     .expect("Failed to open read lock on pop_local")
+                                     .iteration;
         let (tx, rx)  = channel();
         let n_workers = threads as u32;
         let n_jobs    = machinery.cluster.len();
@@ -429,13 +429,15 @@ fn main() {
                                                                                             .take(n_jobs)
                                                                                             .collect();
             trs.sort_by(|a,b| b.best.ab_fitness
-                                                  .partial_cmp(&a.best.ab_fitness)
-                                                  .unwrap_or(Ordering::Equal));
+                               .partial_cmp(&a.best.ab_fitness)
+                               .unwrap_or(Ordering::Equal));
             let season_change;
             let class_stddev_difficulties;
             /* Update a bunch of relatively global parameters & population */
             { // block to enclose write lock
-                let mut mut_pop = &mut pop_local.write().expect("Failed to open write lock on population");
+                let mut mut_pop = &mut pop_local.write()
+                                                .expect(
+                                    "Failed to open write lock on population");
                 iteration = mut_pop.iteration.clone();
                 for tr in trs {
                     patch_io_targets(&tr, &mut mut_pop.params, iteration);
@@ -449,9 +451,18 @@ fn main() {
                     //let mean_fit_deltas = mean(&fit_deltas);
                     if updated != None || (peek_path.exists() && champion != None) {
                         let champion = champion.clone();
+                        /* dump the champion's visited_map */
+                        let path = format!("{}/{}_champion_{}_visited.txt",
+                                           params.log_dir,
+                                           label,
+                                           iteration);
+                        champion.as_ref()
+                                .expect("failed to unwrap champ to dump")
+                                .dump_visited_map(&path);
+
                         println!("[*] Verbosely evaluating new champion:\n{}",
                                           champion.as_ref()
-                                                          .expect("Failed to unwrap champion"));
+                                                  .expect("Failed to unwrap champion"));
                         evaluate_fitness(debug_machinery.cluster[0]
                                                         .unwrap_mut(),
                                          &champion.expect("Failed to unwrap champion clone for peeking"),
@@ -514,8 +525,12 @@ fn main() {
                                                                                                   .unwrap());
                 println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                                                                   .unwrap());
-                print!  ("[+] AVG LEN:     {:3.5}    ", pop_read.avg_len());     
-                println!("[+] IMPROVEMENT: {:1.6}  ", improvement_ratio.unwrap_or(0.0));
+                print!  ("[+] AVG LEN:       {:3.5}    ", pop_read.avg_len());     
+                println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
+                println!("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
+                println!("[+] STRAY NOCRASH: {:1.6}  ",pop_read.stray_nocrash_rate());
+
+                println!("[+] EDI RATE:      {:1.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));

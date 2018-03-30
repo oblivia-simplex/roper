@@ -9,6 +9,7 @@ extern crate getopts;
 extern crate chrono;
 extern crate bit_vec;
 extern crate regex;
+extern crate bio;
 
 
 pub mod roper;

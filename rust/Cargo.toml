@@ -27,3 +27,4 @@ bit-vec = "0.4.3"
 
 ctrlc = "3.0.3"
 backtrace = "0.3.4"
+bio = "0.17.0"

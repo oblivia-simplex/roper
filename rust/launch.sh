@@ -33,7 +33,7 @@ trap cleanup INT
 
 
 BINARY=$1
-[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/ldconfig.real
+[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 function labelmaker () 
 {
   SRC=/dev/urandom
@@ -86,8 +86,9 @@ AVG_LEN=13
 BEST_LEN=14
 BEST_TIME=15
 UNSEEN=16
-ENABLED_RATE=17
-C=17
+EDI_RATE=17
+STRAY_RATE=18
+C=19
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -216,7 +217,8 @@ plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $MIN_FIT), \
   "" $(popplotline $BEST_FIT),  \
   "" $(popplotline $MIN_ABFIT), \
-  "" $(popplotline $BEST_ABFIT)
+  "" $(popplotline $BEST_ABFIT), \
+  "" $(popplotline $STRAY_RATE)
 
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"

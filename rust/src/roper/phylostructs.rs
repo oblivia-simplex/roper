@@ -6,7 +6,10 @@ extern crate time;
 extern crate chrono;
 extern crate rustc_serialize;
 extern crate regex;
+extern crate bio;
 
+
+use std::cmp::Ordering::*;
 use self::regex::*;
 use self::chrono::prelude::*;
 use self::chrono::offset::LocalResult;
@@ -26,6 +29,10 @@ use std::fs::{DirBuilder,File,OpenOptions};
 use std::io::prelude::*;
 use std::slice::{Iter,IterMut};
 use std::env;
+
+use self::bio::data_structures::interval_tree::{IntervalTree};
+use self::bio::utils::Interval;
+
 use roper::util::*;
 use roper::evolve::*;
 use roper::hatchery::*;
@@ -186,6 +193,12 @@ impl Clump {
         pub fn addr (&self) -> u32 {
             self.words[0]
         }
+        pub fn entry (&self) -> u32 { 
+            self.addr()
+        }
+        pub fn exit (&self) -> u32 {
+            self.ret_addr
+        }
         pub fn sicken (&mut self) {
             self.link_fit = Some(MAX_FIT);
         }
@@ -272,6 +285,7 @@ pub struct Chain {
         pub input_slots: Vec<(usize,usize)>,
         pub verbose_tag: bool,
         pub crashes: Option<bool>,
+        pub stray_rate: f32,
         pub season: usize,
         pub visited_map: HashMap<Problem, Vec<u32>>,
         pub runtime: Option<f32>,
@@ -303,25 +317,25 @@ impl Display for Chain {
             s.push_str(&format!("Ancestral Fitness: {:?}\n",
                                                     self.p_fitness));
             s.push_str(&format!("Link ages: {:?}\n", 
-                                                    &self.clumps
-                                                              .iter()
-                                                              .map(|ref c| c.link_age)
-                                                              .collect::<Vec<i32>>()));
+                                &self.clumps
+                                     .iter()
+                                     .map(|ref c| c.link_age)
+                                     .collect::<Vec<i32>>()));
             s.push_str(&format!("Link fitnesses: {:?}\n", 
-                                                    &self.clumps
-                                                              .iter()
-                                                              .map(|ref c| {
-                                                                          match c.link_fit {
-                                                                              Some(x) => x,
-                                                                              None    => 1.0,
-                                                                          }
-                                                                })
-                                                                .collect::<Vec<f32>>()));
+                       &self.clumps
+                            .iter()
+                            .map(|ref c| {
+                                    match c.link_fit {
+                                        Some(x) => x,
+                                        None    => 1.0,
+                                    }
+                                })
+                            .collect::<Vec<f32>>()));
             s.push_str(&format!("Viscosities: {:?}\n", 
-                                                    &self.clumps
-                                                              .iter()
-                                                              .map(|ref c| c.visc())
-                                                              .collect::<Vec<i32>>()));
+                       &self.clumps
+                            .iter()
+                            .map(|ref c| c.visc())
+                            .collect::<Vec<i32>>()));
             s.push_str(&format!("Input slots on stack: {:?}\n", 
                                                     &self.input_slots));
             s.push_str("Clumps:\n");
@@ -366,6 +380,7 @@ impl Default for Chain {
                 p_fitness: None,
                 generation: 0,
                 season: 0,
+                stray_rate: 0.0,
                 verbose_tag: false,
                 crashes: None,
                 runtime: None,
@@ -457,6 +472,104 @@ impl Chain {
             self.clumps.iter().filter(|ref c| c.enabled).count() as f32 /
                 (self.size() as f32)
         }
+
+        pub fn avg_addr_coverage (&self) -> f32 {
+            let mut c = 0.0;
+            let mut sum = 0;
+            for p in self.visited_map.keys() {
+                c += 1.0;
+                sum += self.visited_map.get(p).unwrap().iter().count();
+            }
+            (sum as f32) / c
+        }
+
+        pub fn interval_tree (&self) -> IntervalTree<u32,usize> {
+            let mut tree = IntervalTree::new();
+            let mut idx = 0;
+            for clump in &self.clumps {
+                idx += 1;
+                tree.insert(clump.entry()..clump.exit(), idx);
+            }
+            tree
+        }
+
+        pub fn strayed_but_did_not_crash (&self) -> bool {
+            // NB: memoize the stray_addr_rate
+            self.crashes == None && self.stray_addr_rate() > 0.0
+        }
+
+        pub fn stray_addr_rate (&self) -> f32 {
+            // later do this nicely, with a binary search tree or smth
+            let mut intervals = &mut self.clumps
+                                     .iter()
+                                     .map(|c| (c.entry(), c.exit()))
+                                     .collect::<Vec<(u32,u32)>>();
+            intervals.sort();
+            let mut strays = 0;
+            let mut hits   = 0;
+            let mut count  = 0;
+            
+            for p in self.visited_map.keys() {
+                let v = self.visited_map.get(p).unwrap();
+                //println!("crash? {:?}",self.crashes);
+                //println!("v> {:?}",v);
+                //println!("intervals: {:?}",intervals); 
+                for &addr in v.iter() {
+                    let res = intervals.binary_search_by(
+                        (|c| if c.0 <= addr && addr <= c.1 {
+                            //println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                            Equal
+                        } else if c.0 > addr {
+                            //println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                            Less
+                        } else { 
+                            //println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                            Greater
+                        }));
+                    //println!("---> res: {:?}",res);
+                    count += 1;
+                    match res {
+                        Ok(_)  => hits += 1,
+                        Err(_) => {
+                            if self.crashes == None {
+                                println!("[!] Strayed but did not crash:\nv> {:?}\nintervals: {:?}", v, intervals);
+                            }
+                            strays += 1;
+                        },
+                    };
+                }
+            }
+    //        println!(">> stray: {}, hit: {}, count: {}\n", strays, hits, count);
+
+            strays as f32 / count as f32
+        }
+
+        pub fn stray_to_edi_rate (&self) -> f32 {
+            let edirat = 1.0 - self.enabled_ratio();
+            self.stray_addr_rate() / edirat
+        }
+
+        pub fn dump_visited_map (&self, path: &str) {
+            println!("DUMPING VISIT MAP TO {}",path);
+            let mut file = OpenOptions::new()
+                                       .truncate(true)
+                                       .write(true)
+                                       .create(true)
+                                       .open(path)
+                                       .unwrap();
+            for p in self.visited_map.keys() {
+                let pname = p.identifier();
+                file.write(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
+                                    pname).as_bytes());
+                for addr in self.visited_map.get(p).unwrap() {
+                    file.write(&format!("{:0x}\n", addr).as_bytes());
+                }
+                file.write(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
+                                    pname).as_bytes());
+            }
+            file.flush().unwrap();
+        }
+            
 }
 
 impl PartialOrd for Chain {
@@ -551,19 +664,59 @@ impl Population {
 
         pub fn avg_gen (&self) -> f32 {
           self.deme
-                  .iter()
-                  .map(|ref c| c.generation.clone())
-                  .sum::<u32>() as f32 / 
-                        self.params.population_size as f32
+              .iter()
+              .map(|ref c| c.generation.clone())
+              .sum::<u32>() as f32 / 
+                   self.params.population_size as f32
         }
 
         pub fn avg_len (&self) -> f32 {
             self.deme
-                    .iter()
-                    .map(|ref c| c.size() as f32)
-                    .sum::<f32>() / 
+                .iter()
+                .map(|ref c| c.size() as f32)
+                .sum::<f32>() / 
                         self.params.population_size as f32
         }
+
+        pub fn stray_nocrash_rate (&self) -> f32 {
+            let total = self.deme
+                .iter()
+                .filter(|ref c| c.fitness != None)
+                .count() as f32;
+            self.deme
+                .iter()
+                .filter(|ref c| c.fitness != None)
+                .filter(|ref c| c.crashes == None)
+                .filter(|ref c| c.stray_addr_rate() > 0.0)
+                .count() as f32 / total
+        }
+
+        pub fn avg_stray_to_edi_rate (&self) -> f32 {
+            let total = self.deme
+                            .iter()
+                            .filter(|ref c| c.fitness != None)
+                            .count();
+            self.deme
+                .iter()
+                .filter(|ref c| c.fitness != None)
+                .map(|ref c| c.stray_to_edi_rate())
+                .sum::<f32>() /
+                total as f32
+        }
+
+        pub fn avg_stray_addr_rate (&self) -> f32 {
+            let total= self.deme
+                           .iter()
+                           .filter(|ref c| c.fitness != None)
+                           .count(); // NEEDS REFACTORING, ALL THSI CRAP
+            self.deme.iter()
+                .filter(|ref c | c.fitness != None)
+                .map(|ref c| c.stray_addr_rate())
+                .sum::<f32>() /
+                total as f32
+        }
+
+
 
         pub fn proportion_unseen (&self, season: usize) -> f32 {
             self.deme
@@ -576,9 +729,9 @@ impl Population {
 
         pub fn crash_rate (&self) -> f32 {
             let cand = self.deme
-                                          .iter()
-                                          .filter(|ref c| c.crashes != None)
-                                          .count();
+                           .iter()
+                           .filter(|ref c| c.crashes != None)
+                           .count();
             if cand == 0 { return 0.0 }
             self.deme
                     .iter()
@@ -607,11 +760,12 @@ impl Population {
                     .unwrap_or(1.0)
         }
 
+
         pub fn avg_fit (&self, season: usize) -> f32 {
             let cand = self.deme.iter()
-                                          .filter(|ref c| c.fitness != None 
-                                                          && (c.season as isize - season as isize).abs() <= 8)
-                                          .count();
+                           .filter(|ref c| c.fitness != None 
+                                          && (c.season as isize - season as isize).abs() <= 8)
+                           .count();
             self.deme
                     .iter()
                     .filter(|ref c| c.fitness != None
@@ -690,13 +844,19 @@ impl Population {
             }
         }
 
+        pub fn avg_edi_rate (&self) -> f32{
+            1.0 - mean(&self.deme.iter()
+                                 .map(|ref x| x.enabled_ratio())
+                                 .collect::<Vec<f32>>())
+        }
+
         pub fn save (&self) {
             let mut json_file = OpenOptions::new()
-                                                                            .truncate(true)
-                                                                            .write(true)
-                                                                            .create(true)
-                                                                            .open(&self.params.pop_path)
-                                                                            .unwrap();
+                                            .truncate(true)
+                                            .write(true)
+                                            .create(true)
+                                            .open(&self.params.pop_path)
+                                            .unwrap();
             let json_string = format!("{}\n",self.deme.to_json());
             json_file.write(json_string.as_bytes()).unwrap();
             json_file.flush().unwrap();
@@ -715,7 +875,7 @@ impl Population {
             let nclasses = self.params.io_targets.num_classes;
             // todo: don't hardcode the number of classes
             let row = if first {
-                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,ENABLED-RATE",
+                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH",
                                 self.params);
                 for i in 0..nclasses {
                     s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -724,7 +884,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -743,9 +903,11 @@ impl Population {
                                   best.runtime.unwrap_or(0.0),
                                   self.proportion_unseen(season),
                                   /* Tracking EDIs */
-                                  mean(&self.deme.iter()
-                                            .map(|ref x| x.enabled_ratio())
-                                            .collect::<Vec<f32>>()));
+                                  self.avg_edi_rate(),
+                                  /* stray rate / extended gadgets */
+                                  self.avg_stray_addr_rate(),
+                                  self.avg_stray_to_edi_rate(),
+                                  self.stray_nocrash_rate());
             let c_mn_dif = self.params.io_targets
                                       .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
@@ -809,6 +971,7 @@ pub struct Params {
         pub verbose          : bool,
         pub date_dir         : String,
         pub csv_path         : String,
+        pub log_dir          : String,
         pub pop_path         : String,
         pub threads          : usize,
         pub num_demes        : usize,
@@ -917,10 +1080,11 @@ impl Params {
                 cuck_rate:        0.15,
                 verbose:          false,
                 date_dir:         datepath.clone(),
+                log_dir:          "UNSET".to_string(),
                 csv_path:         format!("{}/{}_{}.csv", 
-                                                                    &datepath, &label, &timestamp),
+                                          &datepath, &label, &timestamp),
                 pop_path:         format!("{}/{}-pop_{}.json", 
-                                                                    &datepath, &label, &timestamp),
+                                          &datepath, &label, &timestamp),
                 save_period:      10000,
                 threads:          5,
                 num_demes:        4,
@@ -963,10 +1127,11 @@ impl Params {
             let ddir = format!("{}/{}",dir, self.date_dir);
             let d = DirBuilder::new()
                                                 .recursive(true)
-                                                .create(ddir)
+                                                .create(&ddir)
                                                 .unwrap();
             self.csv_path = format!("{}/{}", dir, self.csv_path);
             self.pop_path = format!("{}/{}", dir, self.pop_path); 
+            self.log_dir  = format!("{}", &ddir);
         } 
 }
 
@@ -1028,6 +1193,7 @@ pub struct Problem {
         pfactor: f32,
         pub target: Target,
 }
+
 impl Hash for Problem {
         fn hash <H: Hasher> (&self, state: &mut H) {
             self.input.hash(state);
@@ -1063,10 +1229,10 @@ impl Problem {
         }
 
         pub fn get_input<'a> (&'a self, 
-                                                    output: &Vec<u64>, 
-                                                    random_override: bool,
-                                                    verbose: bool) 
-                                                -> (Option<i32>, Vec<i32>) {
+                              output: &Vec<u64>, 
+                              random_override: bool,
+                              verbose: bool) 
+                              -> (Option<i32>, Vec<i32>) {
             match &self.target {
                 &Target::Game(ref x) => {
                     if output.len() == 0 {
@@ -1085,8 +1251,8 @@ impl Problem {
                         (None, init_game(&p, &x.addr))
                     } else {
                         let out = output.iter()
-                                                        .map(|&x| (x & 0xFFFFFFFF) as i32)
-                                                        .collect::<Vec<i32>>();
+                                        .map(|&x| (x & 0xFFFFFFFF) as i32)
+                                        .collect::<Vec<i32>>();
                         play_game(&out, &x.addr)
                     }
                 },
@@ -1097,9 +1263,9 @@ impl Problem {
           * Dispatch the relevant problem-specific fitness function
           */
         pub fn assess_output (&self,
-                                                    output: &Vec<u64>,
-                                                    uc: &CpuARM) 
-                                                  -> (f32, f32) {
+                              output: &Vec<u64>,
+                              uc: &CpuARM) 
+                              -> (f32, f32) {
             match &self.target {
                 &Target::Exact(ref rp) => {
                     // here we can try some sort of fitness sharing thing
@@ -1163,6 +1329,13 @@ impl Problem {
         pub fn inc_predifficulty (&mut self, d_vec: &Vec<f32>) {
             let pd = self.predifficulty();
             self.set_predifficulty(pd + d_vec.iter().sum::<f32>());
+        }
+        pub fn identifier (&self) -> String {
+            let mut s = String::new();
+            for i in &self.input {
+                s.push_str(&format!("{:08x}.", i));    
+            }
+            s
         }
 }
 impl PartialEq for Problem {

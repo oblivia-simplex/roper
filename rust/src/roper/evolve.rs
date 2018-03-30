@@ -467,6 +467,7 @@ pub fn patch_population (tr: &TournamentResult,
             if let Some(f) = fit_up.fitness {
                 population.deme[i].season  = season;
                 population.deme[i].fitness = Some(f);
+                population.deme[i].visited_map = fit_up.visited_map.clone();
                 population.deme[i].crashes = fit_up.crashes.clone();
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
 //      population.deme[i].fingerprint = fit_up.fingerprint.clone();
@@ -491,6 +492,7 @@ pub fn patch_population (tr: &TournamentResult,
             (None, fitness_deltas)
         }
 }
+
 pub fn lexicase_rpat (population: &Population,
                                                 engine: &mut Engine,
                                                 batch: Batch,
