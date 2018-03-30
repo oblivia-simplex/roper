@@ -148,8 +148,8 @@ echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
 TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
 echo "TIMESTAMP: $TIMESTAMP"
 export TIMESTAMP
-ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
-ln $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
+ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
+ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
 PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
 
 TERMINALSTRING="set terminal png truecolor background rgb \"black\" size 1660,1024"
