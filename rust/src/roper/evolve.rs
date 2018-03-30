@@ -136,9 +136,9 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
 }
 
 fn mate (parents: &Vec<&Chain>, 
-                      params:  &Params, 
-                      rng:     &mut ThreadRng,
-                      uc:      &mut CpuARM) -> Vec<Chain> {
+         params:  &Params, 
+         rng:     &mut ThreadRng,
+         uc:      &mut CpuARM) -> Vec<Chain> {
         let mut brood = if rng.gen::<f32>() < params.crossover_rate {
             shufflefuck(parents, 
                                     params,
@@ -153,12 +153,20 @@ fn mate (parents: &Vec<&Chain>,
 }
 
 #[derive(Debug,PartialEq)]
+pub struct EvalCaseResult {
+        pub fitness : f32,
+        pub ab_fitness : f32,
+        pub counter : usize,
+        pub crashes : bool,
+        pub visited : Vec<u32>,
+}
+#[derive(Debug,PartialEq)]
 pub struct EvalResult {
         pub fitness : f32,
         pub ab_fitness : f32,
-        //pub fingerprint : Fingerprint,
         pub counter : usize,
         pub crashes : bool,
+        pub visited_map : HashMap<Problem, Vec<u32>>,
         pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
@@ -166,10 +174,10 @@ pub struct EvalResult {
   * kinds of evaluation at once. due for a major rewrite. 
   */
 fn eval_case (uc: &mut CpuARM,
-                                chain: &Chain,
-                                problem: &Problem,
-                                params: &Params,
-                                verbose: bool) -> EvalResult{ 
+              chain: &Chain,
+              problem: &Problem,
+              params: &Params,
+              verbose: bool) -> EvalCaseResult{ 
         let inregs = &params.inregs;
         let outregs = &params.outregs;
         let target = &problem.target;
@@ -233,13 +241,12 @@ fn eval_case (uc: &mut CpuARM,
 //  let final_pc = result.registers[15];
             
         //println!("[*] [eval_case()] leaving function\n");
-        EvalResult {
+        EvalCaseResult {
             fitness: if params.fitness_sharing {rf} else {af},
             ab_fitness: af,
-//    fingerprint: 
             counter: counter,
             crashes: crash,
-            difficulties: None,
+            visited: result.visited,
         }
 }
 /*
@@ -251,11 +258,11 @@ fn adj_score_for_difficulty (score: f32,
 */
 pub const VARIABLE_FITNESS : bool = true;
 pub fn evaluate_fitness (uc: &mut CpuARM,
-                                                      chain: &Chain, 
-                                                      params: &Params,
-                                                      batch: Batch,
-                                                      verbose: bool)
-                                                      -> EvalResult //(f32,Option<usize>)
+                         chain: &Chain, 
+                         params: &Params,
+                         batch: Batch,
+                         verbose: bool)
+                         -> EvalResult //(f32,Option<usize>)
 {
         /* Empty chains can be discarded immediately */
         if chain.size() == 0 {
@@ -289,23 +296,23 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let mut counter_sum = 0;
         let mut anycrash = false;
         let mut difficulties : HashMap<Problem,f32> = HashMap::new();
+        let mut visited_map : HashMap<Problem,Vec<u32>> = HashMap::new();
         for problem in io_targets.iter() {
-            let res = eval_case(uc,
-                                                    chain,
-                                                    problem,
-                                                    &params,
-                                                    verbose);
+            let res : EvalCaseResult = eval_case(uc,
+                                                 chain,
+                                                 problem,
+                                                 &params,
+                                                 verbose);
             let p = problem.clone();
             let dif = res.ab_fitness;
             //println!(">> dif = {}", dif);
             //let dif = if res.fingerprint[0] {1.0} else {0.0};
-            difficulties.insert(p, dif);
+            difficulties.insert(p.clone(), dif);
+            // we could make this more efficient by just taking a
+            // unique identifier for each problem.
+            visited_map.insert(p, res.visited);
             /* crash tracking */ 
-            let counter = if params.ret_hooks {
-                min(res.counter, chain.size()-1)
-            } else {
-                chain.size()-1
-            }; // benefit of the doubt here?
+            let counter = res.counter;
             
             let cs = max(chain.size()-1, 1) as f32;
             let ratio_run = f32::min(1.0, counter as f32 / cs);
@@ -325,19 +332,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
               */ //\\//\\ TODO //\\//\\
             fit_vec.push(crash_adjusted);
             abfit_vec.push(res.ab_fitness);
-            //fingerprint.extend(&res.fingerprint);
         };
-        /* clean up hooks */
-        if params.ret_hooks {
-            for hook in &hooks { uc.remove_hook(*hook); }
-        }
-
-  /* 
-        let ab_fitness = fingerprint.iter()
-                                                                .filter(|&x| *x)
-                                                                .count() as f32 / 
-                                                                fingerprint.len() as f32;
-          */                           
         let ab_fitness = mean(&abfit_vec);
         let fitness =  mean(&fit_vec);
         let ab_fitness = f32::min(1.0, ab_fitness);
@@ -349,8 +344,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         EvalResult {
             fitness      : fitness,
             ab_fitness   : ab_fitness,
-        //  fingerprint  : fingerprint,
             counter      : counter_sum / io_targets.len(),
+            visited_map  : visited_map,
             crashes      : anycrash,
             difficulties : Some(difficulties),
         }
@@ -381,10 +376,10 @@ fn append_to_csv(path: &str, iter: usize,
                                               crash,
                                               len);
         let mut file = OpenOptions::new()
-                                                            .append(true)
-                                                            .create(true)
-                                                            .open(path)
-                                                            .unwrap();
+                                   .append(true)
+                                   .create(true)
+                                   .open(path)
+                                   .unwrap();
         file.write(row.as_bytes()).unwrap();
         file.flush().unwrap();
 //  println!(">> {}",row);
@@ -398,10 +393,11 @@ pub struct FitUpdate {
   // pub fingerprint : Fingerprint,
         pub crashes     : Option<bool>,
         pub runtime     : Option<f32>,
+        pub visited_map : HashMap<Problem, Vec<u32>>,
 }
 
 #[derive(Debug,Clone)]
-pub struct TournementResult {
+pub struct TournamentResult {
         pub graves            : Vec<usize>,
         pub spawn             : Vec<Chain>,
         pub best              : Chain,
@@ -409,10 +405,10 @@ pub struct TournementResult {
         pub fit_updates       : Vec<(usize,FitUpdate)>,
         pub difficulty_update : HashMap <Problem, Vec<f32>>, // or avg f32
 }
-unsafe impl Send for TournementResult {}
+unsafe impl Send for TournamentResult {}
 
 
-pub fn patch_io_targets (tr: &TournementResult,
+pub fn patch_io_targets (tr: &TournamentResult,
                                                       params: &mut Params,
                                                       iteration: usize) 
 {
@@ -451,10 +447,10 @@ pub fn update_difficulties (params: &mut Params,
 }
 
 
-pub fn patch_population (tr: &TournementResult,
-                                                    population: &mut Population,
-                                                    verbose: bool) 
-                                                    -> (Option<Chain>, Vec<f32>) 
+pub fn patch_population (tr: &TournamentResult,
+                         population: &mut Population,
+                         verbose: bool) 
+                         -> (Option<Chain>, Vec<f32>) 
 {
         assert_eq!(tr.graves.len(), tr.spawn.len());
         population.iteration += 1;
@@ -529,11 +525,11 @@ pub fn lexicase_rpat (population: &Population,
 }
 
 pub fn tournament (population: &Population,
-                                          engine: &mut Engine,
-                                          batch: Batch,
-                                          vdeme: usize,
-                                          verbose: bool)
-                                        -> TournementResult 
+                   engine: &mut Engine,
+                   batch: Batch,
+                   vdeme: usize,
+                   verbose: bool)
+                   -> TournamentResult 
 {
         let season = population.season;
         let mut lots : Vec<usize> = Vec::new();
@@ -573,10 +569,10 @@ pub fn tournament (population: &Population,
             if specimen.fitness == None || specimen.season != season {
                 let start = Instant::now();
                 let res = evaluate_fitness(&mut uc, 
-                                                                      &specimen,
-                                                                      &population.params,
-                                                                      batch,
-                                                                      verbose); // verbose
+                                           &specimen,
+                                           &population.params,
+                                           batch,
+                                           verbose); // verbose
                 let e = start.elapsed();
                 let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
                 let fitness = res.fitness;
@@ -599,7 +595,7 @@ pub fn tournament (population: &Population,
                     p_fitness   : specimen.p_fitness.clone(),
                     crashes     : crash,
                     runtime     : elapsed,
-  //       fingerprint : res.fingerprint,
+                    visited_map : res.visited_map,
                     });
             } else {
                 fit_vec.push(FitUpdate {
@@ -609,20 +605,19 @@ pub fn tournament (population: &Population,
                     p_fitness   : specimen.p_fitness.clone(),
                     crashes     : specimen.crashes,
                     runtime     : specimen.runtime,
-  //       fingerprint : specimen.fingerprint.clone(),
+                    visited_map : specimen.visited_map.clone(),
                 });
             }
         } 
           
         for (&mut (ref mut specimen,lot), ref fit_up) 
-            in specimens.iter_mut()
-                                    .zip(fit_vec) 
+            in specimens.iter_mut().zip(fit_vec) 
             {
                 specimen.crashes = fit_up.crashes;
                 specimen.fitness = fit_up.fitness;
                 specimen.runtime = fit_up.runtime;
                 specimen.ab_fitness = fit_up.ab_fitness;
-        //    specimen.fingerprint = fit_up.fingerprint.clone();
+                specimen.visited_map = fit_up.visited_map.clone();
                 /* Set link fitness values */
                 for clump in &mut specimen.clumps {
                     clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
@@ -659,24 +654,24 @@ pub fn tournament (population: &Population,
             specimens[1].clone()
         };
         let mut fit_updates = vec![(m_idx, 
-                                                                FitUpdate {
-                                                                    fitness     : mother.fitness,
-                                                                    ab_fitness  : mother.ab_fitness,
-                                                                    p_fitness   : mother.p_fitness,
-                                                                    crashes     : mother.crashes,
-                                                                    runtime     : mother.runtime,
-                                                              //   fingerprint : Fingerprint::new(),
-                                                                })];
+                                    FitUpdate {
+                                                fitness     : mother.fitness,
+                                                ab_fitness  : mother.ab_fitness,
+                                                p_fitness   : mother.p_fitness,
+                                                crashes     : mother.crashes,
+                                                runtime     : mother.runtime,
+                                                visited_map : mother.visited_map.clone(),
+                                              })];
         if !cflag {
             fit_updates.push((f_idx, 
-                                                FitUpdate { 
-                                                    fitness     : father.fitness,
-                                                    ab_fitness  : father.ab_fitness,
-                                                    p_fitness   : father.p_fitness,
-                                                    crashes     : father.crashes,
-                                                    runtime     : father.runtime,
-                                              //   fingerprint : Fingerprint::new(),
-                                                })); // (father.fitness,father.crashes)));
+                              FitUpdate { 
+                                          fitness     : father.fitness,
+                                          ab_fitness  : father.ab_fitness,
+                                          p_fitness   : father.p_fitness,
+                                          crashes     : father.crashes,
+                                          runtime     : father.runtime,
+                                          visited_map : father.visited_map.clone(),
+                                         })); // (father.fitness,father.crashes)));
         }
 
         /* This little print job should be factored out into a fn */
@@ -726,7 +721,7 @@ pub fn tournament (population: &Population,
         if t_best.fitness == None {
             panic!("t_best.fitness is None!");
         }
-        TournementResult {
+        TournamentResult {
             graves:      vec![grave0, grave1],
             spawn:       offspring,
             best:        t_best,

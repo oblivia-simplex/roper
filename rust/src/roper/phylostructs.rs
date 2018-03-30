@@ -273,7 +273,7 @@ pub struct Chain {
         pub verbose_tag: bool,
         pub crashes: Option<bool>,
         pub season: usize,
-        pub fingerprint: Fingerprint,
+        pub visited_map: HashMap<Problem, Vec<u32>>,
         pub runtime: Option<f32>,
         i: usize,
         // space-consuming, but it'll give us some useful data on
@@ -369,7 +369,7 @@ impl Default for Chain {
                 verbose_tag: false,
                 crashes: None,
                 runtime: None,
-                fingerprint: Fingerprint::new(),
+                visited_map: HashMap::new(),
                 i: 0,
             }
         } 
@@ -771,14 +771,13 @@ impl Population {
 
 #[derive(PartialEq,Debug,Clone,Copy)]
 pub enum SelectionMethod {
-        Tournement,
+        Tournament,
         Roulette,
 }
 
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
         pub label            : String,
-        pub ret_hooks        : bool,
         pub population_size  : usize,
         pub crossover_rate   : f32,
         pub max_iterations  : usize,
@@ -835,8 +834,6 @@ impl Display for Params {
 
             s.push_str(&format!("{} label: {}\n",
                                                     rem, self.label));
-            s.push_str(&format!("{} ret_hooks: {}\n",
-                                                    rem, self.ret_hooks));
             s.push_str(&format!("{} population_size: {}\n",
                                                     rem, self.population_size));
             s.push_str(&format!("{} crossover_rate: {}\n",
@@ -895,11 +892,10 @@ impl Params {
             let timestamp = t.format("%H-%M-%S").to_string();
             Params {
                 label:            label.to_string(),
-                ret_hooks:        true,
                 population_size:  2048,
                 crossover_rate:   0.50,
                 max_iterations:   800000,
-                selection_method: SelectionMethod::Tournement,
+                selection_method: SelectionMethod::Tournament,
                 t_size:           7,
                 code:             Vec::new(),
                 code_addr:        0,

@@ -3,6 +3,7 @@ extern crate unicorn;
 extern crate elf;
 
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -168,17 +169,17 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
         .expect("Error writing SP register");
     let start_addr : u64 = get_word32le(&stack, 0) as u64 ; //| 1;
     let mut visitor = Vec::new();
-    let visitor_rc : Rc<RefCell<Vec<u64>>> = Rc::new(RefCell::new(visitor));
+    let visitor_rc : Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(visitor));
     let ee = if all_at_once {
         uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS)
     } else {
         /* this will be a bit slower, but let us track which addrs are visited */
         // first, let's try to get the counter hook working right.
         // the way it's set up now is ludicrous
-        let vis : Rc<RefCell<Vec<u64>>> = visitor_rc.clone();
+        let vis : Rc<RefCell<Vec<u32>>> = visitor_rc.clone();
         let callback = move |_: &unicorn::Unicorn, addr: u64, _: u32| {
-            let mut v : RefMut<Vec<u64>> = vis.borrow_mut();
-            v.push(addr);
+            let mut v : RefMut<Vec<u32>> = vis.borrow_mut();
+            v.push(addr as u32);
         };
         let _callback =  |u: &unicorn::Unicorn, addr: u64, size: u32| {
             println!("{:?} -- visiting {:08x}", thread::current().id(), addr);
@@ -205,18 +206,23 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
         _      => None,
     };
     let vtmp = visitor_rc.clone();
-    let visited_addrs : Vec<u64> = (vtmp.borrow()).clone().to_vec();
-    let visited_addr_set : HashSet<&u64> = HashSet::from_iter(&visited_addrs);
+    let visited_addrs : Vec<u32> = (vtmp.borrow()).clone().to_vec();
+    let mut visited_addr_freq : HashMap<u32, usize> = HashMap::new();
+    for addr in &visited_addrs {
+        *visited_addr_freq.entry(*addr).or_insert(0) += 1;
+    }
     // now count the returns *Correctly*
     let mut counter = 0;
     for clump in &chain.clumps {
-        if visited_addr_set.contains(&(clump.ret_addr as u64)) {
-            counter += 1;
-        } 
+        match visited_addr_freq.get(&clump.ret_addr) {
+            Some(_) => {counter += 1;},
+            None    => (),
+        }
     }
     //println!("[*] [hatch_chain()] leaving function.\n");
     HatchResult { registers: read_registers(&(uc.emu())),
                   error: e,
+                  visited_freq: visited_addr_freq,
                   visited: visited_addrs.clone(),
                   counter: counter,
                   null: false,
@@ -233,7 +239,8 @@ pub struct HatchResult {
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
     pub null      : bool,
-    pub visited   : Vec<u64>,
+    pub visited_freq   : HashMap<u32,usize>,
+    pub visited   : Vec<u32>,
 }
 
 impl HatchResult {
@@ -243,6 +250,7 @@ impl HatchResult {
             error     : None,
             counter   : 0,
             null      : false,
+            visited_freq   : HashMap::new(),
             visited   : Vec::new(),
         }
     }
@@ -253,6 +261,7 @@ impl HatchResult {
             error     : None,
             counter   : 0,
             null      : true,
+            visited_freq  : HashMap::new(),
             visited   : Vec::new(),
         }
     }

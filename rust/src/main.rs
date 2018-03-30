@@ -159,8 +159,6 @@ fn main() {
 
     let random_override = matches.opt_present("O");
       
-    let ret_hooks = ! matches.opt_present("R");
-
     let game_seeds = match matches.opt_str("n") {
         None => 9,
         Some(n) => n.parse::<i32>().expect("Failed to parse game_seeds parameter (-n)"),
@@ -329,7 +327,6 @@ fn main() {
     let mode = MachineMode::ARM;
 
     let constants = suggest_constants(&io_targets);
-    params.ret_hooks = ret_hooks;
     params.code = text_data.clone();
     params.code_addr = text_addr as u32;
     params.data = vec![rodata_data.clone()];
@@ -428,7 +425,7 @@ fn main() {
                 });
                 vdeme = (vdeme + 1) % num_demes;
             }
-            let mut trs : Vec<TournementResult> = rx.iter()
+            let mut trs : Vec<TournamentResult> = rx.iter()
                                                                                             .take(n_jobs)
                                                                                             .collect();
             trs.sort_by(|a,b| b.best.ab_fitness
@@ -456,11 +453,11 @@ fn main() {
                                           champion.as_ref()
                                                           .expect("Failed to unwrap champion"));
                         evaluate_fitness(debug_machinery.cluster[0]
-                                                                                          .unwrap_mut(),
-                                                          &champion.expect("Failed to unwrap champion clone for peeking"),
-                                                          &params,
-                                                          Batch::TESTING,
-                                                          true);
+                                                        .unwrap_mut(),
+                                         &champion.expect("Failed to unwrap champion clone for peeking"),
+                                         &params,
+                                         Batch::TESTING,
+                                         true);
                     }
                     mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
                 }
