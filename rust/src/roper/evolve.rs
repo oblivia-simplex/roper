@@ -314,7 +314,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             /* crash tracking */ 
             let counter = res.counter;
             
-            let cs = max(chain.effective_size()-1, 1) as f32;
+            let upperbound = chain.effective_size() as f32 - 1.0;
+            let cs = f32::max(upperbound, 1.0);
             let ratio_run = f32::min(1.0, counter as f32 / cs);
             counter_sum += counter;
             anycrash = anycrash || res.crashes;

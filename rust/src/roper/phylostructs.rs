@@ -554,7 +554,7 @@ impl Chain {
 
         pub fn stray_to_edi_rate (&self) -> f32 {
             let edirat = 1.0 - self.enabled_ratio();
-            self.stray_addr_rate() / edirat
+            if edirat == 0.0 { 0.0 } else { self.stray_addr_rate() / edirat }
         }
 
         pub fn dump_visited_map (&self, path: &str) {

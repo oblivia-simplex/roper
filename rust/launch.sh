@@ -74,7 +74,9 @@ BEST_TIME=15
 UNSEEN=16
 EDI_RATE=17
 STRAY_RATE=18
-C=19
+AVG_STRAY_TO_EDI=19
+STRAY_NOCRASH=20
+C=21
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -199,9 +201,9 @@ set ylabel "POPULATION FEATURES"
 plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $AVG_ABFIT), \
   "" $(popplotline $AVG_CRASH), \
-  "" $(popplotline $ENABLED_RATE), \
+  "" $(popplotline $EDI_RATE), \
   "" $(popplotline $MIN_FIT), \
-  "" $(popplotline $BEST_FIT),  \
+  "" $(popplotline $BEST_FIT), \
   "" $(popplotline $MIN_ABFIT), \
   "" $(popplotline $BEST_ABFIT), \
   "" $(popplotline $STRAY_RATE)
