@@ -9,9 +9,9 @@ use roper::statistics::*;
 
 fn cs_insn_to_string (insn: &Insn) -> String {
         format!("{} {}", insn.mnemonic()
-                                                  .unwrap_or("?"), 
-                                          insn.op_str()
-                                                  .unwrap_or("?")) 
+                             .unwrap_or("?"), 
+                         insn.op_str()
+                             .unwrap_or("?")) 
 }
 
 pub fn disas (insts: &Vec<u8>, mode: MachineMode) -> String {
@@ -89,12 +89,18 @@ pub fn get_word16le (a: &Vec<u8>, offset: usize) -> u16 {
         }
         s
 }
-
-// pretty-print the contents of a vector in hex
-pub fn hexvec (v: &Vec<u64>) -> String{
+// same as hexvec but w/o leading 0s
+pub fn hexvec_ (v: &Vec<u32>) -> String{
         let vs : Vec<String> = v.iter()
-                                                        .map(|x| format!("{:08x}",x))
-                                                        .collect();
+                                .map(|x| format!("{:x}",x))
+                                .collect();
+        vs.join(" ")
+}
+// pretty-print the contents of a vector in hex
+pub fn hexvec (v: &Vec<u32>) -> String{
+        let vs : Vec<String> = v.iter()
+                                .map(|x| format!("{:08x}",x))
+                                .collect();
         vs.join(" ")
 }
 
@@ -116,7 +122,7 @@ pub fn distance2 (x: &Vec<i32>, y: &Vec<i32>) -> i32 {
         }).sum::<i64>() & 0xEFFFFFFF) as i32
 }
 
-pub fn hamming_distance (x: &Vec<u64>, y: &Vec<u64>) -> f32 {
+pub fn hamming_distance (x: &Vec<u32>, y: &Vec<u32>) -> f32 {
         assert_eq!(x.len(), y.len());
         let n = x.len();
         (0..n).map(|i| ((x[i] ^ y[i]).count_ones() as f32 / 16.0).tanh())
@@ -134,7 +140,7 @@ pub fn count_matches (x: &Vec<i32>, y: &Vec<i32>) -> f32 {
 }
 
 // STILL BUGGY
-pub fn arith_distance (x: &Vec<u64>, y: &Vec<u64>) -> f32 {
+pub fn arith_distance (x: &Vec<u32>, y: &Vec<u32>) -> f32 {
         assert_eq!(x.len(), y.len());
         let n = x.len() as f32;
         x.iter()
@@ -279,12 +285,12 @@ pub fn ranked_ballot (bins: &Vec<i32>, correct: usize) -> f32 {
 */
 
 // 0 <= ret <= bins.len()
-pub fn max_bin (bins: &Vec<u64>) -> usize {
+pub fn max_bin (bins: &Vec<u32>) -> usize {
         if bins.iter().filter(|&x| *x == bins[0]).count() == bins.len() {
             bins.len()// ensures that equal bins means no winner
         } else {
             let mut mb : usize = 0; 
-            let mut mx : u64 = bins[0];
+            let mut mx : u32 = bins[0];
             for i in 1..bins.len() {
                 if bins[i] > mx { 
                     mx = bins[i];

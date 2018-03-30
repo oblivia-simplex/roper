@@ -288,6 +288,7 @@ pub struct Chain {
         pub stray_rate: f32,
         pub season: usize,
         pub visited_map: HashMap<Problem, Vec<u32>>,
+        pub register_map: HashMap<Problem, Vec<u32>>,
         pub runtime: Option<f32>,
         i: usize,
         // space-consuming, but it'll give us some useful data on
@@ -385,6 +386,7 @@ impl Default for Chain {
                 crashes: None,
                 runtime: None,
                 visited_map: HashMap::new(),
+                register_map: HashMap::new(),
                 i: 0,
             }
         } 
@@ -558,7 +560,11 @@ impl Chain {
             if edirat == 0.0 { 0.0 } else { self.stray_addr_rate() / edirat }
         }
 
-        pub fn dump_visited_map (&self, path: &str, binary: &str) {
+        pub fn dump_visited_map (&self, 
+                                 path: &str, 
+                                 binary: &str,
+                                 uc: &unicorn::CpuARM,
+                                 params: &Params) {
             println!("DUMPING VISIT MAP TO {}",path);
             let mut file = OpenOptions::new()
                                        .truncate(true)
@@ -571,6 +577,9 @@ impl Chain {
             file.write(&format!("--- BEGIN CHAIN DUMP ---\n").as_bytes());
             file.write(&format!("{}\n", self).as_bytes());
             file.write(&format!("--- END CHAIN DUMP ---\n").as_bytes());
+            file.write(&format!("--- BEGIN PARAMETERS DUMP ---\n").as_bytes());
+            file.write(&format!("{}\n", params).as_bytes());
+            file.write(&format!("--- END PARAMETERS DUMP ---\n").as_bytes());
             for p in self.visited_map.keys() {
                 let pname = p.identifier();
                 file.write(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
@@ -578,11 +587,18 @@ impl Chain {
                 let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
                     let is_stray = !self.search_intervals(&intervals, *addr);
-                    file.write(&format!("{:08x}{}\n", 
+                    let dis = disas_addr(&uc, *addr);
+                    file.write(&format!("{:08x}{} | {}\n", 
                                         addr,
-                                        if is_stray { " stray"} else {""})
+                                        if is_stray { " stray"} else {"      "},
+                                        dis)
                               .as_bytes());
                 }
+                /* now the register map, to show the result */
+                file.write(&format!("OUT: {}\n", 
+                                    hexvec_(&self.register_map
+                                                .get(p)
+                                                .unwrap())).as_bytes());
                 file.write(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
                                     pname).as_bytes());
             }
@@ -1226,7 +1242,7 @@ impl Problem {
         }
 
         pub fn get_input<'a> (&'a self, 
-                              output: &Vec<u64>, 
+                              output: &Vec<u32>, 
                               random_override: bool,
                               verbose: bool) 
                               -> (Option<i32>, Vec<i32>) {
@@ -1260,7 +1276,7 @@ impl Problem {
           * Dispatch the relevant problem-specific fitness function
           */
         pub fn assess_output (&self,
-                              output: &Vec<u64>,
+                              output: &Vec<u32>,
                               uc: &CpuARM) 
                               -> (f32, f32) {
             match &self.target {
@@ -1268,7 +1284,7 @@ impl Problem {
                     // here we can try some sort of fitness sharing thing
                     // refactor later so that this returns a fingerprint
                     // as its first parameter
-                    let r = f32::max(0.0, rp.distance(&output));
+                    let r = f32::max(0.0, rp.distance(output));
                     //let f = rp.matches(&output);
                     (r, r)
                 },
@@ -1330,7 +1346,7 @@ impl Problem {
         pub fn identifier (&self) -> String {
             let mut s = String::new();
             for i in &self.input {
-                s.push_str(&format!("{:08x}.", i));    
+                s.push_str(&format!("{:x}.", i));    
             }
             s
         }
@@ -1605,7 +1621,7 @@ impl Target {
 struct RPatEq {
         pub reg_res: usize,
         pub reg_exp: Option<usize>,
-        pub immed: u64,
+        pub immed: u32,
         pub diff:  f32,
         pub prediff: f32,
 }
@@ -1629,8 +1645,8 @@ pub struct RPattern2 (Vec<RPatEq>);
 
 #[derive(Debug,Clone)]
 pub struct RPattern { 
-        regvals_diff: Vec<(usize,u64,f32)>,
-        regvals_prediff: Vec<(usize,u64,f32)>,
+        regvals_diff: Vec<(usize,u32,f32)>,
+        regvals_prediff: Vec<(usize,u32,f32)>,
 }
 impl Hash for RPattern {
         fn hash <H: Hasher> (&self, state: &mut H) {
@@ -1649,11 +1665,11 @@ impl PartialEq for RPattern {
 impl Eq for RPattern {}
 
 impl RPattern {
-        pub fn clean (&self) -> Vec<(usize,u64)> {
+        pub fn clean (&self) -> Vec<(usize,u32)> {
             self.regvals_diff
                     .iter()
                     .map(|&(x,y,_)| (x,y))
-                    .collect::<Vec<(usize,u64)>>()
+                    .collect::<Vec<(usize,u32)>>()
         }
         pub fn new (s: &str) -> Self {
             let mut parts = s.split(',');
@@ -1666,20 +1682,20 @@ impl RPattern {
                 if !part.starts_with("_") {
                     rp.push((i,u32::from_str_radix(part, 16)
                                         .expect("Failed to parse RPattern")
-                                        as u64));
+                                        as u32));
                 }
                 i += 1;
             }
             rp
         }
         pub fn shuffle_vec (&self) 
-                                              -> Vec<(usize, u64, f32)> {
+                                              -> Vec<(usize, u32, f32)> {
             let mut c = self.regvals_diff.clone();
             let mut rng = thread_rng(); // switch to seedable
             rng.shuffle(&mut c);
             c
         }
-        pub fn push (&mut self, x: (usize, u64)) {
+        pub fn push (&mut self, x: (usize, u32)) {
             self.regvals_diff.push((x.0,x.1,1.0));
         }
         pub fn constants (&self) -> Vec<i32> {
@@ -1688,13 +1704,13 @@ impl RPattern {
                     .map(|&p| p.1 as i32)
                     .collect()
         }
-        pub fn satisfy (&self, regs: &Vec<u64>) -> bool {
+        pub fn satisfy (&self, regs: &Vec<u32>) -> bool {
             for &(idx,val,_) in &self.regvals_diff {
                 if regs[idx] != val { return false };
             }
             true
         }
-        pub fn matches (&self, regs: &Vec<u64>) -> Fingerprint {
+        pub fn matches (&self, regs: &Vec<u32>) -> Fingerprint {
             let mut scorecard : Fingerprint = Fingerprint::new();
             for &(idx,val,diff) in &self.regvals_diff {
                 if regs[idx] == val {
@@ -1705,7 +1721,7 @@ impl RPattern {
             }
             scorecard
         }
-        fn vec_pair (&self, regs: &Vec<u64>) -> (Vec<u64>, Vec<u64>) {
+        fn vec_pair (&self, regs: &Vec<u32>) -> (Vec<u32>, Vec<u32>) {
             let mut ivec = Vec::new();
             let mut ovec = Vec::new();
             for &(idx,val,_) in &self.regvals_diff {
@@ -1714,12 +1730,12 @@ impl RPattern {
             }
             (ivec, ovec)
         }
-        pub fn distance_deref (&self, regs: &Vec<u64>) -> f32 {
+        pub fn distance_deref (&self, regs: &Vec<u32>) -> f32 {
         
             1.0 /* placeholder */
         }
-        pub fn distance (&self, regs: &Vec<u64>) -> f32 {
-            let (i, o) = self.vec_pair(&regs);
+        pub fn distance (&self, regs: &Vec<u32>) -> f32 {
+            let (i, o) = self.vec_pair(regs);
             //let h = hamming_distance(&i, &o);
             let a = arith_distance(&i, &o);
             //let m = count_matches(&i, &o);

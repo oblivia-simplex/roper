@@ -460,7 +460,10 @@ fn main() {
                                            iteration);
                         champion.as_ref()
                                 .expect("failed to unwrap champ to dump")
-                                .dump_visited_map(&path, &params.binary_path);
+                                .dump_visited_map(&path, 
+                                                  &params.binary_path,
+                                                  &debug_machinery.cluster[0].unwrap(),
+                                                  &params);
 
                         println!("[*] Verbosely evaluating new champion:\n{}",
                                           champion.as_ref()

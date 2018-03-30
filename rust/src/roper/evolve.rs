@@ -159,6 +159,7 @@ pub struct EvalCaseResult {
         pub counter : usize,
         pub crashes : bool,
         pub visited : Vec<u32>,
+        pub registers : Vec<u32>,
 }
 #[derive(Debug,PartialEq)]
 pub struct EvalResult {
@@ -167,6 +168,7 @@ pub struct EvalResult {
         pub counter : usize,
         pub crashes : bool,
         pub visited_map : HashMap<Problem, Vec<u32>>,
+        pub register_map : HashMap<Problem, Vec<u32>>,
         pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
@@ -183,7 +185,7 @@ fn eval_case (uc: &mut CpuARM,
         let target = &problem.target;
         let mut result : HatchResult = HatchResult::new();
         let af; let rf;
-        let mut output : Vec<u64> = Vec::new();
+        let mut output : Vec<u32> = Vec::new();
         let mut reset = true;
         let mut verbose = verbose;
         let mut finished = problem.kind() != TargetKind::Game;
@@ -205,10 +207,10 @@ fn eval_case (uc: &mut CpuARM,
                 };
                 reset = false;
                 result = hatch_chain(uc, 
-                                                          &chain,
-                                                          &input,
-                                                          &inregs,
-                                                          reset);
+                                     &chain,
+                                     &input,
+                                     &inregs,
+                                     reset);
                 if !result.isnull() {
                     for idx in outregs {
                         output.push(result.registers[*idx]);
@@ -223,7 +225,7 @@ fn eval_case (uc: &mut CpuARM,
                 if verbose {
                     println!("[+] RAW SCORE: {}", score.as_ref().unwrap());
                 }
-                output = vec![score.unwrap() as u64];
+                output = vec![score.unwrap() as u32];
             }
             if finished {
                 let (a,r) = problem.assess_output(&output, uc);
@@ -247,6 +249,7 @@ fn eval_case (uc: &mut CpuARM,
             counter: counter,
             crashes: crash,
             visited: result.visited,
+            registers: result.registers,
         }
 }
 /*
@@ -296,7 +299,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let mut counter_sum = 0;
         let mut anycrash = false;
         let mut difficulties : HashMap<Problem,f32> = HashMap::new();
-        let mut visited_map : HashMap<Problem,Vec<u32>> = HashMap::new();
+        let mut visited_map  : HashMap<Problem,Vec<u32>> = HashMap::new();
+        let mut register_map : HashMap<Problem,Vec<u32>> = HashMap::new(); 
         for problem in io_targets.iter() {
             let res : EvalCaseResult = eval_case(uc,
                                                  chain,
@@ -310,7 +314,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             difficulties.insert(p.clone(), dif);
             // we could make this more efficient by just taking a
             // unique identifier for each problem.
-            visited_map.insert(p, res.visited);
+            visited_map.insert(p.clone(), res.visited);
+            register_map.insert(p, res.registers);
             /* crash tracking */ 
             let counter = res.counter;
             
@@ -347,6 +352,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             ab_fitness   : ab_fitness,
             counter      : counter_sum / io_targets.len(),
             visited_map  : visited_map,
+            register_map : register_map,
             crashes      : anycrash,
             difficulties : Some(difficulties),
         }
@@ -395,6 +401,7 @@ pub struct FitUpdate {
         pub crashes     : Option<bool>,
         pub runtime     : Option<f32>,
         pub visited_map : HashMap<Problem, Vec<u32>>,
+        pub register_map : HashMap<Problem, Vec<u32>>,
 }
 
 #[derive(Debug,Clone)]
@@ -469,6 +476,7 @@ pub fn patch_population (tr: &TournamentResult,
                 population.deme[i].season  = season;
                 population.deme[i].fitness = Some(f);
                 population.deme[i].visited_map = fit_up.visited_map.clone();
+                population.deme[i].register_map = fit_up.register_map.clone();
                 population.deme[i].crashes = fit_up.crashes.clone();
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
 //      population.deme[i].fingerprint = fit_up.fingerprint.clone();
@@ -592,12 +600,13 @@ pub fn tournament (population: &Population,
                     };
                 }
                 fit_vec.push(FitUpdate {
-                    fitness     : Some(fitness),
-                    ab_fitness  : Some(ab_fitness),
-                    p_fitness   : specimen.p_fitness.clone(),
-                    crashes     : crash,
-                    runtime     : elapsed,
-                    visited_map : res.visited_map,
+                    fitness      : Some(fitness),
+                    ab_fitness   : Some(ab_fitness),
+                    p_fitness    : specimen.p_fitness.clone(),
+                    crashes      : crash,
+                    runtime      : elapsed,
+                    visited_map  : res.visited_map,
+                    register_map : res.register_map,
                     });
             } else {
                 fit_vec.push(FitUpdate {
@@ -608,6 +617,7 @@ pub fn tournament (population: &Population,
                     crashes     : specimen.crashes,
                     runtime     : specimen.runtime,
                     visited_map : specimen.visited_map.clone(),
+                    register_map : specimen.register_map.clone(),
                 });
             }
         } 
@@ -620,6 +630,7 @@ pub fn tournament (population: &Population,
                 specimen.runtime = fit_up.runtime;
                 specimen.ab_fitness = fit_up.ab_fitness;
                 specimen.visited_map = fit_up.visited_map.clone();
+                specimen.register_map = fit_up.register_map.clone();
                 /* Set link fitness values */
                 for clump in &mut specimen.clumps {
                     clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
@@ -663,6 +674,7 @@ pub fn tournament (population: &Population,
                                                 crashes     : mother.crashes,
                                                 runtime     : mother.runtime,
                                                 visited_map : mother.visited_map.clone(),
+                                                register_map : mother.register_map.clone(),
                                               })];
         if !cflag {
             fit_updates.push((f_idx, 
@@ -673,6 +685,7 @@ pub fn tournament (population: &Population,
                                           crashes     : father.crashes,
                                           runtime     : father.runtime,
                                           visited_map : father.visited_map.clone(),
+                                          register_map : father.register_map.clone(),
                                          })); // (father.fitness,father.crashes)));
         }
 
@@ -691,11 +704,11 @@ pub fn tournament (population: &Population,
             } else {
                 let f = specimen.fitness.unwrap();
                 display.push_str(&format!(" {:01.6}{}", f,
-                                                      if specimen.crashes == Some(true) {
-                                                          '*'
-                                                      } else {
-                                                          ' '
-                                                      }));
+                                 if specimen.crashes == Some(true) {
+                                 '*'
+                                 } else {
+                                 ' '
+                                 }));
             }
             i += 1;
             if i < specimens.len() { display.push_str("|") };
@@ -716,9 +729,9 @@ pub fn tournament (population: &Population,
         let (_,grave1) = specimens[t_size-1];
         let parents : Vec<&Chain> = vec![&mother,&father];
         let offspring = mate(&parents,
-                                                  &population.params,
-                                                  &mut rng,
-                                                  uc);
+                             &population.params,
+                             &mut rng,
+                             uc);
         let t_best = specimens[0].0.clone();
         if t_best.fitness == None {
             panic!("t_best.fitness is None!");

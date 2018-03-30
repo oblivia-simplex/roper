@@ -22,16 +22,17 @@ use roper::phylostructs::{Chain,MachineMode};
 use std::fmt::{Display,format,Formatter,Result};
 use roper::ontostructs::*;
 
-pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<u64> {
+pub fn read_registers (uc: &unicorn::Unicorn) -> Vec<u32> {
     REGISTERS.iter().map(|&x| uc.reg_read(x.to_i32())
-                                                            .expect("Error reading reg"))
-                                    .collect()
+                                .expect("Error reading reg")
+                                as u32)
+                    .collect()
 }
 
 pub fn set_registers (uc: &unicorn::Unicorn, 
-                                            input: &Vec<i32>,
-                                            inregs: &Vec<usize>,
-                                            reset: bool) {
+                      input: &Vec<i32>,
+                      inregs: &Vec<usize>,
+                      reset: bool) {
     let mut in_ptr = 0;
     for i in 0..REGISTERS.len() {
         if in_ptr < inregs.len() && i == inregs[in_ptr] { 
@@ -220,7 +221,11 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
         }
     }
     //println!("[*] [hatch_chain()] leaving function.\n");
-    HatchResult { registers: read_registers(&(uc.emu())),
+    // cast registers to Vec<u32>
+    let registers : Vec<u32> = read_registers(&(uc.emu())).iter()
+                                                          .map(|&x| x as u32)
+                                                          .collect();
+    HatchResult { registers: registers,
                   error: e,
                   visited_freq: visited_addr_freq,
                   visited: visited_addrs.clone(),
@@ -235,7 +240,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
 type ErrorCode = f32;
 #[derive(Default,Debug,Clone)]
 pub struct HatchResult {
-    pub registers : Vec<u64>,
+    pub registers : Vec<u32>,
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
     pub null      : bool,
@@ -317,11 +322,23 @@ pub fn reset_counter (u: &CpuARM) {
 //  println!(">>>> Reset counter: {}", read_counter(u));
 }
 
+pub fn disas_addr (uc: &unicorn::CpuARM, addr: u32) -> String { // add support for thumb later
+    let addr : u64 = addr as u64;
+    let size : usize = if addr & 1 == 1 { 2 } else { 4 }; //thumb check
+    let mode : MachineMode = if addr & 1 == 1 { MachineMode::THUMB } 
+                             else { MachineMode::ARM };
+    let instv = uc.mem_read(addr, size);
+    match instv {
+        Ok(v)  => disas(&v, mode),
+        Err(_) => "unknown".to_string(),
+    }
+}
+
 pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
     let sp : u64 = u.reg_read(RegisterARM::SP.to_i32())
-                                    .expect("Error reading SP");
+                    .expect("Error reading SP");
     let instv : Vec<u8> = u.mem_read(addr, size as usize)
-                                                .expect("Error reading inst.");
+                           .expect("Error reading inst.");
 //  let mut inst_str = String::new();
 //  for i in &instv {
 //    inst_str.push_str(&format!("{:02x} ",i));
