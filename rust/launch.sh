@@ -17,20 +17,6 @@ function webserver ()
 }
 
 
-function cleanup ()
-{
-  trap - INT
-  echo "${YELLOW}Trapped SIGINT. Cleaning up...${RESET}"
-  kill $WEBSRV_PID
-  kill $gnuplot_pid
-  kill $roper_pid
-  cat $ERRORFILE
-  rm $OUTFILE
-  rm $ERRORFILE
-}
-
-trap cleanup INT
-
 
 BINARY=$1
 [ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
@@ -255,6 +241,21 @@ sleep 1
 gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt &
 gnuplot_pid=$!
 echo "[+] gnuplot PID is $gnuplot_pid"
+
+function cleanup ()
+{
+  trap - INT
+  echo "${YELLOW}Trapped SIGINT. Cleaning up...${RESET}"
+  kill $WEBSRV_PID
+  kill $gnuplot_pid
+  kill $roper_pid
+  cat $ERRORFILE
+  rm $OUTFILE
+  rm $ERRORFILE
+}
+
+trap cleanup INT
+
 for i in {0..70}; do echo -n "="; done; echo
 tail -n 4096 -f $OUTFILE
 [ -n "$DISPLAY" ] && kill $gnuplot_pid

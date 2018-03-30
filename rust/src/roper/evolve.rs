@@ -314,15 +314,15 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             /* crash tracking */ 
             let counter = res.counter;
             
-            let cs = max(chain.size()-1, 1) as f32;
+            let cs = max(chain.effective_size()-1, 1) as f32;
             let ratio_run = f32::min(1.0, counter as f32 / cs);
             counter_sum += counter;
             anycrash = anycrash || res.crashes;
             /* adjust score if there was a crash */
             let crash_adjusted = if res.crashes {
                 crash_override(res.fitness,
-                                              ratio_run,
-                                              params)
+                               ratio_run,
+                               params)
             } else {
                 res.fitness
             };
@@ -583,8 +583,7 @@ pub fn tournament (population: &Population,
                 for (input, difficulty) in &res.difficulties.unwrap() {
                     match difficulty_update.get(input) {
                         None    => {
-                            difficulty_update.insert(input.clone(), 
-                                                                              vec![*difficulty]);
+                            difficulty_update.insert(input.clone(), vec![*difficulty]);
                         },
                         Some(_) => {
                             difficulty_update.get_mut(input).unwrap().push(*difficulty);
@@ -679,8 +678,8 @@ pub fn tournament (population: &Population,
         /* This little print job should be factored out into a fn */
         let mut display : String = String::new();
         display.push_str(&format!("[{:05}:{:02}] ", 
-                                                            population.iteration,
-                                                            vdeme));
+                                 population.iteration,
+                                 vdeme));
         let mut i = 0;
         for &(ref specimen,_) in specimens.iter() {
             if i == 1 && cflag { 
@@ -941,12 +940,12 @@ pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
 }
 
 fn crash_override(score: f32,
-                                        ratio_run: f32,
-                                        params: &Params) -> f32 {
+                  ratio_run: f32,
+                  params: &Params) -> f32 {
         if params.fatal_crash {
             1.0
         } else {
-            (1.0 - (1.0 - score) * params.crash_penalty * ratio_run)
+            1.0 - (1.0 - score) * params.crash_penalty * ratio_run
         }
 }
                                         

@@ -6,11 +6,11 @@ authors = ["oblivia simplex <oblivia@paranoici.org>"]
 
 
 [dependencies]
-unicorn =  { git = "https://github.com/oblivia-simplex/unicorn-rs"}
-libunicorn-sys =  { git = "https://github.com/oblivia-simplex/unicorn-rs"}
+#unicorn =  { git = "https://github.com/oblivia-simplex/unicorn-rs"}
+#libunicorn-sys =  { git = "https://github.com/oblivia-simplex/unicorn-rs"}
 
-#unicorn = "0.8.0"
-#libunicorn-sys = "0.8.0"
+unicorn = "0.8.0"
+libunicorn-sys = "0.8.0"
 capstone = "0.0.4"
 elf      = "0.0.10"
 byteorder = "0.5.3"

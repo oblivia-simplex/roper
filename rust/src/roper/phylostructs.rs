@@ -459,6 +459,13 @@ impl Chain {
             self.clumps.len()
         }
 
+        pub fn effective_size (&self) -> usize {
+            self.clumps
+                .iter()
+                .filter(|ref c| c.enabled)
+                .count()
+        }
+
         pub fn set_fitness (&mut self, n: f32) {
             self.fitness = Some(n);
         }
@@ -517,13 +524,13 @@ impl Chain {
                 for &addr in v.iter() {
                     let res = intervals.binary_search_by(
                         (|c| if c.0 <= addr && addr <= c.1 {
-                            //println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                          //  println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                             Equal
-                        } else if c.0 > addr {
-                            //println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                        } else if c.1 < addr {
+                        //    println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                             Less
                         } else { 
-                            //println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
+                      //      println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                             Greater
                         }));
                     //println!("---> res: {:?}",res);
@@ -531,6 +538,7 @@ impl Chain {
                     match res {
                         Ok(_)  => hits += 1,
                         Err(_) => {
+                            //println!("* {} not found in {:?}", addr, intervals);
                             if self.crashes == None {
                                 println!("[!] Strayed but did not crash:\nv> {:?}\nintervals: {:?}", v, intervals);
                             }
@@ -995,54 +1003,30 @@ impl Display for Params {
             let mut s = String::new(); 
             let rem = "% ";
 
-            s.push_str(&format!("{} label: {}\n",
-                                                    rem, self.label));
-            s.push_str(&format!("{} population_size: {}\n",
-                                                    rem, self.population_size));
-            s.push_str(&format!("{} crossover_rate: {}\n",
-                                                    rem, self.crossover_rate));
-            s.push_str(&format!("{} max_iterations: {}\n",
-                                                    rem, self.max_iterations));
-            s.push_str(&format!("{} selection_method: {:?}\n",
-                                                    rem, self.selection_method));
-            s.push_str(&format!("{} t_size: {}\n",
-                                                    rem, self.t_size));
-            s.push_str(&format!("{} brood_size: {}\n",
-                                                    rem, self.brood_size));
-            s.push_str(&format!("{} min_start_len: {}\n",
-                                                    rem, self.min_start_len));
-            s.push_str(&format!("{} max_start_len: {}\n",
-                                                    rem, self.max_start_len));
-            s.push_str(&format!("{} max_len: {}\n",
-                                                    rem, self.max_len));
-            s.push_str(&format!("{} fit_goal: {}\n",
-                                                    rem, self.fit_goal));
-            s.push_str(&format!("{} cuck_rate: {}\n",
-                                                    rem, self.cuck_rate));
-            s.push_str(&format!("{} threads: {}\n",
-                                                    rem, self.threads));
-            s.push_str(&format!("{} num_demes: {}\n",
-                                                    rem, self.num_demes));
-            s.push_str(&format!("{} migration: {}\n",
-                                                    rem, self.migration));
-            s.push_str(&format!("{} use_viscosity: {}\n",
-                                                    rem, self.use_viscosity));
-            s.push_str(&format!("{} outregs: {:?}\n",
-                                                    rem, self.outregs));
-            s.push_str(&format!("{} inregs: {:?}\n",
-                                                    rem, self.inregs));
-            s.push_str(&format!("{} binary_path: {}\n",
-                                                    rem, self.binary_path));
-            s.push_str(&format!("{} fitness_sharing: {}\n",
-                                                    rem, self.fitness_sharing));
-            s.push_str(&format!("{} fatal_crash: {}\n",
-                                                    rem, self.fatal_crash));
-            s.push_str(&format!("{} random_override: {}\n",
-                                                    rem, self.random_override));
-            s.push_str(&format!("{} edi_toggle_rate: {}\n",
-                                                    rem, self.edi_toggle_rate));
-            s.push_str(&format!("{} initial_edi_rate: {}\n",
-                                                    rem, self.initial_edi_rate));
+            s.push_str(&format!("{} label: {}\n", rem, self.label));
+            s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
+            s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
+            s.push_str(&format!("{} max_iterations: {}\n", rem, self.max_iterations));
+            s.push_str(&format!("{} selection_method: {:?}\n", rem, self.selection_method));
+            s.push_str(&format!("{} t_size: {}\n", rem, self.t_size));
+            s.push_str(&format!("{} brood_size: {}\n", rem, self.brood_size));
+            s.push_str(&format!("{} min_start_len: {}\n", rem, self.min_start_len));
+            s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
+            s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
+            s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
+            s.push_str(&format!("{} cuck_rate: {}\n", rem, self.cuck_rate));
+            s.push_str(&format!("{} threads: {}\n", rem, self.threads));
+            s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
+            s.push_str(&format!("{} migration: {}\n", rem, self.migration));
+            s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
+            s.push_str(&format!("{} outregs: {:?}\n", rem, self.outregs));
+            s.push_str(&format!("{} inregs: {:?}\n", rem, self.inregs));
+            s.push_str(&format!("{} binary_path: {}\n", rem, self.binary_path));
+            s.push_str(&format!("{} fitness_sharing: {}\n", rem, self.fitness_sharing));
+            s.push_str(&format!("{} fatal_crash: {}\n", rem, self.fatal_crash));
+            s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
+            s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
+            s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
         
             write!(f, "{}",s)
         }

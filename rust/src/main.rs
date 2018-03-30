@@ -142,6 +142,7 @@ fn main() {
     opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("e", "edi", "set explicitly defined introns rate");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -525,7 +526,7 @@ fn main() {
                                                                                                   .unwrap());
                 println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
                                                                                                   .unwrap());
-                print!  ("[+] AVG LEN:       {:3.5}    ", pop_read.avg_len());     
+                print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
                 println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
                 println!("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
                 println!("[+] STRAY NOCRASH: {:1.6}  ",pop_read.stray_nocrash_rate());
@@ -538,10 +539,10 @@ fn main() {
                 
                 let mut c = 0;
                 for d in pop_local.read()
-                                                    .expect("Failed to open read lock on pop_local")
-                                                    .params
-                                                    .io_targets
-                                                    .class_mean_difficulties() {
+                                  .expect("Failed to open read lock on pop_local")
+                                  .params
+                                  .io_targets
+                                  .class_mean_difficulties() {
                     println!("    {} -> {:1.6}", c, d);
                     c += 1;
                 }
