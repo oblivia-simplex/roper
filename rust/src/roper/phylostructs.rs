@@ -725,40 +725,40 @@ impl Population {
             } else { "".to_string() };
             let season = self.season;
             let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-                                                        row,
-                                                        self.iteration.clone(),
-                                                        season,
-                                                        self.avg_gen(),
-                                                        self.avg_fit(season),
-                                                        self.avg_abfit(),
-                                                        self.min_fit(season),
-                                                        self.min_abfit(),
-                                                        self.crash_rate(),
-                                                        best.generation,
-                                                        best.fitness.unwrap_or(1.0),
-                                                        best.ab_fitness.unwrap_or(1.0),
-                                                        if best.crashes == Some(true) { 1 } else { 0 },
-                                                        self.avg_len(),
-                                                        best.size(),
-                                                        best.runtime.unwrap_or(0.0),
-                                                        self.proportion_unseen(season),
-                                                        /* Tracking EDIs */
-                                                        mean(&self.deme.iter()
-                                                                  .map(|ref x| x.enabled_ratio())
-                                                                  .collect::<Vec<f32>>()));
+                                  row,
+                                  self.iteration.clone(),
+                                  season,
+                                  self.avg_gen(),
+                                  self.avg_fit(season),
+                                  self.avg_abfit(),
+                                  self.min_fit(season),
+                                  self.min_abfit(),
+                                  self.crash_rate(),
+                                  best.generation,
+                                  best.fitness.unwrap_or(1.0),
+                                  best.ab_fitness.unwrap_or(1.0),
+                                  if best.crashes == Some(true) { 1 } else { 0 },
+                                  self.avg_len(),
+                                  best.size(),
+                                  best.runtime.unwrap_or(0.0),
+                                  self.proportion_unseen(season),
+                                  /* Tracking EDIs */
+                                  mean(&self.deme.iter()
+                                            .map(|ref x| x.enabled_ratio())
+                                            .collect::<Vec<f32>>()));
             let c_mn_dif = self.params.io_targets
-                                                      .class_mean_difficulties();
+                                      .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
-                                                          .class_stddev_difficulties();
+                                      .class_stddev_difficulties();
             for i in 0..nclasses {
                 row.push_str(&format!(",{},{}", c_mn_dif[i], c_sd_dif[i]));
             }
             row.push_str("\n");
             let mut csv_file = OpenOptions::new()
-                                                                          .append(true)
-                                                                          .create(true)
-                                                                          .open(&self.params.csv_path)
-                                                                          .unwrap();
+                                           .append(true)
+                                           .create(true)
+                                           .open(&self.params.csv_path)
+                                           .unwrap();
             csv_file.write(row.as_bytes()).unwrap();
             csv_file.flush().unwrap();
             false

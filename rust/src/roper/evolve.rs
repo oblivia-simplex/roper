@@ -280,19 +280,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let inregs     = &params.inregs;
         let verbose = verbose || chain.verbose_tag;
 
-        /* Set hooks at return addresses */
-        let mut hooks : Vec<uc_hook> = Vec::new();
-        if params.ret_hooks {
-//    println!("(ADDING RETURN HOOKS)");
-            for clump in &chain.clumps {
-                let r = uc.add_code_hook(CodeHookType::CODE,
-                                                  clump.ret_addr as u64 ,
-                                                  clump.ret_addr as u64,
-                                                  counter_hook)
-                    .expect("Error adding ret_addr hook.");
-                hooks.push(r);
-            }
-        }
         let mut fit_vec : Vec<f32> = Vec::new();
         let mut abfit_vec : Vec<f32> = Vec::new();
 //  let mut fingerprint :Fingerprint = Fingerprint::new(); 

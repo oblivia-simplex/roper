@@ -2,6 +2,12 @@
 extern crate unicorn;
 extern crate elf;
 
+use std::collections::HashSet;
+use std::iter::FromIterator;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::cell::RefMut;
+use std::thread;
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use elf::*;
@@ -88,9 +94,9 @@ pub fn add_debug_hooks (uc: &mut unicorn::CpuARM) {
         let callback_c = 
         // add some hooks if in debugging mode
         uc.add_code_hook(CodeHookType::CODE,
-                                          BASE_ADDR,
-                                          BASE_ADDR+(MEM_SIZE as u64),
-                                          debug_hook)
+                         BASE_ADDR,
+                         BASE_ADDR+(MEM_SIZE as u64),
+                         debug_hook)
             .expect("Error adding code hook");
     }
 }
@@ -111,8 +117,6 @@ fn mk_zerostack(n: usize) -> Vec<u8>
     z
 }
 
-
-
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
                                                         chain: &Chain,
                                                         input: &Vec<i32>,
@@ -120,6 +124,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                                                         reset: bool) 
                                                         -> HatchResult {
                                                         //Vec<i32> {
+    let all_at_once = false;
     // Iinitalize the registers with reg_vec. This is input.
     // For single-case runs, it might just be set to 0..0. 
     
@@ -162,17 +167,59 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop
         .expect("Error writing SP register");
     let start_addr : u64 = get_word32le(&stack, 0) as u64 ; //| 1;
-        
-    let ee = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS);
+    let mut visitor = Vec::new();
+    let visitor_rc : Rc<RefCell<Vec<u64>>> = Rc::new(RefCell::new(visitor));
+    let ee = if all_at_once {
+        uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS)
+    } else {
+        /* this will be a bit slower, but let us track which addrs are visited */
+        // first, let's try to get the counter hook working right.
+        // the way it's set up now is ludicrous
+        let vis : Rc<RefCell<Vec<u64>>> = visitor_rc.clone();
+        let callback = move |_: &unicorn::Unicorn, addr: u64, _: u32| {
+            let mut v : RefMut<Vec<u64>> = vis.borrow_mut();
+            v.push(addr);
+        };
+        let _callback =  |u: &unicorn::Unicorn, addr: u64, size: u32| {
+            println!("{:?} -- visiting {:08x}", thread::current().id(), addr);
+        };
+        // hook all the things
+        let mut hooks = Vec::new();
+        let h = uc.add_code_hook(unicorn::CodeHookType::CODE, 
+                                 BASE_ADDR,
+                                 BASE_ADDR+(MEM_SIZE as u64),
+                                 callback);
+        match h {
+          Ok(h) => hooks.push(h),
+          Err(e) => {},
+        };
+        // later handle the ret counts this way too, if it works
+        let ee = uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS);
+        for h in hooks.iter() {
+            uc.remove_hook(*h);
+        };
+        ee
+    };
     let e = match ee {
         Err(e) => Some(err_encode(e)),
         _      => None,
     };
+    let vtmp = visitor_rc.clone();
+    let visited_addrs : Vec<u64> = (vtmp.borrow()).clone().to_vec();
+    let visited_addr_set : HashSet<&u64> = HashSet::from_iter(&visited_addrs);
+    // now count the returns *Correctly*
+    let mut counter = 0;
+    for clump in &chain.clumps {
+        if visited_addr_set.contains(&(clump.ret_addr as u64)) {
+            counter += 1;
+        } 
+    }
     //println!("[*] [hatch_chain()] leaving function.\n");
     HatchResult { registers: read_registers(&(uc.emu())),
-                                error: e,
-                                counter: 0,//read_counter(uc),
-                                null: false,
+                  error: e,
+                  visited: visited_addrs.clone(),
+                  counter: counter,
+                  null: false,
     }
 }
 
@@ -186,6 +233,7 @@ pub struct HatchResult {
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
     pub null      : bool,
+    pub visited   : Vec<u64>,
 }
 
 impl HatchResult {
@@ -195,6 +243,7 @@ impl HatchResult {
             error     : None,
             counter   : 0,
             null      : false,
+            visited   : Vec::new(),
         }
     }
     /* a convenience function for null results. */
@@ -204,6 +253,7 @@ impl HatchResult {
             error     : None,
             counter   : 0,
             null      : true,
+            visited   : Vec::new(),
         }
     }
     pub fn isnull (&self) -> bool {
@@ -227,9 +277,11 @@ impl Display for HatchResult {
 pub const COUNTER_ADDR : u64 = 0x124;
 
 /* Increments a counter located at COUNTER_ADDR, which point to
-  * a location in writeable/readable memory that's unlikely to be
-  * overwritten.
-  */
+ * a location in writeable/readable memory that's unlikely to be
+ * overwritten.
+ * This was batshit crazy, and is left here only as a monument to
+ * batshit crazy code.
+ */
 pub fn counter_hook (u: &Unicorn, addr: u64, size: u32) {
     let n : usize = read_counter_u(u) + 1;
     let v : Vec<u8> = vec![(n & 0xFF) as u8, ((n & 0xFF00)>>8) as u8];
