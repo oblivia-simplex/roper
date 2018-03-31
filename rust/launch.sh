@@ -76,7 +76,8 @@ EDI_RATE=17
 STRAY_RATE=18
 AVG_STRAY_TO_EDI=19
 STRAY_NOCRASH=20
-C=21
+VISIT_DIVERS=21
+C=22
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -117,7 +118,8 @@ function run () {
                                 -V \
                                 -R \
                                 -S \
-                                -L $LABEL 
+                                -L $LABEL \
+                                -E
   # Add -S flag to enable fitness sharing
                                 
 }
@@ -206,7 +208,8 @@ plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $BEST_FIT), \
   "" $(popplotline $MIN_ABFIT), \
   "" $(popplotline $BEST_ABFIT), \
-  "" $(popplotline $STRAY_RATE)
+  "" $(popplotline $STRAY_RATE), \
+  "" $(popplotline $VISIT_DIVERS)
 
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"

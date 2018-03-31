@@ -167,6 +167,7 @@ pub struct EvalResult {
         pub ab_fitness : f32,
         pub counter : usize,
         pub crashes : bool,
+        pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
         pub register_map : HashMap<Problem, Vec<u32>>,
         pub difficulties : Option<HashMap<Problem, f32>>,
@@ -342,7 +343,22 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let ab_fitness = mean(&abfit_vec);
         let fitness =  mean(&fit_vec);
         let ab_fitness = f32::min(1.0, ab_fitness);
-        let fitness = f32::min(1.0, fitness);
+        let mut fitness = f32::min(1.0, fitness);
+        let mut divers = 0.0; 
+        if params.reward_visitation_diversity {
+            let mut visits : Vec<Vec<u32>> = visited_map.values()
+                                                        .map(|x| x.clone())
+                                                        .collect();
+            let total : f32 = visits.len() as f32;
+            visits.sort();
+            visits.dedup();
+            let uniq  : f32 = visits.len() as f32;
+            divers = 1.0 - uniq / total;
+            let adjusted = fitness * divers;
+            let w = params.visitation_diversity_weight;
+            fitness = (w * adjusted) + ((1.0 - w) * fitness);
+        }
+        let fitness = fitness;
             //mean(&abfit_vec);
         if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
         if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
@@ -354,6 +370,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             visited_map  : visited_map,
             register_map : register_map,
             crashes      : anycrash,
+            visitation_diversity : divers,
             difficulties : Some(difficulties),
         }
 }
@@ -400,6 +417,7 @@ pub struct FitUpdate {
   // pub fingerprint : Fingerprint,
         pub crashes     : Option<bool>,
         pub runtime     : Option<f32>,
+        pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
         pub register_map : HashMap<Problem, Vec<u32>>,
 }
@@ -476,6 +494,7 @@ pub fn patch_population (tr: &TournamentResult,
                 population.deme[i].season  = season;
                 population.deme[i].fitness = Some(f);
                 population.deme[i].visited_map = fit_up.visited_map.clone();
+                population.deme[i].visitation_diversity = fit_up.visitation_diversity;
                 population.deme[i].register_map = fit_up.register_map.clone();
                 population.deme[i].crashes = fit_up.crashes.clone();
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
@@ -604,6 +623,7 @@ pub fn tournament (population: &Population,
                     ab_fitness   : Some(ab_fitness),
                     p_fitness    : specimen.p_fitness.clone(),
                     crashes      : crash,
+                    visitation_diversity : res.visitation_diversity,
                     runtime      : elapsed,
                     visited_map  : res.visited_map,
                     register_map : res.register_map,
@@ -617,6 +637,7 @@ pub fn tournament (population: &Population,
                     crashes     : specimen.crashes,
                     runtime     : specimen.runtime,
                     visited_map : specimen.visited_map.clone(),
+                    visitation_diversity : specimen.visitation_diversity,
                     register_map : specimen.register_map.clone(),
                 });
             }
@@ -630,6 +651,7 @@ pub fn tournament (population: &Population,
                 specimen.runtime = fit_up.runtime;
                 specimen.ab_fitness = fit_up.ab_fitness;
                 specimen.visited_map = fit_up.visited_map.clone();
+                specimen.visitation_diversity = fit_up.visitation_diversity;
                 specimen.register_map = fit_up.register_map.clone();
                 /* Set link fitness values */
                 for clump in &mut specimen.clumps {
@@ -674,6 +696,7 @@ pub fn tournament (population: &Population,
                                                 crashes     : mother.crashes,
                                                 runtime     : mother.runtime,
                                                 visited_map : mother.visited_map.clone(),
+                                                visitation_diversity : mother.visitation_diversity,
                                                 register_map : mother.register_map.clone(),
                                               })];
         if !cflag {
@@ -685,6 +708,8 @@ pub fn tournament (population: &Population,
                                           crashes     : father.crashes,
                                           runtime     : father.runtime,
                                           visited_map : father.visited_map.clone(),
+                                          visitation_diversity : father.visitation_diversity,
+                                          // this redundancy must be refactorable!
                                           register_map : father.register_map.clone(),
                                          })); // (father.fitness,father.crashes)));
         }
@@ -788,10 +813,10 @@ fn cull_brood (brood: &mut Vec<Chain>,
               * This whole function needs to be refactored.
               */
             evaluate_fitness(uc, 
-                                              &spawn, 
-                                              &params, 
-                                              Batch::TRAINING,
-                                              false); 
+                             &spawn, 
+                             &params, 
+                             Batch::TRAINING,
+                             false); 
         }
         brood.sort();
         /* Now eliminate the least fit */
@@ -822,12 +847,12 @@ match clump.link_fit {
 fn splice_point (chain: &Chain, 
                                   rng: &mut ThreadRng,
                                   use_viscosity: bool) -> usize {
-let mut wheel : Vec<Weighted<usize>> = Vec::new();
-let mut i : usize = 0;
-if chain.size() == 0 {
-        panic!("Empty chain in splice_point(). Why?");
-}
-for clump in &chain.clumps {
+    let mut wheel : Vec<Weighted<usize>> = Vec::new();
+    let mut i : usize = 0;
+    if chain.size() == 0 {
+            panic!("Empty chain in splice_point(). Why?");
+    }
+    for clump in &chain.clumps {
         assert!(clump.visc() <= MAX_VISC);
         let vw : u32 = if use_viscosity {
             1 + (MAX_VISC - clump.visc()) as u32
@@ -835,11 +860,11 @@ for clump in &chain.clumps {
             50
         };
         wheel.push(Weighted { weight: vw,
-                                                    item: i });
+                              item: i });
         i += 1;
-}
-let mut spin = WeightedChoice::new(&mut wheel);
-spin.sample(rng) 
+    }
+    let mut spin = WeightedChoice::new(&mut wheel);
+    spin.sample(rng) 
 }
 
 fn shufflefuck (parents:    &Vec<&Chain>, 
@@ -940,9 +965,9 @@ let needs = (unsat.sp_delta-1) as usize;
 
 // replace mode str with mode enum at some point
 pub fn reap_gadgets (code: &Vec<u8>, 
-                                              start_addr: u32, 
-                                              mode: MachineMode) 
-                                            -> Vec<Clump> {
+                     start_addr: u32, 
+                     mode: MachineMode) 
+                     -> Vec<Clump> {
         match mode {
             MachineMode::THUMB => reap_thumb_gadgets(code, start_addr),
             MachineMode::ARM   => reap_arm_gadgets(code, start_addr),

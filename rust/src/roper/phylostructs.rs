@@ -46,6 +46,181 @@ pub const RIPENING_FACTOR : i32 = 4;
 pub const MAX_FIT : f32 = 1.0;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
+#[derive(PartialEq,Debug,Clone)]
+pub struct Params {
+        pub binary_path      : String,
+        pub brood_size       : usize,
+        pub code             : Vec<u8>,
+        pub code_addr        : u32,
+        pub constants        : Vec<u32>,
+        pub crash_penalty    : f32,
+        pub crossover_rate   : f32,
+        pub csv_path         : String,
+        pub cuck_rate        : f32,
+        pub data             : Vec<Vec<u8>>,
+        pub data_addrs       : Vec<u32>,
+        pub date_dir         : String,
+        pub edi_toggle_rate  : f32,
+        pub fatal_crash      : bool,
+        pub fit_goal         : f32,
+        pub fitness_sharing  : bool,
+        pub host_port        : String,
+        pub initial_edi_rate : f32,
+        pub inregs           : Vec<usize>,
+        pub io_targets       : IoTargets,
+        pub label            : String,
+        pub log_dir          : String,
+        pub max_iterations  : usize,
+        pub max_len          : usize,
+        pub max_start_len    : usize,
+        pub migration        : f32,
+        pub min_start_len    : usize,
+        pub num_demes        : usize,
+        pub outregs          : Vec<usize>,
+        pub pop_path         : String,
+        pub population_size  : usize,
+        pub random_override  : bool,
+        pub reward_visitation_diversity : bool,
+        pub sample_ratio     : f32,
+        pub save_period      : usize, 
+        pub season_divisor    : usize,
+        pub selection_method : SelectionMethod,
+        pub stack_input_sampling : f32,
+        pub t_size           : usize,
+        pub test_targets     : IoTargets,
+        pub threads          : usize,
+        pub timestamp        : String,
+        pub training_ht      : HashMap<Vec<i32>,usize>,
+        pub use_edis         : bool,
+        pub use_viscosity    : bool,
+        pub verbose          : bool,
+        pub visitation_diversity_weight : f32,
+/*  pub ro_data_data     : Vec<u8>, */
+}
+            
+
+impl Display for Params {
+        fn fmt (&self, f: &mut Formatter) -> Result {
+            let mut s = String::new(); 
+            let rem = "% ";
+
+            s.push_str(&format!("{} label: {}\n", rem, self.label));
+            s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
+            s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
+            s.push_str(&format!("{} max_iterations: {}\n", rem, self.max_iterations));
+            s.push_str(&format!("{} selection_method: {:?}\n", rem, self.selection_method));
+            s.push_str(&format!("{} t_size: {}\n", rem, self.t_size));
+            s.push_str(&format!("{} brood_size: {}\n", rem, self.brood_size));
+            s.push_str(&format!("{} min_start_len: {}\n", rem, self.min_start_len));
+            s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
+            s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
+            s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
+            s.push_str(&format!("{} cuck_rate: {}\n", rem, self.cuck_rate));
+            s.push_str(&format!("{} threads: {}\n", rem, self.threads));
+            s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
+            s.push_str(&format!("{} migration: {}\n", rem, self.migration));
+            s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
+            s.push_str(&format!("{} outregs: {:?}\n", rem, self.outregs));
+            s.push_str(&format!("{} inregs: {:?}\n", rem, self.inregs));
+            s.push_str(&format!("{} binary_path: {}\n", rem, self.binary_path));
+            s.push_str(&format!("{} fitness_sharing: {}\n", rem, self.fitness_sharing));
+            s.push_str(&format!("{} fatal_crash: {}\n", rem, self.fatal_crash));
+            s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
+            s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
+            s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
+        
+            write!(f, "{}",s)
+        }
+            
+}
+impl Params {
+        pub fn new (label: &str) -> Params {
+            let t = Local::now();
+            let datepath  = t.format("%y/%m/%d").to_string();
+            let timestamp = t.format("%H-%M-%S").to_string();
+            Params {
+                // don't hardcode size and numbers of in/out regs.
+                // make this dependent on the data
+                binary_path:      "".to_string(),
+                brood_size:       2,
+                code:             Vec::new(),
+                code_addr:        0,
+                constants:        Vec::new(),
+                crash_penalty:    0.2,
+                crossover_rate:   0.50,
+                csv_path:         format!("{}/{}_{}.csv", &datepath, &label, &timestamp),
+                cuck_rate:        0.15,
+                data:             Vec::new(),
+                data_addrs:       Vec::new(),
+                date_dir:         datepath.clone(),
+                edi_toggle_rate:  0.01,
+                fatal_crash:      false,
+                fit_goal:         0.1,  
+                fitness_sharing:  true,
+                host_port:        "127.0.0.1:8888".to_string(),
+                initial_edi_rate: 0.1,
+                inregs:           vec![1,2,3,4],
+                io_targets:       IoTargets::new(TargetKind::PatternMatch),
+                label:            label.to_string(),
+                log_dir:          "UNSET".to_string(),
+                max_iterations:   800000,
+                max_len:          256,
+                max_start_len:    32,
+                migration:        0.05,
+                min_start_len:    2,
+                num_demes:        4,
+                outregs:          vec![5,6,7],
+                pop_path:         format!("{}/{}-pop_{}.json", &datepath, &label, &timestamp),
+                population_size:  2048,
+                random_override:  false,
+                reward_visitation_diversity: true,
+                sample_ratio:     1.0,
+                save_period:      10000,
+                season_divisor:    4,
+                selection_method: SelectionMethod::Tournament,
+                stack_input_sampling: 0.1,
+                t_size:           7,
+                test_targets:     IoTargets::new(TargetKind::PatternMatch),
+                threads:          5,
+                timestamp:        timestamp.clone(),
+                training_ht:      HashMap::new(),
+                use_edis:         true,
+                use_viscosity:    true,
+                verbose:          false,
+                visitation_diversity_weight : 0.5,
+            }
+        }
+        pub fn calc_season_length (&self, iteration: usize) -> usize {
+            let base = self.population_size /
+                (self.t_size * self.season_divisor);
+            if iteration < base {
+                base / 4
+            } else {
+                base
+            }
+        }
+        pub fn set_season_divisor (&mut self, divisor: usize) {
+            self.season_divisor = divisor;
+        }
+        pub fn set_init_difficulties (&mut self) {
+            let mut io_targets = &mut self.io_targets;
+            for ref mut problem in io_targets.iter_mut() {
+                problem.set_difficulty(DEFAULT_DIFFICULTY as f32);
+                problem.set_pfactor(self.population_size);
+            }
+        }
+
+        pub fn set_log_dir (&mut self, dir: &str) {
+            let ddir = format!("{}/{}",dir, self.date_dir);
+            let d = DirBuilder::new()
+                               .recursive(true)
+                               .create(&ddir)
+                               .unwrap();
+            self.csv_path = format!("{}/{}", dir, self.csv_path);
+            self.pop_path = format!("{}/{}", dir, self.pop_path); 
+            self.log_dir  = format!("{}", &ddir);
+        } 
+}
 //pub static mut DISAS_PATH : str = "./DISASSEMBLY_FILE_DEFAULT_NAME.TXT";
 pub type FIT_INT = u32;
 
@@ -287,6 +462,7 @@ pub struct Chain {
         pub crashes: Option<bool>,
         pub stray_rate: f32,
         pub season: usize,
+        pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
         pub register_map: HashMap<Problem, Vec<u32>>,
         pub runtime: Option<f32>,
@@ -385,6 +561,7 @@ impl Default for Chain {
                 verbose_tag: false,
                 crashes: None,
                 runtime: None,
+                visitation_diversity: 0.0,
                 visited_map: HashMap::new(),
                 register_map: HashMap::new(),
                 i: 0,
@@ -516,24 +693,32 @@ impl Chain {
             intervals
         }
 
-        fn search_intervals(&self, intervals: &Vec<(u32,u32)>, addr: u32) -> bool {
-
+        fn search_intervals (&self, 
+                             intervals: &Vec<(u32,u32)>, 
+                             addr: u32) 
+                            -> bool {
             let res = intervals.binary_search_by(
                 (|c| if c.0 <= addr && addr <= c.1 {
-                  //  println!("Equal: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                     Equal
                 } else if c.1 < addr {
-                //    println!("Less: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                     Less
                 } else { 
-              //      println!("Greater: c.0: {}, c.1: {}, addr: {}",c.0,c.1,addr);
                     Greater
                 }));
-            //println!("---> res: {:?}",res);
             match res {
                 Ok(_)  => true,
                 Err(_) => false,
             }
+        }
+
+        pub fn dedup_visits (&self) -> Vec<Vec<u32>> {
+            let mut visits : Vec<Vec<u32>> = self.visited_map
+                                                 .values()
+                                                 .map(|x| x.clone())
+                                                 .collect();
+            visits.sort();
+            visits.dedup();
+            visits
         }
 
         pub fn stray_addr_rate (&self) -> f32 {
@@ -572,7 +757,7 @@ impl Chain {
                                        .create(true)
                                        .open(path)
                                        .unwrap();
-            file.write(&format!("[VISIT MAP FOR BINARY {}]\n", binary).as_bytes());
+            file.write(&format!("=== VISIT MAP FOR BINARY {} ===\n", binary).as_bytes());
             // let's dump the chain here too
             file.write(&format!("--- BEGIN CHAIN DUMP ---\n").as_bytes());
             file.write(&format!("{}\n", self).as_bytes());
@@ -673,9 +858,9 @@ impl Population {
                                                               &mut rand::thread_rng()));
                 */
                 deme.push(random_chain(&clumps,
-                                                              &params,
-                                                              &mut data_pool,
-                                                              &mut rand::thread_rng()));
+                                       &params,
+                                       &mut data_pool,
+                                       &mut rand::thread_rng()));
                                                               
 
             }
@@ -687,6 +872,33 @@ impl Population {
                 params: (*params).clone(),
                 primordial_ooze: clumps,
             }
+        }
+
+        pub fn dump_all (&self, uc: &unicorn::CpuARM) -> () {
+            let dir = format!("{}/{}_season_{}_dump/",
+                              &self.params.log_dir,
+                              &self.params.label,
+                              &self.season);
+            let _ = DirBuilder::new()
+                               .recursive(true)
+                               .create(&dir)
+                               .expect("Could not create seasonal dump dir");
+            // ensure dir exists
+            for i in 0..(&self.deme).len() {
+                let chain = &(self.deme[i]);
+                if chain.fitness == None {
+                    continue;
+                };
+                let path = format!("{}chain_{}_visited_map.txt",
+                                   &dir, i);
+                chain.dump_visited_map(&path,
+                                       &self.params.binary_path,
+                                       &uc,
+                                       &self.params);
+                
+
+            }
+
         }
 
         pub fn random_spawn (&self) -> Chain {
@@ -885,6 +1097,14 @@ impl Population {
                                  .collect::<Vec<f32>>())
         }
 
+        pub fn avg_visitation_diversity (&self) -> f32 {
+            mean(&self.deme
+                      .iter()
+                      .filter(|ref x| x.fitness != None)
+                      .map(|ref x| x.visitation_diversity)
+                      .collect::<Vec<f32>>())
+        }
+
         pub fn save (&self) {
             let mut json_file = OpenOptions::new()
                                             .truncate(true)
@@ -910,7 +1130,7 @@ impl Population {
             let nclasses = self.params.io_targets.num_classes;
             // todo: don't hardcode the number of classes
             let row = if first {
-                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH",
+                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS",
                                 self.params);
                 for i in 0..nclasses {
                     s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -919,7 +1139,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -942,7 +1162,8 @@ impl Population {
                                   /* stray rate / extended gadgets */
                                   self.avg_stray_addr_rate(),
                                   self.avg_stray_to_edi_rate(),
-                                  self.stray_nocrash_rate());
+                                  self.stray_nocrash_rate(),
+                                  self.avg_visitation_diversity());
             let c_mn_dif = self.params.io_targets
                                       .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
@@ -970,182 +1191,6 @@ impl Population {
 pub enum SelectionMethod {
         Tournament,
         Roulette,
-}
-
-#[derive(PartialEq,Debug,Clone)]
-pub struct Params {
-        pub label            : String,
-        pub timestamp        : String,
-        pub population_size  : usize,
-        pub crossover_rate   : f32,
-        pub max_iterations  : usize,
-        pub selection_method : SelectionMethod,
-        pub t_size           : usize,
-        pub code             : Vec<u8>,
-        pub code_addr        : u32,
-        pub data             : Vec<Vec<u8>>,
-        pub data_addrs       : Vec<u32>,
-        pub brood_size       : usize,
-        pub min_start_len    : usize,
-        pub max_start_len    : usize,
-        pub max_len          : usize,
-        pub constants        : Vec<u32>,
-        pub stack_input_sampling : f32,
-        pub training_ht      : HashMap<Vec<i32>,usize>,
-        pub fit_goal         : f32,
-        pub fitness_sharing  : bool,
-        pub season_divisor    : usize,
-/*  pub ro_data_data     : Vec<u8>,
-        pub ro_data_addr     : u32,
-        pub text_data        : Vec<u8>,
-        pub text_addr        : u32,
-        */
-        pub io_targets       : IoTargets,
-        pub test_targets     : IoTargets,
-        pub sample_ratio     : f32,
-        pub cuck_rate        : f32,
-        pub verbose          : bool,
-        pub date_dir         : String,
-        pub csv_path         : String,
-        pub log_dir          : String,
-        pub pop_path         : String,
-        pub threads          : usize,
-        pub num_demes        : usize,
-        pub migration        : f32,
-        pub save_period      : usize, 
-        pub use_viscosity    : bool,
-        pub outregs          : Vec<usize>,
-        pub inregs           : Vec<usize>,
-        pub binary_path      : String,
-        pub fatal_crash      : bool,
-        pub crash_penalty    : f32,
-        pub host_port        : String,
-        pub random_override  : bool,
-        pub edi_toggle_rate         : f32,
-        pub initial_edi_rate : f32,
-}
-            
-
-impl Display for Params {
-        fn fmt (&self, f: &mut Formatter) -> Result {
-            let mut s = String::new(); 
-            let rem = "% ";
-
-            s.push_str(&format!("{} label: {}\n", rem, self.label));
-            s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
-            s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
-            s.push_str(&format!("{} max_iterations: {}\n", rem, self.max_iterations));
-            s.push_str(&format!("{} selection_method: {:?}\n", rem, self.selection_method));
-            s.push_str(&format!("{} t_size: {}\n", rem, self.t_size));
-            s.push_str(&format!("{} brood_size: {}\n", rem, self.brood_size));
-            s.push_str(&format!("{} min_start_len: {}\n", rem, self.min_start_len));
-            s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
-            s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
-            s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
-            s.push_str(&format!("{} cuck_rate: {}\n", rem, self.cuck_rate));
-            s.push_str(&format!("{} threads: {}\n", rem, self.threads));
-            s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
-            s.push_str(&format!("{} migration: {}\n", rem, self.migration));
-            s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
-            s.push_str(&format!("{} outregs: {:?}\n", rem, self.outregs));
-            s.push_str(&format!("{} inregs: {:?}\n", rem, self.inregs));
-            s.push_str(&format!("{} binary_path: {}\n", rem, self.binary_path));
-            s.push_str(&format!("{} fitness_sharing: {}\n", rem, self.fitness_sharing));
-            s.push_str(&format!("{} fatal_crash: {}\n", rem, self.fatal_crash));
-            s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
-            s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
-            s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
-        
-            write!(f, "{}",s)
-        }
-            
-}
-impl Params {
-        pub fn new (label: &str) -> Params {
-            let t = Local::now();
-            let datepath  = t.format("%y/%m/%d").to_string();
-            let timestamp = t.format("%H-%M-%S").to_string();
-            Params {
-                label:            label.to_string(),
-                timestamp:        timestamp.clone(),
-                population_size:  2048,
-                crossover_rate:   0.50,
-                max_iterations:   800000,
-                selection_method: SelectionMethod::Tournament,
-                t_size:           7,
-                code:             Vec::new(),
-                code_addr:        0,
-                data:             Vec::new(),
-                data_addrs:       Vec::new(),
-                brood_size:       2,
-                min_start_len:    2,
-                max_start_len:    32,
-                max_len:          256,
-                training_ht:      HashMap::new(),
-                io_targets:       IoTargets::new(TargetKind::PatternMatch),
-                test_targets:     IoTargets::new(TargetKind::PatternMatch),
-                sample_ratio:     1.0,
-                fit_goal:         0.1,  
-                fitness_sharing:  true,
-                season_divisor:    4,
-                constants:        Vec::new(),
-                stack_input_sampling: 0.1,
-                cuck_rate:        0.15,
-                verbose:          false,
-                date_dir:         datepath.clone(),
-                log_dir:          "UNSET".to_string(),
-                csv_path:         format!("{}/{}_{}.csv", 
-                                          &datepath, &label, &timestamp),
-                pop_path:         format!("{}/{}-pop_{}.json", 
-                                          &datepath, &label, &timestamp),
-                save_period:      10000,
-                threads:          5,
-                num_demes:        4,
-                migration:        0.05,
-                use_viscosity:    true,
-                // don't hardcode size and numbers of in/out regs.
-                // make this dependent on the data
-                inregs:           vec![1,2,3,4],
-                outregs:          vec![5,6,7],
-                binary_path:      "".to_string(),
-                fatal_crash:      false,
-                crash_penalty:    0.2,
-                host_port:        "127.0.0.1:8888".to_string(),
-                random_override:  false,
-                edi_toggle_rate:  0.01,
-                initial_edi_rate: 0.1,
-            }
-        }
-        pub fn calc_season_length (&self, iteration: usize) -> usize {
-            let base = self.population_size /
-                (self.t_size * self.season_divisor);
-            if iteration < base {
-                base / 4
-            } else {
-                base
-            }
-        }
-        pub fn set_season_divisor (&mut self, divisor: usize) {
-            self.season_divisor = divisor;
-        }
-        pub fn set_init_difficulties (&mut self) {
-            let mut io_targets = &mut self.io_targets;
-            for ref mut problem in io_targets.iter_mut() {
-                problem.set_difficulty(DEFAULT_DIFFICULTY as f32);
-                problem.set_pfactor(self.population_size);
-            }
-        }
-
-        pub fn set_log_dir (&mut self, dir: &str) {
-            let ddir = format!("{}/{}",dir, self.date_dir);
-            let d = DirBuilder::new()
-                                                .recursive(true)
-                                                .create(&ddir)
-                                                .unwrap();
-            self.csv_path = format!("{}/{}", dir, self.csv_path);
-            self.pop_path = format!("{}/{}", dir, self.pop_path); 
-            self.log_dir  = format!("{}", &ddir);
-        } 
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -1818,9 +1863,9 @@ const NOCHANGE_NOCRASH_BUCKET  : usize = 2;
 const CHANGE_NOCRASH_BUCKET    : usize = 3;
 
 pub fn random_chain (clumps:  &Vec<Clump>,
-                                              params:  &Params,
-                                              pool:    &mut Mangler,
-                                              rng:     &mut ThreadRng) -> Chain {
+                     params:  &Params,
+                     pool:    &mut Mangler,
+                     rng:     &mut ThreadRng) -> Chain {
         let max_len = params.max_start_len;
         let min_len = params.min_start_len;
         let rlen  = rng.gen::<usize>() % (max_len - min_len) + min_len;

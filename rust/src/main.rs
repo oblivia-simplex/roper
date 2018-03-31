@@ -142,7 +142,8 @@ fn main() {
     opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
-    opts.optflag("e", "edi", "set explicitly defined introns rate");
+    opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
+    opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -157,6 +158,13 @@ fn main() {
     let mut challenge : Challenge = Challenge::Undecided;
 
     let use_viscosity = ! matches.opt_present("V");
+    
+    let use_edis = matches.opt_present("E");
+
+    let edirate = match matches.opt_str("e") {
+        None => 0.10,
+        Some(n) => n.parse::<f32>().expect("Failed to parse edirate (-e)"),
+    };
 
     let random_override = matches.opt_present("O");
       
@@ -352,6 +360,7 @@ fn main() {
     params.season_divisor = 1;
     params.random_override = random_override;
     params.set_init_difficulties();
+    params.use_edis = use_edis;
 
     //params.io_targets.num_classes = params.outregs.len();
     // add string search function
@@ -478,7 +487,11 @@ fn main() {
                     mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
                 }
                 season_change = update_difficulties(&mut mut_pop.params, 
-                                                                                        iteration);
+                                                    iteration);
+                if season_change > 0 {
+                    println!("--- SEASONAL POPULATION DATA DUMP ---");
+                    &mut_pop.dump_all(&debug_machinery.cluster[0].unwrap());  
+                };
                 mut_pop.season += season_change;
                 season = mut_pop.season.clone();
                 class_stddev_difficulties = mut_pop.params
@@ -499,7 +512,6 @@ fn main() {
             } // end mut block
           
             if champion != None && (season_change > 0 || iteration % printevery == 0) {
-                println!("[+] in champion block of main loop");
                 /**************************************************
                   * Pretty-print some information for the viewers  *
                   * huddled around the terminal, in hushed antici- *
@@ -533,7 +545,7 @@ fn main() {
                 print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
                 println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
                 println!("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
-                println!("[+] STRAY NOCRASH: {:1.6}  ",pop_read.stray_nocrash_rate());
+                println!("[+] VISIT DIVERS:  {:1.6}  ",pop_read.avg_visitation_diversity());
 
                 println!("[+] EDI RATE:      {:1.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);

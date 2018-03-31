@@ -27,6 +27,16 @@
   (addr address :type integer))
 ;  (perm perms :type (cons keyword)))
 
+(export 'bytes-at)
+(defun bytes-at (section address &optional (width 4))
+  (when (<= (sec-addr section)
+                 address
+                 (1- (+ (sec-addr section)
+                        (length (sec-data section)))))
+    (subseq (sec-data section)
+            address
+            (+ address width))))
+
 (export 'word-at)
 (defun word-at (section address &optional (width 4))
   (when (<= (sec-addr section)
