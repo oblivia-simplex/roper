@@ -488,15 +488,15 @@ fn main() {
                 }
                 season_change = update_difficulties(&mut mut_pop.params, 
                                                     iteration);
-                if season_change > 0 {
+                mut_pop.season += season_change;
+                season = mut_pop.season.clone();
+                if season_change > 0 && season % 4 == 0 {
                     println!("--- SEASONAL POPULATION DATA DUMP ---");
                     &mut_pop.dump_all(&debug_machinery.cluster[0].unwrap());  
                 };
-                mut_pop.season += season_change;
-                season = mut_pop.season.clone();
                 class_stddev_difficulties = mut_pop.params
-                                                                                      .io_targets
-                                                                                      .class_stddev_difficulties();
+                                                   .io_targets
+                                                   .class_stddev_difficulties();
                 /* Update variation operators according to 1:5 rule:
                   * if fewer than 1 in 5 offspring is as fit as the parent(s),
                   * then the algorithm should be more exploitative; if more

@@ -1,6 +1,6 @@
 #! /bin/bash
 
-[ -n "$ROPER_THREADS" ] || ROPER_THREADS=4
+[ -n "$ROPER_THREADS" ] || ROPER_THREADS=8
 [ -n "$BARE_RUN" ] && ROPER_THREADS=1
 
 export RUSTFLAGS=-Awarnings

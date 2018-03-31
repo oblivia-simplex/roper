@@ -353,8 +353,9 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             visits.sort();
             visits.dedup();
             let uniq  : f32 = visits.len() as f32;
-            divers = 1.0 - uniq / total;
-            let adjusted = fitness * divers;
+            divers = uniq / total;
+            let nondivers = 1.0 - divers;
+            let adjusted = fitness * nondivers; // because lower = better
             let w = params.visitation_diversity_weight;
             fitness = (w * adjusted) + ((1.0 - w) * fitness);
         }
