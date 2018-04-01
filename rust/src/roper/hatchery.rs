@@ -225,7 +225,14 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     let registers : Vec<u32> = read_registers(&(uc.emu())).iter()
                                                           .map(|&x| x as u32)
                                                           .collect();
+
+    // what if we added a second register vector of derefences?
+    // of type Vec<Option<u32>> ?
+    let reg_deref : Vec<Option<u32>> = registers.iter()
+                                        .map(|&a| deref(&(uc.emu()),a))
+                                        .collect();
     HatchResult { registers: registers,
+                  reg_deref: reg_deref,
                   error: e,
                   visited_freq: visited_addr_freq,
                   visited: visited_addrs.clone(),
@@ -234,13 +241,19 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     }
 }
 
-
+pub fn deref (uc: &unicorn::Unicorn, addr: u32) -> Option<u32> {
+    match uc.mem_read(addr as u64, 4) {
+        Ok(bytes) => Some(get_word32le(&bytes, 0)),
+        Err(_)    => None,
+    }
+}
 
 
 type ErrorCode = f32;
 #[derive(Default,Debug,Clone)]
 pub struct HatchResult {
     pub registers : Vec<u32>,
+    pub reg_deref : Vec<Option<u32>>,
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
     pub null      : bool,
@@ -252,6 +265,7 @@ impl HatchResult {
     pub fn new () -> Self {
         HatchResult {
             registers : Vec::new(),
+            reg_deref : Vec::new(),
             error     : None,
             counter   : 0,
             null      : false,
@@ -263,6 +277,7 @@ impl HatchResult {
     pub fn null () -> Self {
         HatchResult {
             registers : Vec::new(),
+            reg_deref : Vec::new(),
             error     : None,
             counter   : 0,
             null      : true,

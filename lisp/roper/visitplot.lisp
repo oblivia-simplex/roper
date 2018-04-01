@@ -19,9 +19,9 @@
                       (ash (elt vec (+ i offset)) (* i 8))))
         dword)))
 
-(defun dword->bytes (dword &key (endian :little))
-  (let ((res (mapcar (lambda (i) (ldb (byte 8 (* i 8)) dword))
-                     '(0 1 2 3))))
+(defun word->bytes (word &key (endian :little) (width 4))
+  (let ((res (mapcar (lambda (i) (ldb (byte 8 (* i 8)) word))
+                     (loop for i below width collect i))))
     (if (eq endian :big) (reverse res) res)))
 
 (defun bytes->dwords (bytes &key (width 4) (endian :little))
@@ -214,6 +214,9 @@
 ;;;;; for parsing roper logs
 
 
+(defun wordalign (w)
+  (ash (ash w -2) 2))
+
 (defun %parse-visited-log (path)
   (let ((state :init)
         (problem nil)
@@ -253,7 +256,7 @@
                         (let ((addr  (elt a 0))
                               (stray (elt a 1))
                               (end   (elt a 2)))
-                          (if addr (setq addr (read-from-string addr)))
+                          (if addr (wordalign (setq addr (read-from-string addr))))
                           (if end
                               (progn (setq state :begin)
                                      (setq problem nil))
@@ -270,14 +273,17 @@
             (reverse (gethash k visit-maps))))
     (values visit-maps elf-path)))
 
+(defun get-text (elf-path)
+  (find :.text
+        (get-elf-sections (elf:read-elf elf-path))
+        :key #'sec-name))
+
 (defun parse-visited-log (path)
   (multiple-value-bind (visited-log elf-path)
       (%parse-visited-log path)
     (values
      visited-log
-     (find :.text
-           (get-elf-sections (elf:read-elf elf-path))
-           :key #'sec-name))))
+     (get-text elf-path))))
 
 (defun bytes-to-pixels (bytes color) ;; +red+ +green+ or +blue+
   (apply #'concatenate 'list
@@ -287,8 +293,11 @@
                            pixel))
                        bytes)))
 
-(defun dword-to-pixels (dword color)
-  (bytes-to-pixels (coerce (dword->bytes dword :endian :little) 'list) color))
+(defun word->pixels (word color &key (width 4))
+  (bytes-to-pixels (coerce (word->bytes word
+                                        :endian :little
+                                        :width width)
+                           'list) color))
 
 ;; unvisited: +blue+
 ;; visited: +green+
@@ -315,8 +324,54 @@
                    (mapc (lambda (x)
                            (setf (aref pixelrow offset) x)
                            (incf offset))
-                         (dword-to-pixels dword color))))
+                         (dword->pixels dword color))))
           pixelrow)))
+
+(defun maxheat (heatmap-alist)
+  (reduce #'max (mapcar #'cdr heatmap-alist)))
+
+(defun read-heatmap (path)
+  (let ((hm (with-open-file (s path)
+              (read s))))
+    (mapc (lambda (x)
+            (setf (car x)
+                  (wordalign (car x))))
+          hm)
+    hm))
+
+;;NB the chains appear to be visiting some addresses lower than text!
+
+(defun heatmap->colormap (section heatmap-alist &key (width 4))
+  (let ((m (maxheat heatmap-alist)))
+    (assert (> m 0))
+    (labels ((calc-heat (h)
+               (floor (* #xFF (/ h m)))))
+      (let ((pixelrow (make-array (* 3 (length (sec-data section)))
+                                  :element-type '(unsigned-byte 8)))
+            (offset 0)
+            (addr (sec-addr section)))
+        ;; kludge, but figure out why sub-text addrs are being visited.
+        ;; did i map other executable memory? investigate
+        (loop for word across (sec-words section) do
+          (let ((pixels (word->pixels word +blue+ ))
+                (nextheat (assoc addr heatmap-alist)))
+            (when nextheat ;; optimise with hashtable
+              (setf pixels
+                    (mapcar #'logior
+                            pixels
+                            (loop for i below width
+                                  append
+                                  (let ((p (list 0 0 0)))
+                                    (setf (elt p +red+)
+                                          (calc-heat (cdr nextheat)))
+                                    p))))
+              (format t "heat> ~S~%" pixels))
+            (incf addr width)
+            (mapc (lambda (x)
+                    (setf (aref pixelrow offset) x)
+                    (incf offset))
+                  pixels)))
+        pixelrow))))
 
 (defun %superimpose (a b)
   (map 'bytes #'logior a b))
@@ -393,3 +448,9 @@
     (loop for log in dir do
       (push (superimpose (visited->colormap log)) colormap))
     colormap))
+
+
+(defun heatmap->canvas (elf-path heatmap-path ppm-path)
+  (let ((colormap-row (heatmap->colormap (get-text elf-path)
+                                         (read-heatmap heatmap-path))))
+    (paint-canvas colormap-row ppm-path)))

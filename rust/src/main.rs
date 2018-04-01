@@ -14,6 +14,7 @@ use std::sync::mpsc::channel;
 use getopts::*;
 use std::env;
 
+use std::collections::HashMap;
 use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use std::io;
@@ -407,13 +408,18 @@ fn main() {
     /***************************
       * The Main Evolution Loop *
       ***************************/
+    let mut heatmap : HashMap<u32,usize> = HashMap::new();
     while i < max_iterations
         && (champion == None 
-                || champion.as_ref().expect("Failed to unwrap champion reference (1)").crashes == Some(true)
-                || champion.as_ref().expect("Failed to unwrap champion reference (2)").ab_fitness > Some(params.fit_goal))
+        || champion.as_ref()
+                   .expect("Failed to unwrap champion reference (1)")
+                   .crashes == Some(true)
+        || champion.as_ref()
+                   .expect("Failed to unwrap champion reference (2)")
+                   .ab_fitness > Some(params.fit_goal))
     {
         let mut iteration = pop_local.read()
-                                     .expect("Failed to open read lock on pop_local")
+                                     .expect("Failed to open lock on pop_local")
                                      .iteration;
         let (tx, rx)  = channel();
         let n_workers = threads as u32;
@@ -452,8 +458,9 @@ fn main() {
                 for tr in trs {
                     patch_io_targets(&tr, &mut mut_pop.params, iteration);
                     let (updated, f_deltas) = patch_population(&tr,
-                                                                                                          mut_pop,
-                                                                                                          true);
+                                                               mut_pop,
+                                                               true,
+                                                               &mut heatmap);
                     fitness_deltas.push_all(f_deltas);
                     if updated != None {
                         champion = updated.clone();
@@ -475,11 +482,11 @@ fn main() {
                                                   &params);
 
                         println!("[*] Verbosely evaluating new champion:\n{}",
-                                          champion.as_ref()
-                                                  .expect("Failed to unwrap champion"));
+                                champion.as_ref()
+                                .expect("Failed to unwrap champion"));
                         evaluate_fitness(debug_machinery.cluster[0]
                                                         .unwrap_mut(),
-                                         &champion.expect("Failed to unwrap champion clone for peeking"),
+                                &champion.expect("Failed to unwrap champion"),
                                          &params,
                                          Batch::TESTING,
                                          true);
@@ -492,7 +499,12 @@ fn main() {
                 season = mut_pop.season.clone();
                 if season_change > 0 && season % 4 == 0 {
                     println!("--- SEASONAL POPULATION DATA DUMP ---");
-                    &mut_pop.dump_all(&debug_machinery.cluster[0].unwrap());  
+                    let dir = &mut_pop.dump_all(&debug_machinery.cluster[0]
+                                                                .unwrap());  
+                    let hm_path = format!("{}/heatmap.lisp", dir);
+                    println!("--- DUMPING HEATMAP ---");
+                    dump_heatmap(&heatmap, &hm_path);
+
                 };
                 class_stddev_difficulties = mut_pop.params
                                                    .io_targets
@@ -504,9 +516,10 @@ fn main() {
                   */
                 if fitness_deltas.primed() {
                     improvement_ratio = Some(fitness_deltas.as_vec()
-                                                                                                  .iter()
-                                                                                                  .filter(|x| **x < 0.0)
-                                                                                                  .count() as f32 / fitness_deltas.cap() as f32);
+                                                           .iter()
+                                                           .filter(|x| **x < 0.0)
+                                                           .count() as f32 
+                                                    / fitness_deltas.cap() as f32);
                 }
 
             } // end mut block
@@ -575,7 +588,6 @@ fn main() {
                 print!("\r[{}]                 ",iteration);
                 io::stdout().flush().ok().expect("Could not flush stdout");
             }
-            pop_local.read().expect("Failed to open read lock on pop_local for periodic_save").periodic_save();
             println!("------------------------------------------------");
         }); // END POOL SCOPE
         i += 1;

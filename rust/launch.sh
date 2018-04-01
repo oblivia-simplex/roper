@@ -1,7 +1,9 @@
 #! /bin/bash
 
-[ -n "$ROPER_THREADS" ] || ROPER_THREADS=8
+[ -n "$ROPER_THREADS" ] || ROPER_THREADS=1
 [ -n "$BARE_RUN" ] && ROPER_THREADS=1
+
+POPSIZE=2048
 
 export RUSTFLAGS=-Awarnings
 PROJECT_ROOT=`pwd`/..
@@ -111,7 +113,7 @@ function run () {
                                 -g $GOAL \
                                 -c 0.2 \
                                 -s 1.0 \
-                                -P 4096 \
+                                -P $POPSIZE \
                                 -t $ROPER_THREADS \
                                 -D 4 \
                                 -m 0.05 \
@@ -229,7 +231,8 @@ reread
 EOF
 
 cat > $SRV/index.html<<EOF
-<meta http-equiv="refresh" content="5">
+<script type="text/javascript" src="http://livejs.com/live.js"></script>
+<!-- <meta http-equiv="refresh" content="5"> -->
 <img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
 EOF
 

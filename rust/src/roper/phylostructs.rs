@@ -77,7 +77,6 @@ pub struct Params {
         pub min_start_len    : usize,
         pub num_demes        : usize,
         pub outregs          : Vec<usize>,
-        pub pop_path         : String,
         pub population_size  : usize,
         pub random_override  : bool,
         pub reward_visitation_diversity : bool,
@@ -148,12 +147,12 @@ impl Params {
                 constants:        Vec::new(),
                 crash_penalty:    0.2,
                 crossover_rate:   0.50,
-                csv_path:         format!("{}/{}_{}.csv", &datepath, &label, &timestamp),
+                csv_path:         format!("{}_{}.csv", &label, &timestamp),
                 cuck_rate:        0.15,
                 data:             Vec::new(),
                 data_addrs:       Vec::new(),
                 date_dir:         datepath.clone(),
-                edi_toggle_rate:  0.01,
+                edi_toggle_rate:  0.05,
                 fatal_crash:      false,
                 fit_goal:         0.1,  
                 fitness_sharing:  true,
@@ -170,7 +169,6 @@ impl Params {
                 min_start_len:    2,
                 num_demes:        4,
                 outregs:          vec![5,6,7],
-                pop_path:         format!("{}/{}-pop_{}.json", &datepath, &label, &timestamp),
                 population_size:  2048,
                 random_override:  false,
                 reward_visitation_diversity: true,
@@ -211,13 +209,15 @@ impl Params {
         }
 
         pub fn set_log_dir (&mut self, dir: &str) {
-            let ddir = format!("{}/{}",dir, self.date_dir);
+            let ddir = format!("{}/{}/{}",
+                               dir, 
+                               self.date_dir,
+                               self.label);
             let d = DirBuilder::new()
                                .recursive(true)
                                .create(&ddir)
                                .unwrap();
-            self.csv_path = format!("{}/{}", dir, self.csv_path);
-            self.pop_path = format!("{}/{}", dir, self.pop_path); 
+            self.csv_path = format!("{}/{}", ddir, self.csv_path);
             self.log_dir  = format!("{}", &ddir);
         } 
 }
@@ -464,7 +464,7 @@ pub struct Chain {
         pub season: usize,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
-        pub register_map: HashMap<Problem, Vec<u32>>,
+        pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
         pub runtime: Option<f32>,
         i: usize,
         // space-consuming, but it'll give us some useful data on
@@ -780,10 +780,24 @@ impl Chain {
                               .as_bytes());
                 }
                 /* now the register map, to show the result */
-                file.write(&format!("OUT: {}\n", 
-                                    hexvec_(&self.register_map
-                                                .get(p)
-                                                .unwrap())).as_bytes());
+                //file.write(&format!("OUT:   {}\n", 
+                //                    hexvec_(&self.register_map
+                //                                .get(p)
+                //                                .unwrap().0)).as_bytes());
+                file.write(b"OUT: ");
+                let mut i = 0;
+                let &&(ref rs, ref ds) = &self.register_map.get(p).unwrap();
+                for (r,d) in rs.iter().zip(ds) {
+                    i += 1;
+                    if i == 8 { file.write(b"\n.... "); };
+                    file.write(&format!("{:x}",r).as_bytes());
+                    if let &Some(a) = d {
+                        file.write(&format!("->{:x} ",a).as_bytes());
+                    } else {
+                        file.write(b" ");
+                    }
+                }
+                file.write(b"\n");
                 file.write(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
                                     pname).as_bytes());
             }
@@ -874,7 +888,7 @@ impl Population {
             }
         }
 
-        pub fn dump_all (&self, uc: &unicorn::CpuARM) -> () {
+        pub fn dump_all (&self, uc: &unicorn::CpuARM) -> String {
             let dir = format!("{}/{}_season_{}_dump/",
                               &self.params.log_dir,
                               &self.params.label,
@@ -899,6 +913,7 @@ impl Population {
 
             }
 
+            dir
         }
 
         pub fn random_spawn (&self) -> Chain {
@@ -1084,13 +1099,6 @@ impl Population {
             self.best = Some(self.deme[i].clone());
         }
 
-        pub fn periodic_save (&self) {
-            if self.iteration % self.params.save_period == 0 {
-                println!("[*] Saving population to {}", &self.params.pop_path);
-                self.save();
-            }
-        }
-
         pub fn avg_edi_rate (&self) -> f32{
             1.0 - mean(&self.deme.iter()
                                  .map(|ref x| x.enabled_ratio())
@@ -1105,17 +1113,6 @@ impl Population {
                       .collect::<Vec<f32>>())
         }
 
-        pub fn save (&self) {
-            let mut json_file = OpenOptions::new()
-                                            .truncate(true)
-                                            .write(true)
-                                            .create(true)
-                                            .open(&self.params.pop_path)
-                                            .unwrap();
-            let json_string = format!("{}\n",self.deme.to_json());
-            json_file.write(json_string.as_bytes()).unwrap();
-            json_file.flush().unwrap();
-        }
 
         /* Needs some refactoring. Maybe a macro. */
         pub fn log (&self, first: bool) -> bool {
@@ -1610,10 +1607,11 @@ pub struct GameData {
 
 #[derive(Eq,PartialEq,Debug,Clone)]
 pub enum Target {
-        Exact(RPattern),
-        Vote(Classification),
-        Game(GameData),
+    Exact(RPattern),
+    Vote(Classification),
+    Game(GameData),
 }
+
 impl Hash for Target {
         fn hash <H: Hasher> (&self, state: &mut H) {
             match self {
@@ -1716,6 +1714,7 @@ impl RPattern {
                     .map(|&(x,y,_)| (x,y))
                     .collect::<Vec<(usize,u32)>>()
         }
+
         pub fn new (s: &str) -> Self {
             let mut parts = s.split(',');
             let mut rp : RPattern = RPattern {
@@ -1726,35 +1725,40 @@ impl RPattern {
             for part in parts {
                 if !part.starts_with("_") {
                     rp.push((i,u32::from_str_radix(part, 16)
-                                        .expect("Failed to parse RPattern")
-                                        as u32));
+                                   .expect("Failed to parse RPattern")
+                               as u32));
                 }
                 i += 1;
             }
             rp
         }
+
         pub fn shuffle_vec (&self) 
-                                              -> Vec<(usize, u32, f32)> {
+                            -> Vec<(usize, u32, f32)> {
             let mut c = self.regvals_diff.clone();
             let mut rng = thread_rng(); // switch to seedable
             rng.shuffle(&mut c);
             c
         }
+
         pub fn push (&mut self, x: (usize, u32)) {
             self.regvals_diff.push((x.0,x.1,1.0));
         }
+
         pub fn constants (&self) -> Vec<i32> {
             self.regvals_diff
-                    .iter()
-                    .map(|&p| p.1 as i32)
-                    .collect()
+                .iter()
+                .map(|&p| p.1 as i32)
+                .collect()
         }
+
         pub fn satisfy (&self, regs: &Vec<u32>) -> bool {
             for &(idx,val,_) in &self.regvals_diff {
                 if regs[idx] != val { return false };
             }
             true
         }
+
         pub fn matches (&self, regs: &Vec<u32>) -> Fingerprint {
             let mut scorecard : Fingerprint = Fingerprint::new();
             for &(idx,val,diff) in &self.regvals_diff {
@@ -1766,6 +1770,7 @@ impl RPattern {
             }
             scorecard
         }
+
         fn vec_pair (&self, regs: &Vec<u32>) -> (Vec<u32>, Vec<u32>) {
             let mut ivec = Vec::new();
             let mut ovec = Vec::new();
@@ -1775,10 +1780,12 @@ impl RPattern {
             }
             (ivec, ovec)
         }
+
         pub fn distance_deref (&self, regs: &Vec<u32>) -> f32 {
         
             1.0 /* placeholder */
         }
+
         pub fn distance (&self, regs: &Vec<u32>) -> f32 {
             let (i, o) = self.vec_pair(regs);
             //let h = hamming_distance(&i, &o);

@@ -160,6 +160,7 @@ pub struct EvalCaseResult {
         pub crashes : bool,
         pub visited : Vec<u32>,
         pub registers : Vec<u32>,
+        pub reg_deref : Vec<Option<u32>>,
 }
 #[derive(Debug,PartialEq)]
 pub struct EvalResult {
@@ -169,7 +170,7 @@ pub struct EvalResult {
         pub crashes : bool,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
-        pub register_map : HashMap<Problem, Vec<u32>>,
+        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
         pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
@@ -251,6 +252,7 @@ fn eval_case (uc: &mut CpuARM,
             crashes: crash,
             visited: result.visited,
             registers: result.registers,
+            reg_deref: result.reg_deref,
         }
 }
 /*
@@ -301,7 +303,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let mut anycrash = false;
         let mut difficulties : HashMap<Problem,f32> = HashMap::new();
         let mut visited_map  : HashMap<Problem,Vec<u32>> = HashMap::new();
-        let mut register_map : HashMap<Problem,Vec<u32>> = HashMap::new(); 
+        let mut register_map : HashMap<Problem,(Vec<u32>,Vec<Option<u32>>)>
+            = HashMap::new(); 
         for problem in io_targets.iter() {
             let res : EvalCaseResult = eval_case(uc,
                                                  chain,
@@ -316,7 +319,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             // we could make this more efficient by just taking a
             // unique identifier for each problem.
             visited_map.insert(p.clone(), res.visited);
-            register_map.insert(p, res.registers);
+            register_map.insert(p, (res.registers, res.reg_deref));
             /* crash tracking */ 
             let counter = res.counter;
             
@@ -420,7 +423,7 @@ pub struct FitUpdate {
         pub runtime     : Option<f32>,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
-        pub register_map : HashMap<Problem, Vec<u32>>,
+        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
 }
 
 #[derive(Debug,Clone)]
@@ -473,10 +476,46 @@ pub fn update_difficulties (params: &mut Params,
         }
 }
 
+pub fn mark_heatmap (heatmap: &mut HashMap<u32,usize>,
+                     uniq_visits: &Vec<Vec<u32>>) {
+    for uniq_visits_row in uniq_visits {
+        for addr in uniq_visits_row {
+            let count = heatmap.entry(*addr)
+                               .or_insert(0);
+            *count += 1;
+        }
+    }
+}
+
+pub fn dump_heatmap (heatmap: &HashMap<u32,usize>, path: &str) {
+    let mut file = OpenOptions::new()
+                               .truncate(true)
+                               .write(true)
+                               .create(true)
+                               .open(path)
+                               .unwrap();
+    // make life easy, serialize as sexp
+    // open parens on alist
+    file.write(b";; --- BEGIN HEATMAP ---\n(\n");
+
+    let mut addrs : Vec<u32> = heatmap.keys()
+                                      .map(|a| *a)
+                                      .collect();
+    addrs.sort();
+    for addr in addrs {
+        let count = heatmap.get(&addr).unwrap();
+        let addr = addr;
+        let sexp  = format!("  (#x{} . #x{})\n", addr, count);
+        file.write(&sexp.as_bytes());
+    }
+    file.write(b")\n;; --- END HEATMAP ---\n");
+    
+}
 
 pub fn patch_population (tr: &TournamentResult,
                          population: &mut Population,
-                         verbose: bool) 
+                         verbose: bool,
+                         heatmap: &mut HashMap<u32,usize>) 
                          -> (Option<Chain>, Vec<f32>) 
 {
         assert_eq!(tr.graves.len(), tr.spawn.len());
@@ -484,7 +523,8 @@ pub fn patch_population (tr: &TournamentResult,
         let season = population.season;
         // Insert the new children into the slots of the dead
         for i in 0..tr.graves.len() {
-        //    println!(">> filling grave #{}",tr.graves[i]);
+            // update heatmap for the offspring
+            mark_heatmap(heatmap, &tr.spawn[i].dedup_visits());
             population.deme[tr.graves[i]] = tr.spawn[i].clone();
             population.deme[tr.graves[i]].season = season;
         }
@@ -492,6 +532,7 @@ pub fn patch_population (tr: &TournamentResult,
         let mut fitness_deltas = Vec::new();
         for &(i, ref fit_up) in tr.fit_updates.iter() {
             if let Some(f) = fit_up.fitness {
+                mark_heatmap(heatmap, &population.deme[i].dedup_visits());
                 population.deme[i].season  = season;
                 population.deme[i].fitness = Some(f);
                 population.deme[i].visited_map = fit_up.visited_map.clone();
