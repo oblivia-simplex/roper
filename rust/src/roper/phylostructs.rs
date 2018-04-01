@@ -490,6 +490,9 @@ impl Display for Chain {
             s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", 
                                                     self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
+            s.push_str(&format!("Stray Rate:       {}\n", self.stray_rate));
+            s.push_str(&format!("Vist. Divers.:    {}\n", self.visitation_diversity));
+            s.push_str(&format!("Run Time:         {:?}\n", self.runtime));
             s.push_str(&format!("Generation: {}\n", self.generation));
             s.push_str(&format!("Ancestral Fitness: {:?}\n",
                                                     self.p_fitness));

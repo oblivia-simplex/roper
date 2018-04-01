@@ -119,15 +119,15 @@ fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
 }
 
 fn clone_and_mutate (parents: &Vec<&Chain>,
-                                              params:  &Params,
-                                              rng:     &mut ThreadRng) -> Vec<Chain> {
+                     params:  &Params,
+                     rng:     &mut ThreadRng) -> Vec<Chain> {
         let mut brood : Vec<Chain> = Vec::new();
         let n = params.brood_size;
         for i in 0..n {
             let spawnclumps = parents[i % 2].clumps.clone();
             let mut spawn = Chain::new(spawnclumps);
             mutate(&mut spawn, &params, rng);
-            mutate_edi(&mut spawn, &params, rng);
+            if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
             spawn.p_fitness = parents[i % 2].fitness;
             spawn.generation = parents[i % 2].generation + 1;
             brood.push(spawn);

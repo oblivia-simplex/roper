@@ -303,29 +303,32 @@
 ;; visited: +green+
 ;; visited and stray: +red+
 
-(defun colormap (section visit-maps &key (width 4))
+(defun colormaps (section visit-maps &key (width 4))
   (loop for k being the hash-keys of visit-maps
-        collect
-        (let* ((pixelrow (make-array (* 3 (length (sec-data section)))
-                                     :element-type '(unsigned-byte 8)))
-               (offset 0)
-               (addr (sec-addr section))
-               (visits (gethash k visit-maps))
-               (nextvis (pop visits)))
-           (loop for dword across (sec-words section)
-                 do
-                 (let ((color +blue+))
-                   (when (and nextvis (= addr (car nextvis))
-                          (if (cadr nextvis) ;; if stray
-                              (setq color +red+)
-                              (setq color +green+))
-                          (setq nextvis (pop visits))))
-                   (incf addr width)
-                   (mapc (lambda (x)
-                           (setf (aref pixelrow offset) x)
-                           (incf offset))
-                         (dword->pixels dword color))))
-          pixelrow)))
+        collect (colormap section (gethash k visit-maps) :width width)))
+
+(defun colormap (section visits &key (width 4))
+  (let* ((pixelrow (make-array (* 3 (length (sec-data section)))
+                               :element-type '(unsigned-byte 8)))
+         (offset 0)
+         (addr (sec-addr section))
+         (nextvis (pop visits)))
+    ;;          (format t "visits: ~S~%" visits)
+    (loop for dword across (sec-words section)
+          do
+             (let ((color +blue+))
+               (when (and nextvis (< (- (car nextvis) addr) 2))
+                 (format t "nextvis: ~S~%" nextvis)
+                 (if (cadr nextvis) ;; if stray
+                     (setq color +red+)
+                     (setq color +green+))
+                 (setf nextvis (pop visits)))
+               (incf addr width)
+               (mapc (lambda (x)
+                       (setf (aref pixelrow offset) x)
+                       (incf offset))
+                     (word->pixels dword color))))
+    pixelrow))
 
 (defun maxheat (heatmap-alist)
   (reduce #'max (mapcar #'cdr heatmap-alist)))
@@ -355,6 +358,7 @@
         (loop for word across (sec-words section) do
           (let ((pixels (word->pixels word +blue+ ))
                 (nextheat (assoc addr heatmap-alist)))
+            (format t "addr: ~S, nextheat: ~S~%" addr nextheat)
             (when nextheat ;; optimise with hashtable
               (setf pixels
                     (mapcar #'logior

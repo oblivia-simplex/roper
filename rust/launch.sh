@@ -3,6 +3,8 @@
 [ -n "$ROPER_THREADS" ] || ROPER_THREADS=1
 [ -n "$BARE_RUN" ] && ROPER_THREADS=1
 
+INDEXSUFFIX="_alt" # for simulataneous runs, etc.
+
 POPSIZE=2048
 
 export RUSTFLAGS=-Awarnings
@@ -120,8 +122,8 @@ function run () {
                                 -V \
                                 -R \
                                 -S \
-                                -L $LABEL \
-                                -E
+                                -L $LABEL 
+  #                              -E
   # Add -S flag to enable fitness sharing
                                 
 }
@@ -131,7 +133,7 @@ if (( $BARE_RUN )) ; then
   exit 0
 fi
 
-WEBSRV_PID=$(webserver)
+(( $NOSERVE )) || WEBSRV_PID=$(webserver)
 echo "[+] launching roper"
 run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
 roper_pid=$!
@@ -230,7 +232,7 @@ pause 4.35
 reread
 EOF
 
-cat > $SRV/index.html<<EOF
+cat > $SRV/index${INDEXSUFFIX}.html<<EOF
 <script type="text/javascript" src="http://livejs.com/live.js"></script>
 <!-- <meta http-equiv="refresh" content="5"> -->
 <img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />

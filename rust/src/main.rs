@@ -362,6 +362,11 @@ fn main() {
     params.random_override = random_override;
     params.set_init_difficulties();
     params.use_edis = use_edis;
+    
+    if !use_edis {
+        params.initial_edi_rate = 0.0;
+        params.edi_toggle_rate  = 0.0;
+    };
 
     //params.io_targets.num_classes = params.outregs.len();
     // add string search function
@@ -501,7 +506,7 @@ fn main() {
                     println!("--- SEASONAL POPULATION DATA DUMP ---");
                     let dir = &mut_pop.dump_all(&debug_machinery.cluster[0]
                                                                 .unwrap());  
-                    let hm_path = format!("{}/heatmap.lisp", dir);
+                    let hm_path = format!("{}/heatmap.sexp", dir);
                     println!("--- DUMPING HEATMAP ---");
                     dump_heatmap(&heatmap, &hm_path);
 
