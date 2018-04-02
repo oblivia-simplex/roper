@@ -20,13 +20,29 @@ function avg_fit_by_stray () {
 
 tmp=$(mktemp)
 
+# this is a horrible horrible piece of code, but i don't care right now
+function count_implicit_stray () {
+    stray=$(mktemp)
+    all=$(mktemp)
+    awk '/BEGIN VISIT MAP/{flag=1;next}/END VISIT MAP/{flag=0}flag' \
+        | tee >(grep -P "^[0-9a-f]{8}" > $all) \
+        | grep stray > $stray
+    straylines=$(wc $stray | awk '{print $1}')
+    alllines=$(wc $all | awk '{print $1}')
+    echo "stray: $straylines out of $alllines" >&2
+    rm $stray $all
+    echo "$straylines / $alllines" | bc -l
+}
+
 find $dir -type f -name "*.txt" \
     | while read f; do
         abfit=$(head -n 256 $f | grep "Absolute Fitness" | getsome) 
         [ -n "$abfit" ] || continue
-        stray=$(head -n 256 $f | grep "Stray Rate" | awk '{print $3}')
+        stray=""
+        (( $USE_IMPLICIT_COUNT )) || stray=$(head -n 256 $f | grep "Stray Rate" | awk '{print $3}')
+        [ -n "$stray" ] || stray=$(cat $f | count_implicit_stray)
         echo "$abfit,$stray"
-    done > $tmp
+    done | tee $tmp
 
 
 echo "STRAY BY FIT:"

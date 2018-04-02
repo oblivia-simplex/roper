@@ -383,7 +383,7 @@
                             nil)))
     (assert (> m 0))
     (labels ((calc-heat (h)
-               (+ #x30 (floor (* #xCF (/ h m)))))
+               (+ #x40 (floor (* #xBF (/ h m)))))
              (warm (heat pixels color)
                (mapcar #'logior
                        pixels

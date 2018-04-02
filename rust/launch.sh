@@ -120,7 +120,6 @@ function run () {
                                 -t $ROPER_THREADS \
                                 -D 4 \
                                 -m 0.05 \
-                                -V \
                                 -R \
                                 -S \
                                 -L $LABEL 
