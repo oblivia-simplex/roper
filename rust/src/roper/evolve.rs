@@ -476,41 +476,6 @@ pub fn update_difficulties (params: &mut Params,
         }
 }
 
-pub fn mark_heatmap (heatmap: &mut HashMap<u32,usize>,
-                     uniq_visits: &Vec<Vec<u32>>) {
-    for uniq_visits_row in uniq_visits {
-        for addr in uniq_visits_row {
-            let count = heatmap.entry(*addr)
-                               .or_insert(0);
-            *count += 1;
-        }
-    }
-}
-
-pub fn dump_heatmap (heatmap: &HashMap<u32,usize>, path: &str) {
-    let mut file = OpenOptions::new()
-                               .truncate(true)
-                               .write(true)
-                               .create(true)
-                               .open(path)
-                               .unwrap();
-    // make life easy, serialize as sexp
-    // open parens on alist
-    file.write(b";; --- BEGIN HEATMAP ---\n(\n");
-
-    let mut addrs : Vec<u32> = heatmap.keys()
-                                      .map(|a| *a)
-                                      .collect();
-    addrs.sort();
-    for addr in addrs {
-        let count = heatmap.get(&addr).unwrap();
-        let addr = addr;
-        let sexp  = format!("  (#x{} . #x{})\n", addr, count);
-        file.write(&sexp.as_bytes());
-    }
-    file.write(b")\n;; --- END HEATMAP ---\n");
-    
-}
 
 pub fn patch_population (tr: &TournamentResult,
                          population: &mut Population,

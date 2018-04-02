@@ -1,4 +1,5 @@
 #![allow(bad_style)]
+#![feature(iterator_step_by)]
 
 extern crate rand;
 extern crate unicorn;
@@ -460,7 +461,6 @@ pub struct Chain {
         pub input_slots: Vec<(usize,usize)>,
         pub verbose_tag: bool,
         pub crashes: Option<bool>,
-        pub stray_rate: f32,
         pub season: usize,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
@@ -490,7 +490,7 @@ impl Display for Chain {
             s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", 
                                                     self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
-            s.push_str(&format!("Stray Rate:       {}\n", self.stray_rate));
+            s.push_str(&format!("Stray Rate:       {}\n", self.stray_addr_rate()));
             s.push_str(&format!("Vist. Divers.:    {}\n", self.visitation_diversity));
             s.push_str(&format!("Run Time:         {:?}\n", self.runtime));
             s.push_str(&format!("Generation: {}\n", self.generation));
@@ -560,7 +560,6 @@ impl Default for Chain {
                 p_fitness: None,
                 generation: 0,
                 season: 0,
-                stray_rate: 0.0,
                 verbose_tag: false,
                 crashes: None,
                 runtime: None,
@@ -740,7 +739,8 @@ impl Chain {
             }
     //        println!(">> stray: {}, hit: {}, count: {}\n", strays, hits, count);
 
-            strays as f32 / count as f32
+            let stray_rate = strays as f32 / count as f32;
+            stray_rate
         }
 
         pub fn stray_to_edi_rate (&self) -> f32 {
@@ -835,20 +835,36 @@ pub struct Population  {
 
 unsafe impl Send for Population {}
 
+pub fn make_gadget_heatmap(clumps: &Vec<Clump>, width: u32) -> HashMap<u32,usize> {
+    let mut hm : HashMap<u32,usize> = HashMap::new();
+    for clump in clumps {
+        println!("GADGET ENTRY: {:08x}, EXIT: {:08x}, SIZE: {}", 
+                 clump.words[0], clump.ret_addr, clump.ret_addr - clump.words[0]);
+        for a in (clump.words[0]..clump.ret_addr) {
+            if a % width == 0 { hm.insert(a,1); };
+        }
+    }
+    hm
+}
+
 impl Population {
         pub fn new (params: &Params, engine: &mut Engine) -> Population {
             let mut clumps = reap_gadgets(&params.code, 
-                                                                        params.code_addr, 
-                                                                        MachineMode::ARM);
+                                          params.code_addr, 
+                                          MachineMode::ARM);
             println!("[*] Harvested {} ARM gadgets from {}",
                               clumps.len(), params.binary_path);
-            let thumb_clumps = &reap_gadgets(&params.code,
-                                                                              params.code_addr,
-                                                                              MachineMode::THUMB);
-            println!("[*] Harvested {} THUMB gadgets from {}",
-                              thumb_clumps.len(), params.binary_path);
-            clumps.extend_from_slice(&thumb_clumps);
-        
+            //let thumb_clumps = &reap_gadgets(&params.code,
+            //                                 params.code_addr,
+            //                                 MachineMode::THUMB);
+            //println!("[*] Harvested {} THUMB gadgets from {}",
+            //                  thumb_clumps.len(), params.binary_path);
+            //clumps.extend_from_slice(&thumb_clumps);
+            
+            /* it would be good to dump a "heatmap" of the gadgets found here */
+            let gadget_heatmap = make_gadget_heatmap(&clumps, 2);
+            let hmpath = format!("{}_heatmap.sexp", &params.binary_path);
+            dump_heatmap(&gadget_heatmap, &params.binary_path, &hmpath);
             let mut rng = rand::thread_rng();
 
             let mut clump_buckets : Vec<Vec<Clump>> = 
@@ -1688,6 +1704,11 @@ pub struct RPattern2 (Vec<RPatEq>);
   * And then write a parser for a simple set of equations, 
   * instead of an int / wildcard pattern.
   */
+#[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+pub enum RVal {
+    Immed(u32),
+    Deref(u32),
+}
 
 #[derive(Debug,Clone)]
 pub struct RPattern { 
@@ -1695,9 +1716,9 @@ pub struct RPattern {
         regvals_prediff: Vec<(usize,u32,f32)>,
 }
 impl Hash for RPattern {
-        fn hash <H: Hasher> (&self, state: &mut H) {
-            self.clean().hash(state)
-        }
+    fn hash <H: Hasher> (&self, state: &mut H) {
+        self.clean().hash(state)
+    }
 }
 impl PartialEq for RPattern {
         fn eq (&self, other: &Self) -> bool {
@@ -1710,12 +1731,13 @@ impl PartialEq for RPattern {
 }
 impl Eq for RPattern {}
 
+
 impl RPattern {
         pub fn clean (&self) -> Vec<(usize,u32)> {
             self.regvals_diff
-                    .iter()
-                    .map(|&(x,y,_)| (x,y))
-                    .collect::<Vec<(usize,u32)>>()
+                .iter()
+                .map(|&(x,y,_)| (x,y))
+                .collect::<Vec<(usize,u32)>>()
         }
 
         pub fn new (s: &str) -> Self {
@@ -1927,3 +1949,42 @@ pub fn random_chain_from_buckets (clump_buckets:  &Vec<Vec<Clump>>,
         Chain::new(genes)
 }
 
+
+pub fn mark_heatmap (heatmap: &mut HashMap<u32,usize>,
+                     visits: &Vec<Vec<u32>>) {
+    for visits_row in visits {
+        for addr in visits_row {
+            let count = heatmap.entry(*addr)
+                               .or_insert(0);
+            *count += 1;
+        }
+    }
+}
+
+pub fn dump_heatmap (heatmap: &HashMap<u32,usize>, 
+                     elfpath: &str,
+                     path: &str) {
+    let mut file = OpenOptions::new()
+                               .truncate(true)
+                               .write(true)
+                               .create(true)
+                               .open(path)
+                               .unwrap();
+    // make life easy, serialize as sexp
+    // open parens on alist
+    file.write(b";; --- BEGIN HEATMAP ---\n");
+    file.write(format!("(\n  (:elfpath . \"{}\") ;; don't parse as int!\n",
+                       elfpath).as_bytes());
+    let mut addrs : Vec<u32> = heatmap.keys()
+                                      .map(|a| *a)
+                                      .collect();
+    addrs.sort();
+    for addr in addrs {
+        let count = heatmap.get(&addr).unwrap();
+        let addr = addr;
+        let sexp  = format!("  (#x{:x} . #x{:x})\n", addr, count);
+        file.write(&sexp.as_bytes());
+    }
+    file.write(b")\n;; --- END HEATMAP ---\n");
+    
+}

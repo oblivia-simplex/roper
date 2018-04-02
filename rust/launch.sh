@@ -3,7 +3,7 @@
 [ -n "$ROPER_THREADS" ] || ROPER_THREADS=1
 [ -n "$BARE_RUN" ] && ROPER_THREADS=1
 
-INDEXSUFFIX="_alt" # for simulataneous runs, etc.
+INDEXSUFFIX="" # for simulataneous runs, etc.
 
 POPSIZE=2048
 
@@ -50,7 +50,7 @@ GOAL="0.1"
 READEVERY=1
 LABEL=`labelmaker`
 
-LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d`
+LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d/${LABEL}/`
 mkdir -p $LOGDIR
 OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
 ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
@@ -232,10 +232,12 @@ pause 4.35
 reread
 EOF
 
-cat > $SRV/index${INDEXSUFFIX}.html<<EOF
+cat > $SRV/$LABEL.html<<EOF
 <script type="text/javascript" src="http://livejs.com/live.js"></script>
 <!-- <meta http-equiv="refresh" content="5"> -->
+<a href="${LOGDIR}">
 <img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
+</a>
 EOF
 
 #plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \

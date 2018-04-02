@@ -1,3 +1,11 @@
+#! /usr/local/bin/sbcl --script
+;;; The following lines added by ql:add-to-init-file:
+#-quicklisp
+(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+                                       (user-homedir-pathname))))
+  (when (probe-file quicklisp-init)
+    (load quicklisp-init)))
+
 ;;; lazily dumping all i need right here.
 (defpackage :visitplot
   (:use :common-lisp))
@@ -303,10 +311,9 @@
 ;; visited: +green+
 ;; visited and stray: +red+
 
-(defun colormaps (section visit-maps &key (width 4))
-  (loop for k being the hash-keys of visit-maps
-        collect (colormap section (gethash k visit-maps) :width width)))
 
+
+(defparameter *notexture* t)
 (defun colormap (section visits &key (width 4))
   (let* ((pixelrow (make-array (* 3 (length (sec-data section)))
                                :element-type '(unsigned-byte 8)))
@@ -316,9 +323,10 @@
     ;;          (format t "visits: ~S~%" visits)
     (loop for dword across (sec-words section)
           do
-             (let ((color +blue+))
+             (let ((dword (if *notexture* #xaaaaaaaa dword))
+                   (color +blue+))
                (when (and nextvis (< (- (car nextvis) addr) 2))
-                 (format t "nextvis: ~S~%" nextvis)
+                 ;(format t "nextvis: ~S~%" nextvis)
                  (if (cadr nextvis) ;; if stray
                      (setq color +red+)
                      (setq color +green+))
@@ -330,25 +338,58 @@
                      (word->pixels dword color))))
     pixelrow))
 
+(defun colormaps (section visit-maps &key (width 4))
+  (loop for k being the hash-keys in visit-maps
+        collect (colormap section (gethash k visit-maps) :width width)))
+
 (defun maxheat (heatmap-alist)
   (reduce #'max (mapcar #'cdr heatmap-alist)))
 
 (defun read-heatmap (path)
-  (let ((hm (with-open-file (s path)
-              (read s))))
-    (mapc (lambda (x)
-            (setf (car x)
-                  (wordalign (car x))))
-          hm)
-    hm))
+  (when (probe-file path)
+    (format t "Found ~A~%" path)
+    (let ((elfpath)
+          (hm (with-open-file (s path)
+                (read s))))
+      (when (keywordp (caar hm))       ;; recently changed format
+        (setq elfpath (cdr (pop hm))))
+      (mapc (lambda (x)
+              (setf (car x)
+                    (wordalign (car x))))
+            hm)
+      (values hm elfpath))))
 
 ;;NB the chains appear to be visiting some addresses lower than text!
 
-(defun heatmap->colormap (section heatmap-alist &key (width 4))
-  (let ((m (maxheat heatmap-alist)))
+(defun alist->hashtable (alist)
+  (let ((ht (make-hash-table)))
+    (loop for (k . v) in alist do
+      (setf (gethash k ht) v))
+    ht))
+
+
+(defun mkpixel (color intensity)
+  (let ((pixel (list 0 0 0)))
+    (setf (elt pixel color) intensity)
+    pixel))
+
+(defun heatmap->colormap (section heatmap-alist
+                          &key (width 4)
+                            (gadget-heatmap-alist))
+  (let ((m (maxheat heatmap-alist))
+        (heatmap (alist->hashtable heatmap-alist))
+        (gadget-heatmap (if gadget-heatmap-alist
+                            (alist->hashtable gadget-heatmap-alist)
+                            nil)))
     (assert (> m 0))
     (labels ((calc-heat (h)
-               (floor (* #xFF (/ h m)))))
+               (+ #x30 (floor (* #xCF (/ h m)))))
+             (warm (heat pixels color)
+               (mapcar #'logior
+                       pixels
+                       (loop for i below width
+                             append
+                             (mkpixel color heat)))))
       (let ((pixelrow (make-array (* 3 (length (sec-data section)))
                                   :element-type '(unsigned-byte 8)))
             (offset 0)
@@ -356,20 +397,19 @@
         ;; kludge, but figure out why sub-text addrs are being visited.
         ;; did i map other executable memory? investigate
         (loop for word across (sec-words section) do
-          (let ((pixels (word->pixels word +blue+ ))
-                (nextheat (assoc addr heatmap-alist)))
-            (format t "addr: ~S, nextheat: ~S~%" addr nextheat)
+          (let* ((pixels (if *notexture*
+                             (loop for i below width append (list 0 0 0))
+                             (word->pixels word +green+)))
+                 (nextheat (gethash addr heatmap))
+                 (on-gadget (if gadget-heatmap
+                                (gethash addr gadget-heatmap))))
+            ;(format t "addr: ~S, nextheat: ~S~%" addr nextheat)
             (when nextheat ;; optimise with hashtable
               (setf pixels
-                    (mapcar #'logior
-                            pixels
-                            (loop for i below width
-                                  append
-                                  (let ((p (list 0 0 0)))
-                                    (setf (elt p +red+)
-                                          (calc-heat (cdr nextheat)))
-                                    p))))
-              (format t "heat> ~S~%" pixels))
+                    (warm (calc-heat nextheat) pixels +red+)))
+            (when on-gadget
+              (setf pixels
+                    (warm #x80 pixels +blue+)))
             (incf addr width)
             (mapc (lambda (x)
                     (setf (aref pixelrow offset) x)
@@ -393,7 +433,7 @@
 (defun visited->colormap (path)
   (multiple-value-bind (visit-maps textsec)
       (parse-visited-log path)
-    (let* ((full-cm (colormap textsec visit-maps))
+    (let* ((full-cm (colormaps textsec visit-maps))
            (dedupe-cm (remove-duplicates full-cm :test #'equalp)))
       dedupe-cm)))
 
@@ -412,14 +452,15 @@
 
          (pad (loop for i below (* 3 (- (* height width) pixelcount))
                     collect 0)))
-    (format t "Using zero pad of ~D bytes..." (length pad))
+    ;(format t "Using zero pad of ~D bytes..." (length pad))
     (with-open-file (stream ppm-path :if-exists :supersede
                                      :element-type '(unsigned-byte 8)
                                      :direction :output)
       (let ((header (make-ppm-header height width)))
         (write-sequence header stream)
         (write-sequence colormap-row stream)
-        (write-sequence pad stream)))))
+        (write-sequence pad stream)))
+    (convert-ppm->png ppm-path)))
 
 (defun colormap->canvases (colormap dirname)
     (ensure-directories-exist dirname)
@@ -440,6 +481,7 @@
     (colormap->canvases colormap dirname)
     (asdf:run-shell-command cmd)))
 
+
 ;; NB: to reduce memory footprint, do a binary merge superimpose on
 ;; total list of colormaps
 (defun superimpose-directory (dir)
@@ -453,8 +495,46 @@
       (push (superimpose (visited->colormap log)) colormap))
     colormap))
 
+(defun convert-ppm->png (ppm-path)
+  (let ((png-path (concatenate 'string
+                               (cl-ppcre:scan-to-strings "^(?:(?!\.ppm).)*"
+                                                         ppm-path)
+                               ".png")))
+    (format t "png-path: ~A~%" png-path)
+    (asdf:run-shell-command (format nil "convert -scale 200% ~A ~A" ppm-path png-path))))
 
-(defun heatmap->canvas (elf-path heatmap-path ppm-path)
-  (let ((colormap-row (heatmap->colormap (get-text elf-path)
-                                         (read-heatmap heatmap-path))))
-    (paint-canvas colormap-row ppm-path)))
+
+(defun heatmap->canvas (heatmap-path &key ppm-path elf-path)
+  (multiple-value-bind (heatmap %%elf-path)
+      (read-heatmap heatmap-path)
+    (let* ((%elf-path (if elf-path
+                          elf-path
+                          %%elf-path))
+           (ppm-path (if ppm-path ppm-path
+                         (concatenate 'string
+                                      (cl-ppcre:scan-to-strings "^(?:(?!\.sexp).)*"
+                                                                heatmap-path)
+                                      ".ppm")))
+           (gadget-heatmap-path (format nil "~A_heatmap.sexp" %elf-path))
+           (gadget-heatmap (read-heatmap gadget-heatmap-path)))
+      (let ((colormap-row (heatmap->colormap (get-text %elf-path)
+                                            heatmap
+                                            :gadget-heatmap-alist gadget-heatmap)))
+      (format t "elf-path: ~A~%ppm-path: ~A~%" %elf-path ppm-path)
+      (paint-canvas colormap-row ppm-path)))))
+
+
+;; for convenience
+(defparameter *elf-path* "/home/vagrant/ROPER/data/tomato-RT-N18U-httpd")
+
+(defparameter *posix-argv* sb-ext:*posix-argv*)
+
+(defun main ()
+  (let ((opt (cadr *posix-argv*))
+        (log (caddr *posix-argv*)))
+    (cond ((string= opt "-H") (heatmap->canvas log))
+          ((string= opt "-M") (visited->montage log "/tmp/visit-montage/"))
+          (t (format t "Command line options not recognized")))))
+
+
+(main)

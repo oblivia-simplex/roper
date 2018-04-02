@@ -19,6 +19,7 @@ use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use std::io;
 use std::process;
+use std::process::Command;
 mod roper;
 
 use rand::{thread_rng,Rng};
@@ -90,6 +91,7 @@ fn main() {
     let verbose = false;
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
+    let script_dir = "/home/vagrant/ROPER/scripts/";
         
     
 
@@ -383,10 +385,6 @@ fn main() {
     
     let population = Population::new(&params, &mut machinery.cluster[0]);
 
-    for chain in population.deme.iter() {
-        println!("\n{}",chain);
-    }
-
     let mut debug_machinery : Machinery 
         = Machinery::new(&elf_path,
                                           mode,
@@ -414,6 +412,7 @@ fn main() {
       * The Main Evolution Loop *
       ***************************/
     let mut heatmap : HashMap<u32,usize> = HashMap::new();
+    let mut all_heatmaps : Vec<HashMap<u32,usize>> = Vec::new();
     while i < max_iterations
         && (champion == None 
         || champion.as_ref()
@@ -506,9 +505,20 @@ fn main() {
                     println!("--- SEASONAL POPULATION DATA DUMP ---");
                     let dir = &mut_pop.dump_all(&debug_machinery.cluster[0]
                                                                 .unwrap());  
-                    let hm_path = format!("{}/heatmap.sexp", dir);
+                    let hm_path = format!("{}/{}_S{}_heatmap.sexp", 
+                                          dir,
+                                          &params.label,
+                                          season);
                     println!("--- DUMPING HEATMAP ---");
-                    dump_heatmap(&heatmap, &hm_path);
+                    /* cumulative heatmap dump */
+                    dump_heatmap(&heatmap, &params.binary_path, &hm_path);
+                    let out = Command::new(&format!("{}/visitplot.lisp", script_dir))
+                                      .args(&["-H", &hm_path])
+                                      .output()
+                                      .expect("Failed to run visitplot.lisp on heatmap");
+                    println!("> {:?}",out);
+                    all_heatmaps.push(heatmap.clone());
+                    heatmap = HashMap::new();
 
                 };
                 class_stddev_difficulties = mut_pop.params
