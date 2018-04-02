@@ -50,7 +50,8 @@ GOAL="0.1"
 READEVERY=1
 LABEL=`labelmaker`
 
-LOGDIR=`date +$PROJECT_ROOT/logs/%y/%m/%d/${LABEL}/`
+LOGDIR_REL=`date +logs/%y/%m/%d/${LABEL}/`
+LOGDIR="${PROJECT_ROOT}/${LOGDIR_REL}"
 mkdir -p $LOGDIR
 OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
 ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
@@ -235,7 +236,7 @@ EOF
 cat > $SRV/$LABEL.html<<EOF
 <script type="text/javascript" src="http://livejs.com/live.js"></script>
 <!-- <meta http-equiv="refresh" content="5"> -->
-<a href="${LOGDIR}">
+<a href="${LOGDIR_REL}">
 <img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
 </a>
 EOF
