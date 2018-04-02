@@ -495,6 +495,7 @@ fn main() {
                                          Batch::TESTING,
                                          true);
                     }
+                    /* TODO: try commenting out the next line to hold crash penalty constant */
                     mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
                 }
                 season_change = update_difficulties(&mut mut_pop.params, 

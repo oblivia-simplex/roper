@@ -981,6 +981,7 @@ pub fn reap_gadgets (code: &Vec<u8>,
         } // .iter().filter(|c| c.size() >= 2).collect()
 }
 
+/* TODO: try holding crash penalty constant */
 pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
         crash_rate / 2.0
 }

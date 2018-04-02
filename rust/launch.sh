@@ -234,8 +234,7 @@ reread
 EOF
 
 cat > $SRV/$LABEL.html<<EOF
-<script type="text/javascript" src="http://livejs.com/live.js"></script>
-<!-- <meta http-equiv="refresh" content="5"> -->
+<meta http-equiv="refresh" content="60">
 <a href="${LOGDIR_REL}">
 <img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
 </a>

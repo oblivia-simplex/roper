@@ -408,8 +408,9 @@
               (setf pixels
                     (warm (calc-heat nextheat) pixels +red+)))
             (when on-gadget
-              (setf pixels
-                    (warm #x80 pixels +blue+)))
+              (let ((heat (if nextheat (max #x80 (calc-heat nextheat)) #x80)))
+                (setf pixels
+                      (warm heat pixels +blue+))))
             (incf addr width)
             (mapc (lambda (x)
                     (setf (aref pixelrow offset) x)
@@ -523,6 +524,12 @@
       (format t "elf-path: ~A~%ppm-path: ~A~%" %elf-path ppm-path)
       (paint-canvas colormap-row ppm-path)))))
 
+
+;(defun scrape-abfit-stray (visitlog-path)
+;  (with-open-file (s visitlog-path);
+;
+;    )
+;  )
 
 ;; for convenience
 (defparameter *elf-path* "/home/vagrant/ROPER/data/tomato-RT-N18U-httpd")
