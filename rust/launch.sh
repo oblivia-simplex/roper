@@ -7,6 +7,14 @@ INDEXSUFFIX="" # for simulataneous runs, etc.
 
 POPSIZE=2048
 
+DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
+PATTERNSTRING="-p 02bc3e,&02bc3e,0,_,_,_,_,0b" 
+DATASTRING="-d $DATAFILE"
+READEVERY=1
+
+TASKFLAGS=$PATTERNSTRING
+GOAL="0.0"
+
 export RUSTFLAGS=-Awarnings
 PROJECT_ROOT=`pwd`/..
 SRV=${PROJECT_ROOT}/srv
@@ -15,7 +23,7 @@ mkdir -p $SRV
 function webserver () 
 {
   cd $SRV
-  echo "[+] Serving gnuplot pngs on port 8888..." >&2
+  echo "[+] Serving plots and logs on port 8888..." >&2
   python -m SimpleHTTPServer 8888 &> $SRV/httpd.log.txt &
   echo "$?"
 }
@@ -43,11 +51,6 @@ function labelmaker ()
   echo
 }
 
-DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
-PATTERNSTRING="-p 02bc3e 02bc3e 0 _ _ _ _ 0b" 
-DATASTRING="-d $DATAFILE"
-GOAL="0.1"
-READEVERY=1
 LABEL=`labelmaker`
 
 LOGDIR_REL=`date +logs/%y/%m/%d/${LABEL}/`
@@ -82,7 +85,8 @@ STRAY_RATE=18
 AVG_STRAY_TO_EDI=19
 STRAY_NOCRASH=20
 VISIT_DIVERS=21
-C=22
+RATIO_RUN=22
+C=23
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -99,7 +103,7 @@ X1_AXIS_TITLE="TOURNEMENT ITERATION"
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
-cargo build | tee -a $ERRORFILE || \
+cargo build 2>&1 | tee -a $ERRORFILE || \
   (cat $ERRORFILE && exit)
 echo "[+] roper has been successfully compiled"
 STAMPFILE="/tmp/.roper_starting"
@@ -110,7 +114,7 @@ DISASFILE="/tmp/roper_disassembly.txt"
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
   RUST_BACKTRACE=1 cargo run \
-                             -- -d $DATAFILE \
+                             -- ${TASKFLAGS} \
                                 -b $BINARY \
                                 -o $PROJECT_ROOT/logs \
                                 -g $GOAL \
@@ -135,7 +139,7 @@ fi
 
 (( $NOSERVE )) || WEBSRV_PID=$(webserver)
 echo "[+] launching roper"
-run 2>&1 > $OUTFILE & #2>> $ERRORFILE &
+run > $OUTFILE 2>> $ERRORFILE &
 roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
@@ -158,8 +162,10 @@ ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
 ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
 PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
 
-TERMINALSTRING="set terminal png truecolor background rgb \"black\" size 1660,1024"
-OUTPUTSTRING="set output \"${SRV}/${LABEL}_${TIMESTAMP}.png\""
+IMAGEEXT="svg"
+IMAGEFILE=${LABEL}_${TIMESTAMP}.${IMAGE_EXT}
+TERMINALSTRING="set terminal svg background rgb \"black\" size 1660,1024"
+OUTPUTSTRING="set output \"${SRV}/${IMAGEFILE}\""
 
 function difplot ()
 {
@@ -169,6 +175,7 @@ function difplot ()
   scol=$(( $mcol + 1))
   echo "every $READEVERY u ${X1}:(\$${mcol}+\$${scol}):(\$${mcol}-\$${scol}) w filledcurves lc $colour title 'C$1 STDDEV'"
 }
+
 function difplotline ()
 {
   class=$(( 2 * $1 ))
@@ -176,6 +183,7 @@ function difplotline ()
   mcol=$(( $class + $CLASS0_MEANDIF ))
   echo "every $READEVERY u ${X1}:$mcol w lines lc $colour title 'C$1 MEAN'"
 }
+
 function plotdbg ()
 {
   class=$1
@@ -184,6 +192,7 @@ function plotdbg ()
   echo "print \"class $class mean+stddev > (\$${mcol}+\$${scol})\""
   echo "print \"class $class mean-stddev > (\$${mcol}-\$${scol})\""
 }
+
 function popplotline ()
 {
   col=$1
@@ -213,7 +222,8 @@ plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $MIN_ABFIT), \
   "" $(popplotline $BEST_ABFIT), \
   "" $(popplotline $STRAY_RATE), \
-  "" $(popplotline $VISIT_DIVERS)
+  "" $(popplotline $STRAY_NOCRASH), \
+  "" $(popplotline $RATIO_RUN)
 
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
@@ -235,7 +245,7 @@ EOF
 cat > $SRV/$LABEL.html<<EOF
 <meta http-equiv="refresh" content="60">
 <a href="${LOGDIR_REL}">
-<img src="${LABEL}_${TIMESTAMP}.png" style="width: 100%; height: 100%" />
+<img src="${IMAGEFILE}" style="width: 100%; height: 100%" />
 </a>
 EOF
 

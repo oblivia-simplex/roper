@@ -166,6 +166,7 @@ pub struct EvalCaseResult {
 pub struct EvalResult {
         pub fitness : f32,
         pub ab_fitness : f32,
+        pub mean_ratio_run : f32,
         pub counter : usize,
         pub crashes : bool,
         pub visitation_diversity : f32,
@@ -176,84 +177,39 @@ pub struct EvalResult {
 
 /* This is getting a bit convoluted, trying to cover too many
   * kinds of evaluation at once. due for a major rewrite. 
+  * NB: dropped support for games. do that in another eval func, not this one.
   */
 fn eval_case (uc: &mut CpuARM,
               chain: &Chain,
               problem: &Problem,
               params: &Params,
-              verbose: bool) -> EvalCaseResult{ 
-        let inregs = &params.inregs;
-        let outregs = &params.outregs;
-        let target = &problem.target;
-        let mut result : HatchResult = HatchResult::new();
-        let af; let rf;
-        let mut output : Vec<u32> = Vec::new();
-        let mut reset = true;
-        let mut verbose = verbose;
-        let mut finished = problem.kind() != TargetKind::Game;
-        let mut rounds = 0;
-        loop {
-            if rounds > 10000 && verbose == false { 
-                println!("This is taking a while. Let's see what's going on...");
-                verbose = true;
-                rounds = 0;
-                reset = true;
-                output.truncate(0); // to trigger reset
-            }
-            rounds += 1;
-            let (score, input) = problem.get_input(&output, params.random_override, verbose);
-            output.truncate(0);
-            if score == None {
-                if verbose {
-                    println!("\n==> Evaluating {:?}", input);
-                };
-                reset = false;
-                result = hatch_chain(uc, 
-                                     &chain,
-                                     &input,
-                                     &inregs,
-                                     reset);
-                if !result.isnull() {
-                    for idx in outregs {
-                        output.push(result.registers[*idx]);
-                    }
-                } else {
-                    println!("[x] Null hatch result.");
-                    finished = true;
-                    /* deal with this somehow if it becomes a problem */
-                }
-            } else {
-                finished = true;
-                if verbose {
-                    println!("[+] RAW SCORE: {}", score.as_ref().unwrap());
-                }
-                output = vec![score.unwrap() as u32];
-            }
-            if finished {
-                let (a,r) = problem.assess_output(&output, uc);
-                // println!(">> (af,rf) = ({},{})", a, r);
-                if verbose {
-                    println!("[+] ABFIT SCORE: {}\n[+] RELFIT SCORE: {}", a, r);
-                }
-                af = a; rf = r;
-                break;
-            }
-        }
-        if verbose { print!("{}", result); }
-        let counter = result.counter;
-        let crash = result.error != None || result.isnull();
-//  let final_pc = result.registers[15];
+              verbose: bool) -> EvalCaseResult { 
+    let inregs = &params.inregs;
+    let outregs = &params.outregs;
+    let target = &problem.target;
+    let reset = true;
+    let input  = &problem.input;
+    let result = hatch_chain(uc, 
+                             &chain,
+                             input,
+                             &inregs,
+                             reset);
+    let (af,rf) = problem.assess_output(&outregs, 
+                                        &result.registers,
+                                        &result.reg_deref, 
+                                        uc);
+    let counter = result.counter;
+    let crash = result.error != None || result.isnull();
             
-        //println!("[*] [eval_case()] leaving function\n");
-        EvalCaseResult {
-            fitness: if params.fitness_sharing {rf} else {af},
-            ab_fitness: af,
-            counter: counter,
-            crashes: crash,
-            visited: result.visited,
-            registers: result.registers,
-            reg_deref: result.reg_deref,
-        }
+    EvalCaseResult {
+        fitness: if params.fitness_sharing {rf} else {af},
+        ab_fitness: af,
+        counter: counter,
+        crashes: crash,
+        visited: result.visited,
+        registers: result.registers,
+        reg_deref: result.reg_deref,
+    }
 }
 /*
 fn adj_score_for_difficulty (score: f32, 
@@ -305,6 +261,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let mut visited_map  : HashMap<Problem,Vec<u32>> = HashMap::new();
         let mut register_map : HashMap<Problem,(Vec<u32>,Vec<Option<u32>>)>
             = HashMap::new(); 
+        let mut ratio_run_vec = Vec::new();
         for problem in io_targets.iter() {
             let res : EvalCaseResult = eval_case(uc,
                                                  chain,
@@ -326,6 +283,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             let upperbound = chain.effective_size() as f32 - 1.0;
             let cs = f32::max(upperbound, 1.0);
             let ratio_run = f32::min(1.0, counter as f32 / cs);
+            ratio_run_vec.push(ratio_run);
             counter_sum += counter;
             anycrash = anycrash || res.crashes;
             /* adjust score if there was a crash */
@@ -371,6 +329,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             fitness      : fitness,
             ab_fitness   : ab_fitness,
             counter      : counter_sum / io_targets.len(),
+            mean_ratio_run : mean(&ratio_run_vec),
             visited_map  : visited_map,
             register_map : register_map,
             crashes      : anycrash,
@@ -379,39 +338,6 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         }
 }
 
-fn append_to_csv(path: &str, iter: usize,
-                                      avg_gen: f32, 
-                                      avg_fit: f32,
-                                      best: &Chain) {
-        if best.fitness == None {
-            println!("*** best.fitness is None in append_to_csv?! ***");
-            return;
-        }
-        let fit  = best.fitness.unwrap();
-        let gen = best.generation;
-        let len  = best.clumps.len();
-        let crash = match best.crashes {
-            None => 0,
-            Some(false) => 0,
-            Some(true)  => 1,
-        };
-        let row  = format!("{},{},{},{},{},{},{}\n", 
-                                              iter, 
-                                              avg_gen,
-                                              avg_fit,
-                                              gen,
-                                              fit,
-                                              crash,
-                                              len);
-        let mut file = OpenOptions::new()
-                                   .append(true)
-                                   .create(true)
-                                   .open(path)
-                                   .unwrap();
-        file.write(row.as_bytes()).unwrap();
-        file.flush().unwrap();
-//  println!(">> {}",row);
-}
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct FitUpdate {
@@ -420,6 +346,7 @@ pub struct FitUpdate {
         pub p_fitness   : Option<f32>,
   // pub fingerprint : Fingerprint,
         pub crashes     : Option<bool>,
+        pub ratio_run   : f32,
         pub runtime     : Option<f32>,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
@@ -431,7 +358,6 @@ pub struct TournamentResult {
         pub graves            : Vec<usize>,
         pub spawn             : Vec<Chain>,
         pub best              : Chain,
-        pub display           : String,
         pub fit_updates       : Vec<(usize,FitUpdate)>,
         pub difficulty_update : HashMap <Problem, Vec<f32>>, // or avg f32
 }
@@ -504,22 +430,18 @@ pub fn patch_population (tr: &TournamentResult,
                 population.deme[i].visitation_diversity = fit_up.visitation_diversity;
                 population.deme[i].register_map = fit_up.register_map.clone();
                 population.deme[i].crashes = fit_up.crashes.clone();
+                population.deme[i].ratio_run = fit_up.ratio_run;
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
-//      population.deme[i].fingerprint = fit_up.fingerprint.clone();
                 population.deme[i].p_fitness = fit_up.p_fitness.clone();
 
                 if let Some(pf) = population.deme[i].p_fitness {
-//        println!(">> [{}] avg parent fitness: {}", i, pf);
-//        println!(">> [{}] current fitness: {}", i, f);
                     fitness_deltas.push(f - pf);
                 };
             }
         }
-//  println!(">> fitness_deltas: {:?}", fitness_deltas);
-        if verbose { println!("{}",tr.display); };
         if population.best == None 
-            || (//tr.best.crashes == Some(false) &&  // throw caution to the wind
-                    tr.best.ab_fitness < population.best_abfit()) {
+            || (tr.best.crashes == Some(false) &&  // throw caution to the wind
+                tr.best.ab_fitness < population.best_abfit()) {
             population.best = Some(tr.best.clone());
             println!("NEW BEST\n{}\n", &tr.best);
             (Some(tr.best.clone()), fitness_deltas)
@@ -529,10 +451,10 @@ pub fn patch_population (tr: &TournamentResult,
 }
 
 pub fn lexicase_rpat (population: &Population,
-                                                engine: &mut Engine,
-                                                batch: Batch,
-                                                vdeme: usize)
-                                                -> ()
+                      engine: &mut Engine,
+                      batch: Batch,
+                      vdeme: usize)
+                      -> ()
 {
         // for register patterns
         let p_size = population.params.population_size;
@@ -603,53 +525,43 @@ pub fn tournament (population: &Population,
         let mut difficulty_update = HashMap::new();
         for &(ref specimen,_) in specimens.iter() 
         {
-            if specimen.fitness == None || specimen.season != season {
-                let start = Instant::now();
-                let res = evaluate_fitness(&mut uc, 
-                                           &specimen,
-                                           &population.params,
-                                           batch,
-                                           verbose); // verbose
-                let e = start.elapsed();
-                let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
-                let fitness = res.fitness;
-                let ab_fitness = res.ab_fitness;
-                let crash   = Some(res.crashes);
-                for (input, difficulty) in &res.difficulties.unwrap() {
-                    match difficulty_update.get(input) {
-                        None    => {
-                            difficulty_update.insert(input.clone(), vec![*difficulty]);
-                        },
-                        Some(_) => {
-                            difficulty_update.get_mut(input).unwrap().push(*difficulty);
-                        }
-                    };
-                }
-                fit_vec.push(FitUpdate {
-                    fitness      : Some(fitness),
-                    ab_fitness   : Some(ab_fitness),
-                    p_fitness    : specimen.p_fitness.clone(),
-                    crashes      : crash,
-                    visitation_diversity : res.visitation_diversity,
-                    runtime      : elapsed,
-                    visited_map  : res.visited_map,
-                    register_map : res.register_map,
-                    });
-            } else {
-                fit_vec.push(FitUpdate {
-                    // are all these clones necessary?
-                    fitness     : specimen.fitness.clone(),
-                    ab_fitness  : specimen.ab_fitness.clone(),
-                    p_fitness   : specimen.p_fitness.clone(),
-                    crashes     : specimen.crashes,
-                    runtime     : specimen.runtime,
-                    visited_map : specimen.visited_map.clone(),
-                    visitation_diversity : specimen.visitation_diversity,
-                    register_map : specimen.register_map.clone(),
-                });
+            let start = Instant::now();
+            let res = evaluate_fitness(&mut uc, 
+                                       &specimen,
+                                       &population.params,
+                                       batch,
+                                       verbose); // verbose
+            let ratio_run : f32 = res.mean_ratio_run;
+            let e = start.elapsed();
+            let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
+            let fitness = res.fitness;
+            let ab_fitness = res.ab_fitness;
+            let crash   = Some(res.crashes);
+            for (input, difficulty) in &res.difficulties.unwrap() {
+                match difficulty_update.get(input) {
+                    None    => {
+                        difficulty_update.insert(input.clone(), vec![*difficulty]);
+                    },
+                    Some(_) => {
+                        difficulty_update.get_mut(input).unwrap().push(*difficulty);
+                    }
+                };
             }
+            fit_vec.push(FitUpdate {
+                fitness      : Some(fitness),
+                ab_fitness   : Some(ab_fitness),
+                p_fitness    : specimen.p_fitness.clone(),
+                crashes      : crash,
+                ratio_run    : ratio_run,
+                visitation_diversity : res.visitation_diversity,
+                runtime      : elapsed,
+                visited_map  : res.visited_map,
+                register_map : res.register_map,
+                });
         } 
-          
+         
+        /* does this have to be done here? seems extraneous... */
+        /* oh, setting the viscosity is necessary for the mating */
         for (&mut (ref mut specimen,lot), ref fit_up) 
             in specimens.iter_mut().zip(fit_vec) 
             {
@@ -671,26 +583,8 @@ pub fn tournament (population: &Population,
             }
 
         select_mates(&mut specimens, true); //.sort();
-        /* bit of ab_fit elitism now *
-        let j = if cflag {1} else {2};
-        let outr = population.params.outregs.len() as f32;
-        let best_abfit = f32::min(1.0 / outr,
-                                                            population.best_abfit().unwrap_or(0.0));
-        let tb = f32::min(best_abfit, 
-                                            f32::min(specimens[0].0.ab_fitness.unwrap(),
-                                                              specimens[j-1].0.ab_fitness.unwrap()));
-        if let Some(i) = specimens[j..].iter()
-                                                            .position(|x| x.0.ab_fitness
-                                                                                          .unwrap() <= tb) {
-            println!(">> invoking elitism to preserve abfit {} <<", best_abfit);
-            let tmp = specimens[0].clone();
-            specimens[0] = specimens[i].clone();
-            specimens[i] = tmp;
-        }
-        */
         let (mother,m_idx) = specimens[0].clone();
         let (father,f_idx) = if cflag {
-            // make this a separate method of population
             (population.random_spawn(), 0)
         } else { 
             specimens[1].clone()
@@ -701,6 +595,7 @@ pub fn tournament (population: &Population,
                                                 ab_fitness  : mother.ab_fitness,
                                                 p_fitness   : mother.p_fitness,
                                                 crashes     : mother.crashes,
+                                                ratio_run   : mother.ratio_run,
                                                 runtime     : mother.runtime,
                                                 visited_map : mother.visited_map.clone(),
                                                 visitation_diversity : mother.visitation_diversity,
@@ -713,6 +608,7 @@ pub fn tournament (population: &Population,
                                           ab_fitness  : father.ab_fitness,
                                           p_fitness   : father.p_fitness,
                                           crashes     : father.crashes,
+                                          ratio_run   : father.ratio_run,
                                           runtime     : father.runtime,
                                           visited_map : father.visited_map.clone(),
                                           visitation_diversity : father.visitation_diversity,
@@ -721,41 +617,6 @@ pub fn tournament (population: &Population,
                                          })); // (father.fitness,father.crashes)));
         }
 
-        /* This little print job should be factored out into a fn */
-        let mut display : String = String::new();
-        display.push_str(&format!("[{:05}:{:02}] ", 
-                                 population.iteration,
-                                 vdeme));
-        let mut i = 0;
-        for &(ref specimen,_) in specimens.iter() {
-            if i == 1 && cflag { 
-                display.push_str(" ???????? ||");
-            }
-            if specimen.fitness == None {
-                display.push_str(" ~~~~~~~~ ");
-            } else {
-                let f = specimen.fitness.unwrap();
-                display.push_str(&format!(" {:01.6}{}", f,
-                                 if specimen.crashes == Some(true) {
-                                 '*'
-                                 } else {
-                                 ' '
-                                 }));
-            }
-            i += 1;
-            if i < specimens.len() { display.push_str("|") };
-            if !cflag && i == 2 { display.push_str("|") };
-        }
-        /*
-        if population.best_fit() != None {
-            display.push_str(&format!(" ({:01.6}{})", 
-                                                                population.best_fit().unwrap(),
-                if population.best_crashes() == Some(true) {"*"} else {""}));
-        } else {
-            display.push_str(" (----------)");
-        }
-        */
-        /* End of little print job */
 
         let (_,grave0) = specimens[t_size-2];
         let (_,grave1) = specimens[t_size-1];
@@ -772,7 +633,6 @@ pub fn tournament (population: &Population,
             graves:      vec![grave0, grave1],
             spawn:       offspring,
             best:        t_best,
-            display:     display,
             fit_updates: fit_updates,
             difficulty_update: difficulty_update,
         }  

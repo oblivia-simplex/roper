@@ -49,8 +49,8 @@ echo "STRAY BY FIT:"
 avg_stray_by_fit $tmp | tee ./stray_by_fit.txt
 echo "FIT BY STRAY:"
 avg_fit_by_stray $tmp | tee ./fit_by_stray.txt
-rm $tmp
 
+mv $tmp raw_stray_fit.txt
 
 
 

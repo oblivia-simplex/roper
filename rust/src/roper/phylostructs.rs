@@ -177,8 +177,8 @@ impl Params {
                 save_period:      10000,
                 season_divisor:    4,
                 selection_method: SelectionMethod::Tournament,
-                stack_input_sampling: 0.1,
-                t_size:           7,
+                stack_input_sampling: 0.0,
+                t_size:           4,
                 test_targets:     IoTargets::new(TargetKind::PatternMatch),
                 threads:          5,
                 timestamp:        timestamp.clone(),
@@ -461,6 +461,7 @@ pub struct Chain {
         pub input_slots: Vec<(usize,usize)>,
         pub verbose_tag: bool,
         pub crashes: Option<bool>,
+        pub ratio_run: f32,
         pub season: usize,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
@@ -471,17 +472,6 @@ pub struct Chain {
         // the destructiveness of the shufflefuck operator
 }
 
-impl ToJson for Chain {
-        fn to_json (&self) -> Json {
-            let mut b = BTreeMap::new();
-            b.insert("clumps".to_string(), self.clumps.to_json());
-            b.insert("fitness".to_string(), 
-                              format!("{:?}", self.fitness).to_json());
-            b.insert("generation".to_string(), self.generation.to_json());
-            b.insert("crashes".to_string(), self.crashes.to_json());
-            Json::Object(b)
-        }
-}
 
 impl Display for Chain {
         fn fmt (&self, f: &mut Formatter) -> Result {
@@ -491,6 +481,8 @@ impl Display for Chain {
                                                     self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
             s.push_str(&format!("Stray Rate:       {}\n", self.stray_addr_rate()));
+            s.push_str(&format!("Crashes:          {:?}\n", self.crashes));
+            s.push_str(&format!("Ratio Run:        {}\n", self.ratio_run));
             s.push_str(&format!("Vist. Divers.:    {}\n", self.visitation_diversity));
             s.push_str(&format!("Run Time:         {:?}\n", self.runtime));
             s.push_str(&format!("Generation: {}\n", self.generation));
@@ -517,7 +509,7 @@ impl Display for Chain {
                             .map(|ref c| c.visc())
                             .collect::<Vec<i32>>()));
             s.push_str(&format!("Input slots on stack: {:?}\n", 
-                                                    &self.input_slots));
+                                &self.input_slots));
             s.push_str("Clumps:\n");
             for clump in &self.clumps {
                 if !clump.enabled {
@@ -527,8 +519,8 @@ impl Display for Chain {
                 let mut i = 0;
                 for word in &clump.words {
                     match clump.input_slots
-                                          .iter()
-                                          .position(|&(off, _)| off == i) {
+                               .iter()
+                               .position(|&(off, _)| off == i) {
                         None => s.push_str(&format!("{:08x} ",word)),
                         Some(_) => s.push_str("*INPUT?* "),
                     };
@@ -562,6 +554,7 @@ impl Default for Chain {
                 season: 0,
                 verbose_tag: false,
                 crashes: None,
+                ratio_run: 0.0,
                 runtime: None,
                 visitation_diversity: 0.0,
                 visited_map: HashMap::new(),
@@ -1024,18 +1017,18 @@ impl Population {
 
         pub fn min_abfit (&self) -> f32 {
             self.deme
-                    .iter()
-                    .filter(|ref c| c.ab_fitness != None)
-                    .map(|ref c| c.ab_fitness.clone().unwrap_or(1.0))
-                    .min_by_key(|&x| (x * 100000.0) as usize)
-                    .unwrap_or(1.0)
+                .iter()
+                .filter(|ref c| c.ab_fitness != None)
+                .map(|ref c| c.ab_fitness.clone().unwrap_or(1.0))
+                .min_by_key(|&x| (x * 100000.0) as usize)
+                .unwrap_or(1.0)
         }
 
         pub fn min_fit (&self, season: usize) -> f32 {
             self.deme
                     .iter()
                     .filter(|ref c| c.fitness != None
-                                    && (c.season as isize - season as isize).abs() <= 8)
+                            && (c.season as isize - season as isize).abs() <= 8)
                     .map(|ref c| c.fitness.clone().unwrap_or(1.0))
                     .min_by_key(|&x| (x * 100000.0) as usize)
                     .unwrap_or(1.0)
@@ -1066,14 +1059,14 @@ impl Population {
 
         pub fn avg_abfit (&self) -> f32 {
             let cand = self.deme.iter()
-                                          .filter(|ref c| c.ab_fitness != None)
-                                          .count();
+                           .filter(|ref c| c.ab_fitness != None)
+                           .count();
             self.deme
-                    .iter()
-                    .filter(|ref c| c.ab_fitness != None)
-                    .map(|ref c| c.ab_fitness.clone().unwrap())
-                    .sum::<f32>() / 
-                        cand as f32
+                .iter()
+                .filter(|ref c| c.ab_fitness != None)
+                .map(|ref c| c.ab_fitness.clone().unwrap())
+                .sum::<f32>() / 
+                 cand as f32
         }
 
         pub fn ret_addrs (&self) -> Vec<u32> {
@@ -1124,6 +1117,13 @@ impl Population {
                                  .collect::<Vec<f32>>())
         }
 
+        pub fn avg_ratio_run (&self) -> f32 {
+            mean(&self.deme.iter()
+                           .filter(|c| c.fitness != None)
+                           .map(|c| c.ratio_run)
+                           .collect::<Vec<f32>>())
+        }
+
         pub fn avg_visitation_diversity (&self) -> f32 {
             mean(&self.deme
                       .iter()
@@ -1155,7 +1155,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -1179,7 +1179,8 @@ impl Population {
                                   self.avg_stray_addr_rate(),
                                   self.avg_stray_to_edi_rate(),
                                   self.stray_nocrash_rate(),
-                                  self.avg_visitation_diversity());
+                                  self.avg_visitation_diversity(),
+                                  self.avg_ratio_run());
             let c_mn_dif = self.params.io_targets
                                       .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
@@ -1308,6 +1309,7 @@ impl Problem {
                               verbose: bool) 
                               -> (Option<i32>, Vec<i32>) {
             match &self.target {
+                
                 &Target::Game(ref x) => {
                     if output.len() == 0 {
                         let mut p = Vec::new();
@@ -1337,7 +1339,9 @@ impl Problem {
           * Dispatch the relevant problem-specific fitness function
           */
         pub fn assess_output (&self,
-                              output: &Vec<u32>,
+                              outregs: &Vec<usize>,
+                              registers: &Vec<u32>,
+                              reg_deref: &Vec<Option<u32>>,
                               uc: &CpuARM) 
                               -> (f32, f32) {
             match &self.target {
@@ -1345,11 +1349,15 @@ impl Problem {
                     // here we can try some sort of fitness sharing thing
                     // refactor later so that this returns a fingerprint
                     // as its first parameter
-                    let r = f32::max(0.0, rp.distance(output));
+                    let r = f32::max(0.0, rp.distance(registers, reg_deref));
                     //let f = rp.matches(&output);
                     (r, r)
                 },
                 &Target::Vote(ref cls) => {
+                    let mut output : Vec<u32> = Vec::new();
+                    for idx in outregs {
+                        output.push(registers[*idx]);
+                    }
                     let b = max_bin(&output);
                     //let mut f = Fingerprint::new();
                     if b == cls.class {
@@ -1361,6 +1369,10 @@ impl Problem {
                     } 
                 } 
                 &Target::Game(_) => {
+                    let mut output : Vec<u32> = Vec::new();
+                    for idx in outregs {
+                        output.push(registers[*idx]);
+                    }
                     let s = output[0].clone() as f32;
                     let af = (1.0 / s).sqrt();
                     //(af, (af + (1.0 - self.difficulty().powi(2)))/2.0)
@@ -1704,7 +1716,7 @@ pub struct RPattern2 (Vec<RPatEq>);
   * And then write a parser for a simple set of equations, 
   * instead of an int / wildcard pattern.
   */
-#[derive(Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Hash,Debug,Clone,Copy,PartialEq,Eq,PartialOrd,Ord)]
 pub enum RVal {
     Immed(u32),
     Deref(u32),
@@ -1712,8 +1724,8 @@ pub enum RVal {
 
 #[derive(Debug,Clone)]
 pub struct RPattern { 
-        regvals_diff: Vec<(usize,u32,f32)>,
-        regvals_prediff: Vec<(usize,u32,f32)>,
+        regvals_diff: Vec<(usize,RVal,f32)>,
+        regvals_prediff: Vec<(usize,RVal,f32)>,
 }
 impl Hash for RPattern {
     fn hash <H: Hasher> (&self, state: &mut H) {
@@ -1733,11 +1745,11 @@ impl Eq for RPattern {}
 
 
 impl RPattern {
-        pub fn clean (&self) -> Vec<(usize,u32)> {
+        pub fn clean (&self) -> Vec<(usize,RVal)> {
             self.regvals_diff
                 .iter()
                 .map(|&(x,y,_)| (x,y))
-                .collect::<Vec<(usize,u32)>>()
+                .collect::<Vec<(usize,RVal)>>()
         }
 
         pub fn new (s: &str) -> Self {
@@ -1749,9 +1761,19 @@ impl RPattern {
             let mut i : usize = 0;
             for part in parts {
                 if !part.starts_with("_") {
-                    rp.push((i,u32::from_str_radix(part, 16)
-                                   .expect("Failed to parse RPattern")
-                               as u32));
+                    /* check if its immediate or a pointer. (&) */
+                    if part.starts_with("&") {
+                        let p : String = part.chars().skip(1).collect();
+                        let int = u32::from_str_radix(&p, 16)
+                                      .expect(&format!("Failed to parse {:?} in RPattern",
+                                                       part));
+                        rp.push((i,RVal::Deref(int)));
+                    } else {
+                        let int = u32::from_str_radix(part,16)
+                                      .expect(&format!("Failed to parse {:?} in RPattern",
+                                                       part));
+                        rp.push((i,RVal::Immed(int)));
+                    }
                 }
                 i += 1;
             }
@@ -1759,66 +1781,180 @@ impl RPattern {
         }
 
         pub fn shuffle_vec (&self) 
-                            -> Vec<(usize, u32, f32)> {
+                            -> Vec<(usize, RVal, f32)> {
             let mut c = self.regvals_diff.clone();
             let mut rng = thread_rng(); // switch to seedable
             rng.shuffle(&mut c);
             c
         }
 
-        pub fn push (&mut self, x: (usize, u32)) {
-            self.regvals_diff.push((x.0,x.1,1.0));
+        pub fn push (&mut self, x: (usize, RVal)) {
+            let (index, rval) = x;
+            self.regvals_diff.push((index, rval, 1.0));
         }
 
         pub fn constants (&self) -> Vec<i32> {
             self.regvals_diff
                 .iter()
-                .map(|&p| p.1 as i32)
+                .map(|&p| match p.1 {
+                    RVal::Immed(x) => x as i32,
+                    RVal::Deref(x) => x as i32,
+                })
                 .collect()
         }
 
-        pub fn satisfy (&self, regs: &Vec<u32>) -> bool {
+        pub fn satisfy (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> bool {
             for &(idx,val,_) in &self.regvals_diff {
-                if regs[idx] != val { return false };
+                match val {
+                    RVal::Immed(x) => {
+                        match regs[idx] {
+                            x => (),
+                            _ => return false,
+                        };
+                    },
+                    RVal::Deref(x) => {
+                        match regs_deref[idx] {
+                            Some(x) => (),
+                            _       => return false,
+                        }
+                    },
+                }
             }
             true
         }
-
-        pub fn matches (&self, regs: &Vec<u32>) -> Fingerprint {
+        /* NB: scorecard records false for match, true for mismatch */
+        pub fn matches (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> Fingerprint {
             let mut scorecard : Fingerprint = Fingerprint::new();
             for &(idx,val,diff) in &self.regvals_diff {
-                if regs[idx] == val {
-                    scorecard.push(false);
-                } else {
-                    scorecard.push(true);
+                match val {
+                    RVal::Immed(x) => scorecard.push(regs[idx] != x),
+                    RVal::Deref(x) => match regs_deref[idx] {
+                        Some(x) => scorecard.push(false),
+                        _       => scorecard.push(true),
+                    },
                 }
-            }
+            };
             scorecard
         }
 
-        fn vec_pair (&self, regs: &Vec<u32>) -> (Vec<u32>, Vec<u32>) {
-            let mut ivec = Vec::new();
-            let mut ovec = Vec::new();
-            for &(idx,val,_) in &self.regvals_diff {
-                ivec.push(regs[idx]);
-                ovec.push(val);
+
+        pub fn distance (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> f32 {
+            fn arith_err_dist(a: u32, b: u32) -> f32 {
+                /* scaling and overflow trouble with this approach  
+                let a = a as f32;
+                let b = b as f32;
+                let diff = (a-b).abs() as f64;
+                println!(">> diff: {}",diff);
+                // now normalize this to a float between 0.0 and 1.0
+                let rat = diff / 4294967295.0;
+                println!(">> arith distance as f64: {}",rat);
+                let rat32 = rat as f32;
+                println!(">> arith distance as f32: {}",rat);
+                rat32
+                */ /* let's just try hamming distance */
+                (a ^ b).count_ones() as f32 / 32.0 
             }
-            (ivec, ovec)
-        }
+            
+            fn adj (x: f32) -> f32 { (1.0 + x) / 2.0 }
 
-        pub fn distance_deref (&self, regs: &Vec<u32>) -> f32 {
-        
-            1.0 /* placeholder */
-        }
+            let mut ref_err : f32 = 0.0;
+            let mut idx_err : f32 = 0.0;
+            let mut arith_err : f32 = 0.0;
+            let mut errs = Vec::new();
 
-        pub fn distance (&self, regs: &Vec<u32>) -> f32 {
-            let (i, o) = self.vec_pair(regs);
-            //let h = hamming_distance(&i, &o);
-            let a = arith_distance(&i, &o);
-            //let m = count_matches(&i, &o);
-            //(h + a) / 2.0 //(2.0 * m)
-            //(h + a) / 2.0   
-            a
+            for &(idx,val,_) in &self.regvals_diff {
+                let nearest : f32 = 1.0;
+                //println!(">> regi = {}",regi);
+                match val {
+                    RVal::Immed(x) => {
+                        if x == regs[idx] { 
+                            //println!(">>> exact immed match for {:?} == {:?}",val,regi);
+                            errs.push(0.0);
+                        } else {
+                            //println!(">>> looking for nearest match for {:?}",val);
+                            let mut nearest = 1.0;
+                            for i in 0..regs.len() {
+                                let r = regs[i];
+                                let d = arith_err_dist(x, r);
+                                let di = if i == idx { d } else { adj(d) };
+                                if di < nearest {
+                                    nearest = di;
+                                };
+                                //println!("immed->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
+                            }
+                            for i in 0..regs_deref.len() {
+                                let r = regs_deref[i];
+                                match r {
+                                    None => continue,
+                                    Some(r) => {
+                                        let d = adj(arith_err_dist(x, r));
+                                        let di = if i == idx { d } else { adj(d) };
+                                        if di < nearest {
+                                            nearest = di;
+                                        };
+                                        //println!("immed->reg_deref loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
+                                    },
+                                }
+                            }
+                            //println!(">>>>>> pushing nearest {} to errs",nearest);
+                            errs.push(nearest);
+                        }
+                    },
+                    RVal::Deref(x) => { 
+                        //println!(">>> looking for nearest match for {:?}",val);
+                        let mut nearest = 1.0;
+                        match regs_deref[idx] {
+                            Some(y) => {
+                                if y == x {
+                                    //println!(">>>> exact match for {:?} found in {}",val,y);
+                                    errs.push(0.0);
+                                } else {
+                                    for i in 0..regs_deref.len() {
+                                        let rd = regs_deref[i];
+                                        if rd == None { continue };
+                                        let r = rd.unwrap();
+                                        let d = arith_err_dist(x, r);
+                                        let di = if i == idx { d } else { adj(d) };
+                                        if di < nearest {
+                                            nearest = di;
+                                        };
+                                        //println!("deref->reg_deref loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
+                                    }
+                                    for i in 0..regs.len() {
+                                        let r = regs[i];
+                                        let d = adj(arith_err_dist(x, r));
+                                        let di = if i == idx { d } else { adj(d) };
+                                        if di < nearest {
+                                            nearest = di;
+                                        };
+                                        //println!("deref->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
+                                    }
+                                }
+                            },
+                            None =>  {
+                                //println!(">>>> nothing in reg_deref, considering reg for {:?}...",val);
+                                for i in 0..regs.len() {
+                                    let r = regs[i];
+                                    let d = adj(arith_err_dist(x, r));
+                                    let di = if i == idx { d } else { adj(d) };
+                                    if di < nearest {
+                                        nearest = di;
+                                    };
+                                    //println!("deref/none->reg loop>>> d = {}, di = {}, nearest = {}",d,di,nearest);
+                                };
+                            },
+                        };
+                        errs.push(nearest);
+                    },
+                }
+
+
+            }
+            //println!(">>> self.regvals_diff = {:?}", &self.regvals_diff);
+            //println!(">>> regs = {:?}", &regs);
+            //println!(">>> regs_deref = {:?}", &regs_deref);
+            //println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
+            mean(&errs)
         }
 }
 pub const MAXPATLEN : usize = 12;
@@ -1832,7 +1968,10 @@ impl Display for RPattern {
                     s.push_str(blank);
                     i += 1;
                 }
-                s.push_str(&format!("{:08x} ",val));
+                match val {
+                    RVal::Immed(x) => s.push_str(&format!("{:x} ", x)),
+                    RVal::Deref(x) => s.push_str(&format!("&{:x} ", x)),
+                }
                 i += 1;
             }
             write!(f, "{}\n",s)
@@ -1865,13 +2004,13 @@ impl RunningAvg {
 pub fn test_clump (uc: &mut unicorn::CpuARM,
                                           clump: &Clump) -> usize {
         let input = vec![2,2,2,2,
-                                          2,2,2,2,
-                                          2,2,2,2,
-                                          2,2,2,2];
+                         2,2,2,2,
+                         2,2,2,2,
+                         2,2,2,2];
         let inregs = vec![ 0, 1, 2, 3,
-                                              4, 5, 6, 7,
-                                              8, 9,10,11,
-                                            12,13,14,15];
+                           4, 5, 6, 7,
+                           8, 9,10,11,
+                           12,13,14,15];
         let mut twos = repeat(2);
         let mut cl = clump.clone();
         saturate_clump(&mut cl, &mut twos);

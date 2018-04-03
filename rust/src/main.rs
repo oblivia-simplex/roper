@@ -275,9 +275,10 @@ fn main() {
             io
         },
         Challenge::Pattern => {
+            // outregs are actually ignored now, when dealing with RPattern tasks
             params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
             IoTargets::from_vec(TargetKind::PatternMatch,
-                vec![Problem::new(vec![1;16], mk_pattern(&rpattern_str.unwrap()))],
+                vec![Problem::new(vec![0;16], mk_pattern(&rpattern_str.unwrap()))],
                 1)
         },
         Challenge::Game => {
