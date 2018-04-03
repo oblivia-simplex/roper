@@ -637,7 +637,7 @@ pub fn tournament (population: &Population,
         let offspring = mate(&parents,
                              &population.params,
                              &mut rng,
-                             uc);
+                             &mut uc);
         let t_best = specimens[0].0.clone();
         if t_best.fitness == None {
             panic!("t_best.fitness is None!");

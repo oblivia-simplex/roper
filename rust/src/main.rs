@@ -378,7 +378,7 @@ fn main() {
                                           mode,
                                           1,
                                           true);
-    add_debug_hooks(debug_machinery.cluster[0].unwrap_mut());
+    add_debug_hooks(&mut debug_machinery.cluster[0].unwrap_mut());
     let printevery = 1;
     let mut champion : Option<Chain> = None;
     let mut season = 0;
@@ -435,8 +435,8 @@ fn main() {
                 vdeme = (vdeme + 1) % num_demes;
             }
             let mut trs : Vec<TournamentResult> = rx.iter()
-                                                                                            .take(n_jobs)
-                                                                                            .collect();
+                                                    .take(n_jobs)
+                                                    .collect();
             trs.sort_by(|a,b| b.best.ab_fitness
                                .partial_cmp(&a.best.ab_fitness)
                                .unwrap_or(Ordering::Equal));
@@ -477,8 +477,7 @@ fn main() {
                         println!("[*] Verbosely evaluating new champion:\n{}",
                                 champion.as_ref()
                                 .expect("Failed to unwrap champion"));
-                        evaluate_fitness(debug_machinery.cluster[0]
-                                                        .unwrap_mut(),
+                        evaluate_fitness(&mut (debug_machinery.cluster[0].unwrap_mut()),
                                 &champion.expect("Failed to unwrap champion"),
                                          &params,
                                          Batch::TESTING,
@@ -609,7 +608,7 @@ fn main() {
         panic!("Champion is none!");
     }
     let testing_res =
-        evaluate_fitness(debug_machinery.cluster[0].unwrap_mut(),
+        evaluate_fitness(&mut(debug_machinery.cluster[0].unwrap_mut()),
                                       &mut champion.unwrap(),
                                       &pop_local.read().unwrap().params,
                                       Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 

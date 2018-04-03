@@ -13,7 +13,7 @@ use unicorn::*;
 use std::thread;
 use rand::thread_rng;
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{RefCell,Ref,RefMut};
 use std::sync::Arc;
 
 pub static _DEBUG : bool = true; //true;
@@ -160,18 +160,18 @@ pub struct Machinery {
 
 /* Try to replace this with a safe data structure */
 /* Cf. the Rc<RefCell<_>> construction in the hatch_chain callback */
-pub struct Engine (Box<CpuARM>);
+pub struct Engine (Rc<RefCell<CpuARM>>);
 //unsafe impl Send for Engine {}
-impl Send for Engine {}
+unsafe impl Send for Engine {}
 impl Engine {
         pub fn new (uc: CpuARM) -> Engine {
-            Engine(Box::new(uc))
+            Engine(Rc::new(RefCell::new(uc)))
         }
-        pub fn unwrap (&self) -> &CpuARM {
-            &(*self.0)
+        pub fn unwrap (&self) -> Ref<CpuARM> {
+            (*self.0).borrow() //&(*self.0)
         }
-        pub fn unwrap_mut (&mut self) -> &mut CpuARM {
-            &mut (*self.0)
+        pub fn unwrap_mut (&mut self) -> RefMut<CpuARM> {
+            (*self.0).borrow_mut()//&mut (*self.0)
         }
 }
 

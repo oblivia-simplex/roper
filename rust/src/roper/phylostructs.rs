@@ -863,7 +863,7 @@ impl Population {
             let mut clump_buckets : Vec<Vec<Clump>> = 
                 vec![Vec::new(), Vec::new(), Vec::new(), Vec::new()];
             for clump in clumps.iter() {
-                clump_buckets[test_clump(engine.unwrap_mut(), &clump)]
+                clump_buckets[test_clump(&mut engine.unwrap_mut(), &clump)]
                     .push(clump.clone())
             }
             println!("[*] Size of buckets:\n[+] NOCHANGE_CRASH_BUCKET: {}\n[+] NOCHANGE_NOCRASH_BUCKET: {}\n[+] CHANGE_CRASH_BUCKET: {}\n[+] CHANGE_NOCRASH_BUCKET: {}\n",
