@@ -14,6 +14,7 @@ READEVERY=1
 
 TASKFLAGS=$PATTERNSTRING
 GOAL="0.0"
+CLASSIFICATION=0
 
 export RUSTFLAGS=-Awarnings
 PROJECT_ROOT=`pwd`/..
@@ -97,13 +98,13 @@ CLASS2_STDDEVDIF=$(( C + 5 ))
 X0=$AVG_GEN
 X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
-X1_AXIS_TITLE="TOURNEMENT ITERATION"
+X1_AXIS_TITLE="TOURNAMENT ITERATION"
 
 # "logs/recent.csv" u $AVG_GEN:$AVG_LEN w lines, \
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
-cargo build 2>&1 | tee -a $ERRORFILE || \
+cargo build --release 2>&1 | tee -a $ERRORFILE || \
   (cat $ERRORFILE && exit)
 echo "[+] roper has been successfully compiled"
 STAMPFILE="/tmp/.roper_starting"
@@ -126,7 +127,8 @@ function run () {
                                 -m 0.05 \
                                 -R \
                                 -S \
-                                -L $LABEL 
+                                -L $LABEL \
+                                $EXTRAFLAGS
   #                              -E
   # Add -S flag to enable fitness sharing
                                 
@@ -162,7 +164,7 @@ ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
 ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
 PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
 
-IMAGEEXT="svg"
+IMAGE_EXT="svg"
 IMAGEFILE=${LABEL}_${TIMESTAMP}.${IMAGE_EXT}
 TERMINALSTRING="set terminal svg background rgb \"black\" size 1660,1024"
 OUTPUTSTRING="set output \"${SRV}/${IMAGEFILE}\""
@@ -196,13 +198,20 @@ function plotdbg ()
 function popplotline ()
 {
   col=$1
-  echo "u ${X1}:${col} w lines"
+  echo "u ${X1}:${col} w lines lw 3"
 }
 cat > $PLOTFILE << EOF
 $TERMINALSTRING
 $OUTPUTSTRING
 set datafile commentschars "%"
+EOF
+if (( $CLASSIFICATION )); then
+    cat>> $PLOTFILE <<EOF
 set multiplot layout 1, 2  
+EOF
+fi
+
+cat>> $PLOTFILE <<EOF
 set xlabel 'ylabel' tc rgb 'red'
 set ylabel 'xlabel' tc rgb 'red'
 set border lc rgb 'red'
@@ -224,7 +233,10 @@ plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $STRAY_RATE), \
   "" $(popplotline $STRAY_NOCRASH), \
   "" $(popplotline $RATIO_RUN)
+EOF
 
+if (( $CLASSIFICATION )); then
+    cat >> $PLOTFILE <<EOF
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "DIFFICULTY BY CLASS"
@@ -237,8 +249,12 @@ plot "$PROJECT_ROOT/logs/$recent" $(difplot 0), \
   "" $(difplotline 2)
 
 unset multiplot
+EOF
+fi
+
+cat >> $PLOTFILE <<EOF
 unset output
-pause 4.35 
+pause 60
 reread
 EOF
 

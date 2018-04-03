@@ -46,27 +46,6 @@ fn print_usage (program: &str, opts: Options) {
 
 
 
-fn get_elf_addr_data (path: &str, 
-                                            secs: &Vec<&str>) 
-                                            -> Vec<Sec> {
-    let path = PathBuf::from(path);
-    let file = match elf::File::open_path(&path) {
-        Ok(f) => f,
-        Err(e) => panic!("Error: {:?}",e),
-    };
-    let mut sections : Vec<Sec> = Vec::new();
-    for sec_name in secs.iter() {
-        let sec = file.get_section(sec_name)
-                                    .expect("Unable to fetch section from elf");
-        sections.push(Sec {
-            name: sec_name.to_string(),
-            addr: sec.shdr.addr,
-            data: sec.data.clone(),
-            perm: PROT_ALL, // Placeholder. Need to convert from elf
-        });
-    }
-    sections
-}
 
 /*
 fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
@@ -327,23 +306,31 @@ fn main() {
       * OVER IN ONTOSTRUCTS, but is still relied upon.
       */
     
-    let elf_addr_data = get_elf_addr_data(&elf_path,
-                                                                                &vec![".text",".rodata"]);
-    println!("****************** ELF {} **********************",
-                      elf_path);
-    
-    let text_addr = elf_addr_data[0].addr;
-    let text_data = &elf_addr_data[0].data;
-    let rodata_addr = elf_addr_data[1].addr;
-    let rodata_data = &elf_addr_data[1].data;
+    let (secs,segs) = get_elf_addr_data(&elf_path);
+    println!("****************** ELF {} **********************", elf_path);
+    let exec_secs : Vec<&Sec> = secs.iter()
+                                    .filter(|&s| sec_is_exec(s, &segs))
+                                    .collect();
+
+    let text_sec : &Sec = secs.iter()
+                              .find(|s| &(s.name) == ".text" )
+                              .expect("Couldn't find .text section...");
+    /* do this the smart way now */
+   
+    /* that's better. later try extracting gadgets from other exec-mapped
+     * sections as well, and see what happens. */
+    let text_addr = text_sec.addr;
+    let text_data = &text_sec.data;
+    //let rodata_addr = elf_addr_data[1].addr;
+    //let rodata_data = &elf_addr_data[1].data;
     
     let mode = MachineMode::ARM;
 
     let constants = suggest_constants(&io_targets);
     params.code = text_data.clone();
     params.code_addr = text_addr as u32;
-    params.data = vec![rodata_data.clone()];
-    params.data_addrs   = vec![rodata_addr as u32];
+    // params.data = vec![rodata_data.clone()];
+    // params.data_addrs   = vec![rodata_addr as u32];
     params.constants    = constants.iter().map(|&x| x as u32).collect();
     params.t_size       = t_size;
     params.fitness_sharing = fitness_sharing;
@@ -380,9 +367,9 @@ fn main() {
 
     let mut machinery : Machinery
         = Machinery::new(&elf_path,
-                                          mode,
-                                          threads,
-                                          false);
+                         mode,
+                         threads,
+                         false);
     
     let population = Population::new(&params, &mut machinery.cluster[0]);
 
@@ -437,11 +424,12 @@ fn main() {
                 let p = pop_arc.clone();
                 let verbose = false; //vdeme == 0 && season > 1 && iteration % show_every == show_every % threads;
                 scope.execute(move || {
-                    let t = tournament(&p.read().expect("Failed to open read lock on tournament"),
-                                                          e,
-                                                          Batch::TRAINING,
-                                                          vdeme,
-                                                          verbose);
+                    let t = tournament(&p.read()
+                                         .expect("Failed to open read lock on tournament"),
+                                        e,
+                                        Batch::TRAINING,
+                                        vdeme,
+                                        verbose);
                     tx.send(t).expect("Failed to sent tournament result down channel");
                 });
                 vdeme = (vdeme + 1) % num_demes;
@@ -574,7 +562,8 @@ fn main() {
                                                                                                   .unwrap());
                 print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
                 println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
-                println!("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
+                print!  ("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
+                println!("[+] RATIO RUN:     {:1.6}  ",pop_read.avg_ratio_run());
                 println!("[+] VISIT DIVERS:  {:1.6}  ",pop_read.avg_visitation_diversity());
 
                 println!("[+] EDI RATE:      {:1.6}  ",pop_read.avg_edi_rate());

@@ -14,10 +14,10 @@ use std::io::prelude::*;
 use elf::*;
 use unicorn::*; //{Cpu, CpuARM, uc_handle};
 use roper::util::{disas,
-                                    get_word32le,
-                                    get_word16le,
-                                    hexvec,
-                                    pack_word32le};
+                  get_word32le,
+                  get_word16le,
+                  hexvec,
+                  pack_word32le};
 use roper::phylostructs::{Chain,MachineMode};
 use std::fmt::{Display,format,Formatter,Result};
 use roper::ontostructs::*;
@@ -53,24 +53,27 @@ pub fn set_registers (uc: &unicorn::Unicorn,
   * used throughout (generation of gadgets, etc.).
   */
 pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
-                                                        segments: &Vec<Seg>,
-                                                        mode: MachineMode)
-                                                      -> unicorn::CpuARM {
+                            segments: &Vec<Seg>,
+                            mode: MachineMode)
+                            -> unicorn::CpuARM {
     let uc = CpuARM::new(mode.uc())
         .expect("failed to create emulator engine");
     
     let mo = uc.query(unicorn::Query::MODE).unwrap();
     println!("[*] Initialized. Mode: {:?}, {:?}: {:?}",
-                      mode, mode.uc(), mo);
+             mode, mode.uc(), mo);
     // next: map text and rodata separately
     // we need a smoother interface between the elf module and unicorn
+    // TODO: set stack to actual stack segment
     uc.mem_map(BASE_STACK, STACK_SIZE, PROT_READ|PROT_WRITE)
         .expect("Failed to map stack memory");
   
     for ref seg in segments.iter() {
-        println!("[*] Mapping segment with size {:x}, addr {:x}, perm {:?}", seg.memsz, seg.addr, seg.perm);
+        println!("[*] Mapping segment with size {:x}, addr {:x}, perm {:?}",
+                 seg.memsz, seg.addr, seg.perm);
         uc.mem_map(seg.floor(), seg.size(), seg.perm)
-            .expect(&format!("Failed to map segment. Size: {:x}; Addr: {:x}, Perm: {:?}", seg.memsz, seg.addr, seg.perm));
+            .expect(&format!("Failed to map segment. Size: {:x}; Addr: {:x}, Perm: {:?}",
+                             seg.memsz, seg.addr, seg.perm));
         // paint unused memory with breakpoints
         let breakpoint : Vec<u8> = vec![0xFE, 0xDE, 0xFF, 0xE7];
         let mut i = seg.floor();
@@ -82,7 +85,7 @@ pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
     for ref sec in sections.iter() {
         //let &(addr, ref data) = pair
         println!("[*] Writing section named {}, from address {:08x}, with size of {:08x} bytes",
-            sec.name, sec.addr, sec.size());
+        sec.name, sec.addr, sec.size());
         uc.mem_write(sec.addr, &sec.data)
             .expect(&format!("Error writing {} section to memory", sec.name));
     }
@@ -120,13 +123,11 @@ fn mk_zerostack(n: usize) -> Vec<u8>
 }
 
 pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM, 
-                                                        chain: &Chain,
-                                                        input: &Vec<i32>,
-                                                        inregs:  &Vec<usize>,
-                                                        reset: bool) 
-                                                        -> HatchResult {
-                                                        //Vec<i32> {
-    let all_at_once = false;
+                            chain: &Chain,
+                            input: &Vec<i32>,
+                            inregs:  &Vec<usize>,
+                            reset: bool) 
+                            -> HatchResult {
     // Iinitalize the registers with reg_vec. This is input.
     // For single-case runs, it might just be set to 0..0. 
     
@@ -171,9 +172,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     let start_addr : u64 = get_word32le(&stack, 0) as u64 ; //| 1;
     let mut visitor = Vec::new();
     let visitor_rc : Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(visitor));
-    let ee = if all_at_once {
-        uc.emu_start(start_addr, STOP_ADDR, 0, MAX_STEPS)
-    } else {
+    let ee = {
         /* this will be a bit slower, but let us track which addrs are visited */
         // first, let's try to get the counter hook working right.
         // the way it's set up now is ludicrous

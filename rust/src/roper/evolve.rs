@@ -22,14 +22,14 @@ use roper::statistics::*;
 use roper::phylostructs::*;
 use roper::hatchery::*;
 use roper::util::{pack_word32le,
-                                        pack_word32le_vec,
-                                        u8s_to_u16s,
-                                        u8s_to_u32s,
-                                        max_bin,
-                                        mang,
-                                        Mangler,
-                                        Indexable,
-                                        deref_mang};
+                  pack_word32le_vec,
+                  u8s_to_u16s,
+                  u8s_to_u32s,
+                  max_bin,
+                  mang,
+                  Mangler,
+                  Indexable,
+                  deref_mang};
 //use roper::hooks::*;
 use roper::thumb::{reap_thumb_gadgets};
 use roper::arm::{reap_arm_gadgets};
@@ -71,7 +71,10 @@ fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
         }
 }
 
-fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
+fn mutate(chain: &mut Chain, 
+          params: &Params, 
+          uc: &unicorn::CpuARM, 
+          rng: &mut ThreadRng) {
         /* mutations will only affect the immediate part of the clump */
         /* we'll let shufflefuck handle the rest. */
         /* Add permutation operation, shuffling immeds */
@@ -100,6 +103,10 @@ fn mutate(chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
         match mut_kind {
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
+            2 => match deref(&(uc.emu()), clump.words[idx].clone()) {
+                Some(x) => { println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x); clump.words[idx] = x; },
+                None    => (),
+            },
             // 2 => /**** mutate the input_slots ****/
             _ => { /* permutation */
                 let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
@@ -120,13 +127,14 @@ fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
 
 fn clone_and_mutate (parents: &Vec<&Chain>,
                      params:  &Params,
+                     uc:      &unicorn::CpuARM,
                      rng:     &mut ThreadRng) -> Vec<Chain> {
         let mut brood : Vec<Chain> = Vec::new();
         let n = params.brood_size;
         for i in 0..n {
             let spawnclumps = parents[i % 2].clumps.clone();
             let mut spawn = Chain::new(spawnclumps);
-            mutate(&mut spawn, &params, rng);
+            mutate(&mut spawn, &params, uc, rng);
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
             spawn.p_fitness = parents[i % 2].fitness;
             spawn.generation = parents[i % 2].generation + 1;
@@ -141,12 +149,14 @@ fn mate (parents: &Vec<&Chain>,
          uc:      &mut CpuARM) -> Vec<Chain> {
         let mut brood = if rng.gen::<f32>() < params.crossover_rate {
             shufflefuck(parents, 
-                                    params,
-                                    rng)
+                        params,
+                        rng)
         } else {
+            let uc = &uc;
             clone_and_mutate(parents,
-                                              params,
-                                              rng)
+                             params,
+                             uc,
+                             rng)
         };
         cull_brood(&mut brood, 2, uc, &params);
         brood
@@ -306,7 +316,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let ab_fitness = f32::min(1.0, ab_fitness);
         let mut fitness = f32::min(1.0, fitness);
         let mut divers = 0.0; 
-        if params.reward_visitation_diversity {
+        if  io_targets.len() > 1 && params.reward_visitation_diversity {
             let mut visits : Vec<Vec<u32>> = visited_map.values()
                                                         .map(|x| x.clone())
                                                         .collect();
@@ -319,17 +329,18 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             let adjusted = fitness * nondivers; // because lower = better
             let w = params.visitation_diversity_weight;
             fitness = (w * adjusted) + ((1.0 - w) * fitness);
+            /* oh ffs, this reduces fitness to zero when io_targets.len() == 1 !! */
         }
         let fitness = fitness;
-            //mean(&abfit_vec);
-        if fitness > 1.0 { println!("{}",params); panic!("fitness > 1.0");};
-        if ab_fitness > 1.0 { println!("{}",params); panic!("ab_fitness > 1.0");};
-
+        assert!(0.0 <= fitness && fitness <= 1.0);
+        assert!(0.0 <= ab_fitness && ab_fitness <= 1.0);
+        
+        let ratio_run = mean(&ratio_run_vec);
         EvalResult {
             fitness      : fitness,
             ab_fitness   : ab_fitness,
             counter      : counter_sum / io_targets.len(),
-            mean_ratio_run : mean(&ratio_run_vec),
+            mean_ratio_run : ratio_run,
             visited_map  : visited_map,
             register_map : register_map,
             crashes      : anycrash,
@@ -532,11 +543,12 @@ pub fn tournament (population: &Population,
                                        batch,
                                        verbose); // verbose
             let ratio_run : f32 = res.mean_ratio_run;
+            let crash   = Some(res.crashes);
+            //println!("==> ratio_run = {:1.6}, crash? {:?}",ratio_run, crash);
             let e = start.elapsed();
             let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
             let fitness = res.fitness;
             let ab_fitness = res.ab_fitness;
-            let crash   = Some(res.crashes);
             for (input, difficulty) in &res.difficulties.unwrap() {
                 match difficulty_update.get(input) {
                     None    => {
@@ -564,10 +576,11 @@ pub fn tournament (population: &Population,
         /* oh, setting the viscosity is necessary for the mating */
         for (&mut (ref mut specimen,lot), ref fit_up) 
             in specimens.iter_mut().zip(fit_vec) 
-            {
+        {
                 specimen.crashes = fit_up.crashes;
                 specimen.fitness = fit_up.fitness;
                 specimen.runtime = fit_up.runtime;
+                specimen.ratio_run = fit_up.ratio_run;
                 specimen.ab_fitness = fit_up.ab_fitness;
                 specimen.visited_map = fit_up.visited_map.clone();
                 specimen.visitation_diversity = fit_up.visitation_diversity;
@@ -580,7 +593,7 @@ pub fn tournament (population: &Population,
                 //println!("## Setting fitness for lot #{} to {}",lot,fitness);
         //    specimen.set_fitness(fitness);
             //  specimen.set_ab_fitness(ab_fitness);
-            }
+        }
 
         select_mates(&mut specimens, true); //.sort();
         let (mother,m_idx) = specimens[0].clone();
