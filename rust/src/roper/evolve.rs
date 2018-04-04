@@ -99,12 +99,20 @@ fn mutate(chain: &mut Chain,
         let mut clump = chain[cl_idx].clone();
         assert!(clump.size() > 0);
         let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-        let mut_kind : u8 = rng.gen::<u8>() % 4;
+        let mut_kind : u8 = rng.gen::<u8>() % 5;
         match mut_kind {
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
             2 => match deref(&(uc.emu()), clump.words[idx].clone()) {
                 Some(x) => { println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x); clump.words[idx] = x; },
+                None    => (),
+            },
+            3 => match uc_seek_word(clump.words[idx].clone(), uc) {
+                Some(x) => {
+                    chain.name = "child of indirection mutation".to_string();
+                    println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
+                    clump.words[idx] = x as u32;
+                },
                 None    => (),
             },
             // 2 => /**** mutate the input_slots ****/
@@ -115,6 +123,8 @@ fn mutate(chain: &mut Chain,
                 clump.words[other_idx] = tmp;
             },
         };
+        /* oh christ, the mutated clumps were never entered back in the chain! */
+        chain[cl_idx] = clump;
 }
 
 fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
@@ -133,8 +143,15 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
         let n = params.brood_size;
         for i in 0..n {
             let spawnclumps = parents[i % 2].clumps.clone();
+            let unmutated = spawnclumps.clone();
             let mut spawn = Chain::new(spawnclumps);
             mutate(&mut spawn, &params, uc, rng);
+            let mutated = spawn.clumps.clone();
+            if mutated == unmutated {
+                println!("??? not mutated");
+            } else {
+                println!("!!! mutated");
+            }
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
             spawn.p_fitness = parents[i % 2].fitness;
             spawn.generation = parents[i % 2].generation + 1;

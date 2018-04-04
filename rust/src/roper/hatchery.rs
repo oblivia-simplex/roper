@@ -2,6 +2,7 @@
 extern crate unicorn;
 extern crate elf;
 
+use std::time::Instant;
 use std::process::exit;
 use std::collections::HashSet;
 use std::collections::HashMap;
@@ -100,12 +101,23 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
       */
     let mut packed = chain.pack();
     let stack : MemRegion = find_stack(&uc);
-
+    
+    /* save writeable regions so that they can be restored */
+    let mut saved_regions = Vec::new();
+    for region in uc.mem_regions().unwrap() {
+        /* the stack will be zeroed out anyway, so skip it */
+        if region.begin != stack.begin && region.perms.intersects(PROT_WRITE) {
+            let data : Vec<u8> = uc.mem_read(region.begin,
+                                             (region.end - region.begin) as usize)
+                                   .unwrap();
+            saved_regions.push((region.begin, data));
+        }
+    }
     /* debugging */
     // println!("[*] [hatch_chain()] packed chain len: >> {}", stack.len());
     if (packed.len() == 0) {
         println!("[X] returning null HatchResult from hatch_chain...\n");
-        return HatchResult::null();
+        return HatchResult::new();
     }
     // refactor ?
     let il = input.len();
@@ -200,8 +212,13 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     let reg_deref : Vec<Option<u32>> = registers.iter()
                                         .map(|&a| deref(&(uc.emu()),a))
                                         .collect();
+    /* RESTORE REGIONS */
+    for (addr,data) in saved_regions {
+        uc.mem_write(addr, &data);
+    }
     HatchResult { registers: registers,
                   reg_deref: reg_deref,
+    //              memdump: memdump(&uc),
                   //rwmemory:  rwmemory,
                   error: e,
                   visited_freq: visited_addr_freq,
@@ -224,6 +241,7 @@ type ErrorCode = f32;
 pub struct HatchResult {
     pub registers : Vec<u32>,
     pub reg_deref : Vec<Option<u32>>,
+    //pub memdump   : Vec<(u64,Vec<u8>)>,
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
     pub null      : bool,
@@ -236,22 +254,11 @@ impl HatchResult {
         HatchResult {
             registers : Vec::new(),
             reg_deref : Vec::new(),
+     //       memdump   : Vec::new(),
             error     : None,
             counter   : 0,
             null      : false,
             visited_freq   : HashMap::new(),
-            visited   : Vec::new(),
-        }
-    }
-    /* a convenience function for null results. */
-    pub fn null () -> Self {
-        HatchResult {
-            registers : Vec::new(),
-            reg_deref : Vec::new(),
-            error     : None,
-            counter   : 0,
-            null      : true,
-            visited_freq  : HashMap::new(),
             visited   : Vec::new(),
         }
     }
@@ -351,3 +358,57 @@ pub fn debug_hook (u: &unicorn::Unicorn, addr: u64, size: u32) {
     //dfile.write(&row.as_bytes()).unwrap();
 }
 
+pub fn memdump (uc: &CpuARM) -> Vec<(u64,Vec<u8>)> {
+    let regions = uc.mem_regions().unwrap();
+    let mut data : Vec<(u64,Vec<u8>)> = Vec::new();
+    let start = Instant::now();
+    for region in regions {
+        assert!(region.end > region.begin);
+        match uc.mem_read(region.begin, (region.end - region.begin) as usize) {
+            Ok(d) => data.push((region.begin, d)),
+            _     => { println!("Error dumping {:x} bytes from {:08x}", region.begin - region.end, region.begin); }
+        }
+    }
+    println!("-- memdump took {} nanoseconds", start.elapsed().subsec_nanos());
+    data
+}
+
+pub fn seek_reference (bytes: &Vec<u8>, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64> {
+    let start = Instant::now();
+    for region in mem.iter() {
+        let begin = region.0 as usize;
+        let data  = &region.1;
+        let size  = bytes.len();
+        if data.len() - size <= 0 { continue };
+        for i in 0..(data.len() - size) {
+            let peek = &data[i..(i+size)];
+            let mut ok = true;
+            for j in 0..size {
+                if peek[j] != bytes[j] { 
+                    ok = false; break; 
+                } else {
+                    continue 
+                };
+            }
+            if ok { 
+                println!("+++ found {:?} at {:08x} in {} nanoseconds", bytes, begin+i, start.elapsed().subsec_nanos());
+                return Some((begin + i) as u64); 
+            };
+        }
+    }
+    println!("+++ did not find {:?} in {} nanoseconds", bytes, start.elapsed().subsec_nanos());
+    None
+}
+
+pub fn seek_str (string: &str, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64> {
+    seek_reference(&string.as_bytes().to_vec(), mem)
+}
+
+pub fn seek_word (word: u32, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64> {
+    seek_reference(&pack_word32le(word), mem)
+}
+
+pub fn uc_seek_word (word: u32, uc: &CpuARM) -> Option<u64> {
+    let mem = memdump(&uc);
+    seek_word(word, &mem)
+}

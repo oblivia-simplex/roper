@@ -331,7 +331,7 @@ pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
     println!("ok, engine initialized");
     let stack = find_stack(&uc);
     println!("Stack found: {:08x} -- {:08x} ({:?})", stack.begin, stack.end, stack.perms);
-    exit(99);
+    //exit(99);
     uc
 }
 

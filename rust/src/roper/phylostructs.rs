@@ -1928,8 +1928,9 @@ impl RPattern {
                         let mut nearest = 1.0;
                         match regs_deref[idx] {
                             Some(y) => {
+                                println!(">>> Comparing {:x}->{:x} to {:x}", regs[idx], y, x);
                                 if y == x {
-                                    //println!(">>>> exact match for {:?} found in {}",val,y);
+                                    println!(">>>> exact deref match for {:?} found in {}",val,y);
                                     errs.push(0.0);
                                 } else {
                                     for i in 0..regs_deref.len() {
@@ -1938,6 +1939,7 @@ impl RPattern {
                                         let r = rd.unwrap();
                                         let d = arith_err_dist(x, r);
                                         let di = if i == idx { d } else { adj(d) };
+                                        let di = di / 2.0; /* deref is hard */
                                         if di < nearest {
                                             nearest = di;
                                         };

@@ -161,7 +161,7 @@ while ! [ -n "$recent" ]; do
   fi
   echo -n "."
   sleep 0.5
-  recent=`find ./ -newer $STAMPFILE -name "${LABEL}*csv"`
+  recent=`find ${LOGDIR} -name "${LABEL}*csv"`
 done
 echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
 TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`

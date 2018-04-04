@@ -49,6 +49,7 @@ Vagrant.configure("2") do |config|
   # argument is a set of non-required options.
   config.vm.synced_folder "../", "/home/#{config.ssh.username}/ROPER"
   config.vm.synced_folder "/home/www/slash.research.cs.dal.ca/vag", "/home/#{config.ssh.username}/www"
+  config.vm.synced_folder "/mnt/disk/roperlogs", "/mnt/disk/roperlogs"
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
