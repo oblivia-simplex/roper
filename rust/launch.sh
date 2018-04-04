@@ -107,8 +107,6 @@ X1=$ITERATION
 X0_AXIS_TITLE="AVERAGE GENERATION"
 X1_AXIS_TITLE="TOURNAMENT ITERATION"
 
-# "logs/recent.csv" u $AVG_GEN:$AVG_LEN w lines, \
-# "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
 cargo build $BUILD_FLAGS 2>&1 | tee -a $ERRORFILE || \
@@ -229,7 +227,7 @@ set datafile separator ","
 set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
-plot "$PROJECT_ROOT/logs/$recent" $(popplotline $AVG_FIT) , \
+plot "$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $AVG_ABFIT), \
   "" $(popplotline $AVG_CRASH), \
   "" $(popplotline $EDI_RATE), \
@@ -248,7 +246,7 @@ set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "DIFFICULTY BY CLASS"
 set style fill transparent solid 0.3 
-plot "$PROJECT_ROOT/logs/$recent" $(difplot 0), \
+plot "$recent" $(difplot 0), \
   "" $(difplot 1), \
   "" $(difplot 2), \
   "" $(difplotline 0), \
@@ -272,15 +270,9 @@ cat > $SRV/$LABEL.html<<EOF
 </a>
 EOF
 
-#plot "$PROJECT_ROOT/logs/$recent" u ${X1}:${AVG_GEN} w lines, \
-#  "" u ${X1}:${AVG_LEN} w lines, \
-#  "" u ${X1}:${BEST_GEN} w lines, \
-#  "" u ${X1}:${BEST_LEN} w lines
-ln -sf $recent recent.csv
-export recent
 export PLOTFILE
 cd ..
-echo "[+] logging to $PROJECT_ROOT/logs/$recent"
+echo "[+] logging to $recent"
 sleep 1
 gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt &
 gnuplot_pid=$!
