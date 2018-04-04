@@ -1,7 +1,14 @@
 #! /bin/bash
 
-[ -n "$ROPER_THREADS" ] || ROPER_THREADS=1
-[ -n "$BARE_RUN" ] && ROPER_THREADS=1
+
+if [ -n "$BARE_RUN" ]; then
+    ROPER_THREADS=1
+    BUILD_FLAGS=""
+else
+    [ -n "$ROPER_THREADS" ] || ROPER_THREADS=4
+    BUILD_FLAGS="--release"
+fi
+
 
 INDEXSUFFIX="" # for simulataneous runs, etc.
 
@@ -104,7 +111,7 @@ X1_AXIS_TITLE="TOURNAMENT ITERATION"
 # "logs/recent.csv" u $AVG_GEN:$BEST_LEN w lines
 echo "[+] compiling roper..."
 echo "[+] logging stderr to $ERRORFILE"
-cargo build --release 2>&1 | tee -a $ERRORFILE || \
+cargo build $BUILD_FLAGS 2>&1 | tee -a $ERRORFILE || \
   (cat $ERRORFILE && exit)
 echo "[+] roper has been successfully compiled"
 STAMPFILE="/tmp/.roper_starting"

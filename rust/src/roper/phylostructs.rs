@@ -47,6 +47,7 @@ pub const RIPENING_FACTOR : i32 = 4;
 pub const MAX_FIT : f32 = 1.0;
 const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 
+
 #[derive(PartialEq,Debug,Clone)]
 pub struct Params {
         pub binary_path      : String,
@@ -222,8 +223,27 @@ impl Params {
             self.log_dir  = format!("{}", &ddir);
         } 
 }
-//pub static mut DISAS_PATH : str = "./DISASSEMBLY_FILE_DEFAULT_NAME.TXT";
-pub type FIT_INT = u32;
+
+pub fn name (syllables: usize) -> String {
+
+    let mut rng = rand::thread_rng();
+    let consonants = vec!['b','c','d','f','g',
+                          'h','j','k','l','m',
+                          'n','p','q','r','s',
+                          't','v','w','x','z'];
+    let vowels = vec!['a','e','i','o','u','y'];
+    let mut s = vec![];
+    
+    for i in 0..syllables {
+        s.push(consonants[rng.gen::<usize>() % consonants.len()]);
+        s.push(vowels[rng.gen::<usize>() % vowels.len()]);
+        s.push(consonants[rng.gen::<usize>() % consonants.len()]);
+        if i % 2 == 1 && i < syllables-1 { s.push('-') };
+    }
+    
+    s.iter().collect()
+}
+
 
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Fingerprint (Vec<bool>);
@@ -467,6 +487,7 @@ pub struct Chain {
         pub visited_map: HashMap<Problem, Vec<u32>>,
         pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
         pub runtime: Option<f32>,
+        pub name: String,
         i: usize,
         // space-consuming, but it'll give us some useful data on
         // the destructiveness of the shufflefuck operator
@@ -477,8 +498,9 @@ impl Display for Chain {
         fn fmt (&self, f: &mut Formatter) -> Result {
             let mut s = String::new();
             s.push_str("==================================================\n");
-            s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", 
-                                                    self.fitness, self.season));
+            s.push_str(&format!("Synopsis of chain {}\n", self.name));
+            s.push_str("==================================================\n");
+            s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
             s.push_str(&format!("Stray Rate:       {}\n", self.stray_addr_rate()));
             s.push_str(&format!("Crashes:          {:?}\n", self.crashes));
@@ -513,7 +535,9 @@ impl Display for Chain {
             s.push_str("Clumps:\n");
             for clump in &self.clumps {
                 if !clump.enabled {
-                    s.push_str("[DISABLED] ");
+                    s.push_str("[ ] ");
+                } else {
+                    s.push_str("[*] ");
                 }
                 s.push_str(&format!("<{:08x}> ", clump.ret_addr));
                 let mut i = 0;
@@ -521,8 +545,8 @@ impl Display for Chain {
                     match clump.input_slots
                                .iter()
                                .position(|&(off, _)| off == i) {
-                        None => s.push_str(&format!("{:08x} ",word)),
-                        Some(_) => s.push_str("*INPUT?* "),
+                        None => s.push_str(&format!(" {:08x}  ",word)),
+                        Some(_) => s.push_str(" *INPUT?*  "),
                     };
                     i += 1;
                 }
@@ -559,6 +583,7 @@ impl Default for Chain {
                 visitation_diversity: 0.0,
                 visited_map: HashMap::new(),
                 register_map: HashMap::new(),
+                name: name(4),
                 i: 0,
             }
         } 
@@ -603,13 +628,11 @@ impl IndexMut <usize> for Chain {
 impl Chain {
         /* NB: a Chain::new(c) takes ownership of its clump vec */
         pub fn new (clumps: Vec<Clump>) -> Chain {
-            //let conc = concatenate(&clumps);
-            //let pack = pack_word32le_vec(&conc);
             let mut chain = Chain {
                 clumps: clumps,
-                //packed: pack,
                 ..Default::default()
             };
+            chain.name = name(4);
             chain.collate_input_slots();
             chain
         }
@@ -931,9 +954,9 @@ impl Population {
         pub fn random_spawn (&self) -> Chain {
             let mut mangler = Mangler::new(&self.params.constants);
             random_chain(&self.primordial_ooze,
-                                      &self.params,
-                                      &mut mangler,
-                                      &mut thread_rng())
+                         &self.params,
+                         &mut mangler,
+                         &mut thread_rng())
         }
 
         pub fn avg_gen (&self) -> f32 {

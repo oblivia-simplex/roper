@@ -2,6 +2,7 @@
 extern crate unicorn;
 extern crate elf;
 
+use std::process::exit;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::iter::FromIterator;
@@ -51,47 +52,8 @@ pub fn set_registers (uc: &unicorn::Unicorn,
   * Initializes the engine. Anchors the engine to the
   * lifetime of the text section, since text will be
   * used throughout (generation of gadgets, etc.).
+  * (out of date, but seems to work ok, so let's not break it.)
   */
-pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
-                            segments: &Vec<Seg>,
-                            mode: MachineMode)
-                            -> unicorn::CpuARM {
-    let uc = CpuARM::new(mode.uc())
-        .expect("failed to create emulator engine");
-    
-    let mo = uc.query(unicorn::Query::MODE).unwrap();
-    println!("[*] Initialized. Mode: {:?}, {:?}: {:?}",
-             mode, mode.uc(), mo);
-    // next: map text and rodata separately
-    // we need a smoother interface between the elf module and unicorn
-    // TODO: set stack to actual stack segment
-    uc.mem_map(BASE_STACK, STACK_SIZE, PROT_READ|PROT_WRITE)
-        .expect("Failed to map stack memory");
-  
-    for ref seg in segments.iter() {
-        println!("[*] Mapping segment with size {:x}, addr {:x}, perm {:?}",
-                 seg.memsz, seg.addr, seg.perm);
-        uc.mem_map(seg.floor(), seg.size(), seg.perm)
-            .expect(&format!("Failed to map segment. Size: {:x}; Addr: {:x}, Perm: {:?}",
-                             seg.memsz, seg.addr, seg.perm));
-        // paint unused memory with breakpoints
-        let breakpoint : Vec<u8> = vec![0xFE, 0xDE, 0xFF, 0xE7];
-        let mut i = seg.floor();
-        while i < seg.size() as u64 {
-            uc.mem_write(i, &breakpoint);
-            i += 4;
-        }
-    }
-    for ref sec in sections.iter() {
-        //let &(addr, ref data) = pair
-        println!("[*] Writing section named {}, from address {:08x}, with size of {:08x} bytes",
-        sec.name, sec.addr, sec.size());
-        uc.mem_write(sec.addr, &sec.data)
-            .expect(&format!("Error writing {} section to memory", sec.name));
-    }
-    println!("ok, engine initialized");
-    uc
-}
 
 pub fn add_debug_hooks (uc: &mut unicorn::CpuARM) {
     if _DEBUG {
@@ -136,11 +98,12 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
       * A packed chain will be empty if it turns out to consist
       * entirely of *explicitly defined* introns. 
       */
-    let mut stack = chain.pack();
-    
+    let mut packed = chain.pack();
+    let stack : MemRegion = find_stack(&uc);
+
     /* debugging */
     // println!("[*] [hatch_chain()] packed chain len: >> {}", stack.len());
-    if (stack.len() == 0) {
+    if (packed.len() == 0) {
         println!("[X] returning null HatchResult from hatch_chain...\n");
         return HatchResult::null();
     }
@@ -149,27 +112,34 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
     for &(off, inp) in chain.input_slots.iter() {
         let byte_offset = off * 4;
         let input_value = pack_word32le(input[inp % il] as u32);
-        if byte_offset + 4 <= stack.len() {
+        if byte_offset + 4 <= packed.len() {
             for i in 0..4 { 
-                stack[byte_offset+i] = input_value[i]; 
+                packed[byte_offset+i] = input_value[i]; 
             }
         } else {
             break;
         }
     }
+    let stack_space = (stack.end - stack.begin) as usize;
+    let stack_entry = stack.begin + (stack_space / 2) as u64; /* smack in the middle */
+    if (packed.len() > stack_space) {
+        println!("[!] packed chain larger than allocated stack space. truncating.");
+        packed.truncate(stack_space-4);
+    }
 
     set_registers(uc.emu(), &input, &inregs, reset);
     //reset_counter(uc);
     if reset {
-    let zerostack = vec![0; STACK_SIZE]; //mk_zerostack(STACK_SIZE);
-        uc.mem_write(BASE_STACK, &zerostack)
+        /* refine: zero out all writeable memory */
+        let zerostack = vec![0; stack_space]; //mk_zerostack(STACK_SIZE);
+        uc.mem_write(stack.begin, &zerostack)
             .expect("Error zeroing out stack");
     }
-    uc.mem_write(STACK_INIT, &stack)
+    uc.mem_write(stack_entry, &packed)
         .expect("Error initializing stack memory");
-    uc.reg_write(RegisterARM::SP, STACK_INIT+4) // pop
+    uc.reg_write(RegisterARM::SP, stack_entry+4) // pop
         .expect("Error writing SP register");
-    let start_addr : u64 = get_word32le(&stack, 0) as u64 ; //| 1;
+    let start_addr : u64 = get_word32le(&packed, 0) as u64 ; //| 1;
     let mut visitor = Vec::new();
     let visitor_rc : Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(visitor));
     let ee = {
@@ -232,6 +202,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
                                         .collect();
     HatchResult { registers: registers,
                   reg_deref: reg_deref,
+                  //rwmemory:  rwmemory,
                   error: e,
                   visited_freq: visited_addr_freq,
                   visited: visited_addrs.clone(),
