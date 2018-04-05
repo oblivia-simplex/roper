@@ -331,6 +331,10 @@ pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
     println!("ok, engine initialized");
     let stack = find_stack(&uc);
     println!("Stack found: {:08x} -- {:08x} ({:?})", stack.begin, stack.end, stack.perms);
+    let stringdump = dump_strings(&uc, 4, true);
+    for (addr, s) in stringdump {
+        println!("{:08x}  {}",addr,s);
+    }
     //exit(99);
     uc
 }
@@ -348,3 +352,4 @@ pub fn find_stack (uc: &CpuARM) -> MemRegion {
     }
     stack.expect(&format!("[!] Could not find stack bottom! Regions: {:?}",regions))
 }
+

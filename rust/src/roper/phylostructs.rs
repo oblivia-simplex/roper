@@ -10,6 +10,7 @@ extern crate regex;
 extern crate bio;
 
 
+use std::io;
 use std::cmp::Ordering::*;
 use self::regex::*;
 use self::chrono::prelude::*;
@@ -485,7 +486,7 @@ pub struct Chain {
         pub season: usize,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
-        pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
+        pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
         pub runtime: Option<f32>,
         pub name: String,
         i: usize,
@@ -759,6 +760,12 @@ impl Chain {
             stray_rate
         }
 
+        pub fn avg_num_insts (&self) -> f32 {
+            mean(&self.visited_map.values()
+                                  .map(|ref v| v.len() as f32)
+                                  .collect::<Vec<f32>>())
+        }
+
         pub fn stray_to_edi_rate (&self) -> f32 {
             let edirat = 1.0 - self.enabled_ratio();
             if edirat == 0.0 { 0.0 } else { self.stray_addr_rate() / edirat }
@@ -771,11 +778,12 @@ impl Chain {
                                  params: &Params) {
             println!("DUMPING VISIT MAP TO {}",path);
             let mut file = OpenOptions::new()
-                                       .truncate(true)
-                                       .write(true)
-                                       .create(true)
-                                       .open(path)
-                                       .unwrap();
+                            .truncate(true)
+                            .write(true)
+                            .create(true)
+                            .open(path)
+                            .unwrap();
+
             file.write(&format!("=== VISIT MAP FOR BINARY {} ===\n", binary).as_bytes());
             // let's dump the chain here too
             file.write(&format!("--- BEGIN CHAIN DUMP ---\n").as_bytes());
@@ -810,10 +818,14 @@ impl Chain {
                     i += 1;
                     if i == 8 { file.write(b"\n.... "); };
                     file.write(&format!("{:x}",r).as_bytes());
-                    if let &Some(a) = d {
-                        file.write(&format!("->{:x} ",a).as_bytes());
-                    } else {
-                        file.write(b" ");
+                    match d {
+                        &Some(ref a) => {
+                            let w = get_word32le(a,0);
+                            file.write(&format!("->{:x} ",w).as_bytes());
+                        },
+                        &None => {
+                            file.write(b" ");
+                        },
                     }
                 }
                 file.write(b"\n");
@@ -1155,6 +1167,13 @@ impl Population {
                       .collect::<Vec<f32>>())
         }
 
+        pub fn avg_num_insts (&self) -> f32 {
+            mean(&self.deme
+                      .iter()
+                      .filter(|ref x| x.fitness != None)
+                      .map(|ref x| x.avg_num_insts())
+                      .collect::<Vec<f32>>())
+        }
 
         /* Needs some refactoring. Maybe a macro. */
         pub fn log (&self, first: bool) -> bool {
@@ -1169,7 +1188,7 @@ impl Population {
             let nclasses = self.params.io_targets.num_classes;
             // todo: don't hardcode the number of classes
             let row = if first {
-                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN",
+                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN,AVG-INSTS",
                                 self.params);
                 for i in 0..nclasses {
                     s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -1178,7 +1197,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -1203,11 +1222,12 @@ impl Population {
                                   self.avg_stray_to_edi_rate(),
                                   self.stray_nocrash_rate(),
                                   self.avg_visitation_diversity(),
-                                  self.avg_ratio_run());
+                                  self.avg_ratio_run(),
+                                  self.avg_num_insts());
             let c_mn_dif = self.params.io_targets
-                                      .class_mean_difficulties();
+                               .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
-                                      .class_stddev_difficulties();
+                               .class_stddev_difficulties();
             for i in 0..nclasses {
                 row.push_str(&format!(",{},{}", c_mn_dif[i], c_sd_dif[i]));
             }
@@ -1364,7 +1384,7 @@ impl Problem {
         pub fn assess_output (&self,
                               outregs: &Vec<usize>,
                               registers: &Vec<u32>,
-                              reg_deref: &Vec<Option<u32>>,
+                              reg_deref: &Vec<Option<Vec<u8>>>,
                               uc: &CpuARM) 
                               -> (f32, f32) {
             match &self.target {
@@ -1826,7 +1846,7 @@ impl RPattern {
                 .collect()
         }
 
-        pub fn satisfy (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> bool {
+        pub fn satisfy (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<Vec<u8>>>) -> bool {
             for &(idx,val,_) in &self.regvals_diff {
                 match val {
                     RVal::Immed(x) => {
@@ -1836,8 +1856,12 @@ impl RPattern {
                         };
                     },
                     RVal::Deref(x) => {
-                        match regs_deref[idx] {
-                            Some(x) => (),
+                        match &regs_deref[idx] {
+                            &Some(ref y) => {
+                                if x != get_word32le(&y,0) {
+                                  return false 
+                                };
+                            }, 
                             _       => return false,
                         }
                     },
@@ -1846,13 +1870,15 @@ impl RPattern {
             true
         }
         /* NB: scorecard records false for match, true for mismatch */
-        pub fn matches (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> Fingerprint {
+        pub fn matches (&self, 
+                        regs: &Vec<u32>, 
+                        regs_deref: &Vec<Option<Vec<u8>>>) -> Fingerprint {
             let mut scorecard : Fingerprint = Fingerprint::new();
             for &(idx,val,diff) in &self.regvals_diff {
                 match val {
                     RVal::Immed(x) => scorecard.push(regs[idx] != x),
-                    RVal::Deref(x) => match regs_deref[idx] {
-                        Some(x) => scorecard.push(false),
+                    RVal::Deref(x) => match &regs_deref[idx] {
+                        &Some(ref x) => scorecard.push(false),
                         _       => scorecard.push(true),
                     },
                 }
@@ -1861,7 +1887,9 @@ impl RPattern {
         }
 
 
-        pub fn distance (&self, regs: &Vec<u32>, regs_deref: &Vec<Option<u32>>) -> f32 {
+        pub fn distance (&self, 
+                         regs: &Vec<u32>, 
+                         regs_deref: &Vec<Option<Vec<u8>>>) -> f32 {
             fn arith_err_dist(a: u32, b: u32) -> f32 {
                 /* scaling and overflow trouble with this approach  
                 let a = a as f32;
@@ -1878,7 +1906,7 @@ impl RPattern {
                 (a ^ b).count_ones() as f32 / 32.0 
             }
             
-            fn adj (x: f32) -> f32 { (1.0 + x) / 2.0 }
+            fn adj (x: f32) -> f32 { f32::min(1.0,(x+0.01).sqrt()) } //(1.0 + x) / 3.0 }
 
             let mut ref_err : f32 = 0.0;
             let mut idx_err : f32 = 0.0;
@@ -1906,10 +1934,12 @@ impl RPattern {
                                 //println!("immed->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                             }
                             for i in 0..regs_deref.len() {
-                                let r = regs_deref[i];
-                                match r {
-                                    None => continue,
-                                    Some(r) => {
+                                let v = &regs_deref[i];
+                /*TODO cycle through several offsets to see if you're close */
+                                match v {
+                                    &None => continue,
+                                    &Some(ref vd) => {
+                                        let r = get_word32le(vd, 0); 
                                         let d = adj(arith_err_dist(x, r));
                                         let di = if i == idx { d } else { adj(d) };
                                         if di < nearest {
@@ -1926,24 +1956,28 @@ impl RPattern {
                     RVal::Deref(x) => { 
                         //println!(">>> looking for nearest match for {:?}",val);
                         let mut nearest = 1.0;
-                        match regs_deref[idx] {
-                            Some(y) => {
-                                println!(">>> Comparing {:x}->{:x} to {:x}", regs[idx], y, x);
+                        let v = &regs_deref[idx];
+                        if let &Some(ref vd) = v {
+                                let y = get_word32le(vd,0);
+                                //println!(">>> Comparing {:?}|{:x}->{:x} to {:x}", regs_deref[idx].as_ref().unwrap(),regs[idx], y, x);
                                 if y == x {
-                                    println!(">>>> exact deref match for {:?} found in {}",val,y);
-                                    errs.push(0.0);
+                                    nearest = 0.0;
+                                  //  println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
                                 } else {
                                     for i in 0..regs_deref.len() {
-                                        let rd = regs_deref[i];
-                                        if rd == None { continue };
-                                        let r = rd.unwrap();
+                                        if i == 13 { continue }; /* bad luck */
+                                        let vd = &regs_deref[i];
+                                        if vd == &None { continue };
+                                        let r = get_word32le(vd.as_ref()
+                                                               .unwrap() ,0); 
+                                        /* TODO scan? */
                                         let d = arith_err_dist(x, r);
                                         let di = if i == idx { d } else { adj(d) };
                                         let di = di / 2.0; /* deref is hard */
                                         if di < nearest {
                                             nearest = di;
                                         };
-                                        //println!("deref->reg_deref loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
+                                    //    println!("&{:x} in r{}>>> d = {}, di = {}, nearest to {:x} = {}", r,i,d,di,x,nearest);
                                     }
                                     for i in 0..regs.len() {
                                         let r = regs[i];
@@ -1955,19 +1989,20 @@ impl RPattern {
                                         //println!("deref->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                                     }
                                 }
-                            },
-                            None =>  {
+                        };
+                        if adj(adj(0.0)) < nearest {
                                 //println!(">>>> nothing in reg_deref, considering reg for {:?}...",val);
                                 for i in 0..regs.len() {
                                     let r = regs[i];
-                                    let d = adj(arith_err_dist(x, r));
+                                    let dist = arith_err_dist(x, r);
+                                    let d = adj(dist);
                                     let di = if i == idx { d } else { adj(d) };
                                     if di < nearest {
                                         nearest = di;
+                                        if dist == 0.0 {break};
                                     };
-                                    //println!("deref/none->reg loop>>> d = {}, di = {}, nearest = {}",d,di,nearest);
+                                 //   println!("{:x} in r{}>>> dist={}, d = {}, di = {}, nearest to {:x} = {}",r,i,dist,d,di,x,nearest);
                                 };
-                            },
                         };
                         errs.push(nearest);
                     },
@@ -1975,13 +2010,16 @@ impl RPattern {
 
 
             }
-            //println!(">>> self.regvals_diff = {:?}", &self.regvals_diff);
-            //println!(">>> regs = {:?}", &regs);
-            //println!(">>> regs_deref = {:?}", &regs_deref);
-            //println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
+            /*
+            println!(">>> self.regvals_diff = {:?}", &self.regvals_diff);
+            println!(">>> regs = {:?}", &regs);
+            println!(">>> regs_deref = {:?}", &regs_deref);
+            println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
+            */
             mean(&errs)
         }
-}
+} /* TODO add some unit tests. i think there's an arithmetic error up here, 
+     which is causing a perfect champion to receive a fitness of 0.003... */
 pub const MAXPATLEN : usize = 12;
 impl Display for RPattern {
         fn fmt (&self, f: &mut Formatter) -> Result {

@@ -14,6 +14,7 @@ INDEXSUFFIX="" # for simulataneous runs, etc.
 
 POPSIZE=2048
 
+PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
 PATTERNSTRING="-p 02bc3e,&02bc3e,0,_,_,_,_,0b" 
 DATASTRING="-d $DATAFILE"
@@ -24,7 +25,6 @@ GOAL="0.0"
 CLASSIFICATION=0
 
 export RUSTFLAGS=-Awarnings
-PROJECT_ROOT=`pwd`/..
 SRV=${PROJECT_ROOT}/srv
 mkdir -p $SRV
 
@@ -94,7 +94,8 @@ AVG_STRAY_TO_EDI=19
 STRAY_NOCRASH=20
 VISIT_DIVERS=21
 RATIO_RUN=22
-C=23
+AVG_INSTS=23
+C=24
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -237,7 +238,8 @@ plot "$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $BEST_ABFIT), \
   "" $(popplotline $STRAY_RATE), \
   "" $(popplotline $STRAY_NOCRASH), \
-  "" $(popplotline $RATIO_RUN)
+  "" $(popplotline $RATIO_RUN), \
+  "" $(popplotline $AVG_INSTS)
 EOF
 
 if (( $CLASSIFICATION )); then

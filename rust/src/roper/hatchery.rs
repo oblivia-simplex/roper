@@ -209,8 +209,11 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
 
     // what if we added a second register vector of derefences?
     // of type Vec<Option<u32>> ?
-    let reg_deref : Vec<Option<u32>> = registers.iter()
-                                        .map(|&a| deref(&(uc.emu()),a))
+    let deref_size = 4; /* for starters */
+    let reg_deref : Vec<Option<Vec<u8>>> = registers.iter()
+                                        .map(|&a| deref_vec(&(uc.emu()),
+                                                            a,
+                                                            deref_size))
                                         .collect();
     /* RESTORE REGIONS */
     for (addr,data) in saved_regions {
@@ -235,12 +238,19 @@ pub fn deref (uc: &unicorn::Unicorn, addr: u32) -> Option<u32> {
     }
 }
 
+pub fn deref_vec (uc: &unicorn::Unicorn, addr: u32, size: usize) -> Option<Vec<u8>> {
+    match uc.mem_read(addr as u64, size) {
+        Ok(bytes) => Some(bytes),
+        Err(_)    => None,
+    }
+}
+
 
 type ErrorCode = f32;
 #[derive(Default,Debug,Clone)]
 pub struct HatchResult {
     pub registers : Vec<u32>,
-    pub reg_deref : Vec<Option<u32>>,
+    pub reg_deref : Vec<Option<Vec<u8>>>,
     //pub memdump   : Vec<(u64,Vec<u8>)>,
     pub error     : Option<ErrorCode>,
     pub counter   : usize,
@@ -411,4 +421,34 @@ pub fn seek_word (word: u32, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64> {
 pub fn uc_seek_word (word: u32, uc: &CpuARM) -> Option<u64> {
     let mem = memdump(&uc);
     seek_word(word, &mem)
+}
+
+fn printable (byte: u8) -> bool { 0x20 <= byte && byte < 0x80 }
+
+pub fn dump_strings (uc: &CpuARM, minlen: usize, nullterm: bool) 
+                    -> Vec<(u64,String)> {
+    let mut strings = Vec::new();
+    let mem = memdump(&uc);
+    for region in mem.iter() {
+        let begin = region.0;
+        let data = &region.1;
+        let mut bytes = Vec::new();
+        let mut i = 0;
+        for byte in data {
+            if printable(*byte) {
+                bytes.push(*byte);
+            } else {
+                if bytes.len() >= minlen && (!nullterm || *byte == 0) {
+                    match String::from_utf8(bytes.clone()) {
+                        Ok(s) => strings.push((begin+i, s)),
+                        _ => (),
+                    }
+                };
+                bytes.truncate(0);
+            }
+            i += 1;
+
+        }
+    }
+    strings
 }

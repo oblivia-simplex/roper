@@ -143,15 +143,8 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
         let n = params.brood_size;
         for i in 0..n {
             let spawnclumps = parents[i % 2].clumps.clone();
-            let unmutated = spawnclumps.clone();
             let mut spawn = Chain::new(spawnclumps);
             mutate(&mut spawn, &params, uc, rng);
-            let mutated = spawn.clumps.clone();
-            if mutated == unmutated {
-                println!("??? not mutated");
-            } else {
-                println!("!!! mutated");
-            }
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
             spawn.p_fitness = parents[i % 2].fitness;
             spawn.generation = parents[i % 2].generation + 1;
@@ -187,7 +180,7 @@ pub struct EvalCaseResult {
         pub crashes : bool,
         pub visited : Vec<u32>,
         pub registers : Vec<u32>,
-        pub reg_deref : Vec<Option<u32>>,
+        pub reg_deref : Vec<Option<Vec<u8>>>,
 }
 #[derive(Debug,PartialEq)]
 pub struct EvalResult {
@@ -198,7 +191,7 @@ pub struct EvalResult {
         pub crashes : bool,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
-        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
+        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
         pub difficulties : Option<HashMap<Problem, f32>>,
 }
 
@@ -286,7 +279,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let mut anycrash = false;
         let mut difficulties : HashMap<Problem,f32> = HashMap::new();
         let mut visited_map  : HashMap<Problem,Vec<u32>> = HashMap::new();
-        let mut register_map : HashMap<Problem,(Vec<u32>,Vec<Option<u32>>)>
+        let mut register_map : HashMap<Problem,(Vec<u32>,Vec<Option<Vec<u8>>>)>
             = HashMap::new(); 
         let mut ratio_run_vec = Vec::new();
         for problem in io_targets.iter() {
@@ -378,7 +371,7 @@ pub struct FitUpdate {
         pub runtime     : Option<f32>,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
-        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<u32>>)>,
+        pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
 }
 
 #[derive(Debug,Clone)]

@@ -268,10 +268,10 @@ fn main() {
             let mut num_classes = 0;
             for i in 0..game_seeds {
                 gs.push(Problem::new(vec![0,0,0],
-                                                          Target::Game(GameData {
-                                                              addr: host_port.clone(),
-                                                              params: vec![i, radius, radius * 8 +1, 0, apples, cacti, init_length]
-                                                          })));
+                        Target::Game(GameData {
+                            addr: host_port.clone(),
+                            params: vec![i, radius, radius * 8 +1, 0, apples, cacti, init_length]
+                        })));
                 num_classes += 1;
             }
             IoTargets::from_vec(TargetKind::Game, gs, num_classes)
@@ -301,10 +301,6 @@ fn main() {
         Some(p) => p,
     };
   
-    /* TODO: REFACTOR AWAY THIS OLD elf_addr_data CRUFT. 
-      * IT DUPLICATES STUFF THAT's BEING HANDLED MORE ELEGANTLY
-      * OVER IN ONTOSTRUCTS, but is still relied upon.
-      */
     
     let (secs,segs) = get_elf_addr_data(&elf_path);
     println!("****************** ELF {} **********************", elf_path);
@@ -609,10 +605,15 @@ fn main() {
     }
     let testing_res =
         evaluate_fitness(&mut(debug_machinery.cluster[0].unwrap_mut()),
-                                      &mut champion.unwrap(),
-                                      &pop_local.read().unwrap().params,
-                                      Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
-                                      true);
+                         &mut champion.unwrap(),
+                         &pop_local.read().unwrap().params,
+                         Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
+                         true);
+    //champion.unwrap().dump("stdout", 
+    //                       &params.binary_path, 
+    //                       debug_machinery.cluster[0].unwrap(),
+    //                       &params);
+
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
     println!("[*] Absolute fitness of champion on testing run: {:1.6}",
                       testing_res.ab_fitness);
