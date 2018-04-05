@@ -796,19 +796,23 @@ impl Chain {
             let binary = &params.binary_path;
 
             s.push_str(&format!("=== VISIT MAP FOR BINARY {} ===\n", binary));
+            s.push_str(&format!("--- BEGIN PARAMETERS DUMP ---\n"));
+            s.push_str(&format!("{}\n", params));
+            s.push_str(&format!("--- END PARAMETERS DUMP ---\n"));
             // let's dump the chain here too
             s.push_str(&format!("--- BEGIN CHAIN DUMP ---\n"));
             s.push_str(&format!("{}\n", self));
             s.push_str(&format!("--- END CHAIN DUMP ---\n"));
-            s.push_str(&format!("--- BEGIN PARAMETERS DUMP ---\n"));
-            s.push_str(&format!("{}\n", params));
-            s.push_str(&format!("--- END PARAMETERS DUMP ---\n"));
             for p in self.visited_map.keys() {
                 let pname = p.identifier();
                 s.push_str(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
                                     pname));
                 let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
+                    s.push_str(&format!("IN:  {}", hexvec_(&p.input
+                                                             .iter()
+                                                             .map(|&x| x as u32)
+                                                             .collect::<Vec<u32>>())));
                     let is_stray = !self.search_intervals(&intervals, *addr);
                     let dis = disas_addr(&uc, *addr);
                     s.push_str(&format!("{:08x}{} | {}\n", 
