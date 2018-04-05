@@ -770,13 +770,13 @@ impl Chain {
             let edirat = 1.0 - self.enabled_ratio();
             if edirat == 0.0 { 0.0 } else { self.stray_addr_rate() / edirat }
         }
-
-        pub fn dump_visited_map (&self, 
-                                 path: &str, 
-                                 binary: &str,
+        pub fn dump_visited_map (&self,
+                                 path: &str,
                                  uc: &unicorn::CpuARM,
                                  params: &Params) {
-            println!("DUMPING VISIT MAP TO {}",path);
+
+            let s = self.dump_visited_map_to_string(uc, params);
+
             let mut file = OpenOptions::new()
                             .truncate(true)
                             .write(true)
@@ -784,55 +784,66 @@ impl Chain {
                             .open(path)
                             .unwrap();
 
-            file.write(&format!("=== VISIT MAP FOR BINARY {} ===\n", binary).as_bytes());
+            file.write(s.as_bytes());
+            file.flush().unwrap();
+        }
+
+        pub fn dump_visited_map_to_string (&self, 
+                                           uc: &unicorn::CpuARM,
+                                           params: &Params) -> String {
+
+            let mut s = String::new();
+            let binary = &params.binary_path;
+
+            s.push_str(&format!("=== VISIT MAP FOR BINARY {} ===\n", binary));
             // let's dump the chain here too
-            file.write(&format!("--- BEGIN CHAIN DUMP ---\n").as_bytes());
-            file.write(&format!("{}\n", self).as_bytes());
-            file.write(&format!("--- END CHAIN DUMP ---\n").as_bytes());
-            file.write(&format!("--- BEGIN PARAMETERS DUMP ---\n").as_bytes());
-            file.write(&format!("{}\n", params).as_bytes());
-            file.write(&format!("--- END PARAMETERS DUMP ---\n").as_bytes());
+            s.push_str(&format!("--- BEGIN CHAIN DUMP ---\n"));
+            s.push_str(&format!("{}\n", self));
+            s.push_str(&format!("--- END CHAIN DUMP ---\n"));
+            s.push_str(&format!("--- BEGIN PARAMETERS DUMP ---\n"));
+            s.push_str(&format!("{}\n", params));
+            s.push_str(&format!("--- END PARAMETERS DUMP ---\n"));
             for p in self.visited_map.keys() {
                 let pname = p.identifier();
-                file.write(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
-                                    pname).as_bytes());
+                s.push_str(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
+                                    pname));
                 let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
                     let is_stray = !self.search_intervals(&intervals, *addr);
                     let dis = disas_addr(&uc, *addr);
-                    file.write(&format!("{:08x}{} | {}\n", 
+                    s.push_str(&format!("{:08x}{} | {}\n", 
                                         addr,
                                         if is_stray { " stray"} else {"      "},
                                         dis)
-                              .as_bytes());
+                              );
                 }
                 /* now the register map, to show the result */
-                //file.write(&format!("OUT:   {}\n", 
+                //s.push_str(&format!("OUT:   {}\n", 
                 //                    hexvec_(&self.register_map
                 //                                .get(p)
-                //                                .unwrap().0)).as_bytes());
-                file.write(b"OUT: ");
+                //                                .unwrap().0)));
+                s.push_str("OUT: ");
                 let mut i = 0;
                 let &&(ref rs, ref ds) = &self.register_map.get(p).unwrap();
                 for (r,d) in rs.iter().zip(ds) {
                     i += 1;
-                    if i == 8 { file.write(b"\n.... "); };
-                    file.write(&format!("{:x}",r).as_bytes());
+                    if i == 8 { s.push_str("\n.... "); };
+                    s.push_str(&format!("{:x}",r));
                     match d {
                         &Some(ref a) => {
                             let w = get_word32le(a,0);
-                            file.write(&format!("->{:x} ",w).as_bytes());
+                            s.push_str(&format!("->{:x} ",w));
                         },
                         &None => {
-                            file.write(b" ");
+                            s.push_str(" ");
                         },
                     }
                 }
-                file.write(b"\n");
-                file.write(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
-                                    pname).as_bytes());
+                s.push_str("\n");
+                s.push_str(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
+                                    pname));
             }
-            file.flush().unwrap();
+            s
         }
             
 }
@@ -953,8 +964,7 @@ impl Population {
                 let path = format!("{}chain_{}_visited_map.txt",
                                    &dir, i);
                 chain.dump_visited_map(&path,
-                                       &self.params.binary_path,
-                                       &uc,
+                                       uc,
                                        &self.params);
                 
 
