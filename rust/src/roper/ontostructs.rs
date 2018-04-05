@@ -2,6 +2,7 @@ extern crate unicorn;
 extern crate rand;
 extern crate elf;
 
+use std::env;
 use std::mem::size_of;
 use std::process::exit;
 use elf::types::*;
@@ -331,11 +332,16 @@ pub fn init_engine <'a,'b> (sections: &Vec<Sec>,//<(u64, Vec<u8>)>,
     println!("ok, engine initialized");
     let stack = find_stack(&uc);
     println!("Stack found: {:08x} -- {:08x} ({:?})", stack.begin, stack.end, stack.perms);
-    let stringdump = dump_strings(&uc, 4, true);
+    /* the false param says don't restrict the dump to null terminated strings.
+     * true for restrict to null terminated. */
+    let stringdump = dump_strings(&uc, 4, false);
     for (addr, s) in stringdump {
         println!("{:08x}  {}",addr,s);
     }
-    //exit(99);
+    match env::var("INITONLY") {
+        Ok(_)   => { exit(99); },
+        Err(_)  => (),
+    }
     uc
 }
 

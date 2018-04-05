@@ -1,6 +1,7 @@
 #! /bin/bash
 
 
+
 if [ -n "$BARE_RUN" ]; then
     ROPER_THREADS=1
     BUILD_FLAGS=""
@@ -16,11 +17,18 @@ POPSIZE=2048
 
 PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
-PATTERNSTRING="-p 02bc3e,&02bc3e,0,_,_,_,_,0b" 
+#exec_str_addr=0001bc3e # /bin/sh\n
+exec_str_addr=0001f62f # /tmp/flashXXXX in tomato-RT-N18U. in writeable mem! 
+PATTERNSTRING="-p ${exec_str_addr},&${exec_str_addr},0,_,_,_,_,0b" 
 DATASTRING="-d $DATAFILE"
 READEVERY=1
 
-TASKFLAGS=$PATTERNSTRING
+[ -n "$PROBLEM" ] || PROBLEM=iris
+if [ "$PROBLEM" = syscall ]; then
+    TASKFLAGS=$PATTERNSTRING
+else 
+    TASKFLAGS=$DATASTRING
+fi
 GOAL="0.0"
 CLASSIFICATION=0
 

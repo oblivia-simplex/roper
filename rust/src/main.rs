@@ -466,7 +466,6 @@ fn main() {
                         champion.as_ref()
                                 .expect("failed to unwrap champ to dump")
                                 .dump_visited_map(&path, 
-                                                  &params.binary_path,
                                                   &debug_machinery.cluster[0].unwrap(),
                                                   &params);
 
@@ -604,8 +603,9 @@ fn main() {
         panic!("Champion is none!");
     }
     let testing_res =
-        evaluate_fitness(&mut(debug_machinery.cluster[0].unwrap_mut()),
-                         &mut champion.unwrap(),
+    {
+        let r = evaluate_fitness(&mut(debug_machinery.cluster[0].unwrap_mut()),
+                         &mut champion.as_mut().unwrap(),
                          &pop_local.read().unwrap().params,
                          Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
                          true);
@@ -613,6 +613,16 @@ fn main() {
     //                       &params.binary_path, 
     //                       debug_machinery.cluster[0].unwrap(),
     //                       &params);
+
+        println!("-=-=-=-=- CHAMPION -=-=-=-=-\n{}\n",
+                 &champion.as_ref()
+                          .unwrap()
+                          .dump_visited_map_to_string(&debug_machinery.cluster[0]
+                                                                      .unwrap(),
+                                                      &params));
+        r
+    };
+             
 
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
     println!("[*] Absolute fitness of champion on testing run: {:1.6}",

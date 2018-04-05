@@ -436,12 +436,14 @@ pub fn dump_strings (uc: &CpuARM, minlen: usize, nullterm: bool)
         let mut i = 0;
         for byte in data {
             if printable(*byte) {
+                print!("{}", *byte as char);
                 bytes.push(*byte);
             } else {
                 if bytes.len() >= minlen && (!nullterm || *byte == 0) {
+                    println!("");
                     match String::from_utf8(bytes.clone()) {
-                        Ok(s) => strings.push((begin+i, s)),
-                        _ => (),
+                        Ok(s) => strings.push((begin+i-(bytes.len() as u64), s)),
+                        _ => { println!("[x] failed to encode {:?} as utf8",&bytes); },
                     }
                 };
                 bytes.truncate(0);
