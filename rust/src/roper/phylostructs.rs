@@ -1297,6 +1297,7 @@ pub enum TargetKind {
         PatternMatch,
         Classification,
         Game,
+        Kafka,
 }
 
 #[derive(Debug,Clone,Eq,PartialEq)]
@@ -1430,7 +1431,12 @@ impl Problem {
                     let af = (1.0 / s).sqrt();
                     //(af, (af + (1.0 - self.difficulty().powi(2)))/2.0)
                     (af, (af * (1.0 - self.difficulty())))
-                }
+                },
+                /* It is a very painful thing... */
+                &Target::Kafka => {
+                    let r = thread_rng().gen::<f32>();
+                    (r,r)
+                },
             }
         }
         pub fn set_pfactor (&mut self, p: usize) {
@@ -1442,6 +1448,7 @@ impl Problem {
                 Target::Exact(_) => TargetKind::PatternMatch,
                 Target::Vote(_)  => TargetKind::Classification,
                 Target::Game(_)  => TargetKind::Game,
+                Target::Kafka    => TargetKind::Kafka,
             }
         }
         pub fn rotate_difficulty(&mut self, divisor: f32) {
@@ -1694,6 +1701,7 @@ pub enum Target {
     Exact(RPattern),
     Vote(Classification),
     Game(GameData),
+    Kafka,
 }
 
 impl Hash for Target {
@@ -1702,6 +1710,7 @@ impl Hash for Target {
                 &Target::Exact(ref r) => r.hash(state),
                 &Target::Vote(ref c) => c.hash(state),
                 &Target::Game(ref s) => s.hash(state),
+                &Target::Kafka => ().hash(state),
             }
         }
 }
@@ -1711,6 +1720,7 @@ impl Display for Target {
                 &Target::Exact(ref rp) => rp.fmt(f),
                 &Target::Vote(ref i)   => i.class.fmt(f),
                 &Target::Game(_)       => "[game]".fmt(f),
+                &Target::Kafka         => "X".fmt(),
             }
         }
 }
