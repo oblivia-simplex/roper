@@ -295,7 +295,7 @@ fn main() {
         Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
     };
 
-    let (testing,training) = io_targets.split_at(io_targets.len()/3);
+    let (testing,training) = (io_targets.clone(), io_targets.clone()); //io_targets.split_at(io_targets.len()/3);
     println!(">> testing.len() = {}; training.len() = {}", testing.len(), training.len());
 
     //let debug_samples = training.clone();

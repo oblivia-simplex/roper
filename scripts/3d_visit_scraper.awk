@@ -11,14 +11,16 @@ function from_hex (h) {
     return strtonum("0x" h)
 }
 
-function parse_fitness (rec) {
-    return gensub(/Relative Fitness: Some\(([0-9.]+)\).*$/, "\\1", 1, rec)
+function unwrap_some (s) {
+    return gensub(/Some\(([^)]*)\)/, "\\1", 1, s)
 }
+
 
 function parse_crash (rec) {
     c = gensub(/Crashes: +Some\((true|false)\).*$/, "\\1", 1, rec)
     return c ~ "true"
 }
+
 
 BEGIN {
     # disabling headers for use in bash loop visit_scape script
@@ -31,12 +33,13 @@ BEGIN {
 
 FNR == 1 {
     idx = get_chain_idx(FILENAME);
-    season = get_season_num(FILENAME);
+    if (idx !~ /[0-9]+/) { idx = 0 };
+    #season = get_season_num(FILENAME);
 }
 
-/^Relative Fitness/ { fitness = parse_fitness($0); next }
+/^Relative Fitness/ { fitness = unwrap_some($3); season = gensub(/([0-9]+)\] *$/, "\\1", 1, $5) }
 
-/^Crashes: +Some/ { crash = parse_crash($0); next }
+/^Crashes: +Some/ { crash = (unwrap_some($2) ~ "true"); next }
 
 /--- BEGIN VISIT MAP FOR PROBLEM.*/ { visit=1; rc=0; ++problem; next }
 
@@ -47,7 +50,7 @@ visit && $1 ~ /[0-9a-f]+/ {
     next
 }
 
-/--- END VISIT MAP FOR PROBLEM.*/   {           \
+/--- END VISIT MAP FOR PROBLEM.*/   {
     visit=0;
     for (row in rows)
     {
@@ -61,5 +64,5 @@ visit && $1 ~ /[0-9a-f]+/ {
 
 
 END {
-    print ""
+    #print ""
 }

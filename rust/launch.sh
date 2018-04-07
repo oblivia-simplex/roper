@@ -14,7 +14,7 @@ fi
 
 INDEXSUFFIX="" # for simulataneous runs, etc.
 
-POPSIZE=2048
+[ -n "$POPSIZE"] || POPSIZE=2048
 
 PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
