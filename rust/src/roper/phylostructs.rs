@@ -473,6 +473,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 
 #[derive(Clone,Debug)]
 pub struct Chain {
+        pub index: usize, // handy to store a reference to this here
         pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
         //pub packed: Vec<u8>,
         pub fitness: Option<f32>,
@@ -499,7 +500,7 @@ impl Display for Chain {
         fn fmt (&self, f: &mut Formatter) -> Result {
             let mut s = String::new();
             s.push_str("==================================================\n");
-            s.push_str(&format!("Synopsis of chain {}\n", self.name));
+            s.push_str(&format!("Synopsis of chain {} @ {}\n", self.name, self.index));
             s.push_str("==================================================\n");
             s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
@@ -570,6 +571,7 @@ impl Default for Chain {
         fn default () -> Chain {
             Chain {
                 clumps: Vec::new(),
+                index: 0,
                 // packed: Vec::new(),
                 input_slots: Vec::new(),
                 fitness: None,

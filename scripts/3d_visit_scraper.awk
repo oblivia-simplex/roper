@@ -33,7 +33,8 @@ BEGIN {
 
 FNR == 1 {
     idx = get_chain_idx(FILENAME);
-    if (idx !~ /[0-9]+/) { idx = 0 };
+    problem = 0;
+    if (idx !~ /^[0-9]+$/) { idx = 0 };
     #season = get_season_num(FILENAME);
 }
 
@@ -41,12 +42,12 @@ FNR == 1 {
 
 /^Crashes: +Some/ { crash = (unwrap_some($2) ~ "true"); next }
 
-/--- BEGIN VISIT MAP FOR PROBLEM.*/ { visit=1; rc=0; ++problem; next }
+/--- BEGIN VISIT MAP FOR PROBLEM.*/ { print ""; visit=1; rc=0; ++problem; next }
 
 visit && $1 ~ /[0-9a-f]+/ {
     j=1
     stray = ($0 ~ "stray")
-    rows[++rc] = season OFS idx OFS problem OFS from_hex($1) OFS stray OFS fitness;
+    rows[++rc] = season OFS idx OFS problem OFS rc OFS from_hex($1) OFS stray OFS fitness;
     next
 }
 

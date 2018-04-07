@@ -2,6 +2,8 @@
 
 # i'm using nginx for the webserver on this box
 NOSERVE=1
+[ -n "$BINARY" ] || BINARY=$1
+[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 
 if [ -n "$BARE_RUN" ]; then
     ROPER_THREADS=1
@@ -14,7 +16,9 @@ fi
 
 INDEXSUFFIX="" # for simulataneous runs, etc.
 
-[ -n "$POPSIZE"] || POPSIZE=2048
+if [ -z "$POPULATION"]; then
+    POPULATION=2048
+fi
 
 PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
@@ -29,16 +33,16 @@ CLASSIFICATION=0
 case "$PROBLEM" in
     syscall)
         TASKFLAGS=$PATTERNSTRING
-        GOAL="0.0"
+        GOAL=0.0
         ;;
     iris)
         TASKFLAGS=$DATASTRING
-        GOAL="0.15"
+        GOAL=0.15
         CLASSIFICATION=1
         ;;
     kafka)
         TASKFLAGS="-K"
-        GOAL="0.0"
+        GOAL=0.0
         ;;
     *)
         echo "[X] Did not recognize \$PROBLEM=\"$PROBLEM\""
@@ -60,8 +64,6 @@ function webserver ()
 
 
 
-BINARY=$1
-[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 function labelmaker () 
 {
   SRC=/dev/urandom
@@ -142,22 +144,22 @@ DISASFILE="/tmp/roper_disassembly.txt"
 [ -f "$DISASFILE" ] && mv $DISASFILE \
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
+  echo "[+] POPULATION=$POPULATION"
   RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
-                                -b $BINARY \
-                                -o $PROJECT_ROOT/logs \
-                                -g $GOAL \
-                                -c 0.2 \
-                                -s 1.0 \
-                                -P $POPSIZE \
-                                -t $ROPER_THREADS \
-                                -D 4 \
-                                -m 0.05 \
-                                -S \
-                                -L $LABEL \
+                                --binary $BINARY \
+                                --logs $PROJECT_ROOT/logs \
+                                --goal $GOAL \
+                                --crossover 0.5 \
+                                --sample_ratio 1.0 \
+                                --population $POPULATION \
+                                --threads $ROPER_THREADS \
+                                --demes 4 \
+                                --migration 0.05 \
+                                --fitness_sharing \
+                                --init_length 16 \
+                                --label $LABEL \
                                 $EXTRAFLAGS
-  #                              -E
-  # Add -S flag to enable fitness sharing
                                 
 }
 

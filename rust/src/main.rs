@@ -74,31 +74,13 @@ fn main() {
     let script_dir = "/home/vagrant/ROPER/scripts/";
         
     
-
+/*
     ctrlc::set_handler(move || {
-
-        /*
-        backtrace::trace(|frame| {
-            let ip = frame.ip();
-            let sym_addr = frame.symbol_address();
-            /* Resolve this instruction pointer to a symbol name */
-            backtrace::resolve(ip, |sym| {
-                if let Some(name) = sym.name() {
-                    if let Some(filename) = sym.filename() {
-                        println!("=> {:?} in {:?}", name, filename);
-                    } else {
-                        println!("=> {:?}", name);
-                    }
-                }
-            });
-            true // keep going to next frame
-        });
-        */  
         println!("Goodbye!\n");
         std::process::exit(1);
     }).expect("Error setting ctrlc handler");
     
-
+*/
     let mut opts = Options::new();
     opts.parsing_style(ParsingStyle::FloatingFrees);
     opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
@@ -194,23 +176,23 @@ fn main() {
     
     let crossover_rate = match matches.opt_str("c") {
         None => 0.5,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse crossover rate"),
     };
     let sample_ratio = match matches.opt_str("s") {
         None => 1.0,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse sample ratio"),
     };
     let popsize = match matches.opt_str("P") {
         None => 2000,
-        Some(n) => n.parse::<usize>().unwrap(),
+        Some(n) => n.parse::<usize>().expect("Failed to parse population size"),
     };
     let migration = match matches.opt_str("m") {
         None => 0.1,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse migration rate"),
     };
     let num_demes = match matches.opt_str("D") {
         None => 4,
-        Some(n) => n.parse::<usize>().unwrap(),
+        Some(n) => n.parse::<usize>().expect("Failed to parse number of demes"),
     };
     let label = match matches.opt_str("L") {
         None => "roper".to_string(),
@@ -338,6 +320,9 @@ fn main() {
     
     let mode = MachineMode::ARM;
 
+    /* FIXME make sure that all of the params are actually passed and set here.
+     * I don't think they currently are. 
+     */
     let constants = suggest_constants(&io_targets);
     params.code = text_data.clone();
     params.code_addr = text_addr as u32;
