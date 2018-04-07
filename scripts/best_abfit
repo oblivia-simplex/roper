@@ -1,0 +1,5 @@
+#! /usr/bin/env bash
+
+find . -maxdepth 2 -type f -name "*.csv" \
+  -exec bash -c "cut -d/ -f2 <<< \\"{}\\" | tr '\n' ' ' && tail -n1 {} | cut -d, -f11" \; \
+  | sort -rn -k 2

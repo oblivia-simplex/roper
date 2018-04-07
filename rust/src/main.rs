@@ -62,6 +62,7 @@ enum Challenge {
     Data,
     Pattern,
     Game,
+    Kafka,
     Undecided,
 }
 
@@ -121,23 +122,31 @@ fn main() {
     opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
     opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
     opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
-    opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
     opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
     opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
+    opts.optflag("K", "kafka", "use an arbitrary and inscrutable fitness function");
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
     };
+
     println!("[+] Command line parameters read: {:?}", &matches.free);
 
     if matches.opt_present("h") {
         print_usage(&program, opts);
         return;
     }
+    
+
 
     let mut challenge : Challenge = Challenge::Undecided;
+
+    if matches.opt_present("K") {
+        challenge = Challenge::Kafka;
+    }
 
     let use_viscosity = ! matches.opt_present("V");
     
@@ -275,6 +284,13 @@ fn main() {
                 num_classes += 1;
             }
             IoTargets::from_vec(TargetKind::Game, gs, num_classes)
+        },
+        Challenge::Kafka => {
+            params.inregs = (0..16).collect();
+            params.outregs = (0..16).collect();
+            IoTargets::from_vec(TargetKind::Kafka,
+                                vec![Problem::new_kafkaesque()],
+                                1)
         },
         Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
     };

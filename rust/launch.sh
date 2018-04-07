@@ -1,6 +1,7 @@
 #! /bin/bash
 
-
+# i'm using nginx for the webserver on this box
+NOSERVE=1
 
 if [ -n "$BARE_RUN" ]; then
     ROPER_THREADS=1
@@ -23,14 +24,27 @@ PATTERNSTRING="-p ${exec_str_addr},&${exec_str_addr},0,_,_,_,_,0b"
 DATASTRING="-d $DATAFILE"
 READEVERY=1
 
-[ -n "$PROBLEM" ] || PROBLEM=iris
-if [ "$PROBLEM" = syscall ]; then
-    TASKFLAGS=$PATTERNSTRING
-else 
-    TASKFLAGS=$DATASTRING
-fi
-GOAL="0.0"
 CLASSIFICATION=0
+[ -n "$PROBLEM" ] || PROBLEM=iris
+case "$PROBLEM" in
+    syscall)
+        TASKFLAGS=$PATTERNSTRING
+        GOAL="0.0"
+        ;;
+    iris)
+        TASKFLAGS=$DATASTRING
+        GOAL="0.15"
+        CLASSIFICATION=1
+        ;;
+    kafka)
+        TASKFLAGS="-K"
+        GOAL="0.0"
+        ;;
+    *)
+        echo "[X] Did not recognize \$PROBLEM=\"$PROBLEM\""
+        exit 1
+        ;;
+esac
 
 export RUSTFLAGS=-Awarnings
 SRV=${PROJECT_ROOT}/srv
@@ -139,7 +153,6 @@ function run () {
                                 -t $ROPER_THREADS \
                                 -D 4 \
                                 -m 0.05 \
-                                -R \
                                 -S \
                                 -L $LABEL \
                                 $EXTRAFLAGS

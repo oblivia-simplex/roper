@@ -205,13 +205,10 @@ pub fn mang (ux: u32, rng: &mut ThreadRng) -> u32 {
         let x = ux as i32;
         let die : u8 = rng.gen::<u8>() % 40;
         let r = match die {
-            0  => x << 1,
-            1  => x << 2,
-            3  => x << 4,
+            /* eliminating non-involutable operations */
+            /* because they ratchet towards information loss */
+            3  => x.rotate_left(8),
             4  => x.rotate_right(8),
-            5  => x & 0xFF,
-            6  => x & 0xFFFF0000,
-            7  => x & 0x0000FFFF,
             8  => !x,
             9  => x + 1,
             10 => x + 2,
@@ -221,9 +218,6 @@ pub fn mang (ux: u32, rng: &mut ThreadRng) -> u32 {
             14 => x - 2,
             15 => x - 4,
             16 => x - 8,
-            17 => x >> 1,
-            18 => x >> 2,
-            19 => x >> 4,
             20 => rng.gen::<i32>(),
             21 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip
             22 => x ^ (1 << (rng.gen::<usize>() % 32)), // random bit flip

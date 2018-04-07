@@ -1339,6 +1339,20 @@ impl Problem {
                 target: target,
             }
         }
+
+        pub fn new_kafkaesque () -> Problem {
+            Problem {
+                input: vec![0,0,0,0,
+                            0,0,0,0,
+                            0,0,0,0,
+                            0,0,0,0],
+                difficulty: 1.0,
+                predifficulty: 1.0,
+                pfactor: 1.0,
+                target:  Target::Kafka,
+            }
+        }
+
         fn adj_cls_score_for_difficulty (&self, score: f32) -> f32 {
             // here, the higher the score, the better. 
             // difficulty is a float <= 1.0, and the lower the harder.
@@ -1434,7 +1448,7 @@ impl Problem {
                 },
                 /* It is a very painful thing... */
                 &Target::Kafka => {
-                    let r = thread_rng().gen::<f32>();
+                    let r = f32::min(1.0, 0.1 + thread_rng().gen::<f32>());
                     (r,r)
                 },
             }
@@ -1720,7 +1734,7 @@ impl Display for Target {
                 &Target::Exact(ref rp) => rp.fmt(f),
                 &Target::Vote(ref i)   => i.class.fmt(f),
                 &Target::Game(_)       => "[game]".fmt(f),
-                &Target::Kafka         => "X".fmt(),
+                &Target::Kafka         => "X".fmt(f),
             }
         }
 }
@@ -1738,6 +1752,8 @@ impl Target {
                 },
                 &Target::Exact(ref r) => r.constants(),
                 &Target::Game(_) => vec![2], // PLACEHOLDER TODO
+                &Target::Kafka => (0..1024).map(|_| thread_rng().gen::<i32>())
+                                           .collect::<Vec<i32>>(),
             }
         }
         pub fn is_class (&self, c: usize) -> bool {
@@ -1911,23 +1927,41 @@ impl RPattern {
                          regs: &Vec<u32>, 
                          regs_deref: &Vec<Option<Vec<u8>>>) -> f32 {
             fn arith_err_dist(a: u32, b: u32) -> f32 {
-                /* scaling and overflow trouble with this approach  
-                let a = a as f32;
-                let b = b as f32;
-                let diff = (a-b).abs() as f64;
-                println!(">> diff: {}",diff);
-                // now normalize this to a float between 0.0 and 1.0
-                let rat = diff / 4294967295.0;
-                println!(">> arith distance as f64: {}",rat);
-                let rat32 = rat as f32;
-                println!(">> arith distance as f32: {}",rat);
-                rat32
-                */ /* let's just try hamming distance */
+                /* let's just try hamming distance */
                 (a ^ b).count_ones() as f32 / 32.0 
             }
-            
-            fn adj (x: f32) -> f32 { f32::min(1.0,(x+0.01).sqrt()) } //(1.0 + x) / 3.0 }
 
+            fn mem_err_dist(a: u32, b: &Vec<u8>) -> f32 {
+                /* a is target, b is result */
+                let mlen = b.len();
+                assert!(b.len() >= 4);
+                let a_bytes : Vec<u8> = pack_word32le(a);
+                let mut int_dist : Option<usize> = None;
+                for i in 0..(mlen-4) {
+                    if a_bytes[0] == b[i]
+                        && a_bytes[1] == b[i+1]
+                        && a_bytes[2] == b[i+2]
+                        && a_bytes[3] == b[i+3] {
+                            /* we found a match */
+                            int_dist = Some(i);
+                            println!("---> found {:08x} at offset {}/{} = {}",
+                                     a, int_dist.unwrap(), mlen, 
+                                     (int_dist.unwrap() as f32 / mlen as f32));
+                            break;
+                        }
+                }
+                match int_dist {
+                    None => 1.0,
+                    Some(v) => (v as f32) / (mlen as f32),
+                }
+            }
+            
+            fn adj (x: f32) -> f32 { f32::min(1.0,(x+0.1).sqrt()) } //(1.0 + x) / 3.0 }
+         
+            let mut immed_nears = Vec::new();
+            let mut deref_nears = Vec::new();
+
+            let mut exact_deref_matches = 0.0;
             let mut ref_err : f32 = 0.0;
             let mut idx_err : f32 = 0.0;
             let mut arith_err : f32 = 0.0;
@@ -1950,6 +1984,7 @@ impl RPattern {
                                 let di = if i == idx { d } else { adj(d) };
                                 if di < nearest {
                                     nearest = di;
+                                    immed_nears.push(di);
                                 };
                                 //println!("immed->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                             }
@@ -1959,11 +1994,13 @@ impl RPattern {
                                 match v {
                                     &None => continue,
                                     &Some(ref vd) => {
-                                        let r = get_word32le(vd, 0); 
-                                        let d = adj(arith_err_dist(x, r));
+                                        //let r = get_word32le(vd, 0); 
+                                        let d = adj(mem_err_dist(x, vd));
                                         let di = if i == idx { d } else { adj(d) };
                                         if di < nearest {
                                             nearest = di;
+                                            deref_nears.push(di);
+                                            if di == 0.0 { break };
                                         };
                                         //println!("immed->reg_deref loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                                     },
@@ -1981,20 +2018,24 @@ impl RPattern {
                                 let y = get_word32le(vd,0);
                                 //println!(">>> Comparing {:?}|{:x}->{:x} to {:x}", regs_deref[idx].as_ref().unwrap(),regs[idx], y, x);
                                 if y == x {
+                                    exact_deref_matches += 1.0;
                                     nearest = 0.0;
-                                  //  println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
+                                    println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
                                 } else {
                                     for i in 0..regs_deref.len() {
                                         if i == 13 { continue }; /* bad luck */
-                                        let vd = &regs_deref[i];
-                                        if vd == &None { continue };
-                                        let r = get_word32le(vd.as_ref()
-                                                               .unwrap() ,0); 
+                                        let result = &regs_deref[i];
+                                        if result == &None { continue };
+                                        //let r = get_word32le(vd.as_ref()
+                                        //                       .unwrap() ,0); 
+                                        let result = result.as_ref().unwrap();
+                                        let d = mem_err_dist(x, result);
                                         /* TODO scan? */
-                                        let d = arith_err_dist(x, r);
+                                        //let d = arith_err_dist(x, r);
                                         let di = if i == idx { d } else { adj(d) };
                                         let di = di / 2.0; /* deref is hard */
                                         if di < nearest {
+                                            deref_nears.push(di);
                                             nearest = di;
                                         };
                                     //    println!("&{:x} in r{}>>> d = {}, di = {}, nearest to {:x} = {}", r,i,d,di,x,nearest);
@@ -2004,12 +2045,14 @@ impl RPattern {
                                         let d = adj(arith_err_dist(x, r));
                                         let di = if i == idx { d } else { adj(d) };
                                         if di < nearest {
+                                            immed_nears.push(di);
                                             nearest = di;
                                         };
                                         //println!("deref->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                                     }
                                 }
                         };
+                        /* FIXME redundant??
                         if adj(adj(0.0)) < nearest {
                                 //println!(">>>> nothing in reg_deref, considering reg for {:?}...",val);
                                 for i in 0..regs.len() {
@@ -2024,6 +2067,7 @@ impl RPattern {
                                  //   println!("{:x} in r{}>>> dist={}, d = {}, di = {}, nearest to {:x} = {}",r,i,dist,d,di,x,nearest);
                                 };
                         };
+                        */
                         errs.push(nearest);
                     },
                 }
@@ -2036,7 +2080,11 @@ impl RPattern {
             println!(">>> regs_deref = {:?}", &regs_deref);
             println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
             */
-            mean(&errs)
+            println!("----[mean deref_nears]= {}", mean(&deref_nears));
+            println!("----[mean immed_nears]= {}", mean(&immed_nears));
+            let m = mean(&errs);
+            println!("----[mean(&errs)=fitness]= {}", m);
+            m //if exact_deref_matches > 0.0 { m / exact_deref_matches } else { m }
         }
 } /* TODO add some unit tests. i think there's an arithmetic error up here, 
      which is causing a perfect champion to receive a fitness of 0.003... */

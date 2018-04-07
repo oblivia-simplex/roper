@@ -2,6 +2,7 @@
 extern crate unicorn;
 extern crate elf;
 
+use rand::{Rng,thread_rng};
 use std::time::Instant;
 use std::process::exit;
 use std::collections::HashSet;
@@ -209,12 +210,13 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
 
     // what if we added a second register vector of derefences?
     // of type Vec<Option<u32>> ?
-    let deref_size = 4; /* for starters */
-    let reg_deref : Vec<Option<Vec<u8>>> = registers.iter()
-                                        .map(|&a| deref_vec(&(uc.emu()),
+    let deref_size = 512; /* for starters */
+    let reg_deref : Vec<Option<Vec<u8>>> = 
+                                  registers.iter()
+                                           .map(|&a| deref_vec(&(uc.emu()),
                                                             a,
                                                             deref_size))
-                                        .collect();
+                                           .collect();
     /* RESTORE REGIONS */
     for (addr,data) in saved_regions {
         uc.mem_write(addr, &data);
@@ -390,7 +392,12 @@ pub fn seek_reference (bytes: &Vec<u8>, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64>
         let data  = &region.1;
         let size  = bytes.len();
         if data.len() - size <= 0 { continue };
+        /* try randomizing the starting point. This will still preserve
+         * the cyclic group property */
+        let random_offset = thread_rng().gen::<usize>() % (data.len() - size);
         for i in 0..(data.len() - size) {
+            // random offset experiment
+            let i = (i + random_offset) % (data.len() - size);
             let peek = &data[i..(i+size)];
             let mut ok = true;
             for j in 0..size {

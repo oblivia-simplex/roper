@@ -99,7 +99,7 @@ fn mutate(chain: &mut Chain,
         let mut clump = chain[cl_idx].clone();
         assert!(clump.size() > 0);
         let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-        let mut_kind : u8 = rng.gen::<u8>() % 5;
+        let mut_kind : u8 = rng.gen::<u8>() % 6;
         match mut_kind {
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
@@ -109,11 +109,16 @@ fn mutate(chain: &mut Chain,
             },
             3 => match uc_seek_word(clump.words[idx].clone(), uc) {
                 Some(x) => {
-                    chain.name = "child of indirection mutation".to_string();
                     println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
                     clump.words[idx] = x as u32;
                 },
                 None    => (),
+            },
+            4 => {
+                let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
+                let tmp = clump.words[idx];
+                clump.words[idx] &= clump.words[other_idx];
+                clump.words[other_idx] |= tmp;
             },
             // 2 => /**** mutate the input_slots ****/
             _ => { /* permutation */
@@ -252,7 +257,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         }
         let io = match batch {
             Batch::TRAINING => &params.io_targets,
-            Batch::TESTING  => &params.test_targets,
+            Batch::TESTING  => if params.test_targets.len() == 0 {
+                                    &params.io_targets
+                                } else {
+                                    &params.test_targets
+                                },
         };
         let io2 : IoTargets;
         // NB: fingerprint mechanics won't work, as currrently implemented,
