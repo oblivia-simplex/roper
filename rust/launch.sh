@@ -2,6 +2,7 @@
 
 # i'm using nginx for the webserver on this box
 NOSERVE=1
+PROJECT_ROOT=`pwd`/..
 [ -n "$BINARY" ] || BINARY=$1
 [ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 
@@ -20,7 +21,6 @@ if [ -z "$POPULATION"]; then
     POPULATION=2048
 fi
 
-PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
 #exec_str_addr=0001bc3e # /bin/sh\n
 exec_str_addr=0001f62f # /tmp/flashXXXX in tomato-RT-N18U. in writeable mem! 
@@ -151,7 +151,7 @@ DISASFILE="/tmp/roper_disassembly.txt"
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
   echo "[+] POPULATION=$POPULATION"
-  RUST_BACKTRACE=1 cargo run \
+  CMD="RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
                                 --binary $BINARY \
                                 --logs $PROJECT_ROOT/logs \
@@ -165,7 +165,11 @@ function run () {
                                 --fitness_sharing \
                                 --init_length 16 \
                                 --label $LABEL \
-                                $EXTRAFLAGS
+                                $EXTRAFLAGS"
+  CMD=$(sed "s/  */ /g" <<< "$CMD")
+  echo -ne "[*] Running ROPER with command:\n\t"
+  echo "sh -c \"$CMD\""
+  sh -c "$CMD"
                                 
 }
 
@@ -181,7 +185,7 @@ roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
 recent=""
-echo -n "[+] looking for log output"
+echo -n "[+] looking for log output in ${LOGDIR}"
 while ! [ -n "$recent" ]; do
   if ! kill -0 $roper_pid; then
     echo "ROPER instance with PID $roper_pid is dead"
