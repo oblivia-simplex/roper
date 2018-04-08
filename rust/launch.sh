@@ -34,15 +34,21 @@ case "$PROBLEM" in
     syscall)
         TASKFLAGS=$PATTERNSTRING
         GOAL=0.0
+        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
+          EXTRAFLAGS="$EXTRAFLAGS --use_dynamic_crash_penalty"
         ;;
     iris)
         TASKFLAGS=$DATASTRING
         GOAL=0.15
         CLASSIFICATION=1
+        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
+          EXTRAFLAGS="$EXTRAFLAGS --use_dynamic_crash_penalty"
         ;;
     kafka)
         TASKFLAGS="-K"
         GOAL=0.0
+        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
+          EXTRAFLAGS="$EXTRAFLAGS --crash_penalty 0.0"
         ;;
     *)
         echo "[X] Did not recognize \$PROBLEM=\"$PROBLEM\""

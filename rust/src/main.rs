@@ -109,6 +109,9 @@ fn main() {
     opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
     opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
     opts.optflag("K", "kafka", "use an arbitrary and inscrutable fitness function");
+    opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
+
+    opts.optflag("y", "dynamic_crash_penalty", "dynamically adjust the crash penalty in response to the population's crash rate");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
@@ -138,6 +141,13 @@ fn main() {
         None => 0.10,
         Some(n) => n.parse::<f32>().expect("Failed to parse edirate (-e)"),
     };
+
+    let crash_penalty = match matches.opt_str("0") {
+        None => 0.2,
+        Some(n) => n.parse::<f32>().expect("Failed to parse crash_penalty"),
+    };
+
+    let use_dynamic_crash_penalty = matches.opt_present("y");
 
     let random_override = matches.opt_present("O");
       
@@ -349,6 +359,8 @@ fn main() {
     params.random_override = random_override;
     params.set_init_difficulties();
     params.use_edis = use_edis;
+    params.crash_penalty = crash_penalty;
+    params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
     
     if !use_edis {
         params.initial_edi_rate = 0.0;
@@ -480,7 +492,9 @@ fn main() {
                                          true);
                     }
                     /* TODO: try commenting out the next line to hold crash penalty constant */
-                    mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
+                    if mut_pop.params.use_dynamic_crash_penalty {
+                      mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
+                    };
                 }
                 season_change = update_difficulties(&mut mut_pop.params, 
                                                     iteration);

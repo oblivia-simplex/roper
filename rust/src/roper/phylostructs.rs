@@ -95,6 +95,7 @@ pub struct Params {
         pub training_ht      : HashMap<Vec<i32>,usize>,
         pub use_edis         : bool,
         pub use_viscosity    : bool,
+        pub use_dynamic_crash_penalty : bool,
         pub verbose          : bool,
         pub visitation_diversity_weight : f32,
 /*  pub ro_data_data     : Vec<u8>, */
@@ -130,6 +131,8 @@ impl Display for Params {
             s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
             s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
             s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
+            s.push_str(&format!("{} crash_penalty: {}\n", rem, self.crash_penalty));
+            s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
         
             write!(f, "{}",s)
         }
@@ -185,8 +188,9 @@ impl Params {
                 threads:          5,
                 timestamp:        timestamp.clone(),
                 training_ht:      HashMap::new(),
-                use_edis:         true,
-                use_viscosity:    true,
+                use_dynamic_crash_penalty: false,
+                use_edis:         false,
+                use_viscosity:    false,
                 verbose:          false,
                 visitation_diversity_weight : 0.5,
             }
