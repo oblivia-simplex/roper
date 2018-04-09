@@ -19,7 +19,7 @@ use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use std::io;
 use std::process;
-use std::process::Command;
+use std::process::{Command,exit};
 mod roper;
 
 use rand::{thread_rng,Rng};
@@ -83,36 +83,38 @@ fn main() {
 */
     let mut opts = Options::new();
     opts.parsing_style(ParsingStyle::FloatingFrees);
-    opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
-    opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
-    opts.optopt("d", "data", "set data path", "<path to data file>");
-    opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
-    opts.optopt("n", "game_seeds", "number of unique random seeds to use for game", "<integer>");
-    opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
-    opts.optopt("o", "logs", "set log directory", "<directory>");
-    opts.optopt("t", "threads", "set number of threads", "<positive integer>");
-    opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
-    opts.optopt("P", "population", "set population size", "<positive integer>");
-    opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
-    opts.optopt("L", "label", "set a label for the trial", "<string>");
-    opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
-    opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
-    opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
-    opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
-    opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
-    opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
-    opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
-    opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
-    opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
-    opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
-    opts.optflag("h", "help", "print this help menu");
-    opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
+
     opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
     opts.optflag("K", "kafka", "use an arbitrary and inscrutable fitness function");
-    opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
-
+    opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
+    opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
+    opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
+    opts.optflag("h", "help", "print this help menu");
     opts.optflag("y", "dynamic_crash_penalty", "dynamically adjust the crash penalty in response to the population's crash rate");
 
+    opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
+    opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
+    opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
+    opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
+    opts.optopt("L", "label", "set a label for the trial", "<string>");
+    opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
+    opts.optopt("Z", "num_classes", "number of classes in dataset", "<integer>");
+    opts.optopt("P", "population", "set population size", "<positive integer>");
+    opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
+    opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
+    opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
+    opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
+    opts.optopt("d", "data", "set data path", "<path to data file>");
+    opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
+    opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
+    opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
+    opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
+    opts.optopt("n", "game_seeds", "number of unique random seeds to use for game", "<integer>");
+    opts.optopt("o", "logs", "set log directory", "<directory>");
+    opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
+    opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
+    opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
+    opts.optopt("t", "threads", "set number of threads", "<positive integer>");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -126,7 +128,16 @@ fn main() {
     }
     
 
+    let num_attrs = match matches.opt_str("N") {
+        None => 4,
+        Some(n) => n.parse::<usize>().expect("Failed to parse num_attrs"),
+    };
 
+    let num_classes = match matches.opt_str("Z") {
+        None => 3,
+        Some(n) => n.parse::<usize>().expect("Failed to parse num_classes"),
+    };
+    
     let mut challenge : Challenge = Challenge::Undecided;
 
     if matches.opt_present("K") {
@@ -245,10 +256,9 @@ fn main() {
     let mut params : Params = Params::new(&label);
     let io_targets = match challenge {
         Challenge::Data => {
-            let num_attrs = 4; // TODO: Figure out how not to hardcode this
             let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
-            params.inregs  = vec![1,2,3,4];
-            params.outregs = vec![5,6,7];
+            params.outregs = (0..(num_classes)).collect(); //vec![5,6,7];
+            params.inregs  = (num_classes..(num_classes+num_attrs)).collect(); //vec![1,2,3,4];
             println!(">> inregs: {:?}\n>> outregs: {:?}", 
                               &params.inregs, &params.outregs);
             assert!(io.len() > 0);

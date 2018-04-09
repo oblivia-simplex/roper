@@ -281,11 +281,12 @@ pub fn ranked_ballot (bins: &Vec<i32>, correct: usize) -> f32 {
 // 0 <= ret <= bins.len()
 pub fn max_bin (bins: &Vec<u32>) -> usize {
         if bins.iter().filter(|&x| *x == bins[0]).count() == bins.len() {
+            println!("Equal bins: {:?}, no winner",bins);
             bins.len()// ensures that equal bins means no winner
         } else {
             let mut mb : usize = 0; 
             let mut mx : u32 = bins[0];
-            for i in 1..bins.len() {
+            for i in 0..bins.len() {
                 if bins[i] > mx { 
                     mx = bins[i];
                     mb = i;

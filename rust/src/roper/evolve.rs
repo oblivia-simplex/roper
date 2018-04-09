@@ -214,6 +214,7 @@ fn eval_case (uc: &mut CpuARM,
     let target = &problem.target;
     let reset = true;
     let input  = &problem.input;
+    //println!("in eval_case. problem: {:?}", problem);
     let result = hatch_chain(uc, 
                              &chain,
                              input,
@@ -331,7 +332,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             abfit_vec.push(res.ab_fitness);
         };
         let ab_fitness = mean(&abfit_vec);
-        let fitness =  mean(&fit_vec);
+        let mut fitness =  mean(&fit_vec); /* experimental TODO */
+        if ab_fitness <= params.fit_goal {
+            // adjustment to preserve elites
+            fitness /= 2.0;
+        };
         let ab_fitness = f32::min(1.0, ab_fitness);
         let mut fitness = f32::min(1.0, fitness);
         let mut divers = 0.0; 
@@ -881,7 +886,7 @@ pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
 fn crash_override(score: f32,
                   ratio_run: f32,
                   params: &Params) -> f32 {
-        if params.fatal_crash {
+        if score == 1.0 || params.fatal_crash {
             1.0
         } else {
             let penalty = params.crash_penalty;
@@ -889,9 +894,9 @@ fn crash_override(score: f32,
             assert!(ratio_run <= 1.0);
             // this should work. 1.1 - ratio_run so that a chain that somehow
             // gets ratio_run of 1.0 still pays some penalty for crashing.
-            let adjusted = f32::min(1.0, score + (penalty * (1.1 - ratio_run)));
-            //println!("*** score: {}, penalty: {}, ratio_run: {}, adjusted: {}, old formula gave: {}",
-            //         score, penalty, ratio_run, adjusted, (1.0 - (1.0 - score) * penalty * ratio_run));
+            let adjusted = f32::min(1.0, score + (penalty * (1.0 - ratio_run/2.0)));
+//            println!("*** score: {}, penalty: {}, ratio_run: {}, adjusted: {}, old formula gave: {}",
+ //                    score, penalty, ratio_run, adjusted, (1.0 - (1.0 - score) * penalty * ratio_run));
             adjusted
            // oh fuck. some bad elementary arithmetic had it so that creatures
            // were being penalized harsher for running more! fuck!

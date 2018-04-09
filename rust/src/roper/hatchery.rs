@@ -37,6 +37,8 @@ pub fn set_registers (uc: &unicorn::Unicorn,
                       inregs: &Vec<usize>,
                       reset: bool) {
     let mut in_ptr = 0;
+    //println!("in set_registers. input: {:?}, inregs: {:?}", input, inregs);
+    //exit(99);
     for i in 0..REGISTERS.len() {
         if in_ptr < inregs.len() && i == inregs[in_ptr] { 
             in_ptr += 1;
@@ -100,6 +102,7 @@ pub fn hatch_chain <'u,'s> (uc: &mut unicorn::CpuARM,
       * A packed chain will be empty if it turns out to consist
       * entirely of *explicitly defined* introns. 
       */
+    //println!("in hatch_chain: input: {:?}, inregs: {:?}", input, inregs);
     let mut packed = chain.pack();
     let stack : MemRegion = find_stack(&uc);
     

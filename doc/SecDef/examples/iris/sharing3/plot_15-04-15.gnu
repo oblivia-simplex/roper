@@ -1,12 +1,12 @@
-set terminal png truecolor background rgb "black" size 1660,1024
+#set terminal png truecolor background rgb "black" size 1660,1024
 
 set datafile commentschars "%"
 set multiplot layout 1, 2 
 #title "ROPER on ./17/03/27/roper_15-04-15.csv"
-set xlabel 'ylabel' tc rgb 'red'
-set ylabel 'xlabel' tc rgb 'red'
-set border lc rgb 'red'
-set key tc rgb 'red'
+#set xlabel 'ylabel' tc rgb 'red'
+#set ylabel 'xlabel' tc rgb 'red'
+#set border lc rgb 'red'
+#set key tc rgb 'red'
 set key autotitle columnhead
 set datafile separator ","
 # set autoscale

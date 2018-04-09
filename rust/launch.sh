@@ -34,6 +34,7 @@ function add_flag() {
   grep -q "\\$1" <<< "x$EXTRAFLAGS" || \
     EXTRAFLAGS="$EXTRAFLAGS $1 $2" && \
     echo "[+] Added flag $1 $2"
+  echo "EXTRAFLAGS> $EXTRAFLAGS"
   export EXTRAFLAGS
 }
 
@@ -49,9 +50,21 @@ case "$PROBLEM" in
         TASKFLAGS=$DATASTRING
         GOAL=0.15
         CLASSIFICATION=1
-        add_flag --crash_penalty 0.5
+        add_flag --crash_penalty 0.75
         add_flag --fitness_sharing
         add_flag --dynamic_crash_penalty
+        ;;
+    2blobs)
+        TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
+        GOAL=0.0
+        add_flag --fitness_sharing
+        add_flag --crash_penalty 0.75
+        ;;
+    3blobs)
+        TASKFLAGS="-d ${PROJECT_ROOT}/data/3_simple_blobs.csv -N 2 -Z 3"
+        GOAL=0.0
+        add_flag --fitness_sharing
+        add_flag --crash_penalty 0.75
         ;;
     kafka)
         TASKFLAGS="-K"

@@ -1428,18 +1428,32 @@ impl Problem {
                     (r, r)
                 },
                 &Target::Vote(ref cls) => {
-                    let mut output : Vec<u32> = Vec::new();
+                    let mut output : Vec<i32> = Vec::new();
                     for idx in outregs {
-                        output.push(registers[*idx]);
+                        output.push(registers[*idx] as i32);
                     }
-                    let b = max_bin(&output);
+                    let tie = output.iter()
+                                    .filter(|&x| *x == output[0])
+                                    .count() == output.len();
+                    //if tie {
+                    //  println!("Equal bins. no winner: {:?}", output);
+                   // }
+                    if tie { return (1.0, 1.0) };
+                    let (class_guess, val) = output.iter()
+                                                   .enumerate()
+                                                   .max_by_key(|&(_,item)| item)
+                                                   .unwrap(); // output not empty
+                    //println!("in assess(). output: {:?}, vote: {}, class: {}",
+                    //    output, class_guess, cls.class);
                     //let mut f = Fingerprint::new();
-                    if b == cls.class {
+                    if class_guess == cls.class {
                         //f.push(false);
-                        (0.0, 1.0 - self.difficulty())
+                        (0.0, f32::max(0.0, 0.99 - self.difficulty()))
                     } else {
                         //f.push(true);
-                        (1.0, 1.0)
+                        //let odds = 1.0 / output.len() as f32;
+                        let adj = 0.9999; //f32::min(0.999, odds + (1.0 - self.difficulty())); 
+                        (1.0, adj) // TODO check experiment here
                     } 
                 } 
                 &Target::Game(_) => {
