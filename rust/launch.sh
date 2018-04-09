@@ -29,26 +29,34 @@ DATASTRING="-d $DATAFILE"
 READEVERY=1
 
 CLASSIFICATION=0
+
+function add_flag() {
+  grep -q "\\$1" <<< "x$EXTRAFLAGS" || \
+    EXTRAFLAGS="$EXTRAFLAGS $1 $2" && \
+    echo "[+] Added flag $1 $2"
+  export EXTRAFLAGS
+}
+
 [ -n "$PROBLEM" ] || PROBLEM=iris
 case "$PROBLEM" in
     syscall)
         TASKFLAGS=$PATTERNSTRING
         GOAL=0.0
-        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
-          EXTRAFLAGS="$EXTRAFLAGS --use_dynamic_crash_penalty"
+        add_flag --fitness_sharing
+        add_flag --crash_penalty 0.2
         ;;
     iris)
         TASKFLAGS=$DATASTRING
         GOAL=0.15
         CLASSIFICATION=1
-        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
-          EXTRAFLAGS="$EXTRAFLAGS --use_dynamic_crash_penalty"
+        add_flag --crash_penalty 0.5
+        add_flag --fitness_sharing
+        add_flag --dynamic_crash_penalty
         ;;
     kafka)
         TASKFLAGS="-K"
         GOAL=0.0
-        grep -q crash_penalty <<<"x$EXTRAFLAGS" && \
-          EXTRAFLAGS="$EXTRAFLAGS --crash_penalty 0.0"
+        add_flag --crash_penalty 0.0
         ;;
     *)
         echo "[X] Did not recognize \$PROBLEM=\"$PROBLEM\""
@@ -160,10 +168,9 @@ function run () {
                                 --sample_ratio 1.0 \
                                 --population $POPULATION \
                                 --threads $ROPER_THREADS \
-                                --demes 4 \
+                                --demes 1 \
                                 --migration 0.05 \
-                                --fitness_sharing \
-                                --init_length 16 \
+                                --init_length 32 \
                                 --label $LABEL \
                                 $EXTRAFLAGS"
   CMD=$(sed "s/  */ /g" <<< "$CMD")

@@ -298,14 +298,12 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                                                  &params,
                                                  verbose);
             let p = problem.clone();
-            let dif = res.ab_fitness;
             //println!(">> dif = {}", dif);
             //let dif = if res.fingerprint[0] {1.0} else {0.0};
-            difficulties.insert(p.clone(), dif);
             // we could make this more efficient by just taking a
             // unique identifier for each problem.
             visited_map.insert(p.clone(), res.visited);
-            register_map.insert(p, (res.registers, res.reg_deref));
+            register_map.insert(p.clone(), (res.registers, res.reg_deref));
             /* crash tracking */ 
             let counter = res.counter;
             
@@ -323,6 +321,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             } else {
                 res.fitness
             };
+            let dif = crash_adjusted; //res.ab_fitness;
+            difficulties.insert(p, dif);
             /* If crash_adjusted is better than the best currently on 
               * record, then evaluate the specimen against the remainder
               * of the problems (io_targets2). 
@@ -875,7 +875,7 @@ pub fn reap_gadgets (code: &Vec<u8>,
 
 /* TODO: try holding crash penalty constant */
 pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
-        crash_rate / 2.0
+        crash_rate // / 2.0
 }
 
 fn crash_override(score: f32,
@@ -884,7 +884,18 @@ fn crash_override(score: f32,
         if params.fatal_crash {
             1.0
         } else {
-            1.0 - (1.0 - score) * params.crash_penalty * ratio_run
+            let penalty = params.crash_penalty;
+            let ratio_run = f32::min(1.0, ratio_run);
+            assert!(ratio_run <= 1.0);
+            // this should work. 1.1 - ratio_run so that a chain that somehow
+            // gets ratio_run of 1.0 still pays some penalty for crashing.
+            let adjusted = f32::min(1.0, score + (penalty * (1.1 - ratio_run)));
+            //println!("*** score: {}, penalty: {}, ratio_run: {}, adjusted: {}, old formula gave: {}",
+            //         score, penalty, ratio_run, adjusted, (1.0 - (1.0 - score) * penalty * ratio_run));
+            adjusted
+           // oh fuck. some bad elementary arithmetic had it so that creatures
+           // were being penalized harsher for running more! fuck!
+           // 1.0 - (1.0 - score) * params.crash_penalty * ratio_run
         }
 }
                                         
