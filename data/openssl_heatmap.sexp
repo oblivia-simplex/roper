@@ -1,6 +1,6 @@
 ;; --- BEGIN HEATMAP ---
 (
-  (:elfpath . "../data/openssl") ;; don't parse as int!
+  (:elfpath . "/home/vagrant/ROPER/data/openssl") ;; don't parse as int!
   (#x11974 . #x1)
   (#x11976 . #x1)
   (#x11978 . #x1)

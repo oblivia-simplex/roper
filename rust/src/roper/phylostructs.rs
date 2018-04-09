@@ -8,6 +8,7 @@ extern crate chrono;
 extern crate rustc_serialize;
 extern crate regex;
 extern crate bio;
+extern crate indextree;
 
 
 use std::io;
@@ -31,6 +32,8 @@ use std::fs::{DirBuilder,File,OpenOptions};
 use std::io::prelude::*;
 use std::slice::{Iter,IterMut};
 use std::env;
+
+use self::indextree::Arena;
 
 use self::bio::data_structures::interval_tree::{IntervalTree};
 use self::bio::utils::Interval;
@@ -489,6 +492,7 @@ pub struct Chain {
         pub crashes: Option<bool>,
         pub ratio_run: f32,
         pub season: usize,
+        pub genealogy: Arena<(String, f32, f32, bool)>,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
         pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
@@ -578,6 +582,7 @@ impl Default for Chain {
                 index: 0,
                 // packed: Vec::new(),
                 input_slots: Vec::new(),
+                genealogy: Arena::new(),
                 fitness: None,
                 ab_fitness: None,
                 p_fitness: None,
