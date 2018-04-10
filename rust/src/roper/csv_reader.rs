@@ -7,8 +7,8 @@ use roper::phylostructs::*;
 
 
 pub fn process_data2 (path: &str, 
-                                                numfields: usize) 
-                                                -> IoTargets {
+                      numfields: usize) 
+                      -> IoTargets {
         let file = File::open(path).unwrap();
         let rdr = BufReader::new(file);
         let mut ids : Vec<String> = Vec::new();

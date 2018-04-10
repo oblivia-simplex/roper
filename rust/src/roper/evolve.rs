@@ -322,7 +322,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             } else {
                 res.fitness
             };
-            let dif = crash_adjusted; //res.ab_fitness;
+            let dif = res.ab_fitness; //crash_adjusted; //res.ab_fitness;
             difficulties.insert(p, dif);
             /* If crash_adjusted is better than the best currently on 
               * record, then evaluate the specimen against the remainder
@@ -400,8 +400,8 @@ unsafe impl Send for TournamentResult {}
 
 
 pub fn patch_io_targets (tr: &TournamentResult,
-                                                      params: &mut Params,
-                                                      iteration: usize) 
+                         params: &mut Params,
+                         iteration: usize) 
 {
         let mut io_targets = &mut params.io_targets;
         for ref mut problem in io_targets.iter_mut() {
@@ -416,20 +416,15 @@ pub fn patch_io_targets (tr: &TournamentResult,
 }
 
 pub fn update_difficulties (params: &mut Params,
-                                                            iteration: usize) -> usize {
+                            iteration: usize) -> usize {
         let season_length = params.calc_season_length(iteration);
         let mut io_targets = &mut params.io_targets;
         let reset = iteration > params.threads 
-                                && iteration % season_length == 0;
+                    && iteration % season_length == 0;
         if reset {
-            let divisor = (season_length * params.t_size) as f32
-                                        * (1.0 - params.cuck_rate);
-            let sum_diff = io_targets.iter()
-                                                              .map(|p| p.predifficulty())
-                                                              .sum::<f32>();
             println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
             for ref mut problem in io_targets.iter_mut() {
-                problem.rotate_difficulty(divisor);
+                problem.rotate_difficulty();
             }
             1
         } else {
@@ -533,7 +528,7 @@ pub fn tournament (population: &Population,
         let mut t_size = population.params.t_size;
         let mut cflag = false;
         //  let io_targets = &(population.params.io_targets);
-        if rng.gen::<f32>() < population.params.cuck_rate 
+        if rng.gen::<f32>() < population.params.cuckoo_rate 
         {
             cflag = true;
             t_size -= 1;
@@ -611,6 +606,8 @@ pub fn tournament (population: &Population,
                 specimen.register_map = fit_up.register_map.clone();
                 /* Set link fitness values */
                 for clump in &mut specimen.clumps {
+                    // drop the viscosity for crashing clumps?
+                    //
                     clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
                     clump.viscosity = calc_viscosity(clump);
                 }

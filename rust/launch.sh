@@ -43,6 +43,7 @@ case "$PROBLEM" in
     syscall)
         TASKFLAGS=$PATTERNSTRING
         GOAL=0.0
+        add_flag --crossover 0.5 
         add_flag --fitness_sharing
         add_flag --crash_penalty 0.2
         ;;
@@ -50,6 +51,7 @@ case "$PROBLEM" in
         TASKFLAGS=$DATASTRING
         GOAL=0.15
         CLASSIFICATION=1
+        add_flag --crossover 0.5 
         add_flag --crash_penalty 0.5
         add_flag --fitness_sharing
         add_flag --dynamic_crash_penalty
@@ -58,26 +60,29 @@ case "$PROBLEM" in
         TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
         GOAL=0.0
         CLASSIFICATION=1
-        add_flag --fitness_sharing
-        add_flag --crash_penalty 0.5
+        add_flag --crossover 0.5 
+        add_flag --crash_penalty 1.0
         ;;
     deadsimple)
         TASKFLAGS="-d ${PROJECT_ROOT}/data/deadsimple.csv -N2 -Z2"
         GOAL=0.0
         CLASSIFICATION=1
-        add_flag --fitness_sharing
+        add_flag --crossover 0.5 
         add_flag --crash_penalty 0.5
         ;;
     3blobs)
         TASKFLAGS="-d ${PROJECT_ROOT}/data/3_simple_blobs.csv -N 2 -Z 3"
         GOAL=0.0
         CLASSIFICATION=1
+        add_flag --crossover 0.5 
         add_flag --fitness_sharing
         add_flag --crash_penalty 0.5
         ;;
     kafka)
         TASKFLAGS="-K"
         GOAL=0.0
+        #add_flag --crossover 0.5 
+        add_flag --crossover 1.0 # to study drift
         add_flag --crash_penalty 0.0
         ;;
     *)
@@ -186,7 +191,6 @@ function run () {
                                 --binary $BINARY \
                                 --logs $PROJECT_ROOT/logs \
                                 --goal $GOAL \
-                                --crossover 0.5 \
                                 --sample_ratio 1.0 \
                                 --population $POPULATION \
                                 --threads $ROPER_THREADS \

@@ -62,7 +62,7 @@ pub struct Params {
         pub crash_penalty    : f32,
         pub crossover_rate   : f32,
         pub csv_path         : String,
-        pub cuck_rate        : f32,
+        pub cuckoo_rate        : f32,
         pub data             : Vec<Vec<u8>>,
         pub data_addrs       : Vec<u32>,
         pub date_dir         : String,
@@ -121,7 +121,7 @@ impl Display for Params {
             s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
             s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
             s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
-            s.push_str(&format!("{} cuck_rate: {}\n", rem, self.cuck_rate));
+            s.push_str(&format!("{} cuckoo_rate: {}\n", rem, self.cuckoo_rate));
             s.push_str(&format!("{} threads: {}\n", rem, self.threads));
             s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
             s.push_str(&format!("{} migration: {}\n", rem, self.migration));
@@ -157,7 +157,7 @@ impl Params {
                 crash_penalty:    0.2,
                 crossover_rate:   0.50,
                 csv_path:         format!("{}_{}.csv", &label, &timestamp),
-                cuck_rate:        0.15,
+                cuckoo_rate:        0.15,
                 data:             Vec::new(),
                 data_addrs:       Vec::new(),
                 date_dir:         datepath.clone(),
@@ -1329,7 +1329,7 @@ pub fn mk_pattern(s: &str) -> Target {
 pub struct Problem {
         pub input: Vec<i32>,
         difficulty: f32,
-        predifficulty: f32,
+        predifficulty: Vec<f32>,
         pfactor: f32,
         pub target: Target,
 }
@@ -1345,7 +1345,7 @@ impl Problem {
             Problem { 
                 input: input, 
                 difficulty: DEFAULT_DIFFICULTY,
-                predifficulty: DEFAULT_DIFFICULTY,
+                predifficulty: Vec::new(),
                 pfactor: 1.0,
                 target: target,
             }
@@ -1358,7 +1358,7 @@ impl Problem {
                             0,0,0,0,
                             0,0,0,0],
                 difficulty: 1.0,
-                predifficulty: 1.0,
+                predifficulty: Vec::new(),
                 pfactor: 1.0,
                 target:  Target::Kafka,
             }
@@ -1453,7 +1453,9 @@ impl Problem {
                     //let mut f = Fingerprint::new();
                     if class_guess == cls.class {
                         //f.push(false);
-                        (0.0, f32::max(0.0, 0.99 - self.difficulty()))
+                        // oh SHIIT i was subtracting difficulty, not
+                        // multiplying! how long has that bug been there?
+                        (0.0, f32::max(0.0, 0.99 * (1.0 - self.difficulty())))
                     } else {
                         //f.push(true);
                         //let odds = 1.0 / output.len() as f32;
@@ -1490,31 +1492,26 @@ impl Problem {
                 Target::Kafka    => TargetKind::Kafka,
             }
         }
-        pub fn rotate_difficulty(&mut self, divisor: f32) {
-            let pd = self.predifficulty();
-            // pd: how many times this problem has been solved correctly
-            // divisor: how many attempts have been made on it
-            // so, the higher, the easier.
-            self.set_difficulty(pd / divisor);
-            self.set_predifficulty(DEFAULT_DIFFICULTY);
+        pub fn rotate_difficulty(&mut self) {
+            self.difficulty = self.predifficulty();
+            self.predifficulty = Vec::new();
         }
         pub fn difficulty (&self) -> f32 {
             self.difficulty
         }
         pub fn predifficulty (&self) -> f32 {
-            self.predifficulty
+            mean(&self.predifficulty)
         }
         pub fn set_difficulty (&mut self, n: f32) {
+            println!("--- set_difficulty({})", n);
             self.difficulty = f32::min(1.0, n);
             assert!(self.difficulty <= 1.0);
         }
-        pub fn set_predifficulty (&mut self, n: f32) {
-            self.predifficulty = n;
-        }
+
         pub fn inc_predifficulty (&mut self, d_vec: &Vec<f32>) {
-            let pd = self.predifficulty();
-            self.set_predifficulty(pd + d_vec.iter().sum::<f32>());
+            self.predifficulty.push(mean(d_vec));
         }
+
         pub fn identifier (&self) -> String {
             let mut s = String::new();
             for i in &self.input {

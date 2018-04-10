@@ -11,6 +11,13 @@ function from_hex (h) {
     return strtonum("0x" h)
 }
 
+function from_hex_signed (h) {
+    max = 2 ^ 32
+    med = max / 2
+    num = strtonum("0x" h)
+    return ((num < med) ? num : ( (num > med) ? num - max : -med ))
+}
+
 function unwrap_some (s) {
     return gensub(/Some\(([^)]*)\)/, "\\1", 1, s)
 }
@@ -19,6 +26,17 @@ function unwrap_some (s) {
 function parse_crash (rec) {
     c = gensub(/Crashes: +Some\((true|false)\).*$/, "\\1", 1, rec)
     return c ~ "true"
+}
+
+function parse_problem (p) {
+    dotted = gensub(/^--- BEGIN VISIT MAP FOR PROBLEM ([0-9a-f.]+). /, "\\1", 1, p)
+    hexints[1] = ""
+    split(dotted, hexints, ".")
+    ints = ""
+    for (h in hexints) {
+        ints = ints OFS (from_hex_signed(hexints[h]) / 100.0)
+    }
+    return ints 
 }
 
 
@@ -42,7 +60,7 @@ FNR == 1 {
 
 /^Crashes: +Some/ { crash = (unwrap_some($2) ~ "true"); next }
 
-/--- BEGIN VISIT MAP FOR PROBLEM.*/ { print ""; visit=1; rc=0; ++problem; next }
+/--- BEGIN VISIT MAP FOR PROBLEM.*/ { input=parse_problem($0); visit=1; rc=0; ++problem; next }
 
 visit && $1 ~ /[0-9a-f]+/ {
     j=1
@@ -51,8 +69,18 @@ visit && $1 ~ /[0-9a-f]+/ {
     next
 }
 
+# just grabbing the first few for now, so that i can plot classification results
+visit && $1 ~ "OUT:" { 
+  c0 = from_hex_signed(gensub(/->[0-9a-f]+/, "", 1, $4)) 
+  c1 = from_hex_signed(gensub(/->[0-9a-f]+/, "", 1, $5))  # regs 2 and 3, immed
+  output = (c0 < c1)
+  next
+}
+
 /--- END VISIT MAP FOR PROBLEM.*/   {
     visit=0;
+##    if (input ~ /./ && output ~ /./) print input, output
+## uncomment for loop for visit data. 
     for (row in rows)
     {
         # If the chain crashes, flag this crash at the last address visited.
