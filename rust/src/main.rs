@@ -98,6 +98,7 @@ fn main() {
     opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
     opts.optopt("L", "label", "set a label for the trial", "<string>");
     opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
+    opts.optopt("X", "comment", "a comment to write into the logs and repeat on the screen", "<string>");
     opts.optopt("Z", "num_classes", "number of classes in dataset", "<integer>");
     opts.optopt("P", "population", "set population size", "<positive integer>");
     opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
@@ -127,6 +128,10 @@ fn main() {
         return;
     }
     
+    let comment = match matches.opt_str("X") {
+        None => "".to_string(),
+        Some(s) => s.to_string(),
+    };
 
     let num_attrs = match matches.opt_str("N") {
         None => 4,
@@ -348,6 +353,7 @@ fn main() {
     params.code_addr = text_addr as u32;
     // params.data = vec![rodata_data.clone()];
     // params.data_addrs   = vec![rodata_addr as u32];
+    params.comment      = comment.clone();
     params.constants    = constants.iter().map(|&x| x as u32).collect();
     params.t_size       = t_size;
     params.fitness_sharing = fitness_sharing;
@@ -613,13 +619,14 @@ fn main() {
                 print!("\r[{}]                 ",iteration);
                 io::stdout().flush().ok().expect("Could not flush stdout");
             }
+            println!("{}",comment);
             println!("------------------------------------------------");
         }); // END POOL SCOPE
         i += 1;
     } // END OF MAIN LOOP
     println!("=> {} ITERATIONS",
                       pop_local.read()
-                                        .expect("Failed to open read lock on pop_local")
+                               .expect("Failed to open read lock on pop_local")
                                         .iteration);
     println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read()
                                                                                                         .unwrap().best_abfit());

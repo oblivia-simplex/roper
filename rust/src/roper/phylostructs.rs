@@ -58,6 +58,7 @@ pub struct Params {
         pub brood_size       : usize,
         pub code             : Vec<u8>,
         pub code_addr        : u32,
+        pub comment          : String,
         pub constants        : Vec<u32>,
         pub crash_penalty    : f32,
         pub crossover_rate   : f32,
@@ -110,6 +111,7 @@ impl Display for Params {
             let mut s = String::new(); 
             let rem = "% ";
 
+            s.push_str(&format!("{} COMMENT: {}\n", rem, self.label));
             s.push_str(&format!("{} label: {}\n", rem, self.label));
             s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
             s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
@@ -153,6 +155,7 @@ impl Params {
                 brood_size:       2,
                 code:             Vec::new(),
                 code_addr:        0,
+                comment:          String::new(),
                 constants:        Vec::new(),
                 crash_penalty:    0.2,
                 crossover_rate:   0.50,
@@ -1950,7 +1953,14 @@ impl RPattern {
                          regs_deref: &Vec<Option<Vec<u8>>>) -> f32 {
             fn arith_err_dist(a: u32, b: u32) -> f32 {
                 /* let's just try hamming distance */
-                (a ^ b).count_ones() as f32 / 32.0 
+                let ham = (a ^ b).count_ones() as f32 / 32.0;
+                // peephole distance
+                let dif = a.wrapping_sub(b);
+                let peep = 512;
+                let peepdif = max(peep, dif);
+                let peepdist = dif as f32 / peep as f32;
+                /* return avg of ham and peepdist */
+                (ham + peepdist) / 2.0
             }
 
             fn mem_err_dist(a: u32, b: &Vec<u8>) -> f32 {

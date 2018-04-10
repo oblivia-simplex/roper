@@ -24,7 +24,7 @@ fi
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
 #exec_str_addr=0001bc3e # /bin/sh\n
 exec_str_addr=0001f62f # /tmp/flashXXXX in tomato-RT-N18U. in writeable mem! 
-PATTERNSTRING="-p ${exec_str_addr},&${exec_str_addr},0,_,_,_,_,0b" 
+PATTERNSTRING="-p ${exec_str_addr},\&${exec_str_addr},0,_,_,_,_,0b" 
 DATASTRING="-d $DATAFILE"
 READEVERY=1
 

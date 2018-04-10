@@ -156,7 +156,23 @@ pub fn mapped_segtype (t: SegType) -> bool {
     }
 }
 
-
+pub fn elf_to_uni_perms (perm: u32) -> unicorn::Protection {
+    /* NB: in unicorn, we have\
+     * 100 - exec
+     * 010 - write
+     * 001 - read
+     ** but in ELF, we have
+     * 100 - read
+     * 010 - write
+     * 001 - exec
+     ** We therefore need to exchange bits 100 and 001 before
+     ** we convert the permission flags. */
+    let read  = (perm & 0b100) >> 2;
+    let exec  = (perm & 0b001) << 2;
+    let write = perm & 0b010;
+    let unibits = read | write | exec;
+    unicorn::Protection::from_bits(unibits).expect("Failed to convert flags")
+}
 
 pub fn get_elf_addr_data (path: &str) 
                       -> (Vec<Sec>,Vec<Seg>) {
@@ -176,8 +192,7 @@ pub fn get_elf_addr_data (path: &str)
                         segtype: segtype,
                         addr: phdr.vaddr as u64,
                         memsz: phdr.memsz as usize,
-                        perm: unicorn::Protection::from_bits(phdr.flags.0)
-                                              .expect("Failed to convert flags"),
+                        perm: elf_to_uni_perms(phdr.flags.0),
                     };
                     segments.push(seg);
                 },/*
