@@ -8,6 +8,7 @@ extern crate chrono;
 extern crate rustc_serialize;
 extern crate regex;
 extern crate bio;
+extern crate indextree;
 
 
 use std::io;
@@ -32,6 +33,8 @@ use std::io::prelude::*;
 use std::slice::{Iter,IterMut};
 use std::env;
 
+use self::indextree::Arena;
+
 use self::bio::data_structures::interval_tree::{IntervalTree};
 use self::bio::utils::Interval;
 
@@ -55,11 +58,12 @@ pub struct Params {
         pub brood_size       : usize,
         pub code             : Vec<u8>,
         pub code_addr        : u32,
+        pub comment          : String,
         pub constants        : Vec<u32>,
         pub crash_penalty    : f32,
         pub crossover_rate   : f32,
         pub csv_path         : String,
-        pub cuck_rate        : f32,
+        pub cuckoo_rate        : f32,
         pub data             : Vec<Vec<u8>>,
         pub data_addrs       : Vec<u32>,
         pub date_dir         : String,
@@ -95,6 +99,7 @@ pub struct Params {
         pub training_ht      : HashMap<Vec<i32>,usize>,
         pub use_edis         : bool,
         pub use_viscosity    : bool,
+        pub use_dynamic_crash_penalty : bool,
         pub verbose          : bool,
         pub visitation_diversity_weight : f32,
 /*  pub ro_data_data     : Vec<u8>, */
@@ -106,6 +111,7 @@ impl Display for Params {
             let mut s = String::new(); 
             let rem = "% ";
 
+            s.push_str(&format!("{} COMMENT: {}\n", rem, self.label));
             s.push_str(&format!("{} label: {}\n", rem, self.label));
             s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
             s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
@@ -117,7 +123,7 @@ impl Display for Params {
             s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
             s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
             s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
-            s.push_str(&format!("{} cuck_rate: {}\n", rem, self.cuck_rate));
+            s.push_str(&format!("{} cuckoo_rate: {}\n", rem, self.cuckoo_rate));
             s.push_str(&format!("{} threads: {}\n", rem, self.threads));
             s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
             s.push_str(&format!("{} migration: {}\n", rem, self.migration));
@@ -130,6 +136,8 @@ impl Display for Params {
             s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
             s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
             s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
+            s.push_str(&format!("{} crash_penalty: {}\n", rem, self.crash_penalty));
+            s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
         
             write!(f, "{}",s)
         }
@@ -147,11 +155,12 @@ impl Params {
                 brood_size:       2,
                 code:             Vec::new(),
                 code_addr:        0,
+                comment:          String::new(),
                 constants:        Vec::new(),
                 crash_penalty:    0.2,
                 crossover_rate:   0.50,
                 csv_path:         format!("{}_{}.csv", &label, &timestamp),
-                cuck_rate:        0.15,
+                cuckoo_rate:        0.15,
                 data:             Vec::new(),
                 data_addrs:       Vec::new(),
                 date_dir:         datepath.clone(),
@@ -185,8 +194,9 @@ impl Params {
                 threads:          5,
                 timestamp:        timestamp.clone(),
                 training_ht:      HashMap::new(),
-                use_edis:         true,
-                use_viscosity:    true,
+                use_dynamic_crash_penalty: false,
+                use_edis:         false,
+                use_viscosity:    false,
                 verbose:          false,
                 visitation_diversity_weight : 0.5,
             }
@@ -473,6 +483,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
 
 #[derive(Clone,Debug)]
 pub struct Chain {
+        pub index: usize, // handy to store a reference to this here
         pub clumps: Vec<Clump>, //Arr1K<Clump>, //[Clump; MAX_CHAIN_LENGTH], 
         //pub packed: Vec<u8>,
         pub fitness: Option<f32>,
@@ -484,6 +495,7 @@ pub struct Chain {
         pub crashes: Option<bool>,
         pub ratio_run: f32,
         pub season: usize,
+        pub genealogy: Arena<(String, f32, f32, bool)>,
         pub visitation_diversity: f32,
         pub visited_map: HashMap<Problem, Vec<u32>>,
         pub register_map: HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
@@ -499,7 +511,7 @@ impl Display for Chain {
         fn fmt (&self, f: &mut Formatter) -> Result {
             let mut s = String::new();
             s.push_str("==================================================\n");
-            s.push_str(&format!("Synopsis of chain {}\n", self.name));
+            s.push_str(&format!("Synopsis of chain {} @ {}\n", self.name, self.index));
             s.push_str("==================================================\n");
             s.push_str(&format!("Relative Fitness: {:?} [Season {}]\n", self.fitness, self.season));
             s.push_str(&format!("Absolute Fitness: {:?}\n", self.ab_fitness));
@@ -570,8 +582,10 @@ impl Default for Chain {
         fn default () -> Chain {
             Chain {
                 clumps: Vec::new(),
+                index: 0,
                 // packed: Vec::new(),
                 input_slots: Vec::new(),
+                genealogy: Arena::new(),
                 fitness: None,
                 ab_fitness: None,
                 p_fitness: None,
@@ -1301,6 +1315,7 @@ pub enum TargetKind {
         PatternMatch,
         Classification,
         Game,
+        Kafka,
 }
 
 #[derive(Debug,Clone,Eq,PartialEq)]
@@ -1321,7 +1336,7 @@ pub fn mk_pattern(s: &str) -> Target {
 pub struct Problem {
         pub input: Vec<i32>,
         difficulty: f32,
-        predifficulty: f32,
+        predifficulty: Vec<f32>,
         pfactor: f32,
         pub target: Target,
 }
@@ -1337,11 +1352,25 @@ impl Problem {
             Problem { 
                 input: input, 
                 difficulty: DEFAULT_DIFFICULTY,
-                predifficulty: DEFAULT_DIFFICULTY,
+                predifficulty: Vec::new(),
                 pfactor: 1.0,
                 target: target,
             }
         }
+
+        pub fn new_kafkaesque () -> Problem {
+            Problem {
+                input: vec![0,0,0,0,
+                            0,0,0,0,
+                            0,0,0,0,
+                            0,0,0,0],
+                difficulty: 1.0,
+                predifficulty: Vec::new(),
+                pfactor: 1.0,
+                target:  Target::Kafka,
+            }
+        }
+
         fn adj_cls_score_for_difficulty (&self, score: f32) -> f32 {
             // here, the higher the score, the better. 
             // difficulty is a float <= 1.0, and the lower the harder.
@@ -1411,18 +1440,34 @@ impl Problem {
                     (r, r)
                 },
                 &Target::Vote(ref cls) => {
-                    let mut output : Vec<u32> = Vec::new();
+                    let mut output : Vec<i32> = Vec::new();
                     for idx in outregs {
-                        output.push(registers[*idx]);
+                        output.push(registers[*idx] as i32);
                     }
-                    let b = max_bin(&output);
+                    let tie = output.iter()
+                                    .filter(|&x| *x == output[0])
+                                    .count() == output.len();
+                    //if tie {
+                    //  println!("Equal bins. no winner: {:?}", output);
+                   // }
+                    if tie { return (1.0, 1.0) };
+                    let (class_guess, val) = output.iter()
+                                                   .enumerate()
+                                                   .max_by_key(|&(_,item)| item)
+                                                   .unwrap(); // output not empty
+                    //println!("in assess(). output: {:?}, vote: {}, class: {}",
+                    //    output, class_guess, cls.class);
                     //let mut f = Fingerprint::new();
-                    if b == cls.class {
+                    if class_guess == cls.class {
                         //f.push(false);
-                        (0.0, 1.0 - self.difficulty())
+                        // oh SHIIT i was subtracting difficulty, not
+                        // multiplying! how long has that bug been there?
+                        (0.0, f32::max(0.0, 0.99 * (1.0 - self.difficulty())))
                     } else {
                         //f.push(true);
-                        (1.0, 1.0)
+                        //let odds = 1.0 / output.len() as f32;
+                        let adj = 0.9999; //f32::min(0.999, odds + (1.0 - self.difficulty())); 
+                        (1.0, adj) // TODO check experiment here
                     } 
                 } 
                 &Target::Game(_) => {
@@ -1434,7 +1479,12 @@ impl Problem {
                     let af = (1.0 / s).sqrt();
                     //(af, (af + (1.0 - self.difficulty().powi(2)))/2.0)
                     (af, (af * (1.0 - self.difficulty())))
-                }
+                },
+                /* It is a very painful thing... */
+                &Target::Kafka => {
+                    let r = f32::min(1.0, 0.1 + thread_rng().gen::<f32>());
+                    (r,r)
+                },
             }
         }
         pub fn set_pfactor (&mut self, p: usize) {
@@ -1446,33 +1496,29 @@ impl Problem {
                 Target::Exact(_) => TargetKind::PatternMatch,
                 Target::Vote(_)  => TargetKind::Classification,
                 Target::Game(_)  => TargetKind::Game,
+                Target::Kafka    => TargetKind::Kafka,
             }
         }
-        pub fn rotate_difficulty(&mut self, divisor: f32) {
-            let pd = self.predifficulty();
-            // pd: how many times this problem has been solved correctly
-            // divisor: how many attempts have been made on it
-            // so, the higher, the easier.
-            self.set_difficulty(pd / divisor);
-            self.set_predifficulty(DEFAULT_DIFFICULTY);
+        pub fn rotate_difficulty(&mut self) {
+            self.difficulty = self.predifficulty();
+            self.predifficulty = Vec::new();
         }
         pub fn difficulty (&self) -> f32 {
             self.difficulty
         }
         pub fn predifficulty (&self) -> f32 {
-            self.predifficulty
+            mean(&self.predifficulty)
         }
         pub fn set_difficulty (&mut self, n: f32) {
+            println!("--- set_difficulty({})", n);
             self.difficulty = f32::min(1.0, n);
             assert!(self.difficulty <= 1.0);
         }
-        pub fn set_predifficulty (&mut self, n: f32) {
-            self.predifficulty = n;
-        }
+
         pub fn inc_predifficulty (&mut self, d_vec: &Vec<f32>) {
-            let pd = self.predifficulty();
-            self.set_predifficulty(pd + d_vec.iter().sum::<f32>());
+            self.predifficulty.push(mean(d_vec));
         }
+
         pub fn identifier (&self) -> String {
             let mut s = String::new();
             for i in &self.input {
@@ -1698,6 +1744,7 @@ pub enum Target {
     Exact(RPattern),
     Vote(Classification),
     Game(GameData),
+    Kafka,
 }
 
 impl Hash for Target {
@@ -1706,6 +1753,7 @@ impl Hash for Target {
                 &Target::Exact(ref r) => r.hash(state),
                 &Target::Vote(ref c) => c.hash(state),
                 &Target::Game(ref s) => s.hash(state),
+                &Target::Kafka => ().hash(state),
             }
         }
 }
@@ -1715,6 +1763,7 @@ impl Display for Target {
                 &Target::Exact(ref rp) => rp.fmt(f),
                 &Target::Vote(ref i)   => i.class.fmt(f),
                 &Target::Game(_)       => "[game]".fmt(f),
+                &Target::Kafka         => "X".fmt(f),
             }
         }
 }
@@ -1732,6 +1781,8 @@ impl Target {
                 },
                 &Target::Exact(ref r) => r.constants(),
                 &Target::Game(_) => vec![2], // PLACEHOLDER TODO
+                &Target::Kafka => (0..1024).map(|_| thread_rng().gen::<i32>())
+                                           .collect::<Vec<i32>>(),
             }
         }
         pub fn is_class (&self, c: usize) -> bool {
@@ -1905,23 +1956,48 @@ impl RPattern {
                          regs: &Vec<u32>, 
                          regs_deref: &Vec<Option<Vec<u8>>>) -> f32 {
             fn arith_err_dist(a: u32, b: u32) -> f32 {
-                /* scaling and overflow trouble with this approach  
-                let a = a as f32;
-                let b = b as f32;
-                let diff = (a-b).abs() as f64;
-                println!(">> diff: {}",diff);
-                // now normalize this to a float between 0.0 and 1.0
-                let rat = diff / 4294967295.0;
-                println!(">> arith distance as f64: {}",rat);
-                let rat32 = rat as f32;
-                println!(">> arith distance as f32: {}",rat);
-                rat32
-                */ /* let's just try hamming distance */
-                (a ^ b).count_ones() as f32 / 32.0 
+                /* let's just try hamming distance */
+                let ham = (a ^ b).count_ones() as f32 / 32.0;
+                // peephole distance
+                let dif = a.wrapping_sub(b);
+                let peep = 512;
+                let peepdif = max(peep, dif);
+                let peepdist = dif as f32 / peep as f32;
+                /* return avg of ham and peepdist */
+                (ham + peepdist) / 2.0
+            }
+
+            fn mem_err_dist(a: u32, b: &Vec<u8>) -> f32 {
+                /* a is target, b is result */
+                let mlen = b.len();
+                assert!(b.len() >= 4);
+                let a_bytes : Vec<u8> = pack_word32le(a);
+                let mut int_dist : Option<usize> = None;
+                for i in 0..(mlen-4) {
+                    if a_bytes[0] == b[i]
+                        && a_bytes[1] == b[i+1]
+                        && a_bytes[2] == b[i+2]
+                        && a_bytes[3] == b[i+3] {
+                            /* we found a match */
+                            int_dist = Some(i);
+                            println!("---> found {:08x} at offset {}/{} = {}",
+                                     a, int_dist.unwrap(), mlen, 
+                                     (int_dist.unwrap() as f32 / mlen as f32));
+                            break;
+                        }
+                }
+                match int_dist {
+                    None => 1.0,
+                    Some(v) => (v as f32) / (mlen as f32),
+                }
             }
             
-            fn adj (x: f32) -> f32 { f32::min(1.0,(x+0.01).sqrt()) } //(1.0 + x) / 3.0 }
+            fn adj (x: f32) -> f32 { f32::min(1.0,(x+0.1).sqrt()) } //(1.0 + x) / 3.0 }
+         
+            let mut immed_nears = Vec::new();
+            let mut deref_nears = Vec::new();
 
+            let mut exact_deref_matches = 0.0;
             let mut ref_err : f32 = 0.0;
             let mut idx_err : f32 = 0.0;
             let mut arith_err : f32 = 0.0;
@@ -1944,6 +2020,7 @@ impl RPattern {
                                 let di = if i == idx { d } else { adj(d) };
                                 if di < nearest {
                                     nearest = di;
+                                    immed_nears.push(di);
                                 };
                                 //println!("immed->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                             }
@@ -1953,11 +2030,13 @@ impl RPattern {
                                 match v {
                                     &None => continue,
                                     &Some(ref vd) => {
-                                        let r = get_word32le(vd, 0); 
-                                        let d = adj(arith_err_dist(x, r));
+                                        //let r = get_word32le(vd, 0); 
+                                        let d = adj(mem_err_dist(x, vd));
                                         let di = if i == idx { d } else { adj(d) };
                                         if di < nearest {
                                             nearest = di;
+                                            deref_nears.push(di);
+                                            if di == 0.0 { break };
                                         };
                                         //println!("immed->reg_deref loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                                     },
@@ -1975,20 +2054,24 @@ impl RPattern {
                                 let y = get_word32le(vd,0);
                                 //println!(">>> Comparing {:?}|{:x}->{:x} to {:x}", regs_deref[idx].as_ref().unwrap(),regs[idx], y, x);
                                 if y == x {
+                                    exact_deref_matches += 1.0;
                                     nearest = 0.0;
-                                  //  println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
+                                    println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
                                 } else {
                                     for i in 0..regs_deref.len() {
                                         if i == 13 { continue }; /* bad luck */
-                                        let vd = &regs_deref[i];
-                                        if vd == &None { continue };
-                                        let r = get_word32le(vd.as_ref()
-                                                               .unwrap() ,0); 
+                                        let result = &regs_deref[i];
+                                        if result == &None { continue };
+                                        //let r = get_word32le(vd.as_ref()
+                                        //                       .unwrap() ,0); 
+                                        let result = result.as_ref().unwrap();
+                                        let d = mem_err_dist(x, result);
                                         /* TODO scan? */
-                                        let d = arith_err_dist(x, r);
+                                        //let d = arith_err_dist(x, r);
                                         let di = if i == idx { d } else { adj(d) };
                                         let di = di / 2.0; /* deref is hard */
                                         if di < nearest {
+                                            deref_nears.push(di);
                                             nearest = di;
                                         };
                                     //    println!("&{:x} in r{}>>> d = {}, di = {}, nearest to {:x} = {}", r,i,d,di,x,nearest);
@@ -1998,12 +2081,14 @@ impl RPattern {
                                         let d = adj(arith_err_dist(x, r));
                                         let di = if i == idx { d } else { adj(d) };
                                         if di < nearest {
+                                            immed_nears.push(di);
                                             nearest = di;
                                         };
                                         //println!("deref->reg loop>>> d = {}, di = {}, nearest = {}", d,di,nearest);
                                     }
                                 }
                         };
+                        /* FIXME redundant??
                         if adj(adj(0.0)) < nearest {
                                 //println!(">>>> nothing in reg_deref, considering reg for {:?}...",val);
                                 for i in 0..regs.len() {
@@ -2018,6 +2103,7 @@ impl RPattern {
                                  //   println!("{:x} in r{}>>> dist={}, d = {}, di = {}, nearest to {:x} = {}",r,i,dist,d,di,x,nearest);
                                 };
                         };
+                        */
                         errs.push(nearest);
                     },
                 }
@@ -2030,7 +2116,11 @@ impl RPattern {
             println!(">>> regs_deref = {:?}", &regs_deref);
             println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
             */
-            mean(&errs)
+            println!("----[mean deref_nears]= {}", mean(&deref_nears));
+            println!("----[mean immed_nears]= {}", mean(&immed_nears));
+            let m = mean(&errs);
+            println!("----[mean(&errs)=fitness]= {}", m);
+            m //if exact_deref_matches > 0.0 { m / exact_deref_matches } else { m }
         }
 } /* TODO add some unit tests. i think there's an arithmetic error up here, 
      which is causing a perfect champion to receive a fitness of 0.003... */

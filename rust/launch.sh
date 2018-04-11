@@ -1,6 +1,10 @@
 #! /bin/bash
 
-
+# i'm using nginx for the webserver on this box
+NOSERVE=1
+PROJECT_ROOT=`pwd`/..
+[ -n "$BINARY" ] || BINARY=$1
+[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 
 if [ -n "$BARE_RUN" ]; then
     ROPER_THREADS=1
@@ -13,24 +17,79 @@ fi
 
 INDEXSUFFIX="" # for simulataneous runs, etc.
 
-POPSIZE=2048
+if [ -z "$POPULATION" ]; then
+    POPULATION=2048
+fi
 
-PROJECT_ROOT=`pwd`/..
 DATAFILE=${PROJECT_ROOT}/data/iris.data #data_banknote_authentication.txt
 #exec_str_addr=0001bc3e # /bin/sh\n
 exec_str_addr=0001f62f # /tmp/flashXXXX in tomato-RT-N18U. in writeable mem! 
-PATTERNSTRING="-p ${exec_str_addr},&${exec_str_addr},0,_,_,_,_,0b" 
+PATTERNSTRING="-p ${exec_str_addr},\&${exec_str_addr},0,_,_,_,_,0b" 
 DATASTRING="-d $DATAFILE"
 READEVERY=1
 
-[ -n "$PROBLEM" ] || PROBLEM=iris
-if [ "$PROBLEM" = syscall ]; then
-    TASKFLAGS=$PATTERNSTRING
-else 
-    TASKFLAGS=$DATASTRING
-fi
-GOAL="0.0"
 CLASSIFICATION=0
+
+function add_flag() {
+  grep -q "\\$1" <<< "x$EXTRAFLAGS" || \
+    EXTRAFLAGS="$EXTRAFLAGS $1 $2" && \
+    echo "[+] Added flag $1 $2"
+  echo "EXTRAFLAGS> $EXTRAFLAGS"
+  export EXTRAFLAGS
+}
+
+[ -n "$PROBLEM" ] || PROBLEM=iris
+case "$PROBLEM" in
+    syscall)
+        TASKFLAGS=$PATTERNSTRING
+        GOAL=0.0
+        add_flag --crossover 0.5 
+        add_flag --fitness_sharing
+        add_flag --crash_penalty 0.2
+        ;;
+    iris)
+        TASKFLAGS=$DATASTRING
+        GOAL=0.15
+        CLASSIFICATION=1
+        add_flag --crossover 0.5 
+        add_flag --crash_penalty 0.5
+        add_flag --fitness_sharing
+        add_flag --dynamic_crash_penalty
+        ;;
+    2blobs)
+        TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
+        GOAL=0.0
+        CLASSIFICATION=1
+        add_flag --crossover 0.5 
+        add_flag --crash_penalty 1.0
+        ;;
+    deadsimple)
+        TASKFLAGS="-d ${PROJECT_ROOT}/data/deadsimple.csv -N2 -Z2"
+        GOAL=0.0
+        CLASSIFICATION=1
+        add_flag --crossover 0.5 
+        add_flag --crash_penalty 0.5
+        ;;
+    3blobs)
+        TASKFLAGS="-d ${PROJECT_ROOT}/data/3_simple_blobs.csv -N 2 -Z 3"
+        GOAL=0.0
+        CLASSIFICATION=1
+        add_flag --crossover 0.5 
+        add_flag --fitness_sharing
+        add_flag --crash_penalty 0.5
+        ;;
+    kafka)
+        TASKFLAGS="-K"
+        GOAL=0.0
+        #add_flag --crossover 0.5 
+        add_flag --crossover 1.0 # to study drift
+        add_flag --crash_penalty 0.0
+        ;;
+    *)
+        echo "[X] Did not recognize \$PROBLEM=\"$PROBLEM\""
+        exit 1
+        ;;
+esac
 
 export RUSTFLAGS=-Awarnings
 SRV=${PROJECT_ROOT}/srv
@@ -46,8 +105,6 @@ function webserver ()
 
 
 
-BINARY=$1
-[ -n "$BINARY" ] || BINARY=${PROJECT_ROOT}/data/tomato-RT-N18U-httpd
 function labelmaker () 
 {
   SRC=/dev/urandom
@@ -128,23 +185,24 @@ DISASFILE="/tmp/roper_disassembly.txt"
 [ -f "$DISASFILE" ] && mv $DISASFILE \
   $PROJECT_ROOT/logs/roper_disassembly.old.txt
 function run () {
-  RUST_BACKTRACE=1 cargo run \
+  echo "[+] POPULATION=$POPULATION"
+  CMD="RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
-                                -b $BINARY \
-                                -o $PROJECT_ROOT/logs \
-                                -g $GOAL \
-                                -c 0.2 \
-                                -s 1.0 \
-                                -P $POPSIZE \
-                                -t $ROPER_THREADS \
-                                -D 4 \
-                                -m 0.05 \
-                                -R \
-                                -S \
-                                -L $LABEL \
-                                $EXTRAFLAGS
-  #                              -E
-  # Add -S flag to enable fitness sharing
+                                --binary $BINARY \
+                                --logs $PROJECT_ROOT/logs \
+                                --goal $GOAL \
+                                --sample_ratio 1.0 \
+                                --population $POPULATION \
+                                --threads $ROPER_THREADS \
+                                --demes 4 \
+                                --migration 0.05 \
+                                --init_length 32 \
+                                --label $LABEL \
+                                $EXTRAFLAGS"
+  CMD=$(sed "s/  */ /g" <<< "$CMD")
+  echo -ne "[*] Running ROPER with command:\n\t"
+  echo "sh -c \"$CMD\""
+  sh -c "$CMD"
                                 
 }
 
@@ -160,7 +218,7 @@ roper_pid=$!
 echo "[+] roper PID is $roper_pid"
 cd $PROJECT_ROOT/logs
 recent=""
-echo -n "[+] looking for log output"
+echo -n "[+] looking for log output in ${LOGDIR}"
 while ! [ -n "$recent" ]; do
   if ! kill -0 $roper_pid; then
     echo "ROPER instance with PID $roper_pid is dead"

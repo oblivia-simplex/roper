@@ -19,7 +19,7 @@ use std::fs::{File,OpenOptions};
 use std::io::prelude::*;
 use std::io;
 use std::process;
-use std::process::Command;
+use std::process::{Command,exit};
 mod roper;
 
 use rand::{thread_rng,Rng};
@@ -62,6 +62,7 @@ enum Challenge {
     Data,
     Pattern,
     Game,
+    Kafka,
     Undecided,
 }
 
@@ -73,71 +74,80 @@ fn main() {
     let script_dir = "/home/vagrant/ROPER/scripts/";
         
     
-
+/*
     ctrlc::set_handler(move || {
-
-        /*
-        backtrace::trace(|frame| {
-            let ip = frame.ip();
-            let sym_addr = frame.symbol_address();
-            /* Resolve this instruction pointer to a symbol name */
-            backtrace::resolve(ip, |sym| {
-                if let Some(name) = sym.name() {
-                    if let Some(filename) = sym.filename() {
-                        println!("=> {:?} in {:?}", name, filename);
-                    } else {
-                        println!("=> {:?}", name);
-                    }
-                }
-            });
-            true // keep going to next frame
-        });
-        */  
         println!("Goodbye!\n");
         std::process::exit(1);
     }).expect("Error setting ctrlc handler");
     
-
+*/
     let mut opts = Options::new();
     opts.parsing_style(ParsingStyle::FloatingFrees);
-    opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
-    opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
-    opts.optopt("d", "data", "set data path", "<path to data file>");
-    opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
-    opts.optopt("n", "game_seeds", "number of unique random seeds to use for game", "<integer>");
-    opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
-    opts.optopt("o", "logs", "set log directory", "<directory>");
-    opts.optopt("t", "threads", "set number of threads", "<positive integer>");
-    opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
-    opts.optopt("P", "population", "set population size", "<positive integer>");
-    opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
-    opts.optopt("L", "label", "set a label for the trial", "<string>");
-    opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
-    opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
-    opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
-    opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
-    opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
-    opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
-    opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
-    opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
+
+    opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
+    opts.optflag("K", "kafka", "use an arbitrary and inscrutable fitness function");
     opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
-    opts.optflag("R", "norethook", "remove the counting hooks on the return instructions");
+    opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("y", "dynamic_crash_penalty", "dynamically adjust the crash penalty in response to the population's crash rate");
+
+    opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
+    opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
+    opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
+    opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
+    opts.optopt("L", "label", "set a label for the trial", "<string>");
+    opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
+    opts.optopt("X", "comment", "a comment to write into the logs and repeat on the screen", "<string>");
+    opts.optopt("Z", "num_classes", "number of classes in dataset", "<integer>");
+    opts.optopt("P", "population", "set population size", "<positive integer>");
+    opts.optopt("T", "tsize", "set tournament size", "<positive integer>");
+    opts.optopt("a", "address", "address and port of a game server to interact with", "<address:port>");
+    opts.optopt("b", "binary", "select binary file to search for gadgets", "<path to binary file>");
+    opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
+    opts.optopt("d", "data", "set data path", "<path to data file>");
     opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
-    opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
+    opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
+    opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
+    opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
+    opts.optopt("n", "game_seeds", "number of unique random seeds to use for game", "<integer>");
+    opts.optopt("o", "logs", "set log directory", "<directory>");
+    opts.optopt("p", "pattern", "set target pattern", "<register pattern>");
+    opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
+    opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
+    opts.optopt("t", "threads", "set number of threads", "<positive integer>");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
     };
+
     println!("[+] Command line parameters read: {:?}", &matches.free);
 
     if matches.opt_present("h") {
         print_usage(&program, opts);
         return;
     }
+    
+    let comment = match matches.opt_str("X") {
+        None => "".to_string(),
+        Some(s) => s.to_string(),
+    };
 
+    let num_attrs = match matches.opt_str("N") {
+        None => 4,
+        Some(n) => n.parse::<usize>().expect("Failed to parse num_attrs"),
+    };
+
+    let num_classes = match matches.opt_str("Z") {
+        None => 3,
+        Some(n) => n.parse::<usize>().expect("Failed to parse num_classes"),
+    };
+    
     let mut challenge : Challenge = Challenge::Undecided;
+
+    if matches.opt_present("K") {
+        challenge = Challenge::Kafka;
+    }
 
     let use_viscosity = ! matches.opt_present("V");
     
@@ -147,6 +157,13 @@ fn main() {
         None => 0.10,
         Some(n) => n.parse::<f32>().expect("Failed to parse edirate (-e)"),
     };
+
+    let crash_penalty = match matches.opt_str("0") {
+        None => 0.2,
+        Some(n) => n.parse::<f32>().expect("Failed to parse crash_penalty"),
+    };
+
+    let use_dynamic_crash_penalty = matches.opt_present("y");
 
     let random_override = matches.opt_present("O");
       
@@ -185,23 +202,23 @@ fn main() {
     
     let crossover_rate = match matches.opt_str("c") {
         None => 0.5,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse crossover rate"),
     };
     let sample_ratio = match matches.opt_str("s") {
         None => 1.0,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse sample ratio"),
     };
     let popsize = match matches.opt_str("P") {
         None => 2000,
-        Some(n) => n.parse::<usize>().unwrap(),
+        Some(n) => n.parse::<usize>().expect("Failed to parse population size"),
     };
     let migration = match matches.opt_str("m") {
         None => 0.1,
-        Some(n) => n.parse::<f32>().unwrap(),
+        Some(n) => n.parse::<f32>().expect("Failed to parse migration rate"),
     };
     let num_demes = match matches.opt_str("D") {
         None => 4,
-        Some(n) => n.parse::<usize>().unwrap(),
+        Some(n) => n.parse::<usize>().expect("Failed to parse number of demes"),
     };
     let label = match matches.opt_str("L") {
         None => "roper".to_string(),
@@ -244,10 +261,9 @@ fn main() {
     let mut params : Params = Params::new(&label);
     let io_targets = match challenge {
         Challenge::Data => {
-            let num_attrs = 4; // TODO: Figure out how not to hardcode this
             let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
-            params.inregs  = (0..num_attrs).collect::<Vec<usize>>();
-            params.outregs = (num_attrs..(num_attrs+io.num_classes)).collect::<Vec<usize>>();
+            params.outregs = (0..(num_classes)).collect(); //vec![5,6,7];
+            params.inregs  = (num_classes..(num_classes+num_attrs)).collect(); //vec![1,2,3,4];
             println!(">> inregs: {:?}\n>> outregs: {:?}", 
                               &params.inregs, &params.outregs);
             assert!(io.len() > 0);
@@ -276,10 +292,17 @@ fn main() {
             }
             IoTargets::from_vec(TargetKind::Game, gs, num_classes)
         },
+        Challenge::Kafka => {
+            params.inregs = (0..16).collect();
+            params.outregs = (0..16).collect();
+            IoTargets::from_vec(TargetKind::Kafka,
+                                vec![Problem::new_kafkaesque()],
+                                1)
+        },
         Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
     };
 
-    let (testing,training) = io_targets.split_at(io_targets.len()/3);
+    let (testing,training) = (io_targets.clone(), io_targets.clone()); //io_targets.split_at(io_targets.len()/3);
     println!(">> testing.len() = {}; training.len() = {}", testing.len(), training.len());
 
     //let debug_samples = training.clone();
@@ -322,11 +345,15 @@ fn main() {
     
     let mode = MachineMode::ARM;
 
+    /* FIXME make sure that all of the params are actually passed and set here.
+     * I don't think they currently are. 
+     */
     let constants = suggest_constants(&io_targets);
     params.code = text_data.clone();
     params.code_addr = text_addr as u32;
     // params.data = vec![rodata_data.clone()];
     // params.data_addrs   = vec![rodata_addr as u32];
+    params.comment      = comment.clone();
     params.constants    = constants.iter().map(|&x| x as u32).collect();
     params.t_size       = t_size;
     params.fitness_sharing = fitness_sharing;
@@ -348,6 +375,8 @@ fn main() {
     params.random_override = random_override;
     params.set_init_difficulties();
     params.use_edis = use_edis;
+    params.crash_penalty = crash_penalty;
+    params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
     
     if !use_edis {
         params.initial_edi_rate = 0.0;
@@ -479,7 +508,9 @@ fn main() {
                                          true);
                     }
                     /* TODO: try commenting out the next line to hold crash penalty constant */
-                    mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
+                    if mut_pop.params.use_dynamic_crash_penalty {
+                      mut_pop.params.crash_penalty = compute_crash_penalty(crash_rate);
+                    };
                 }
                 season_change = update_difficulties(&mut mut_pop.params, 
                                                     iteration);
@@ -588,13 +619,14 @@ fn main() {
                 print!("\r[{}]                 ",iteration);
                 io::stdout().flush().ok().expect("Could not flush stdout");
             }
+            println!("{}",comment);
             println!("------------------------------------------------");
         }); // END POOL SCOPE
         i += 1;
     } // END OF MAIN LOOP
     println!("=> {} ITERATIONS",
                       pop_local.read()
-                                        .expect("Failed to open read lock on pop_local")
+                               .expect("Failed to open read lock on pop_local")
                                         .iteration);
     println!("=> BEST (ABSOLUTE) FIT: {:?}", pop_local.read()
                                                                                                         .unwrap().best_abfit());

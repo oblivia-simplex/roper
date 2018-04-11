@@ -99,7 +99,7 @@ fn mutate(chain: &mut Chain,
         let mut clump = chain[cl_idx].clone();
         assert!(clump.size() > 0);
         let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
-        let mut_kind : u8 = rng.gen::<u8>() % 5;
+        let mut_kind : u8 = rng.gen::<u8>() % 6;
         match mut_kind {
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
@@ -109,11 +109,16 @@ fn mutate(chain: &mut Chain,
             },
             3 => match uc_seek_word(clump.words[idx].clone(), uc) {
                 Some(x) => {
-                    chain.name = "child of indirection mutation".to_string();
                     println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
                     clump.words[idx] = x as u32;
                 },
                 None    => (),
+            },
+            4 => {
+                let other_idx = 1 + (rng.gen::<usize>() % (clump.size() - 1));
+                let tmp = clump.words[idx];
+                clump.words[idx] &= clump.words[other_idx];
+                clump.words[other_idx] |= tmp;
             },
             // 2 => /**** mutate the input_slots ****/
             _ => { /* permutation */
@@ -209,6 +214,7 @@ fn eval_case (uc: &mut CpuARM,
     let target = &problem.target;
     let reset = true;
     let input  = &problem.input;
+    //println!("in eval_case. problem: {:?}", problem);
     let result = hatch_chain(uc, 
                              &chain,
                              input,
@@ -252,7 +258,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         }
         let io = match batch {
             Batch::TRAINING => &params.io_targets,
-            Batch::TESTING  => &params.test_targets,
+            Batch::TESTING  => if params.test_targets.len() == 0 {
+                                    &params.io_targets
+                                } else {
+                                    &params.test_targets
+                                },
         };
         let io2 : IoTargets;
         // NB: fingerprint mechanics won't work, as currrently implemented,
@@ -289,14 +299,12 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                                                  &params,
                                                  verbose);
             let p = problem.clone();
-            let dif = res.ab_fitness;
             //println!(">> dif = {}", dif);
             //let dif = if res.fingerprint[0] {1.0} else {0.0};
-            difficulties.insert(p.clone(), dif);
             // we could make this more efficient by just taking a
             // unique identifier for each problem.
             visited_map.insert(p.clone(), res.visited);
-            register_map.insert(p, (res.registers, res.reg_deref));
+            register_map.insert(p.clone(), (res.registers, res.reg_deref));
             /* crash tracking */ 
             let counter = res.counter;
             
@@ -314,6 +322,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             } else {
                 res.fitness
             };
+            let dif = res.ab_fitness; //crash_adjusted; //res.ab_fitness;
+            difficulties.insert(p, dif);
             /* If crash_adjusted is better than the best currently on 
               * record, then evaluate the specimen against the remainder
               * of the problems (io_targets2). 
@@ -322,7 +332,11 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             abfit_vec.push(res.ab_fitness);
         };
         let ab_fitness = mean(&abfit_vec);
-        let fitness =  mean(&fit_vec);
+        let mut fitness =  mean(&fit_vec); /* experimental TODO */
+        if ab_fitness <= params.fit_goal {
+            // adjustment to preserve elites
+            fitness /= 2.0;
+        };
         let ab_fitness = f32::min(1.0, ab_fitness);
         let mut fitness = f32::min(1.0, fitness);
         let mut divers = 0.0; 
@@ -386,8 +400,8 @@ unsafe impl Send for TournamentResult {}
 
 
 pub fn patch_io_targets (tr: &TournamentResult,
-                                                      params: &mut Params,
-                                                      iteration: usize) 
+                         params: &mut Params,
+                         iteration: usize) 
 {
         let mut io_targets = &mut params.io_targets;
         for ref mut problem in io_targets.iter_mut() {
@@ -402,20 +416,15 @@ pub fn patch_io_targets (tr: &TournamentResult,
 }
 
 pub fn update_difficulties (params: &mut Params,
-                                                            iteration: usize) -> usize {
+                            iteration: usize) -> usize {
         let season_length = params.calc_season_length(iteration);
         let mut io_targets = &mut params.io_targets;
         let reset = iteration > params.threads 
-                                && iteration % season_length == 0;
+                    && iteration % season_length == 0;
         if reset {
-            let divisor = (season_length * params.t_size) as f32
-                                        * (1.0 - params.cuck_rate);
-            let sum_diff = io_targets.iter()
-                                                              .map(|p| p.predifficulty())
-                                                              .sum::<f32>();
             println!("==[ RESETTING PROBLEM DIFFICULTIES ]==");
             for ref mut problem in io_targets.iter_mut() {
-                problem.rotate_difficulty(divisor);
+                problem.rotate_difficulty();
             }
             1
         } else {
@@ -519,7 +528,7 @@ pub fn tournament (population: &Population,
         let mut t_size = population.params.t_size;
         let mut cflag = false;
         //  let io_targets = &(population.params.io_targets);
-        if rng.gen::<f32>() < population.params.cuck_rate 
+        if rng.gen::<f32>() < population.params.cuckoo_rate 
         {
             cflag = true;
             t_size -= 1;
@@ -597,6 +606,8 @@ pub fn tournament (population: &Population,
                 specimen.register_map = fit_up.register_map.clone();
                 /* Set link fitness values */
                 for clump in &mut specimen.clumps {
+                    // drop the viscosity for crashing clumps?
+                    //
                     clump.link_fit  = calc_link_fit(clump, fit_up.fitness.unwrap());
                     clump.viscosity = calc_viscosity(clump);
                 }
@@ -866,16 +877,27 @@ pub fn reap_gadgets (code: &Vec<u8>,
 
 /* TODO: try holding crash penalty constant */
 pub fn compute_crash_penalty(crash_rate: f32) -> f32 {
-        crash_rate / 2.0
+        crash_rate // / 2.0
 }
 
 fn crash_override(score: f32,
                   ratio_run: f32,
                   params: &Params) -> f32 {
-        if params.fatal_crash {
+        if score == 1.0 || params.fatal_crash {
             1.0
         } else {
-            1.0 - (1.0 - score) * params.crash_penalty * ratio_run
+            let penalty = params.crash_penalty;
+            let ratio_run = f32::min(1.0, ratio_run);
+            assert!(ratio_run <= 1.0);
+            // this should work. 1.1 - ratio_run so that a chain that somehow
+            // gets ratio_run of 1.0 still pays some penalty for crashing.
+            let adjusted = f32::min(1.0, score + (penalty * (1.0 - ratio_run/2.0)));
+//            println!("*** score: {}, penalty: {}, ratio_run: {}, adjusted: {}, old formula gave: {}",
+ //                    score, penalty, ratio_run, adjusted, (1.0 - (1.0 - score) * penalty * ratio_run));
+            adjusted
+           // oh fuck. some bad elementary arithmetic had it so that creatures
+           // were being penalized harsher for running more! fuck!
+           // 1.0 - (1.0 - score) * params.crash_penalty * ratio_run
         }
 }
                                         

@@ -1,0 +1,13 @@
+#! /bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+echo "SEASON INDEX PROBLEM INSTCOUNT ADDRESS STRAY FITNESS CRASH"
+for dumpdir in `find ./ -maxdepth 1 -type d -name "*season*dump"`; do
+    find $dumpdir -type f -name "chain_*_visited_map.txt" \
+         -exec awk -f ${DIR}/3d_visit_scraper.awk {} \;
+done
+
+awk -f ${DIR}/3d_visit_scraper.awk ./*champion*visited.txt
+
+
