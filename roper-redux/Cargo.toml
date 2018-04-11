@@ -1,0 +1,6 @@
+[package]
+name = "roper-redux"
+version = "0.1.0"
+authors = ["oblivia simplex <oblivia@paranoici.org>"]
+
+[dependencies]
