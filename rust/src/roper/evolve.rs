@@ -133,11 +133,10 @@ fn mutate(chain: &mut Chain,
 }
 
 fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
-        for ref mut clump in &mut chain.clumps {
-            if rng.gen::<f32>() < params.edi_toggle_rate {
-                clump.enabled = !clump.enabled; 
-            }
-        }
+      if rng.gen::<f32>() < params.edi_toggle_rate {
+          let i = rng.gen::<usize>() % chain.size();
+          chain[i].enabled = !chain[i].enabled; 
+      }
 }
 
 fn clone_and_mutate (parents: &Vec<&Chain>,
@@ -151,7 +150,12 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
             let mut spawn = Chain::new(spawnclumps);
             mutate(&mut spawn, &params, uc, rng);
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
-            spawn.p_fitness = parents[i % 2].fitness;
+            /* remember: headless chicken parents won't have a fitness,
+             * but it makes sense to treat their children as if born
+             * ex nihilo, as far as the deltas are concerned. */
+            spawn.p_fitness = if let Some(f) = parents[i % 2].fitness {
+                vec![f]
+            } else { Vec::new() };
             spawn.generation = parents[i % 2].generation + 1;
             brood.push(spawn);
         }
@@ -378,7 +382,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
 pub struct FitUpdate {
         pub fitness     : Option<f32>,
         pub ab_fitness  : Option<f32>,
-        pub p_fitness   : Option<f32>,
+        pub p_fitness   : Vec<f32>,
   // pub fingerprint : Fingerprint,
         pub crashes     : Option<bool>,
         pub ratio_run   : f32,
@@ -464,8 +468,8 @@ pub fn patch_population (tr: &TournamentResult,
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
                 population.deme[i].p_fitness = fit_up.p_fitness.clone();
 
-                if let Some(pf) = population.deme[i].p_fitness {
-                    fitness_deltas.push(f - pf);
+                if population.deme[i].p_fitness.len() > 0 {
+                    fitness_deltas.push(f - mean(&population.deme[i].p_fitness));
                 };
             }
         }
@@ -627,7 +631,7 @@ pub fn tournament (population: &Population,
                                     FitUpdate {
                                                 fitness     : mother.fitness,
                                                 ab_fitness  : mother.ab_fitness,
-                                                p_fitness   : mother.p_fitness,
+                                                p_fitness   : mother.p_fitness.clone(),
                                                 crashes     : mother.crashes,
                                                 ratio_run   : mother.ratio_run,
                                                 runtime     : mother.runtime,
@@ -640,7 +644,7 @@ pub fn tournament (population: &Population,
                               FitUpdate { 
                                           fitness     : father.fitness,
                                           ab_fitness  : father.ab_fitness,
-                                          p_fitness   : father.p_fitness,
+                                          p_fitness   : father.p_fitness.clone(),
                                           crashes     : father.crashes,
                                           ratio_run   : father.ratio_run,
                                           runtime     : father.runtime,
@@ -820,10 +824,12 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             let mut child : Chain = Chain::new(child_clumps);
             child.generation = max(mother.generation, father.generation)+1;
             child.p_fitness = {
+                /* vector of parents' fitness*/
                 let mut f = Vec::new();
                 if let Some(x) = mother.fitness {f.push(x)};
                 if let Some(x) = father.fitness {f.push(x)};
-                if f.len() == 0 {None} else {Some(mean(&f))}
+                //if f.len() == 0 {None} else {Some(mean(&f))}
+                f
             };
             brood.push(child);
         }

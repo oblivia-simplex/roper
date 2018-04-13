@@ -96,6 +96,7 @@ fn main() {
     opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
     opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
     opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
+    opts.optopt("I", "stack_input_sampling", "set proportion of stack slots used to carry input data", "<float>");
     opts.optopt("L", "label", "set a label for the trial", "<string>");
     opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
     opts.optopt("X", "comment", "a comment to write into the logs and repeat on the screen", "<string>");
@@ -107,6 +108,7 @@ fn main() {
     opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
     opts.optopt("d", "data", "set data path", "<path to data file>");
     opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
+    opts.optopt("+", "edi_toggle_rate", "set likelihood of an edi toggle in mutation", "<float between 0.0 and 1.0>");
     opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
     opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
     opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
@@ -127,6 +129,11 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
+
+    let stack_input_sampling = match matches.opt_str("I") {
+        None => 0.0,
+        Some(n) => n.parse::<f32>().expect("Failed to parse stack_input_sampling"),
+    };
     
     let comment = match matches.opt_str("X") {
         None => "".to_string(),
@@ -156,6 +163,11 @@ fn main() {
     let edirate = match matches.opt_str("e") {
         None => 0.10,
         Some(n) => n.parse::<f32>().expect("Failed to parse edirate (-e)"),
+    };
+
+    let edi_toggle_rate = match matches.opt_str("+") {
+        None => 0.01,
+        Some(n) => n.parse::<f32>().expect("Failed to parse edi_toggle_rate (-+)"),
     };
 
     let crash_penalty = match matches.opt_str("0") {
@@ -261,7 +273,7 @@ fn main() {
     let mut params : Params = Params::new(&label);
     let io_targets = match challenge {
         Challenge::Data => {
-            let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
+            let io = process_data2(&data_path.unwrap(), num_attrs, num_classes).shuffle();
             params.outregs = (0..(num_classes)).collect(); //vec![5,6,7];
             params.inregs  = (num_classes..(num_classes+num_attrs)).collect(); //vec![1,2,3,4];
             println!(">> inregs: {:?}\n>> outregs: {:?}", 
@@ -375,8 +387,11 @@ fn main() {
     params.random_override = random_override;
     params.set_init_difficulties();
     params.use_edis = use_edis;
+    params.edi_toggle_rate = edi_toggle_rate;
+    params.initial_edi_rate = edirate;
     params.crash_penalty = crash_penalty;
     params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
+    params.stack_input_sampling = stack_input_sampling;
     
     if !use_edis {
         params.initial_edi_rate = 0.0;
@@ -400,9 +415,9 @@ fn main() {
 
     let mut debug_machinery : Machinery 
         = Machinery::new(&elf_path,
-                                          mode,
-                                          1,
-                                          true);
+                         mode,
+                         1,
+                         true);
     add_debug_hooks(&mut debug_machinery.cluster[0].unwrap_mut());
     let printevery = 1;
     let mut champion : Option<Chain> = None;
@@ -414,8 +429,6 @@ fn main() {
     let mut first_log = true;
     let mut i = 0; 
     let mut crash_rate : f32 = 0.5;
-    let mut fitness_deltas : CircBuffer<f32> = CircBuffer::new(100);
-    let mut improvement_ratio = None;
     
     let peek_path = format!("/tmp/roper/{}.peek", label);
     let peek_path = Path::new(&peek_path);
@@ -479,7 +492,6 @@ fn main() {
                                                                mut_pop,
                                                                true,
                                                                &mut heatmap);
-                    fitness_deltas.push_all(f_deltas);
                     if updated != None {
                         champion = updated.clone();
                     };
@@ -544,13 +556,6 @@ fn main() {
                   * then the algorithm should be more exploitative; if more
                   * than 1 in 5 is fitter, the algorithm should be more exploratory.
                   */
-                if fitness_deltas.primed() {
-                    improvement_ratio = Some(fitness_deltas.as_vec()
-                                                           .iter()
-                                                           .filter(|x| **x < 0.0)
-                                                           .count() as f32 
-                                                    / fitness_deltas.cap() as f32);
-                }
 
             } // end mut block
           
@@ -575,23 +580,25 @@ fn main() {
                                                         .io_targets
                                                         .difficulty_profile();
                 println!("[*] ITERATION {}, SEASON {}", iteration, season);
-                print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
-                println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
-                print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
-                println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
-                print!  ("[+] MIN FIT:     {:1.6}    ", min_fit);
-                println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
-                print!  ("[+] BEST FIT:    {:1.6}    ", champ.fitness
+                print!  ("[+] CRASH RATE:  {:2.6}    ", crash_rate);
+                println!("[+] AVG GEN:     {:2.6}", avg_pop_gen);
+                print!  ("[+] AVG FIT:     {:2.6}    ", avg_pop_fit);
+                println!("[+] AVG AB_FIT:  {:2.6}", avg_pop_abfit);
+                print!  ("[+] MIN FIT:     {:2.6}    ", min_fit);
+                println!("[+] MIN AB_FIT:  {:2.6}", min_abfit);
+                print!  ("[+] BEST FIT:    {:2.6}    ", champ.fitness
                                                                                                   .unwrap());
-                println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
+                println!("[+] BEST AB_FIT: {:2.6}  ", champ.ab_fitness
                                                                                                   .unwrap());
                 print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
-                println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
-                print!  ("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
-                println!("[+] RATIO RUN:     {:1.6}  ",pop_read.avg_ratio_run());
-                println!("[+] VISIT DIVERS:  {:1.6}  ",pop_read.avg_visitation_diversity());
 
-                println!("[+] EDI RATE:      {:1.6}  ",pop_read.avg_edi_rate());
+                println!  ("[+] STRAY RATE:    {:2.6}  ",pop_read.avg_stray_addr_rate());
+                print!("[+] XOVER DELTA:   {:2.6}  ", pop_read.avg_crossover_delta());
+                println!("[+] MUT. DELTA:    {:2.6}  ", pop_read.avg_mutation_delta());
+                print!("[+] RATIO RUN:     {:2.6}  ",pop_read.avg_ratio_run());
+                println!("[+] VISIT DIVERS:  {:2.6}  ",pop_read.avg_visitation_diversity());
+
+                println!("[+] EDI RATE:      {:2.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));
@@ -603,14 +610,14 @@ fn main() {
                                   .params
                                   .io_targets
                                   .class_mean_difficulties() {
-                    println!("    {} -> {:1.6}", c, d);
+                    println!("    {} -> {:2.6}", c, d);
                     c += 1;
                 }
                 
                 println!("[+] STDDEV DIFFICULTIES BY CLASS:");
                 let mut c = 0;
                 for d in class_stddev_difficulties {
-                    println!("    {} -> {:1.6}", c, d);
+                    println!("    {} -> {:2.6}", c, d);
                     c += 1;
                 }
                 
@@ -657,7 +664,7 @@ fn main() {
              
 
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
-    println!("[*] Absolute fitness of champion on testing run: {:1.6}",
+    println!("[*] Absolute fitness of champion on testing run: {:2.6}",
                       testing_res.ab_fitness);
     println!("[*] Crash on testing run: {}", testing_res.crashes);
     println!("[*] Logged at {}", pop_local.read().unwrap().params.csv_path);

@@ -10,7 +10,7 @@ extern crate regex;
 extern crate bio;
 extern crate indextree;
 
-
+use std::process;
 use std::io;
 use std::cmp::Ordering::*;
 use self::regex::*;
@@ -24,7 +24,7 @@ use rand::*;
 use unicorn::*;
 use capstone::CsMode;
 use std::fmt::{Display,format,Formatter,Result};
-use std::collections::HashMap;
+use std::collections::{HashSet,HashMap};
 use std::cmp::*;
 use std::sync::RwLock;
 use std::ops::{Index,IndexMut};
@@ -159,7 +159,7 @@ impl Params {
                 constants:        Vec::new(),
                 crash_penalty:    0.2,
                 crossover_rate:   0.50,
-                csv_path:         format!("{}_{}.csv", &label, &timestamp),
+                csv_path:         format!("{}.csv", &label),
                 cuckoo_rate:        0.15,
                 data:             Vec::new(),
                 data_addrs:       Vec::new(),
@@ -488,7 +488,7 @@ pub struct Chain {
         //pub packed: Vec<u8>,
         pub fitness: Option<f32>,
         pub ab_fitness: Option<f32>, // unshared
-        pub p_fitness: Option<f32>,
+        pub p_fitness:  Vec<f32>,
         pub generation: u32,
         pub input_slots: Vec<(usize,usize)>,
         pub verbose_tag: bool,
@@ -588,7 +588,7 @@ impl Default for Chain {
                 genealogy: Arena::new(),
                 fitness: None,
                 ab_fitness: None,
-                p_fitness: None,
+                p_fitness: Vec::new(),
                 generation: 0,
                 season: 0,
                 verbose_tag: false,
@@ -754,6 +754,32 @@ impl Chain {
             visits
         }
 
+        /* number of parents, delta */
+        pub fn calc_fitness_delta (&self) -> Option<(usize, f32)> {
+            let reproduction_type = self.p_fitness.len();
+            if reproduction_type == 0 { return None };
+            if let Some(f) = self.fitness {
+                Some((reproduction_type, f - mean(&self.p_fitness)))
+            } else {
+                None
+            }
+        }
+        
+        pub fn calc_crossover_delta (&self) -> Option<f32> {
+            if let Some((t,d)) = self.calc_fitness_delta() {
+                if t == 1 { return None } else { return Some(d) }
+            } 
+            None
+        }
+
+        pub fn calc_mutation_delta (&self) -> Option<f32> {
+            if let Some((t,d)) = self.calc_fitness_delta() {
+                if t == 1 { return None } else { return Some(d) }
+            }
+            None
+        }
+        
+
         pub fn stray_addr_rate (&self) -> f32 {
             // later do this nicely, with a binary search tree or smth
             let intervals = self.get_intervals();
@@ -821,12 +847,12 @@ impl Chain {
                 let pname = p.identifier();
                 s.push_str(&format!("--- BEGIN VISIT MAP FOR PROBLEM {} ---\n",
                                     pname));
+                s.push_str(&format!("IN:  {}\n", hexvec_(&p.input
+                                                         .iter()
+                                                         .map(|&x| x as u32)
+                                                         .collect::<Vec<u32>>())));
                 let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
-                    s.push_str(&format!("IN:  {}", hexvec_(&p.input
-                                                             .iter()
-                                                             .map(|&x| x as u32)
-                                                             .collect::<Vec<u32>>())));
                     let is_stray = !self.search_intervals(&intervals, *addr);
                     let dis = disas_addr(&uc, *addr);
                     s.push_str(&format!("{:08x}{} | {}\n", 
@@ -858,6 +884,7 @@ impl Chain {
                     }
                 }
                 s.push_str("\n");
+                s.push_str(&format!("R0 (bin): {:032b}", &self.register_map.get(p).unwrap().0[0]));
                 s.push_str(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
                                     pname));
             }
@@ -1203,6 +1230,26 @@ impl Population {
                       .collect::<Vec<f32>>())
         }
 
+        pub fn avg_crossover_delta (&self) -> f32 {
+            let cdeltas = self.deme
+                              .iter()
+                              .map(|x| x.calc_crossover_delta())
+                              .filter(|&x| x != None)
+                              .map(|x| x.unwrap())
+                              .collect::<Vec<f32>>();
+            if cdeltas.len() == 0 { 0.0} else { mean(&cdeltas) }
+        }
+
+        pub fn avg_mutation_delta (&self) -> f32 {
+            let mdeltas = self.deme
+                              .iter()
+                              .map(|x| x.calc_mutation_delta())
+                              .filter(|&x| x != None)
+                              .map(|x| x.unwrap())
+                              .collect::<Vec<f32>>();
+            if mdeltas.len() == 0 { 0.0 } else { mean(&mdeltas) }
+        }
+
         /* Needs some refactoring. Maybe a macro. */
         pub fn log (&self, first: bool) -> bool {
             if self.best == None {
@@ -1216,7 +1263,7 @@ impl Population {
             let nclasses = self.params.io_targets.num_classes;
             // todo: don't hardcode the number of classes
             let row = if first {
-                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN,AVG-INSTS",
+                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN,AVG-INSTS,CROSSOVER-DELTA,MUTATION-DELTA",
                                 self.params);
                 for i in 0..nclasses {
                     s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
@@ -1225,7 +1272,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -1251,7 +1298,9 @@ impl Population {
                                   self.stray_nocrash_rate(),
                                   self.avg_visitation_diversity(),
                                   self.avg_ratio_run(),
-                                  self.avg_num_insts());
+                                  self.avg_num_insts(),
+                                  self.avg_crossover_delta(),
+                                  self.avg_mutation_delta());
             let c_mn_dif = self.params.io_targets
                                .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
@@ -1325,8 +1374,8 @@ pub struct IoTargets {
         pub num_classes: usize,
 }
 
-pub fn mk_class(c: usize) -> Target {
-        Target::Vote(Classification::new(c))
+pub fn mk_class(c: usize, num_classes: usize, class_masks: &Vec<(u32,usize)>) -> Target {
+        Target::Vote(Classification::new(c, num_classes, class_masks))
 }
 pub fn mk_pattern(s: &str) -> Target {
         Target::Exact(RPattern::new(&s))
@@ -1440,6 +1489,11 @@ impl Problem {
                     (r, r)
                 },
                 &Target::Vote(ref cls) => {
+                    /** Let's try this with bitmasks on R0, instead. */
+                    let class_guess = cls.classify(registers[0]);
+                    //println!("CLASSIFIED: R0 = {:032b}, so class_guess = {} ({})", registers[0], class_guess, if class_guess == cls.class { "PASS" } else if class_guess == cls.num_classes { "AUTOFAIL" } else {"FAIL"});
+
+                    /*
                     let mut output : Vec<i32> = Vec::new();
                     for idx in outregs {
                         output.push(registers[*idx] as i32);
@@ -1457,7 +1511,7 @@ impl Problem {
                                                    .unwrap(); // output not empty
                     //println!("in assess(). output: {:?}, vote: {}, class: {}",
                     //    output, class_guess, cls.class);
-                    //let mut f = Fingerprint::new();
+                    //let mut f = Fingerprint::new(); */
                     if class_guess == cls.class {
                         //f.push(false);
                         // oh SHIIT i was subtracting difficulty, not
@@ -1468,7 +1522,7 @@ impl Problem {
                         //let odds = 1.0 / output.len() as f32;
                         let adj = 0.9999; //f32::min(0.999, odds + (1.0 - self.difficulty())); 
                         (1.0, adj) // TODO check experiment here
-                    } 
+                    }
                 } 
                 &Target::Game(_) => {
                     let mut output : Vec<u32> = Vec::new();
@@ -1534,9 +1588,89 @@ impl PartialEq for Problem {
 }
 impl Eq for Problem {}
 
+pub fn class_masks_randomized (num_classes: usize) -> Vec<(u32, usize)> {
+    /** must return num_classes masks, each of which has an equal number
+     * of ones, mod (32 mod num_classes), none of which have bits in the
+     * same indices.
+     */
+    let mut inner_loop_count = 0;
+    let mut class_idx = 0;
+    let mut rng = thread_rng();
+    let mut masks : Vec<(u32,usize)> = Vec::new();
+    let mut bits_used : HashSet<u32> = HashSet::new();
+    bits_used.insert(0); /* to initialize */
+    let mask_density = (32 / num_classes) as u32;
+    while masks.len() < num_classes {
+        let mut mask : u32 = 0;
+        mask = 0;
+        while mask.count_ones() < mask_density {
+            let mut bit = 0;
+            while bits_used.contains(&bit) {
+                bit = (1 << (rng.gen::<usize>() % 32));
+            }
+            mask |= bit;
+            bits_used.insert(bit);
+            inner_loop_count += 1;
+        }
+        println!("[{}] GENERATED MASK: {:32b}",inner_loop_count, mask);
+        masks.push((mask, class_idx));
+        class_idx += 1;
+    }
+    println!("MASKS GENERATED: ");
+    for mc in &masks {
+        println!("{:032b} -> {}", mc.0, mc.1);
+    }
+    //process::exit(99);
+    masks
+}
+
+fn class_masks (num_classes: usize) -> Vec<(u32, usize)> {
+    assert!(num_classes > 0);
+    let mask_width = 32 / num_classes;
+    assert!(mask_width > 0);
+    let mut offset = 0;
+    let mut mask = 0;
+    let mut mask_vec = Vec::new();
+    for j in 0..num_classes {
+        let mut this_mask_width = mask_width;
+        /* to counter bias towards 0: 
+        if j == 0 { this_mask_width /= 4 }; 
+        */
+        assert!(this_mask_width > 0);
+        for i in 0..this_mask_width {
+            mask <<= 1;
+            mask |= 1;
+        }
+        mask <<= (this_mask_width * j);
+        mask_vec.push((mask.clone(),j)); /* copied */
+        mask = 0;
+    }
+    println!("*** mask_vec: {:?}",mask_vec);
+    for mv in &mask_vec { println!("{:032b} -> {}", mv.0, mv.1); }
+    mask_vec
+}
+
+fn class_mask_classify (reg: u32, class_masks: &Vec<(u32,usize)>) -> usize {
+    let mut decisions = Vec::new();
+    for &(mask, class) in class_masks {
+        let masked = reg & mask;
+        let ones_for_class = masked.count_ones();
+        decisions.push((ones_for_class, class));
+    }
+    decisions.sort(); /* putting the class that got the most ones at the end */
+    if decisions.iter().filter(|&x| *x == decisions[0]).count() == decisions.len() {
+        /* in the event of a tie, count as a loss */
+        class_masks.len() /* which maps to no class */
+    } else {
+        (decisions[decisions.len()-1].1) /* the chosen class */
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct Classification {
         pub class: usize,
+        class_masks: Vec<(u32,usize)>,
+        num_classes: usize,
         difficulty: f32,
         predifficulty: f32,
 }
@@ -1554,13 +1688,26 @@ impl PartialEq for Classification {
 impl Eq for Classification {}
 
 impl Classification {
-        pub fn new (val: usize) -> Self {
-            Classification {
-                class: val,
-                difficulty: 1.0,
-                predifficulty: 1.0,
-            }
+    pub fn new (val: usize, num_classes: usize, class_masks: &Vec<(u32,usize)>) -> Self {
+        Classification {
+            class: val,
+            num_classes: num_classes,
+            class_masks: class_masks.clone(),
+            difficulty: 1.0,
+            predifficulty: 1.0,
         }
+    }
+    fn classify (&self, reg: u32) -> usize {
+        if reg == 0 {
+            /* no decision made. return automatic fail */
+            self.num_classes /* will register as incorrect */
+        } else {
+            class_mask_classify(reg, &self.class_masks)
+        }
+    }
+    fn classify_and_check (&self, reg: u32) -> bool {
+        self.classify(reg) == self.class
+    }
 }
 
 pub static DEFAULT_DIFFICULTY : f32 = 0.0; // don't hardcode
@@ -1960,7 +2107,7 @@ impl RPattern {
                 let ham = (a ^ b).count_ones() as f32 / 32.0;
                 // peephole distance
                 let dif = a.wrapping_sub(b);
-                let peep = 512;
+                let peep = 2048;
                 let peepdif = max(peep, dif);
                 let peepdist = dif as f32 / peep as f32;
                 /* return avg of ham and peepdist */
@@ -1980,9 +2127,9 @@ impl RPattern {
                         && a_bytes[3] == b[i+3] {
                             /* we found a match */
                             int_dist = Some(i);
-                            println!("---> found {:08x} at offset {}/{} = {}",
-                                     a, int_dist.unwrap(), mlen, 
-                                     (int_dist.unwrap() as f32 / mlen as f32));
+            //                println!("---> found {:08x} at offset {}/{} = {}",
+            //                         a, int_dist.unwrap(), mlen, 
+            //                         (int_dist.unwrap() as f32 / mlen as f32));
                             break;
                         }
                 }
@@ -2056,7 +2203,7 @@ impl RPattern {
                                 if y == x {
                                     exact_deref_matches += 1.0;
                                     nearest = 0.0;
-                                    println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
+              //                      println!("{:x}>>>> exact deref match for {:?} found in {}",y,val,y);
                                 } else {
                                     for i in 0..regs_deref.len() {
                                         if i == 13 { continue }; /* bad luck */
@@ -2116,10 +2263,10 @@ impl RPattern {
             println!(">>> regs_deref = {:?}", &regs_deref);
             println!(">>> errs: {:?}\n>>> mean: {}", errs, mean(&errs));
             */
-            println!("----[mean deref_nears]= {}", mean(&deref_nears));
-            println!("----[mean immed_nears]= {}", mean(&immed_nears));
+            //println!("----[mean deref_nears]= {}", mean(&deref_nears));
+            //println!("----[mean immed_nears]= {}", mean(&immed_nears));
             let m = mean(&errs);
-            println!("----[mean(&errs)=fitness]= {}", m);
+            //println!("----[mean(&errs)=fitness]= {}", m);
             m //if exact_deref_matches > 0.0 { m / exact_deref_matches } else { m }
         }
 } /* TODO add some unit tests. i think there's an arithmetic error up here, 

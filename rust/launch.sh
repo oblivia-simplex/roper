@@ -129,8 +129,8 @@ LABEL=`labelmaker`
 LOGDIR_REL=`date +logs/%y/%m/%d/${LABEL}/`
 LOGDIR="${PROJECT_ROOT}/${LOGDIR_REL}"
 mkdir -p $LOGDIR
-OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
-ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
+OUTFILE="${LOGDIR}/${LABEL}.out"
+ERRORFILE="${LOGDIR}/${LABEL}.err"
 
 git log | head -n6 > $OUTFILE
 
@@ -226,7 +226,7 @@ while ! [ -n "$recent" ]; do
   fi
   echo -n "."
   sleep 0.5
-  recent=`find ${LOGDIR} -name "${LABEL}*csv"`
+  recent=`find ${LOGDIR} -name "${LABEL}.csv"`
 done
 echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
 TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
