@@ -104,12 +104,15 @@ fn mutate(chain: &mut Chain,
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
             2 => match deref(&(uc.emu()), clump.words[idx].clone()) {
-                Some(x) => { println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x); clump.words[idx] = x; },
+                Some(x) => { 
+                   // println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x);
+                    clump.words[idx] = x; 
+                },
                 None    => (),
             },
             3 => match uc_seek_word(clump.words[idx].clone(), uc) {
                 Some(x) => {
-                    println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
+                   // println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
                     clump.words[idx] = x as u32;
                 },
                 None    => (),

@@ -56,6 +56,7 @@ const DEFAULT_MODE : MachineMode = MachineMode::ARM;
 pub struct Params {
         pub binary_path      : String,
         pub brood_size       : usize,
+        pub class_masks      : Vec<(u32,usize)>,
         pub code             : Vec<u8>,
         pub code_addr        : u32,
         pub comment          : String,
@@ -138,6 +139,7 @@ impl Display for Params {
             s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
             s.push_str(&format!("{} crash_penalty: {}\n", rem, self.crash_penalty));
             s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
+            s.push_str(&format!("{} class_masks: {}\n", rem, class_masks_to_string(&self.class_masks)));
         
             write!(f, "{}",s)
         }
@@ -153,6 +155,7 @@ impl Params {
                 // make this dependent on the data
                 binary_path:      "".to_string(),
                 brood_size:       2,
+                class_masks:      Vec::new(),
                 code:             Vec::new(),
                 code_addr:        0,
                 comment:          String::new(),
@@ -233,6 +236,14 @@ impl Params {
             self.csv_path = format!("{}/{}", ddir, self.csv_path);
             self.log_dir  = format!("{}", &ddir);
         } 
+}
+
+fn class_masks_to_string (class_masks: &Vec<(u32,usize)>) -> String {
+    let mut s = String::new();
+    for cm in class_masks {
+        s.push_str(&format!("{:032b}:{} ", cm.0, cm.1));
+    }
+    s
 }
 
 pub fn name (syllables: usize) -> String {
@@ -659,7 +670,7 @@ impl Chain {
         pub fn collate_input_slots (&mut self) {
             self.input_slots = Vec::new();
             let mut offset = 0;
-            for clump in self.clumps.iter_mut() {
+            for clump in self.clumps.iter_mut().filter(|ref x| x.enabled) {
                 for &(off, inp) in clump.input_slots.iter() {
                     self.input_slots.push((off + offset, inp));
                 }
@@ -759,7 +770,9 @@ impl Chain {
             let reproduction_type = self.p_fitness.len();
             if reproduction_type == 0 { return None };
             if let Some(f) = self.fitness {
-                Some((reproduction_type, f - mean(&self.p_fitness)))
+                let mut m = mean(&self.p_fitness);
+                if m == 0.0 { m = 0.000001 };
+                Some((reproduction_type, (f - mean(&self.p_fitness))/m))
             } else {
                 None
             }
@@ -884,7 +897,11 @@ impl Chain {
                     }
                 }
                 s.push_str("\n");
-                s.push_str(&format!("R0 (bin): {:032b}", &self.register_map.get(p).unwrap().0[0]));
+                let r0 = &self.register_map.get(p).unwrap().0[0];
+                s.push_str(&format!("R0 (bin): {:032b}\n", r0));
+                if params.class_masks.len() != 0 {
+                    s.push_str(&format!("CLASS: {}\n", class_mask_classify(*r0, &params.class_masks)));
+                }
                 s.push_str(&format!("--- END VISIT MAP FOR PROBLEM {} ---\n",
                                     pname));
             }

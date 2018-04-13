@@ -8,6 +8,9 @@ extern crate scoped_threadpool;
 
 extern crate ctrlc;
 extern crate backtrace;
+extern crate chrono;
+
+use self::chrono::prelude::*;
 
 use scoped_threadpool::Pool;
 use std::sync::mpsc::channel;
@@ -59,9 +62,9 @@ fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
 
 #[derive(PartialEq,Eq,Clone,Debug)]
 enum Challenge {
-    Data,
-    Pattern,
-    Game,
+    Data(String),
+    Pattern(String),
+    Game(String),
     Kafka,
     Undecided,
 }
@@ -207,7 +210,7 @@ fn main() {
     let host_port = match matches.opt_str("a") {
         None    => "".to_string(),
         Some(s) => {
-            challenge = Challenge::Game;
+            challenge = Challenge::Game(s.to_string());
             s.to_string()
         },
     };
@@ -236,12 +239,17 @@ fn main() {
         None => "roper".to_string(),
         Some(n) => n.to_string(),
     };
-    let rpattern_str = matches.opt_str("p");
-    if rpattern_str != None {challenge = Challenge::Pattern};
+    if let Some(rp) = matches.opt_str("p") {
+        challenge = Challenge::Pattern(rp.to_string())
+    };
 
-    let fitness_sharing = matches.opt_present("S") && rpattern_str == None;
-    let data_path    = matches.opt_str("d");
-    if data_path != None {challenge = Challenge::Data};
+    let fitness_sharing = matches.opt_present("S");
+
+    match matches.opt_str("d") {
+        None => (),
+        Some(d) => challenge = Challenge::Data(d.clone()),
+    };
+
 
     let threads : usize = match matches.opt_str("t") {
         None => 8,
@@ -271,9 +279,9 @@ fn main() {
     // ugly kludge here
   
     let mut params : Params = Params::new(&label);
-    let io_targets = match challenge {
-        Challenge::Data => {
-            let io = process_data2(&data_path.unwrap(), num_attrs, num_classes).shuffle();
+    let io_targets = match &challenge {
+        &Challenge::Data(ref dp) => {
+            let io = process_data2(&dp, num_attrs, num_classes, &mut params).shuffle();
             params.outregs = (0..(num_classes)).collect(); //vec![5,6,7];
             params.inregs  = (num_classes..(num_classes+num_attrs)).collect(); //vec![1,2,3,4];
             println!(">> inregs: {:?}\n>> outregs: {:?}", 
@@ -281,14 +289,14 @@ fn main() {
             assert!(io.len() > 0);
             io
         },
-        Challenge::Pattern => {
+        &Challenge::Pattern(ref pat) => {
             // outregs are actually ignored now, when dealing with RPattern tasks
             params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
             IoTargets::from_vec(TargetKind::PatternMatch,
-                vec![Problem::new(vec![0;16], mk_pattern(&rpattern_str.unwrap()))],
+                vec![Problem::new(vec![0;16], mk_pattern(&pat))],
                 1)
         },
-        Challenge::Game => {
+        &Challenge::Game(ref hostport) => {
             /* This should be read from a per-game config file */
             params.inregs = vec![3,4,5,6,7,8,9,10];
             params.outregs= vec![0,1,2];
@@ -297,21 +305,21 @@ fn main() {
             for i in 0..game_seeds {
                 gs.push(Problem::new(vec![0,0,0],
                         Target::Game(GameData {
-                            addr: host_port.clone(),
+                            addr: hostport.clone(),
                             params: vec![i, radius, radius * 8 +1, 0, apples, cacti, init_length]
                         })));
                 num_classes += 1;
             }
             IoTargets::from_vec(TargetKind::Game, gs, num_classes)
         },
-        Challenge::Kafka => {
+        &Challenge::Kafka => {
             params.inregs = (0..16).collect();
             params.outregs = (0..16).collect();
             IoTargets::from_vec(TargetKind::Kafka,
                                 vec![Problem::new_kafkaesque()],
                                 1)
         },
-        Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
+        &Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
     };
 
     let (testing,training) = (io_targets.clone(), io_targets.clone()); //io_targets.split_at(io_targets.len()/3);
@@ -455,6 +463,7 @@ fn main() {
         let n_workers = threads as u32;
         let n_jobs    = machinery.cluster.len();
         let mut pool  = Pool::new(n_workers);
+        let challenge = challenge.clone();
         pool.scoped(|scope| {
             let mut vdeme = thread_rng().gen::<usize>() % num_demes;
             for e in machinery.cluster.iter_mut() {
@@ -603,7 +612,6 @@ fn main() {
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));
                 println!("[+] MEAN DIFFICULTIES BY CLASS:");
-                
                 let mut c = 0;
                 for d in pop_local.read()
                                   .expect("Failed to open read lock on pop_local")
@@ -626,8 +634,14 @@ fn main() {
                 print!("\r[{}]                 ",iteration);
                 io::stdout().flush().ok().expect("Could not flush stdout");
             }
-            println!("{}",comment);
-            println!("------------------------------------------------");
+            println!("TASK: {:?}\n{} ({}) on {} at {}\nREM: {}",
+                     &challenge,
+                     &label, 
+                     &params.population_size,
+                     &params.binary_path,
+                     Local::now().format("%H:%M:%S"), 
+                     comment);
+            //println!("------------------------------------------------");
         }); // END POOL SCOPE
         i += 1;
     } // END OF MAIN LOOP

@@ -55,11 +55,13 @@ case "$PROBLEM" in
         add_flag --crash_penalty 0.5
         add_flag --fitness_sharing
         add_flag --dynamic_crash_penalty
+        add_flag --stack_input_sampling 0.2
         ;;
     2blobs)
         TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
         GOAL=0.0
         CLASSIFICATION=1
+        add_flag --fitness_sharing
         add_flag --crossover 0.5 
         add_flag --crash_penalty 1.0
         ;;
@@ -77,6 +79,7 @@ case "$PROBLEM" in
         add_flag --crossover 0.5 
         add_flag --fitness_sharing
         add_flag --crash_penalty 0.5
+        add_flag --stack_input_sampling 0.2
         ;;
     kafka)
         TASKFLAGS="-K"
@@ -160,7 +163,9 @@ STRAY_NOCRASH=20
 VISIT_DIVERS=21
 RATIO_RUN=22
 AVG_INSTS=23
-C=24
+XOVER_DELTA=24
+MUT_DELTA=25
+C=26
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -290,8 +295,8 @@ set border lc rgb 'red'
 set key tc rgb 'red'
 set key autotitle columnhead
 set datafile separator ","
-# set autoscale
-set yrange [0:1]
+set autoscale
+#set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
 plot "$recent" $(popplotline $AVG_FIT) , \
@@ -305,7 +310,7 @@ plot "$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $STRAY_RATE), \
   "" $(popplotline $STRAY_NOCRASH), \
   "" $(popplotline $RATIO_RUN), \
-  "" $(popplotline $AVG_INSTS)
+  "" $(popplotline $XOVER_DELTA)
 EOF
 
 if (( $CLASSIFICATION )); then
