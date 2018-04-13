@@ -1,0 +1,4039 @@
+=== VISIT MAP FOR BINARY ../data/openssl ===
+--- BEGIN CHAIN DUMP ---
+==================================================
+Synopsis of chain tybkyv-punkez @ 0
+==================================================
+Relative Fitness: Some(0.0) [Season 0]
+Absolute Fitness: Some(0.0)
+Stray Rate:       0.51724136
+Crashes:          Some(false)
+Ratio Run:        0.75
+Vist. Divers.:    0.03125
+Run Time:         Some(0.12254476)
+Generation: 0
+Ancestral Fitness: None
+Link ages: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+Link fitnesses: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Viscosities: [100, 100, 100, 100, 100, 100, 100, 100, 100]
+Input slots on stack: []
+Clumps:
+[*] <00030610>  00030608   0000001b   ffffffdb   fffff5e3   ffffc03d   ffffffb3   ffffa7b9   ffffffb3   00000a53  
+[*] <000331a4>  00033188   000000a4   0000482f  
+[*] <0001ae98>  0001ae84   000000fc   ffffffcf   ffffff4b  
+[*] <000331f4>  000331e0   000000a6   0000009a  
+[*] <000335b4>  000335a8   00001df2   000000ad   0000074c  
+[*] <00033790>  00033784   fffffc63   ffffc03d   0000004e  
+[*] <000332a8>  00033284   fffffff2   ffffeec5  
+[*] <00033790>  0003378c   00000021   ffffaeab   00000006  
+[*] <0001c108>  0001c104   ffffc03d  
+Packed:
+08 06 03 00  1b 00 00 00  db ff ff ff  e3 f5 ff ff  
+3d c0 ff ff  b3 ff ff ff  b9 a7 ff ff  b3 ff ff ff  
+53 0a 00 00  88 31 03 00  a4 00 00 00  2f 48 00 00  
+84 ae 01 00  fc 00 00 00  cf ff ff ff  4b ff ff ff  
+e0 31 03 00  a6 00 00 00  9a 00 00 00  a8 35 03 00  
+f2 1d 00 00  ad 00 00 00  4c 07 00 00  84 37 03 00  
+63 fc ff ff  3d c0 ff ff  4e 00 00 00  84 32 03 00  
+f2 ff ff ff  c5 ee ff ff  8c 37 03 00  21 00 00 00  
+ab ae ff ff  06 00 00 00  04 c1 01 00  3d c0 ff ff  
+
+==================================================
+
+--- END CHAIN DUMP ---
+--- BEGIN PARAMETERS DUMP ---
+%  label: roper
+%  population_size: 2000
+%  crossover_rate: 0.5
+%  max_iterations: 800000
+%  selection_method: Tournament
+%  t_size: 4
+%  brood_size: 2
+%  min_start_len: 2
+%  max_start_len: 32
+%  max_len: 256
+%  fit_goal: 0.11
+%  cuck_rate: 0.15
+%  threads: 8
+%  num_demes: 4
+%  migration: 0.1
+%  use_viscosity: true
+%  outregs: [0, 1]
+%  inregs: [2, 3]
+%  binary_path: ../data/openssl
+%  fitness_sharing: false
+%  fatal_crash: false
+%  random_override: false
+%  edi_toggle_rate: 0
+%  initial_edi_rate: 0
+%  crash_penalty: 0.2
+%  use_dynamic_crash_penalty: false
+
+--- END PARAMETERS DUMP ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.28a0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.28a0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.834. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280834 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.834. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2774. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2774. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.3070. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.3070. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2e7c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2e7c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.320. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280320 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.320. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.32c8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.32c8. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.3e8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2803e8 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.3e8. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.319c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.319c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.578. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280578 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.578. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2e18. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2e18. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.640. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280640 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.640. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.258. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280258 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.258. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.3390. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.3390. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.b54. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280b54 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.b54. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2a94. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2a94. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.c8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2800c8 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.c8. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.8fc. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2808fc 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.8fc. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.332c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.332c. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2cec. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2cec. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2c88. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2c88. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2fa8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2fa8. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.a8c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280a8c 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.a8c. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2d50. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2d50. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.4b0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2804b0 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.4b0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2968. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2968. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.c80. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280c80 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.c80. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.3138. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.3138. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.384. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280384 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.384. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.3264. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.3264. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2f44. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2f44. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2ee0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2ee0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.300c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.300c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.7d0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2807d0 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.7d0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2c24. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2c24. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.64. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280064 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2af8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2af8. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2a30. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2a30. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.af0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280af0 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.af0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2db4. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2db4. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.27d8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.27d8. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.12c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff28012c 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.12c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.898. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280898 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.898. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2b5c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2b5c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.2bc. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2802bc 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.2bc. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.30d4. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.30d4. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2bc0. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2bc0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.960. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280960 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.960. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.bb8. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280bb8 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.bb8. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.1f4. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2801f4 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.1f4. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.3200. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.3200. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.514. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280514 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.514. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.29cc. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.29cc. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.5dc. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2805dc 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.5dc. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.9c4. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2809c4 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.9c4. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.c1c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280c1c 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.c1c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.190. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280190 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.190. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.44c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff28044c 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.44c. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.6a4. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff2806a4 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.6a4. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.708. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280708 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.708. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.76c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff28076c 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.76c. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.2904. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.2904. ---
+--- BEGIN VISIT MAP FOR PROBLEM 64.a28. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e ff280a28 64->7272615f 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 64.a28. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9c.283c. ---
+00030608       | mov r0, #1
+0003060c       | add sp, sp, #0x1c
+00030610       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+000331e0       | orr r0, r0, r1, lsl r4
+000331e4       | mov r1, r5
+000331e8       | pop {r4, r5, pc}
+000335a8       | eor r1, r1, r3
+000335ac       | and r1, r1, #0x80000000
+000335b0       | mov r0, #0
+000335b4       | pop {r4, r5, r6, pc}
+00033784       | adds r4, r4, ip, lsr #1
+00033788       | rsbsgt r5, r4, ip
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+000335f8 stray | and r1, r1, #0x80000000
+000335fc stray | orr r1, r1, #0x7f000000
+00033600 stray | orr r1, r1, #0xf00000
+00033604 stray | mov r0, #0
+00033608 stray | pop {r4, r5, r6, pc}
+00033284       | movne r1, r3
+00033288       | movne r0, r2
+0003328c       | mvnseq ip, r5, asr #21
+00033290       | movne r3, r1
+00033294       | movne r2, r0
+00033298       | orrs r4, r0, r1, lsl #12
+0003329c       | orrseq r5, r2, r3, lsl #12
+000332a0       | teqeq r1, r3
+000332a4       | orrne r1, r1, #0x80000
+000332a8       | pop {r4, r5, pc}
+0003378c       | orrgt r1, r1, r4, lsl #20
+00033790       | popgt {r4, r5, r6, pc}
+00033794 stray | orr r1, r1, #0x100000
+00033798 stray | mov lr, #0
+0003379c stray | subs r4, r4, #1
+000337a0 stray | b #4294966512
+00033490 stray | bgt #0x168
+00033494 stray | cmn r4, #0x36
+00033498 stray | movle r0, #0
+0003349c stray | andle r1, r1, #0x80000000
+000334a0 stray | pople {r4, r5, r6, pc}
+000334a4 stray | rsb r4, r4, #0
+000334a8 stray | subs r4, r4, #0x20
+000334ac stray | bge #0x68
+000334b0 stray | adds r4, r4, #0xc
+000334b4 stray | bgt #0x34
+000334b8 stray | add r4, r4, #0x14
+000334bc stray | rsb r5, r4, #0x20
+000334c0 stray | lsl r3, r0, r5
+000334c4 stray | lsr r0, r0, r4
+000334c8 stray | orr r0, r0, r1, lsl r5
+000334cc stray | and r2, r1, #0x80000000
+000334d0 stray | bic r1, r1, #0x80000000
+000334d4 stray | adds r0, r0, r3, lsr #31
+000334d8 stray | adc r1, r2, r1, lsr r4
+000334dc stray | orrs lr, lr, r3, lsl #1
+000334e0 stray | biceq r0, r0, r3, lsr #31
+000334e4 stray | pop {r4, r5, r6, pc}
+0001c104       | cmp r0, #0
+0001c108       | popeq {r4, pc}
+0001c10c stray | ldr r3, [r4]
+0001c110 stray | tst r3, #0xf0000
+0001c114 stray | orreq r3, r3, #0x20000
+0001c118 stray | moveq r0, #1
+0001c11c stray | streq r3, [r4]
+0001c120 stray | movne r0, #1
+0001c124 stray | pop {r4, pc}
+OUT: 1->7368732e 30->722e006e 0->68732e00 6e79642e ffffc03d ffffaeab 6->62617472 
+.... 482f 1ae84->3a0000c fc->0 ffffffcf ffffff4b 0->68732e00 4a093->0 fe700000 0->68732e00 
+--- END VISIT MAP FOR PROBLEM ffffff9c.283c. ---

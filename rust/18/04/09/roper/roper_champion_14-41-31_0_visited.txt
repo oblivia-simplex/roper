@@ -1,0 +1,726 @@
+=== VISIT MAP FOR BINARY ../data/openssl ===
+--- BEGIN CHAIN DUMP ---
+==================================================
+Synopsis of chain pecjum-rizqix @ 0
+==================================================
+Relative Fitness: Some(0.96774787) [Season 0]
+Absolute Fitness: Some(0.875)
+Stray Rate:       0.14659686
+Crashes:          Some(true)
+Ratio Run:        0.06919642
+Vist. Divers.:    0.046875
+Run Time:         Some(0.049481414)
+Generation: 0
+Ancestral Fitness: None
+Link ages: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Link fitnesses: [0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787, 0.96774787]
+Viscosities: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+Input slots on stack: []
+Clumps:
+[*] <0001dfac>  0001df9c   00000050   00000000   fffffe0a  
+[*] <0001c124>  0001c114   00000095  
+[*] <00032df4>  00032de4   000000e2   ffffff0d   00000001   ffffffe9   ffffff3e  
+[*] <00033058>  0003303c   ffffff32   00000077  
+[*] <00033234>  00033228   000000c8   00000095  
+[*] <00032510>  00032508   00000077   fffffff7   0000008a   fffffff7   0000000b   ffffff75   000000e2  
+[*] <00030610>  00030608   00000033   00000000   ffffff76   ffffffa4   000000d2   00000000   fffffffd   0000002a  
+[*] <00012ac0>  00012ab8   00000097   fffffe96   ffffffa6   ffffffd4   0000006a   00000010   00000001   00000000  
+[*] <0001dfac>  0001dfa8   00000286   0000000b   ffffff91  
+[*] <0001a174>  0001a170   00000000   ffffff81   00000341   000001b5   ffffffdc   0000002a   ffffffa4   00000028  
+[*] <0001dea0>  0001de98   ffffffff   000000ff  
+[*] <00033510>  000334f8   ffffffb1   000001b4   00000001  
+[*] <0003353c>  00033518   ffffffde   0000000b   00000546  
+[*] <0001ca28>  0001ca24   00000007   00000081   00000000   0000000f   fffffefc   fffffff7   ffffff66   000000ba  
+[*] <0001adcc>  0001ad94   fffffeb2   ffffffff   fffffeb7  
+Packed:
+9c df 01 00  50 00 00 00  00 00 00 00  0a fe ff ff  
+14 c1 01 00  95 00 00 00  e4 2d 03 00  e2 00 00 00  
+0d ff ff ff  01 00 00 00  e9 ff ff ff  3e ff ff ff  
+3c 30 03 00  32 ff ff ff  77 00 00 00  28 32 03 00  
+c8 00 00 00  95 00 00 00  08 25 03 00  77 00 00 00  
+f7 ff ff ff  8a 00 00 00  f7 ff ff ff  0b 00 00 00  
+75 ff ff ff  e2 00 00 00  08 06 03 00  33 00 00 00  
+00 00 00 00  76 ff ff ff  a4 ff ff ff  d2 00 00 00  
+00 00 00 00  fd ff ff ff  2a 00 00 00  b8 2a 01 00  
+97 00 00 00  96 fe ff ff  a6 ff ff ff  d4 ff ff ff  
+6a 00 00 00  10 00 00 00  01 00 00 00  00 00 00 00  
+a8 df 01 00  86 02 00 00  0b 00 00 00  91 ff ff ff  
+70 a1 01 00  00 00 00 00  81 ff ff ff  41 03 00 00  
+b5 01 00 00  dc ff ff ff  2a 00 00 00  a4 ff ff ff  
+28 00 00 00  98 de 01 00  ff ff ff ff  ff 00 00 00  
+f8 34 03 00  b1 ff ff ff  b4 01 00 00  01 00 00 00  
+18 35 03 00  de ff ff ff  0b 00 00 00  46 05 00 00  
+24 ca 01 00  07 00 00 00  81 00 00 00  00 00 00 00  
+0f 00 00 00  fc fe ff ff  f7 ff ff ff  66 ff ff ff  
+ba 00 00 00  94 ad 01 00  b2 fe ff ff  ff ff ff ff  
+b7 fe ff ff  
+==================================================
+
+--- END CHAIN DUMP ---
+--- BEGIN PARAMETERS DUMP ---
+%  label: roper
+%  population_size: 2000
+%  crossover_rate: 0.5
+%  max_iterations: 800000
+%  selection_method: Tournament
+%  t_size: 4
+%  brood_size: 2
+%  min_start_len: 2
+%  max_start_len: 32
+%  max_len: 256
+%  fit_goal: 0.11
+%  cuck_rate: 0.15
+%  threads: 8
+%  num_demes: 4
+%  migration: 0.1
+%  use_viscosity: true
+%  outregs: [3, 4, 5]
+%  inregs: [0, 1, 2]
+%  binary_path: ../data/openssl
+%  fitness_sharing: false
+%  fatal_crash: false
+%  random_override: false
+%  edi_toggle_rate: 0
+%  initial_edi_rate: 0
+%  crash_penalty: 0.2
+%  use_dynamic_crash_penalty: false
+
+--- END PARAMETERS DUMP ---
+--- BEGIN VISIT MAP FOR PROBLEM 96.fffffc91.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 96->61642e00 fffffc91 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 96.fffffc91.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM b2.fffffd87.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: b2->62697274 fffffd87 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM b2.fffffd87.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffb5.6a.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 6a->69662e00 0->68732e00 22e00->ffff3bfc 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffffb5.6a.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff4c.b4.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e b4->74756269 0->68732e00 26269->1ebffde 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff4c.b4.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 148.fffffd18.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 148->0 fffffd18 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 148.fffffd18.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 92.fffffd9e.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 92->746f672e fffffd9e 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 92.fffffd9e.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffa1.5d.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 5d->692e0065 0->68732e00 20065->31a0000 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffffa1.5d.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff0d.150.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 150->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff0d.150.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffa8.9e.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 7362 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffffa8.9e.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffcd.fffffd5f.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: ffffffcd fffffd5f 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM ffffffcd.fffffd5f.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 84.fffffd48.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 84->6f722e6c fffffd48 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 84.fffffd48.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff6f.b4.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e b4->74756269 0->68732e00 26269->1ebffde 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff6f.b4.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 69.fffffc8e.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 69->662e0079 fffffc8e 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 69.fffffc8e.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff62.52.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 52->2e006174 0->68732e00 26174->e3570000 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff62.52.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 7f.fffffcef.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 7f->722e6174 fffffcef 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 7f.fffffcef.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffe65.f3.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e f3->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM fffffe65.f3.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffeba.0.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 0->68732e00 0->68732e00 22e00->ffff3bfc 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM fffffeba.0.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffeb7.fa.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e fa->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM fffffeb7.fa.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 79.fffffc83.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 79->2e007263 fffffc83 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 79.fffffc83.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM a3.fffffd6f.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: a3->6d6d6f63 fffffd6f 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM a3.fffffd6f.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 97.fffffce6.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 97->7461642e fffffce6 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 97.fffffce6.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff9e.e1.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e e1->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff9e.e1.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff01.84.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 84->6f722e6c 0->68732e00 22e6c->e08b3008 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff01.84.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 2a.fffffd71.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 2a->2e6c6572 fffffd71 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 2a.fffffd71.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 103.fffffd66.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 103->0 fffffd66 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 103.fffffd66.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff86.cd.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e cd->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff86.cd.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM bf.fffffd05.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: bf->0 fffffd05 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM bf.fffffd05.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffef7.a3.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 6f63 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM fffffef7.a3.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM a4.fffffc0b.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: a4->656d6d6f fffffc0b 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM a4.fffffc0b.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 101.fffffd1b.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 101->0 fffffd1b 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 101.fffffd1b.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 133.fffffcd6.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 133->0 fffffcd6 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 133.fffffcd6.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 107.fffffcde.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 107->0 fffffcde 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 107.fffffcde.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff22.de.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e de->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff22.de.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff83.ba.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e ba->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff83.ba.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffcc.e6.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e e6->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffffcc.e6.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff6e.85.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 722e 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffff6e.85.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff98.d.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 746e 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffff98.d.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 70.fffffcad.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 70->7272615f fffffcad 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 70.fffffcad.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff24.18.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 18->79642e00 0->68732e00 22e00->ffff3bfc 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff24.18.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff73.ef.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e ef->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff73.ef.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM c6.fffffce0.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: c6->0 fffffce0 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM c6.fffffce0.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM c5.fffffd23.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: c5->0 fffffd23 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM c5.fffffd23.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM fd.fffffccb.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: fd->0 fffffccb 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM fd.fffffccb.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffef9.dc.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e dc->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM fffffef9.dc.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff5d.5a.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 6172 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffff5d.5a.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff82.75.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 75->6a2e0079 0->68732e00 20079->f9e35300 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff82.75.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff7f.a0.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 73->796172 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffff7f.a0.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ec.fffffd1b.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: ec->0 fffffd1b 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM ec.fffffd1b.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffffb5.fffffd5e.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: ffffffb5 fffffd5e 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM ffffffb5.fffffd5e.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM fffffffa.ffffffad.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: fffffffa ffffffad 0->68732e00 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM fffffffa.ffffffad.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 14e.fffffd14.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 14e->0 fffffd14 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 14e.fffffd14.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ec.fffffd58.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: ec->0 fffffd58 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM ec.fffffd58.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ec.fffffd45.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: ec->0 fffffd45 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM ec.fffffd45.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff16.7e.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 7e->2e617461 0->68732e00 27461->1e1a050 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff16.7e.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff24.37.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 37->746c70 0->68732e00 26c70->e7967008 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff24.37.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM 116.fffffe2e.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 116->0 fffffe2e 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 116.fffffe2e.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff1f.5a.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001dfb0 stray | ldr r1, [pc, #0x54]
+0001dfb4 stray | mov r0, r5
+0001dfb8 stray | ldr r6, [pc, #0x50]
+0001dfbc stray | add r1, r4, r1
+0001dfc0 stray | bl #4294914156
+0001102c stray | add ip, pc, #0
+00011030 stray | add ip, ip, #0x33000
+00011034 stray | ldr pc, [ip, #0x964]!
+OUT: 0->68732e00 11384->e28cca33 0->68732e00 6172 1dfa4->e19130b3 0->68732e00 294c 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 44034->2 4a003->50 1dfc4->e7943006 1102c->e28fc600 
+--- END VISIT MAP FOR PROBLEM ffffff1f.5a.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff03.ca.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e ca->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff03.ca.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff40.f9.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e f9->0 0->68732e00 20000->e59f00a4 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff40.f9.0. ---
+--- BEGIN VISIT MAP FOR PROBLEM f7.fffffc65.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: f7->0 fffffc65 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM f7.fffffc65.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 33.fffffc97.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 33->2e6c6572 fffffc97 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 33.fffffc97.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM bf.fffffd2c.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: bf->0 fffffd2c 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM bf.fffffd2c.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM 10e.fffffca3.64. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+OUT: 10e->0 fffffca3 64->7272615f 0->68732e00 1dfa4->e19130b3 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a003->50 0->68732e00 1df9c->e08f4004 
+--- END VISIT MAP FOR PROBLEM 10e.fffffca3.64. ---
+--- BEGIN VISIT MAP FOR PROBLEM ffffff12.7d.0. ---
+0001df9c       | add r4, pc, r4
+0001dfa0       | lsl r3, r3, #1
+0001dfa4       | ldrh r3, [r1, r3]
+0001dfa8       | tst r3, #2
+0001dfac       | popeq {r4, r5, r6, pc}
+0001c114       | orreq r3, r3, #0x20000
+0001c118       | moveq r0, #1
+0001c11c       | streq r3, [r4]
+OUT: 1->7368732e 7d->61746164 0->68732e00 26164->e28dba02 50->61746164 0->68732e00 fffffe0a 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a013->95 0->68732e00 1c114->3833802 
+--- END VISIT MAP FOR PROBLEM ffffff12.7d.0. ---

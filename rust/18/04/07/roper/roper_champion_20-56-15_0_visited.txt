@@ -1,0 +1,94 @@
+=== VISIT MAP FOR BINARY ../data/openssl ===
+--- BEGIN CHAIN DUMP ---
+==================================================
+Synopsis of chain waflez-lynqoz
+==================================================
+Relative Fitness: Some(0.0) [Season 0]
+Absolute Fitness: Some(0.0)
+Stray Rate:       0
+Crashes:          Some(false)
+Ratio Run:        0.14285715
+Vist. Divers.:    0
+Run Time:         Some(0.000412651)
+Generation: 0
+Ancestral Fitness: None
+Link ages: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Link fitnesses: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Viscosities: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+Input slots on stack: []
+Clumps:
+[*] <00033460>  0003345c   0000dead   0000dead   0000dead  
+[*] <0002c5f0>  0002c5e8   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead  
+[*] <0001da98>  0001da94   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead  
+[*] <0001addc>  0001add4   0000dead   0000dead   0000dead  
+[*] <00033614>  00033610   0000dead   0000dead   0000dead  
+[*] <0003353c>  0003350c   0000dead   0000dead   0000dead  
+[*] <00033790>  00033788   0000dead   0000dead   0000dead  
+[*] <0001ad88>  0001ad84   0000dead   0000dead   0000dead  
+[*] <0001c2bc>  0001c2b8   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead  
+[*] <00020070>  00020068   0000dead   0000dead   0000dead  
+[*] <00031f90>  00031f70   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead   0000dead  
+[*] <0001e110>  0001e10c   0000dead   0000dead   0000dead   0000dead   0000dead  
+[*] <0001dea0>  0001de9c   0000dead   0000dead  
+[*] <0001ae90>  0001ae84   0000dead   0000dead   0000dead  
+[*] <0001ae98>  0001ae60   0000dead   0000dead   0000dead  
+Packed:
+5c 34 03 00  ad de 00 00  ad de 00 00  ad de 00 00  
+e8 c5 02 00  ad de 00 00  ad de 00 00  ad de 00 00  
+ad de 00 00  ad de 00 00  ad de 00 00  ad de 00 00  
+ad de 00 00  94 da 01 00  ad de 00 00  ad de 00 00  
+ad de 00 00  ad de 00 00  ad de 00 00  ad de 00 00  
+ad de 00 00  d4 ad 01 00  ad de 00 00  ad de 00 00  
+ad de 00 00  10 36 03 00  ad de 00 00  ad de 00 00  
+ad de 00 00  0c 35 03 00  ad de 00 00  ad de 00 00  
+ad de 00 00  88 37 03 00  ad de 00 00  ad de 00 00  
+ad de 00 00  84 ad 01 00  ad de 00 00  ad de 00 00  
+ad de 00 00  b8 c2 01 00  ad de 00 00  ad de 00 00  
+ad de 00 00  ad de 00 00  ad de 00 00  ad de 00 00  
+68 00 02 00  ad de 00 00  ad de 00 00  ad de 00 00  
+70 1f 03 00  ad de 00 00  ad de 00 00  ad de 00 00  
+ad de 00 00  ad de 00 00  ad de 00 00  ad de 00 00  
+ad de 00 00  0c e1 01 00  ad de 00 00  ad de 00 00  
+ad de 00 00  ad de 00 00  ad de 00 00  9c de 01 00  
+ad de 00 00  ad de 00 00  84 ae 01 00  ad de 00 00  
+ad de 00 00  ad de 00 00  60 ae 01 00  ad de 00 00  
+ad de 00 00  ad de 00 00  
+==================================================
+
+--- END CHAIN DUMP ---
+--- BEGIN PARAMETERS DUMP ---
+%  label: roper
+%  population_size: 2000
+%  crossover_rate: 0.5
+%  max_iterations: 800000
+%  selection_method: Tournament
+%  t_size: 4
+%  brood_size: 2
+%  min_start_len: 2
+%  max_start_len: 32
+%  max_len: 256
+%  fit_goal: 0.11
+%  cuck_rate: 0.15
+%  threads: 8
+%  num_demes: 4
+%  migration: 0.1
+%  use_viscosity: true
+%  outregs: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+%  inregs: [1, 2, 3, 4]
+%  binary_path: ../data/openssl
+%  fitness_sharing: false
+%  fatal_crash: false
+%  random_override: false
+%  edi_toggle_rate: 0
+%  initial_edi_rate: 0
+
+--- END PARAMETERS DUMP ---
+--- BEGIN VISIT MAP FOR PROBLEM 0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0. ---
+0003345c       | adc r1, r1, r4, lsl #20
+00033460       | pop {r4, r5, r6, pc}
+0002c5e8       | mov r0, r6
+0002c5ec       | add sp, sp, #0x31c
+0002c5f0       | pop {r4, r5, r6, r7, r8, sb, sl, fp, pc}
+OUT: dead->6600646c 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 
+.... 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 0->68732e00 4a353->0 0->68732e00 0->68732e00 
+--- END VISIT MAP FOR PROBLEM 0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0. ---
