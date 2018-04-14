@@ -780,8 +780,9 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             let mother : &Chain = &(parents[m_idx]);
             let father : &Chain = &(parents[(m_idx+1) % 2]);
             let m_i : usize = splice_point(&mother, rng, use_viscosity);
-            let m_n : usize = mother.size() - (m_i+1);
             let f_i : usize = splice_point(&father, rng, use_viscosity);
+            let m_n : usize = mother.size() - (m_i+1);
+            let f_n : usize = father.size() - (f_i+1);
 
             /*
               * println!("==> m viscosity at splice point: {}",
@@ -792,14 +793,14 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             
             let mut child_clumps : Vec<Clump> = Vec::new();
             let mut i = 0;
-            for f in 0..f_i {
-                child_clumps.push(father.clumps[f].clone());
+            for m in 0..m_i {
+                child_clumps.push(mother.clumps[m].clone());
                 child_clumps[i].link_age += 1;
                 i += 1;
             }
             /* By omitting the following lines, we drop the splicepoint */
-            if false && father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
-                child_clumps.push(father.clumps[f_i].clone());
+            if mother.clumps[f_i].viscosity >= VISC_DROP_THRESH {
+                child_clumps.push(mother.clumps[f_i].clone());
                 i += 1;
             } 
             if i > 0 { 
@@ -807,9 +808,9 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 child_clumps[i-1].link_fit = None;
             };
             /***********************************************************/
-            for m in m_n..mother.size() {
+            for f in f_n..father.size() {
                 if i >= max_len { break };
-                child_clumps.push(mother.clumps[m].clone());
+                child_clumps.push(father.clumps[f].clone());
                 child_clumps[i].link_age += 1;
                 i += 1;
                 /* adjust link_fit later, obviously */
