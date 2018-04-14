@@ -4,6 +4,6 @@
 [submodule "lisp/cl-unicorn"]
 	path = lisp/cl-unicorn
 	url = git@github.com:oblivia-simplex/cl-unicorn
-[submodule "doc/slides/Ottawa/dark-beamer-theme"]
-	path = doc/slides/Ottawa/dark-beamer-theme
-	url = git@github.com:oblivia-simplex/dark-beamer-theme
+[submodule "roper-doc"]
+	path = roper-doc
+	url = git@github.com:oblivia-simplex/roper-doc
