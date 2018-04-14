@@ -98,6 +98,7 @@ fn mutate(chain: &mut Chain,
             cl_idx = rng.gen::<usize>() % chain.size();
         }
         let mut clump = chain[cl_idx].clone();
+        clump.ttl = params.ttl;
         assert!(clump.size() > 0);
         let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
         let mut_kind : u8 = rng.gen::<u8>() % 6;
@@ -171,6 +172,7 @@ fn mate (parents: &Vec<&Chain>,
          rng:     &mut ThreadRng,
          uc:      &mut CpuARM,
          ooze:    &Vec<Clump>) -> Vec<Chain> {
+        /* adjust ttls for crashes */
         let mut brood = if rng.gen::<f32>() < params.crossover_rate {
             shufflefuck(parents, 
                         params,
@@ -240,17 +242,7 @@ fn eval_case (uc: &mut CpuARM,
     /* instead, let's make crashes a vector of addresses where the crashes happened */
     let mut crashes = Vec::new();
     if crash {
-        let mut vis = result.visited.clone(); /* KLUDGE: Refactor */
-        let intervals = chain.get_intervals();
-        vis.reverse();
-        for addr in vis {
-            /* store the index of the probably-responsible clump for the crash */
-            if let Some(n) = chain.search_intervals(&intervals, addr) {
-                //println!("-- found crash index at address {:08x}, in intervals: {:?}, clump {}:\n{}\n{}", addr, &intervals, n, &chain[n], &chain);
-                crashes.push(n);
-                break
-            }
-        }
+        crashes.push(min(chain.size()-1, counter + 1));
     }
 
     EvalCaseResult {
@@ -780,16 +772,21 @@ fn splice_point (chain: &Chain,
                  use_viscosity: bool) -> usize {
     let mut wheel : Vec<Weighted<usize>> = Vec::new();
     let mut i : usize = 0;
+    let ratio_run = chain.ratio_run;
+    let clumps_run = (chain.size() as f32 * ratio_run).ceil() as usize;
     if chain.size() == 0 {
             panic!("Empty chain in splice_point(). Why?");
     }
     for clump in &chain.clumps {
+        /* avoid making children into exact clones */
+        if i == 0 && chain.size() > 0 { i += 1; continue };
         assert!(clump.visc() <= MAX_VISC);
-        let vw : u32 = if use_viscosity {
+        let mut vw : u32 = if use_viscosity {
             1 + (MAX_VISC - clump.visc()) as u32
         } else {
             50
         };
+        if i < clumps_run { vw /= 2 }; /* increase likelihood of splicing at active clumps */
         wheel.push(Weighted { weight: vw,
                               item: i });
         i += 1;
@@ -805,34 +802,41 @@ fn shufflefuck (parents:    &Vec<&Chain>,
         let brood_size = params.brood_size;
         let max_len    = params.max_len;
         let use_viscosity = params.use_viscosity;
+        assert!(parents.len() == 2); /* otherwise we'll need to adjust the algorithm below */
         let mut brood : Vec<Chain> = Vec::new();
+        let mut homo = false;
+        let mut last_m_i = None;
+        let mut last_f_i = None;
         for i in 0..brood_size {
             let m_idx  : usize  = i % 2;
             let mother : &Chain = &(parents[m_idx]);
             let father : &Chain = &(parents[(m_idx+1) % 2]);
-            let m_i : usize = splice_point(&mother, rng, use_viscosity);
-            let m_n : usize = mother.size() - (m_i+1);
-            let f_i : usize = if (params.homologous_crossover 
-                                  && rng.gen::<f32>() > mother.fitness.unwrap_or(1.0)) {
-            /* there's only sense in using hX for sufficiently fit specimens */
-            /* choose the splice point of the clump with the nearest ret_addr */
-                let mut splice_point = splice_point(&father, rng, use_viscosity);
-                let mut nearest = 0x10;
-                let mut i = 0;
-                for clump in &father.clumps {
-                    let gap = (clump.ret_addr as i64 - mother[m_i].ret_addr as i64).abs();
-                    if gap < nearest {
-                        splice_point = i;
-                        nearest = gap;
+            let m_i : usize = if let Some(x) = last_f_i { x } else { splice_point(&mother, rng, use_viscosity) };
+            let f_i : usize = if let Some(x) = last_m_i { x } else { 
+                if (params.homologous_crossover 
+                        && mother.crashes.len() == 0
+                        && rng.gen::<f32>() > mother.fitness.unwrap_or(1.0)) {
+                /* there's only sense in using hX for sufficiently fit specimens */
+                /* choose the splice point of the clump with the nearest ret_addr */
+                    let mut splice_point = splice_point(&father, rng, use_viscosity);
+                    let mut nearest = 0x10;
+                    let mut i = 0;
+                    for clump in &father.clumps {
+                        let gap = (clump.ret_addr as i64 - mother[m_i].ret_addr as i64).abs();
+                        if gap < nearest {
+                            splice_point = i;
+                            nearest = gap;
+                        }
+                        i += 1;
                     }
-                    i += 1;
+                    if nearest != 0x10 {
+                        println!("[=] homologous splice point between mother[{}] with ret_addr {:08x} and father[{}] with ret_addr {:08x}", m_i, mother[m_i].ret_addr, splice_point, father[splice_point].ret_addr);
+                        homo = true;
+                    }
+                    splice_point
+                } else {
+                    splice_point(&father, rng, use_viscosity)
                 }
-                if nearest != 0x10 {
-                    println!("[=] homologous splice point between mother[{}] with ret_addr {:08x} and father[{}] with ret_addr {:08x}", m_i, mother[m_i].ret_addr, splice_point, father[splice_point].ret_addr);
-                }
-                splice_point
-            } else {
-                splice_point(&father, rng, use_viscosity)
             };
 
             /*
@@ -844,30 +848,38 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             
             let mut child_clumps : Vec<Clump> = Vec::new();
             let mut i = 0;
-            for f in 0..f_i {
-                let mut c = father.clumps[f].clone();
+            /* First, push onto the child the maternal clumps */
+            for m in 0..m_i {
+                let mut c = mother.clumps[m].clone();
                 c.link_age += 1;
+                if mother.crashes.contains(&m) { c.ttl /= 2 };
                 if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 if c.ttl == 0 {
                     /* make a random clump and push it */
+                    println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
                     let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
                     for i in 0..c.sp_delta {
                         c_.push(c[i as usize % c.size()])
                     }
+                    c_.ttl = params.ttl;
+                    println!("new clump:\n{}",c_);
                     child_clumps.push(c_);
 
                 } else {
                     child_clumps.push(c);
                 }
+                println!("== pushed maternal clump {} ret {:08x} to child index {}", m, child_clumps[i].ret_addr, i);
                 i += 1;
             }
             /* By omitting the following lines, we drop the splicepoint */
-            if father.clumps[f_i].viscosity >= VISC_DROP_THRESH {
-                let mut c = father.clumps[f_i].clone();
+            if !homo && mother.clumps[m_i].viscosity >= VISC_DROP_THRESH {
+                let mut c = mother.clumps[m_i].clone();
+                if mother.crashes.contains(&m_i) { c.ttl /= 2 };
                 if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 if c.ttl > 0 {
-                    child_clumps.push(father.clumps[f_i].clone());
+                    child_clumps.push(mother.clumps[m_i].clone());
                 };
+                println!("== pushed maternal clump {} ret {:08x} to child index {}", m_i, child_clumps[i].ret_addr, i);
                 i += 1;
             } 
             if i > 0 { 
@@ -875,9 +887,10 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 child_clumps[i-1].link_fit = None;
             };
             /***********************************************************/
-            for m in m_n..mother.size() {
+            for f in f_i..father.size() {
                 if i >= max_len { break };
-                let mut c = mother.clumps[m].clone();
+                let mut c = father.clumps[f].clone();
+                if father.crashes.contains(&f) { c.ttl /= 2 };
                 if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 c.link_age += 1;
                 if c.ttl == 0 {
@@ -889,6 +902,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 } else {
                     child_clumps.push(c);
                 }
+                println!("== pushed paternal clump {} ret {:08x} to child index {}", f, child_clumps[i].ret_addr, i);
                 i += 1;
                 /* adjust link_fit later, obviously */
             }
@@ -905,8 +919,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 //if f.len() == 0 {None} else {Some(mean(&f))}
                 f
             };
-   //         println!("==== Mated \n{}==== and\n{} to produce\n{}",
-   //                  &mother, &father, &child);
+            if homo { println!("==== At ({},{}), mated \n{}==== and\n{} to produce\n{}", m_i, f_i, &mother, &father, &child); };
             brood.push(child);
         }
         brood

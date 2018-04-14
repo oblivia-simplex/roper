@@ -93,6 +93,7 @@ fn main() {
     opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("H", "homo", "enable homologous crossover");
     opts.optflag("y", "dynamic_crash_penalty", "dynamically adjust the crash penalty in response to the population's crash rate");
 
     opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
@@ -121,6 +122,7 @@ fn main() {
     opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
     opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
     opts.optopt("t", "threads", "set number of threads", "<positive integer>");
+    opts.optopt("v", "ttl", "set initial clump TTL", "<positive integer>");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -132,6 +134,13 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
+
+    let homologous_crossover = matches.opt_present("H");
+
+    let ttl = match matches.opt_str("v") {
+        None => 16,
+        Some(n) => n.parse::<usize>().expect("Failed to parse ttl"),
+    };
 
     let stack_input_sampling = match matches.opt_str("I") {
         None => 0.0,
@@ -391,6 +400,7 @@ fn main() {
     params.population_size = popsize;
     params.binary_path = elf_path.clone();
     params.host_port = host_port; 
+    params.homologous_crossover = homologous_crossover;
     params.season_divisor = 1;
     params.random_override = random_override;
     params.set_init_difficulties();
@@ -400,6 +410,7 @@ fn main() {
     params.crash_penalty = crash_penalty;
     params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
     params.stack_input_sampling = stack_input_sampling;
+    params.ttl = ttl;
     
     if !use_edis {
         params.initial_edi_rate = 0.0;

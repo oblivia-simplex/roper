@@ -1,6 +1,8 @@
 #! /bin/bash
 
 # i'm using nginx for the webserver on this box
+cd $( dirname "${BASH_SOURCE[0]}" ) 
+
 NOSERVE=1
 PROJECT_ROOT=`pwd`/..
 [ -n "$BINARY" ] || BINARY=$1
@@ -194,6 +196,7 @@ function run () {
   CMD="RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
                                 --binary $BINARY \
+                                --homo \
                                 --logs $PROJECT_ROOT/logs \
                                 --goal $GOAL \
                                 --sample_ratio 1.0 \

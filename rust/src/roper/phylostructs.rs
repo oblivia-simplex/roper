@@ -99,6 +99,7 @@ pub struct Params {
         pub threads          : usize,
         pub timestamp        : String,
         pub training_ht      : HashMap<Vec<i32>,usize>,
+        pub ttl              : usize,
         pub use_edis         : bool,
         pub use_viscosity    : bool,
         pub use_dynamic_crash_penalty : bool,
@@ -140,6 +141,7 @@ impl Display for Params {
             s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
             s.push_str(&format!("{} selection_method: {:?}\n", rem, self.selection_method));
             s.push_str(&format!("{} t_size: {}\n", rem, self.t_size));
+            s.push_str(&format!("{} ttl: {}\n", rem, self.ttl));
             s.push_str(&format!("{} threads: {}\n", rem, self.threads));
             s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
             s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
@@ -200,6 +202,7 @@ impl Params {
                 threads:          5,
                 timestamp:        timestamp.clone(),
                 training_ht:      HashMap::new(),
+                ttl:              16,
                 use_dynamic_crash_penalty: false,
                 use_edis:         false,
                 use_viscosity:    false,
@@ -391,7 +394,7 @@ impl Default for Clump {
                 ret_addr:   0,
                 exchange:   false,
                 mode:       MachineMode::THUMB,
-                ttl:        128,
+                ttl:        0,
                 words:      Vec::new(),
                 input_slots: Vec::new(),
                 viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
@@ -565,9 +568,9 @@ impl Display for Chain {
             s.push_str("Clumps:\n");
             for clump in &self.clumps {
                 if !clump.enabled {
-                    s.push_str("[ ] ");
+                    s.push_str(&format!("[ ][{} TTL] ", &clump.ttl));
                 } else {
-                    s.push_str("[*] ");
+                    s.push_str(&format!("[*][{} TTL] ", &clump.ttl));
                 }
                 s.push_str(&format!("<{:08x}> ", clump.ret_addr));
                 let mut i = 0;
@@ -968,6 +971,8 @@ impl Population {
                                           MachineMode::ARM);
             println!("[*] Harvested {} ARM gadgets from {}",
                               clumps.len(), params.binary_path);
+            /* set initial ttls */
+            for clump in &mut clumps { clump.ttl = params.ttl }
             //let thumb_clumps = &reap_gadgets(&params.code,
             //                                 params.code_addr,
             //                                 MachineMode::THUMB);
