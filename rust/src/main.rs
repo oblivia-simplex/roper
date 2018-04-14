@@ -451,7 +451,7 @@ fn main() {
         && (champion == None 
         || champion.as_ref()
                    .expect("Failed to unwrap champion reference (1)")
-                   .crashes == Some(true)
+                   .crashes.len() > 0
         || champion.as_ref()
                    .expect("Failed to unwrap champion reference (2)")
                    .ab_fitness > Some(params.fit_goal))
@@ -680,6 +680,6 @@ fn main() {
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
     println!("[*] Absolute fitness of champion on testing run: {:2.6}",
                       testing_res.ab_fitness);
-    println!("[*] Crash on testing run: {}", testing_res.crashes);
+    println!("[*] Crash on testing run: {:?}", testing_res.crashes);
     println!("[*] Logged at {}", pop_local.read().unwrap().params.csv_path);
 }

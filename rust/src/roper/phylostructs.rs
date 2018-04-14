@@ -72,6 +72,7 @@ pub struct Params {
         pub fatal_crash      : bool,
         pub fit_goal         : f32,
         pub fitness_sharing  : bool,
+        pub homologous_crossover: bool,
         pub host_port        : String,
         pub initial_edi_rate : f32,
         pub inregs           : Vec<usize>,
@@ -113,34 +114,35 @@ impl Display for Params {
             let rem = "% ";
 
             s.push_str(&format!("{} COMMENT: {}\n", rem, self.label));
-            s.push_str(&format!("{} label: {}\n", rem, self.label));
-            s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
+        
+            s.push_str(&format!("{} binary_path: {}\n", rem, self.binary_path));
+            s.push_str(&format!("{} brood_size: {}\n", rem, self.brood_size));
+            s.push_str(&format!("{} class_masks: {}\n", rem, class_masks_to_string(&self.class_masks)));
+            s.push_str(&format!("{} crash_penalty: {}\n", rem, self.crash_penalty));
             s.push_str(&format!("{} crossover_rate: {}\n", rem, self.crossover_rate));
+            s.push_str(&format!("{} cuckoo_rate: {}\n", rem, self.cuckoo_rate));
+            s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
+            s.push_str(&format!("{} fatal_crash: {}\n", rem, self.fatal_crash));
+            s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
+            s.push_str(&format!("{} fitness_sharing: {}\n", rem, self.fitness_sharing));
+            s.push_str(&format!("{} homologous_crossover: {:?}\n", rem, self.homologous_crossover));
+            s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
+            s.push_str(&format!("{} inregs: {:?}\n", rem, self.inregs));
+            s.push_str(&format!("{} label: {}\n", rem, self.label));
             s.push_str(&format!("{} max_iterations: {}\n", rem, self.max_iterations));
+            s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
+            s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
+            s.push_str(&format!("{} migration: {}\n", rem, self.migration));
+            s.push_str(&format!("{} min_start_len: {}\n", rem, self.min_start_len));
+            s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
+            s.push_str(&format!("{} outregs: {:?}\n", rem, self.outregs));
+            s.push_str(&format!("{} population_size: {}\n", rem, self.population_size));
+            s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
             s.push_str(&format!("{} selection_method: {:?}\n", rem, self.selection_method));
             s.push_str(&format!("{} t_size: {}\n", rem, self.t_size));
-            s.push_str(&format!("{} brood_size: {}\n", rem, self.brood_size));
-            s.push_str(&format!("{} min_start_len: {}\n", rem, self.min_start_len));
-            s.push_str(&format!("{} max_start_len: {}\n", rem, self.max_start_len));
-            s.push_str(&format!("{} max_len: {}\n", rem, self.max_len));
-            s.push_str(&format!("{} fit_goal: {}\n", rem, self.fit_goal));
-            s.push_str(&format!("{} cuckoo_rate: {}\n", rem, self.cuckoo_rate));
             s.push_str(&format!("{} threads: {}\n", rem, self.threads));
-            s.push_str(&format!("{} num_demes: {}\n", rem, self.num_demes));
-            s.push_str(&format!("{} migration: {}\n", rem, self.migration));
-            s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
-            s.push_str(&format!("{} outregs: {:?}\n", rem, self.outregs));
-            s.push_str(&format!("{} inregs: {:?}\n", rem, self.inregs));
-            s.push_str(&format!("{} binary_path: {}\n", rem, self.binary_path));
-            s.push_str(&format!("{} fitness_sharing: {}\n", rem, self.fitness_sharing));
-            s.push_str(&format!("{} fatal_crash: {}\n", rem, self.fatal_crash));
-            s.push_str(&format!("{} random_override: {}\n", rem, self.random_override));
-            s.push_str(&format!("{} edi_toggle_rate: {}\n", rem, self.edi_toggle_rate));
-            s.push_str(&format!("{} initial_edi_rate: {}\n", rem, self.initial_edi_rate));
-            s.push_str(&format!("{} crash_penalty: {}\n", rem, self.crash_penalty));
             s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
-            s.push_str(&format!("{} class_masks: {}\n", rem, class_masks_to_string(&self.class_masks)));
-        
+            s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
             write!(f, "{}",s)
         }
             
@@ -171,6 +173,7 @@ impl Params {
                 fatal_crash:      false,
                 fit_goal:         0.1,  
                 fitness_sharing:  true,
+                homologous_crossover: true,
                 host_port:        "127.0.0.1:8888".to_string(),
                 initial_edi_rate: 0.1,
                 inregs:           vec![1,2,3,4],
@@ -324,6 +327,7 @@ pub struct Clump {
         pub ret_offset:  usize, // how far down is the next address?
         pub exchange:    bool, // BX instruction? can we change mode?
         pub mode:        MachineMode,
+        pub ttl:         usize,
         pub ret_addr:    u32,
         pub words:       Vec<u32>,
         pub viscosity:   i32,
@@ -370,6 +374,7 @@ impl Display for Clump {
             s.push_str(&format!("link_age:   {}\n", self.link_age));
             s.push_str(&format!("link_fit:   {:?}\n", self.link_fit));
             s.push_str(&format!("ret_addr:   {:08x}\n", self.ret_addr));
+            s.push_str(&format!("ttl:        {}\n", self.ttl));
             s.push_str(         "words:     ");
             for w in &self.words {
                 s.push_str(&format!(" {:08x}", w));
@@ -386,6 +391,7 @@ impl Default for Clump {
                 ret_addr:   0,
                 exchange:   false,
                 mode:       MachineMode::THUMB,
+                ttl:        128,
                 words:      Vec::new(),
                 input_slots: Vec::new(),
                 viscosity:  MAX_VISC, //(MAX_VISC - MIN_VISC) / 2 + MIN_VISC,
@@ -503,7 +509,7 @@ pub struct Chain {
         pub generation: u32,
         pub input_slots: Vec<(usize,usize)>,
         pub verbose_tag: bool,
-        pub crashes: Option<bool>,
+        pub crashes: Vec<usize>,
         pub ratio_run: f32,
         pub season: usize,
         pub genealogy: Arena<(String, f32, f32, bool)>,
@@ -603,7 +609,7 @@ impl Default for Chain {
                 generation: 0,
                 season: 0,
                 verbose_tag: false,
-                crashes: None,
+                crashes: Vec::new(),
                 ratio_run: 0.0,
                 runtime: None,
                 visitation_diversity: 0.0,
@@ -725,22 +731,29 @@ impl Chain {
 
         pub fn strayed_but_did_not_crash (&self) -> bool {
             // NB: memoize the stray_addr_rate
-            self.crashes == None && self.stray_addr_rate() > 0.0
+            self.crashes.len() == 0 && self.stray_addr_rate() > 0.0
         }
 
-        fn get_intervals (&self) -> Vec<(u32,u32)> {
+        pub fn get_intervals (&self) -> Vec<(u32,u32,usize)> {
+            /* third term is original index */
             let mut intervals = self.clumps
                                     .iter()
-                                    .map(|c| (c.entry(), c.exit()))
-                                    .collect::<Vec<(u32,u32)>>();
+                                    .enumerate()
+                                    .map(|(i,c)| (c.entry(), c.exit(), i))
+                                    .collect::<Vec<(u32,u32,usize)>>();
             intervals.sort();
             intervals
         }
 
-        fn search_intervals (&self, 
-                             intervals: &Vec<(u32,u32)>, 
-                             addr: u32) 
-                            -> bool {
+        pub fn is_stray(&self, addr: u32) -> bool {
+            let intervals = self.get_intervals();
+            self.search_intervals(&intervals, addr) == None
+        }
+
+        pub fn search_intervals (&self, 
+                                 intervals: &Vec<(u32,u32,usize)>, 
+                                 addr: u32) 
+                                -> Option<usize>{
             let res = intervals.binary_search_by(
                 (|c| if c.0 <= addr && addr <= c.1 {
                     Equal
@@ -750,8 +763,8 @@ impl Chain {
                     Greater
                 }));
             match res {
-                Ok(_)  => true,
-                Err(_) => false,
+                Ok(n)  => Some(intervals[n].2),
+                Err(n) => None,
             }
         }
 
@@ -804,7 +817,7 @@ impl Chain {
                 let v = self.visited_map.get(p).unwrap();
                 count  += v.len();
                 strays += v.iter()
-                           .filter(|&x| !self.search_intervals(&intervals, *x))
+                           .filter(|&x| self.search_intervals(&intervals, *x) == None)
                            .count();
             }
     //        println!(">> stray: {}, hit: {}, count: {}\n", strays, hits, count);
@@ -866,7 +879,7 @@ impl Chain {
                                                          .collect::<Vec<u32>>())));
                 let intervals = self.get_intervals();
                 for addr in self.visited_map.get(p).unwrap() {
-                    let is_stray = !self.search_intervals(&intervals, *addr);
+                    let is_stray = self.search_intervals(&intervals, *addr) == None;
                     let dis = disas_addr(&uc, *addr);
                     s.push_str(&format!("{:08x}{} | {}\n", 
                                         addr,
@@ -1067,7 +1080,7 @@ impl Population {
             self.deme
                 .iter()
                 .filter(|ref c| c.fitness != None)
-                .filter(|ref c| c.crashes == None)
+                .filter(|ref c| c.crashes.len() > 0 )
                 .filter(|ref c| c.stray_addr_rate() > 0.0)
                 .count() as f32 / total
         }
@@ -1103,7 +1116,7 @@ impl Population {
             self.deme
                     .iter()
                     .filter(|ref c| c.fitness == None
-                                    && (season as isize - c.season as isize).abs() <= 1)
+                            && (season as isize - c.season as isize).abs() <= 1)
                     .count() as f32 / 
                         self.params.population_size as f32
         }
@@ -1111,13 +1124,13 @@ impl Population {
         pub fn crash_rate (&self) -> f32 {
             let cand = self.deme
                            .iter()
-                           .filter(|ref c| c.crashes != None)
+                           .filter(|ref c| c.fitness != None)
                            .count();
             if cand == 0 { return 0.0 }
             self.deme
                     .iter()
-                    .filter(|ref c| c.crashes != None)
-                    .map(|ref c| if c.crashes.clone().unwrap_or(false) {1.0} else {0.0})
+                    .filter(|ref c| c.fitness != None)
+                    .map(|ref c| if c.crashes.len() > 0 {1.0} else {0.0})
                     .sum::<f32>() /
                         cand as f32
         }
@@ -1209,7 +1222,7 @@ impl Population {
 
         pub fn best_crashes (&self) -> Option<bool> {
             match self.best {
-                Some(ref x) => x.crashes,
+                Some(ref x) => Some(x.crashes.len() > 0),
                 _           => None,
             }
         }
@@ -1302,7 +1315,7 @@ impl Population {
                                   best.generation,
                                   best.fitness.unwrap_or(1.0),
                                   best.ab_fitness.unwrap_or(1.0),
-                                  if best.crashes == Some(true) { 1 } else { 0 },
+                                  best.crashes.len(),
                                   self.avg_len(),
                                   best.size(),
                                   best.runtime.unwrap_or(0.0),
