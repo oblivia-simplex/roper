@@ -1,5 +1,6 @@
 #[allow(dead_code)]
 extern crate elf;
+extern crate ansi_term;
 extern crate unicorn;
 extern crate capstone;
 extern crate rand;
@@ -11,6 +12,7 @@ extern crate backtrace;
 extern crate chrono;
 
 use self::chrono::prelude::*;
+use self::ansi_term::Colour::*;
 
 use scoped_threadpool::Pool;
 use std::sync::mpsc::channel;
@@ -647,7 +649,7 @@ fn main() {
             }
             println!("TASK: {:?}\n{} ({}) on {} at {}\nREM: {}",
                      &challenge,
-                     &label, 
+                     Red.bold().paint(label.clone()), 
                      &params.population_size,
                      &params.binary_path,
                      Local::now().format("%H:%M:%S"), 

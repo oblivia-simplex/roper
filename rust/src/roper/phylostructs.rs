@@ -471,8 +471,8 @@ pub fn saturated (gad: &Clump) -> bool {
 /* why isn't this a trait? */
 fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
         let s : usize = clumps.iter()
-                                                    .map(|ref x| x.words.len())
-                                                    .sum();
+                              .map(|ref x| x.words.len())
+                              .sum();
         let mut c = vec![0; s];
         let mut rto = 0 as usize;
         let mut exchange = false;
@@ -499,7 +499,7 @@ fn concatenate (clumps: &Vec<Clump>) -> Vec<u32> {
             i += 1;
         }
         c[..rto].to_vec()
-}
+} /* program seems to hang here, sometimes, with futex. not sure why. FIXME. */
 
 #[derive(Clone,Debug)]
 pub struct Chain {
@@ -785,7 +785,7 @@ impl Chain {
         pub fn calc_fitness_delta (&self) -> Option<(usize, f32)> {
             let reproduction_type = self.p_fitness.len();
             if reproduction_type == 0 { return None };
-            if let Some(f) = self.fitness {
+            if let Some(f) = self.ab_fitness {
                 let mut m = mean(&self.p_fitness);
                 if m == 0.0 { m = 0.000001 };
                 Some((reproduction_type, (f - mean(&self.p_fitness))/m))

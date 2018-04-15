@@ -158,7 +158,7 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
             /* remember: headless chicken parents won't have a fitness,
              * but it makes sense to treat their children as if born
              * ex nihilo, as far as the deltas are concerned. */
-            spawn.p_fitness = if let Some(f) = parents[i % 2].fitness {
+            spawn.p_fitness = if let Some(f) = parents[i % 2].ab_fitness {
                 vec![f]
             } else { Vec::new() };
             spawn.generation = parents[i % 2].generation + 1;
@@ -637,7 +637,9 @@ pub fn tournament (population: &Population,
             //  specimen.set_ab_fitness(ab_fitness);
         }
 
-        select_mates(&mut specimens, true); //.sort();
+        /** Determine rank, to select mates **/
+        specimens.sort(); /* in place, by fitness */
+        //select_mates(&mut specimens, true); //.sort();
         let (mother,m_idx) = specimens[0].clone();
         let (father,f_idx) = if cflag {
             (population.random_spawn(), 0)
@@ -854,7 +856,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 c.link_age += 1;
                 if mother.crashes.contains(&m) { c.ttl /= 2 };
                 if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
-                if c.ttl == 0 {
+                if c.ttl == 0 { /* FIXME may be causing program to hang. */
                     /* make a random clump and push it */
                     println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
                     let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
@@ -868,10 +870,12 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 } else {
                     child_clumps.push(c);
                 }
-                println!("== pushed maternal clump {} ret {:08x} to child index {}", m, child_clumps[i].ret_addr, i);
+                //println!("== pushed maternal clump {} ret {:08x} to child index {}", m, child_clumps[i].ret_addr, i);
                 i += 1;
             }
             /* By omitting the following lines, we drop the splicepoint */
+            /* !homo, because in case of homologous xover, the last maternal
+             * clump and first paternal clump will often be the same gadget */
             if !homo && mother.clumps[m_i].viscosity >= VISC_DROP_THRESH {
                 let mut c = mother.clumps[m_i].clone();
                 if mother.crashes.contains(&m_i) { c.ttl /= 2 };
@@ -879,10 +883,10 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 if c.ttl > 0 {
                     child_clumps.push(mother.clumps[m_i].clone());
                 };
-                println!("== pushed maternal clump {} ret {:08x} to child index {}", m_i, child_clumps[i].ret_addr, i);
+                //println!("== pushed maternal clump {} ret {:08x} to child index {}", m_i, child_clumps[i].ret_addr, i);
                 i += 1;
             } 
-            if i > 0 { 
+            if i > 0 && child_clumps.len() > i-1 { 
                 child_clumps[i-1].link_age = 0;
                 child_clumps[i-1].link_fit = None;
             };
@@ -893,7 +897,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 if father.crashes.contains(&f) { c.ttl /= 2 };
                 if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 c.link_age += 1;
-                if c.ttl == 0 {
+                if c.ttl == 0 { /* FIXME may be causing program to hang */
                     let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
                     for i in 0..c.sp_delta {
                         c_.push(c[i as usize % c.size()])
@@ -902,7 +906,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 } else {
                     child_clumps.push(c);
                 }
-                println!("== pushed paternal clump {} ret {:08x} to child index {}", f, child_clumps[i].ret_addr, i);
+                //println!("== pushed paternal clump {} ret {:08x} to child index {}", f, child_clumps[i].ret_addr, i);
                 i += 1;
                 /* adjust link_fit later, obviously */
             }
@@ -914,12 +918,12 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             child.p_fitness = {
                 /* vector of parents' fitness*/
                 let mut f = Vec::new();
-                if let Some(x) = mother.fitness {f.push(x)};
-                if let Some(x) = father.fitness {f.push(x)};
+                if let Some(x) = mother.ab_fitness {f.push(x)};
+                if let Some(x) = father.ab_fitness {f.push(x)};
                 //if f.len() == 0 {None} else {Some(mean(&f))}
                 f
             };
-            if homo { println!("==== At ({},{}), mated \n{}==== and\n{} to produce\n{}", m_i, f_i, &mother, &father, &child); };
+            //if homo { println!("==== At ({},{}), mated \n{}==== and\n{} to produce\n{}", m_i, f_i, &mother, &father, &child); };
             brood.push(child);
         }
         brood
