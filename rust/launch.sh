@@ -167,7 +167,8 @@ RATIO_RUN=22
 AVG_INSTS=23
 XOVER_DELTA=24
 MUT_DELTA=25
-C=26
+TTL_RATIO=26
+C=27
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -290,9 +291,9 @@ plot "$CSVFILE" $(popplotline $AVG_FIT) , \
   "" $(popplotline $MIN_ABFIT), \
   "" $(popplotline $BEST_ABFIT), \
   "" $(popplotline $STRAY_RATE), \
-  "" $(popplotline $STRAY_NOCRASH), \
   "" $(popplotline $RATIO_RUN), \
-  "" $(popplotline $XOVER_DELTA)
+  "" $(popplotline $XOVER_DELTA), \
+  "" $(popplotline $TTL_RATIO)
 EOF
 
 if (( $CLASSIFICATION )); then

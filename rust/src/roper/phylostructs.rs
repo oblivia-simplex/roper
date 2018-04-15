@@ -1242,6 +1242,23 @@ impl Population {
                                  .collect::<Vec<f32>>())
         }
 
+
+        pub fn avg_ttl_ratio (&self) -> f32 {
+            fn avg_ttl (d: &Chain) -> usize {
+                let mut sum = 0;
+                for c in &d.clumps {
+                    sum += c.ttl;
+                }
+                sum / d.size()
+            }
+
+            let x = self.deme.iter()
+                        .map(|ref x| avg_ttl(x))
+                        .map(|x| (x as f32) / self.params.ttl as f32)
+                        .collect::<Vec<f32>>();
+            mean(&x)
+        }
+
         pub fn avg_ratio_run (&self) -> f32 {
             mean(&self.deme.iter()
                            .filter(|c| c.fitness != None)
@@ -1307,7 +1324,7 @@ impl Population {
                 s
             } else { "".to_string() };
             let season = self.season;
-            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            let mut row = format!("{}{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                                   row,
                                   self.iteration.clone(),
                                   season,
@@ -1335,7 +1352,8 @@ impl Population {
                                   self.avg_ratio_run(),
                                   self.avg_num_insts(),
                                   self.avg_crossover_delta(),
-                                  self.avg_mutation_delta());
+                                  self.avg_mutation_delta(),
+                                  self.avg_ttl_ratio());
             let c_mn_dif = self.params.io_targets
                                .class_mean_difficulties();
             let c_sd_dif = self.params.io_targets
