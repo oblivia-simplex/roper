@@ -860,7 +860,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                     /* make a random clump and push it */
                     println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
                     let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
-                    for i in 0..c.sp_delta {
+                    while (c_.words.len() as i32) < c_.sp_delta-1 {
                         c_.push(c[i as usize % c.size()])
                     }
                     c_.ttl = params.ttl;
@@ -899,7 +899,8 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 c.link_age += 1;
                 if c.ttl == 0 { /* FIXME may be causing program to hang */
                     let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
-                    for i in 0..c.sp_delta {
+                    /** saturate */
+                    while (c_.words.len() as i32) < c_.sp_delta-1 {
                         c_.push(c[i as usize % c.size()])
                     }
                     child_clumps.push(c_);
