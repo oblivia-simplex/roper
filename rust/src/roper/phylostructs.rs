@@ -1315,7 +1315,7 @@ impl Population {
             let nclasses = self.params.io_targets.num_classes;
             // todo: don't hardcode the number of classes
             let row = if first {
-                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN,AVG-INSTS,CROSSOVER-DELTA,MUTATION-DELTA",
+                let mut s = format!("{}\nITERATION,SEASON,AVG-GEN,AVG-FIT,AVG-ABFIT,MIN-FIT,MIN-ABFIT,CRASH,BEST-GEN,BEST-FIT,BEST-ABFIT,BEST-CRASH,AVG-LENGTH,BEST-LENGTH,BEST-RUNTIME,UNSEEN,EDI-RATE,STRAY-RATE,AVG-STRAY-TO-EDI,STRAY-NOCRASH,VISIT-DIVERS,RATIO-RUN,AVG-INSTS,CROSSOVER-DELTA,MUTATION-DELTA,TTL-RATIO",
                                 self.params);
                 for i in 0..nclasses {
                     s.push_str(&format!(",MEAN-DIF-C{},STD-DEV-C{}",i,i));
