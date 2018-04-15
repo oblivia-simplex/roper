@@ -1,6 +1,8 @@
 #! /bin/bash
 
 # i'm using nginx for the webserver on this box
+cd $( dirname "${BASH_SOURCE[0]}" ) 
+
 NOSERVE=1
 PROJECT_ROOT=`pwd`/..
 [ -n "$BINARY" ] || BINARY=$1
@@ -11,7 +13,6 @@ if [ -n "$BARE_RUN" ]; then
     BUILD_FLAGS=""
 else
     [ -n "$ROPER_THREADS" ] || ROPER_THREADS=4
-    BUILD_FLAGS="--release"
 fi
 
 
@@ -55,11 +56,13 @@ case "$PROBLEM" in
         add_flag --crash_penalty 0.5
         add_flag --fitness_sharing
         add_flag --dynamic_crash_penalty
+        add_flag --stack_input_sampling 0.2
         ;;
     2blobs)
         TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
         GOAL=0.0
         CLASSIFICATION=1
+        add_flag --fitness_sharing
         add_flag --crossover 0.5 
         add_flag --crash_penalty 1.0
         ;;
@@ -77,6 +80,7 @@ case "$PROBLEM" in
         add_flag --crossover 0.5 
         add_flag --fitness_sharing
         add_flag --crash_penalty 0.5
+        add_flag --stack_input_sampling 0.2
         ;;
     kafka)
         TASKFLAGS="-K"
@@ -129,14 +133,15 @@ LABEL=`labelmaker`
 LOGDIR_REL=`date +logs/%y/%m/%d/${LABEL}/`
 LOGDIR="${PROJECT_ROOT}/${LOGDIR_REL}"
 mkdir -p $LOGDIR
-OUTFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.out"
-ERRORFILE="${LOGDIR}/${LABEL}_`date +%H-%M-%S`.err"
+OUTFILE="${LOGDIR}/${LABEL}.out"
+ERRORFILE="${LOGDIR}/${LABEL}.err"
+PLOTFILE=${LOGDIR}/${LABEL}.gnuplot
+CSVFILE=${LOGDIR}/${LABEL}.csv
+GITNOTE=${LOGDIR}/git_note.log
+git log | head -n6 > $GITNOTE
 
-git log | head -n6 > $OUTFILE
 
-
-mkdir -p $PROJECT_ROOT/logs
-#gzip -f $PROJECT_ROOT/logs/roper*.{csv,json} 
+## CSV FIELDS. why not just use strings?
 ITERATION=1
 SEASON=2
 AVG_GEN=3
@@ -160,7 +165,10 @@ STRAY_NOCRASH=20
 VISIT_DIVERS=21
 RATIO_RUN=22
 AVG_INSTS=23
-C=24
+XOVER_DELTA=24
+MUT_DELTA=25
+TTL_RATIO=26
+C=27
 
 CLASS0_MEANDIF=$(( C + 0 ))
 CLASS0_STDDEVDIF=$(( C + 1 ))
@@ -189,6 +197,7 @@ function run () {
   CMD="RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
                                 --binary $BINARY \
+                                --homo \
                                 --logs $PROJECT_ROOT/logs \
                                 --goal $GOAL \
                                 --sample_ratio 1.0 \
@@ -212,32 +221,11 @@ if (( $BARE_RUN )) ; then
 fi
 
 (( $NOSERVE )) || WEBSRV_PID=$(webserver)
-echo "[+] launching roper"
-run > $OUTFILE 2>> $ERRORFILE &
-roper_pid=$!
-echo "[+] roper PID is $roper_pid"
-cd $PROJECT_ROOT/logs
 recent=""
-echo -n "[+] looking for log output in ${LOGDIR}"
-while ! [ -n "$recent" ]; do
-  if ! kill -0 $roper_pid; then
-    echo "ROPER instance with PID $roper_pid is dead"
-    exit
-  fi
-  echo -n "."
-  sleep 0.5
-  recent=`find ${LOGDIR} -name "${LABEL}*csv"`
-done
-echo -e "\nLABEL is $LABEL\n*** recent csv -> $recent"
-TIMESTAMP=`grep -oP '[01]?[0-9]-[0-5][0-9]-[0-5][0-9]' <<< $recent`
-echo "TIMESTAMP: $TIMESTAMP"
-export TIMESTAMP
-ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.out
-ln -s $OUTFILE ${LOGDIR}/${LABEL}_${TIMESTAMP}.err
-PLOTFILE=${LOGDIR}/${LABEL}_${TIMESTAMP}.gnuplot
+
 
 IMAGE_EXT="svg"
-IMAGEFILE=${LABEL}_${TIMESTAMP}.${IMAGE_EXT}
+IMAGEFILE=${LABEL}.${IMAGE_EXT}
 TERMINALSTRING="set terminal svg background rgb \"black\" size 1660,1024"
 OUTPUTSTRING="set output \"${SRV}/${IMAGEFILE}\""
 
@@ -290,11 +278,11 @@ set border lc rgb 'red'
 set key tc rgb 'red'
 set key autotitle columnhead
 set datafile separator ","
-# set autoscale
-set yrange [0:1]
+set autoscale
+#set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "POPULATION FEATURES"
-plot "$recent" $(popplotline $AVG_FIT) , \
+plot "$CSVFILE" $(popplotline $AVG_FIT) , \
   "" $(popplotline $AVG_ABFIT), \
   "" $(popplotline $AVG_CRASH), \
   "" $(popplotline $EDI_RATE), \
@@ -303,9 +291,9 @@ plot "$recent" $(popplotline $AVG_FIT) , \
   "" $(popplotline $MIN_ABFIT), \
   "" $(popplotline $BEST_ABFIT), \
   "" $(popplotline $STRAY_RATE), \
-  "" $(popplotline $STRAY_NOCRASH), \
   "" $(popplotline $RATIO_RUN), \
-  "" $(popplotline $AVG_INSTS)
+  "" $(popplotline $XOVER_DELTA), \
+  "" $(popplotline $TTL_RATIO)
 EOF
 
 if (( $CLASSIFICATION )); then
@@ -314,7 +302,7 @@ set yrange [0:1]
 set xlabel "$X1_AXIS_TITLE"
 set ylabel "DIFFICULTY BY CLASS"
 set style fill transparent solid 0.3 
-plot "$recent" $(difplot 0), \
+plot "$CSVFILE" $(difplot 0), \
   "" $(difplot 1), \
   "" $(difplot 2), \
   "" $(difplotline 0), \
@@ -338,28 +326,14 @@ cat > $SRV/$LABEL.html<<EOF
 </a>
 EOF
 
-export PLOTFILE
-cd ..
-echo "[+] logging to $recent"
-sleep 1
-gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt &
-gnuplot_pid=$!
-echo "[+] gnuplot PID is $gnuplot_pid"
+echo "[+] logging to $CSVFILE"
 
-function cleanup ()
-{
-  trap - INT
-  echo "${YELLOW}Trapped SIGINT. Cleaning up...${RESET}"
-  kill $WEBSRV_PID
-  kill $gnuplot_pid
-  kill $roper_pid
-  cat $ERRORFILE
-  rm $OUTFILE
-  rm $ERRORFILE
+function plot () {
+    sleep 30 && gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt 
 }
 
-trap cleanup INT
+plot &
+run
 
-for i in {0..70}; do echo -n "="; done; echo
-tail -n 4096 -f $OUTFILE
-[ -n "$DISPLAY" ] && kill $gnuplot_pid
+
+

@@ -3,6 +3,7 @@
 extern crate unicorn; 
 extern crate bit_vec;
 use std::cell::*;
+use std::process;
 use std::time::Instant;
 use std::io::{BufReader,BufRead};
 use std::path::Path;
@@ -97,6 +98,7 @@ fn mutate(chain: &mut Chain,
             cl_idx = rng.gen::<usize>() % chain.size();
         }
         let mut clump = chain[cl_idx].clone();
+        clump.ttl = params.ttl;
         assert!(clump.size() > 0);
         let idx : usize   = 1 + (rng.gen::<usize>() % (clump.size() - 1));
         let mut_kind : u8 = rng.gen::<u8>() % 6;
@@ -104,12 +106,15 @@ fn mutate(chain: &mut Chain,
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
             1 => mutate_addr(&mut clump, rng),
             2 => match deref(&(uc.emu()), clump.words[idx].clone()) {
-                Some(x) => { println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x); clump.words[idx] = x; },
+                Some(x) => { 
+                   // println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x);
+                    clump.words[idx] = x; 
+                },
                 None    => (),
             },
             3 => match uc_seek_word(clump.words[idx].clone(), uc) {
                 Some(x) => {
-                    println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
+                   // println!("<== indirection mutation: {:x} -> {:x}", clump.words[idx], x);
                     clump.words[idx] = x as u32;
                 },
                 None    => (),
@@ -133,11 +138,10 @@ fn mutate(chain: &mut Chain,
 }
 
 fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
-        for ref mut clump in &mut chain.clumps {
-            if rng.gen::<f32>() < params.edi_toggle_rate {
-                clump.enabled = !clump.enabled; 
-            }
-        }
+      if rng.gen::<f32>() < params.edi_toggle_rate {
+          let i = rng.gen::<usize>() % chain.size();
+          chain[i].enabled = !chain[i].enabled; 
+      }
 }
 
 fn clone_and_mutate (parents: &Vec<&Chain>,
@@ -151,7 +155,12 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
             let mut spawn = Chain::new(spawnclumps);
             mutate(&mut spawn, &params, uc, rng);
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
-            spawn.p_fitness = parents[i % 2].fitness;
+            /* remember: headless chicken parents won't have a fitness,
+             * but it makes sense to treat their children as if born
+             * ex nihilo, as far as the deltas are concerned. */
+            spawn.p_fitness = if let Some(f) = parents[i % 2].ab_fitness {
+                vec![f]
+            } else { Vec::new() };
             spawn.generation = parents[i % 2].generation + 1;
             brood.push(spawn);
         }
@@ -161,11 +170,14 @@ fn clone_and_mutate (parents: &Vec<&Chain>,
 fn mate (parents: &Vec<&Chain>, 
          params:  &Params, 
          rng:     &mut ThreadRng,
-         uc:      &mut CpuARM) -> Vec<Chain> {
+         uc:      &mut CpuARM,
+         ooze:    &Vec<Clump>) -> Vec<Chain> {
+        /* adjust ttls for crashes */
         let mut brood = if rng.gen::<f32>() < params.crossover_rate {
             shufflefuck(parents, 
                         params,
-                        rng)
+                        rng,
+                        ooze)
         } else {
             let uc = &uc;
             clone_and_mutate(parents,
@@ -182,7 +194,7 @@ pub struct EvalCaseResult {
         pub fitness : f32,
         pub ab_fitness : f32,
         pub counter : usize,
-        pub crashes : bool,
+        pub crashes : Vec<usize>,
         pub visited : Vec<u32>,
         pub registers : Vec<u32>,
         pub reg_deref : Vec<Option<Vec<u8>>>,
@@ -193,7 +205,7 @@ pub struct EvalResult {
         pub ab_fitness : f32,
         pub mean_ratio_run : f32,
         pub counter : usize,
-        pub crashes : bool,
+        pub crashes : Vec<usize>,
         pub visitation_diversity : f32,
         pub visited_map : HashMap<Problem, Vec<u32>>,
         pub register_map : HashMap<Problem, (Vec<u32>,Vec<Option<Vec<u8>>>)>,
@@ -226,12 +238,18 @@ fn eval_case (uc: &mut CpuARM,
                                         uc);
     let counter = result.counter;
     let crash = result.error != None || result.isnull();
-            
+    
+    /* instead, let's make crashes a vector of addresses where the crashes happened */
+    let mut crashes = Vec::new();
+    if crash {
+        crashes.push(min(chain.size()-1, counter + 1));
+    }
+
     EvalCaseResult {
         fitness: if params.fitness_sharing {rf} else {af},
         ab_fitness: af,
         counter: counter,
-        crashes: crash,
+        crashes: crashes,
         visited: result.visited,
         registers: result.registers,
         reg_deref: result.reg_deref,
@@ -287,6 +305,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         /* own instance of the emulator.                   */
         let mut counter_sum = 0;
         let mut anycrash = false;
+        let mut all_crashes = Vec::new();
         let mut difficulties : HashMap<Problem,f32> = HashMap::new();
         let mut visited_map  : HashMap<Problem,Vec<u32>> = HashMap::new();
         let mut register_map : HashMap<Problem,(Vec<u32>,Vec<Option<Vec<u8>>>)>
@@ -313,9 +332,10 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             let ratio_run = f32::min(1.0, counter as f32 / cs);
             ratio_run_vec.push(ratio_run);
             counter_sum += counter;
-            anycrash = anycrash || res.crashes;
+            anycrash = anycrash || res.crashes.len() > 0;
+            all_crashes.extend_from_slice(&(res.crashes));
             /* adjust score if there was a crash */
-            let crash_adjusted = if res.crashes {
+            let crash_adjusted = if res.crashes.len() > 0 {
                 crash_override(res.fitness,
                                ratio_run,
                                params)
@@ -360,6 +380,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         assert!(0.0 <= ab_fitness && ab_fitness <= 1.0);
         
         let ratio_run = mean(&ratio_run_vec);
+        all_crashes.dedup();
         EvalResult {
             fitness      : fitness,
             ab_fitness   : ab_fitness,
@@ -367,7 +388,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
             mean_ratio_run : ratio_run,
             visited_map  : visited_map,
             register_map : register_map,
-            crashes      : anycrash,
+            crashes      : all_crashes,
             visitation_diversity : divers,
             difficulties : Some(difficulties),
         }
@@ -378,9 +399,9 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
 pub struct FitUpdate {
         pub fitness     : Option<f32>,
         pub ab_fitness  : Option<f32>,
-        pub p_fitness   : Option<f32>,
+        pub p_fitness   : Vec<f32>,
   // pub fingerprint : Fingerprint,
-        pub crashes     : Option<bool>,
+        pub crashes     : Vec<usize>,
         pub ratio_run   : f32,
         pub runtime     : Option<f32>,
         pub visitation_diversity : f32,
@@ -464,13 +485,13 @@ pub fn patch_population (tr: &TournamentResult,
                 population.deme[i].ab_fitness = fit_up.ab_fitness.clone();
                 population.deme[i].p_fitness = fit_up.p_fitness.clone();
 
-                if let Some(pf) = population.deme[i].p_fitness {
-                    fitness_deltas.push(f - pf);
+                if population.deme[i].p_fitness.len() > 0 {
+                    fitness_deltas.push(f - mean(&population.deme[i].p_fitness));
                 };
             }
         }
         if population.best == None 
-            || (tr.best.crashes == Some(false) &&  // throw caution to the wind
+            || (tr.best.crashes.len() == 0 &&  // throw caution to the wind
                 tr.best.ab_fitness < population.best_abfit()) {
             population.best = Some(tr.best.clone());
             println!("NEW BEST\n{}\n", &tr.best);
@@ -562,7 +583,7 @@ pub fn tournament (population: &Population,
                                        batch,
                                        verbose); // verbose
             let ratio_run : f32 = res.mean_ratio_run;
-            let crash   = Some(res.crashes);
+            let crash   = res.crashes.clone();
             //println!("==> ratio_run = {:1.6}, crash? {:?}",ratio_run, crash);
             let e = start.elapsed();
             let elapsed = Some(e.as_secs() as f32 + (e.subsec_nanos() as f32 / 1000000000.0));
@@ -596,7 +617,7 @@ pub fn tournament (population: &Population,
         for (&mut (ref mut specimen,lot), ref fit_up) 
             in specimens.iter_mut().zip(fit_vec) 
         {
-                specimen.crashes = fit_up.crashes;
+                specimen.crashes = fit_up.crashes.clone();
                 specimen.fitness = fit_up.fitness;
                 specimen.runtime = fit_up.runtime;
                 specimen.ratio_run = fit_up.ratio_run;
@@ -616,7 +637,9 @@ pub fn tournament (population: &Population,
             //  specimen.set_ab_fitness(ab_fitness);
         }
 
-        select_mates(&mut specimens, true); //.sort();
+        /** Determine rank, to select mates **/
+        specimens.sort(); /* in place, by fitness */
+        //select_mates(&mut specimens, true); //.sort();
         let (mother,m_idx) = specimens[0].clone();
         let (father,f_idx) = if cflag {
             (population.random_spawn(), 0)
@@ -627,8 +650,8 @@ pub fn tournament (population: &Population,
                                     FitUpdate {
                                                 fitness     : mother.fitness,
                                                 ab_fitness  : mother.ab_fitness,
-                                                p_fitness   : mother.p_fitness,
-                                                crashes     : mother.crashes,
+                                                p_fitness   : mother.p_fitness.clone(),
+                                                crashes     : mother.crashes.clone(),
                                                 ratio_run   : mother.ratio_run,
                                                 runtime     : mother.runtime,
                                                 visited_map : mother.visited_map.clone(),
@@ -640,8 +663,8 @@ pub fn tournament (population: &Population,
                               FitUpdate { 
                                           fitness     : father.fitness,
                                           ab_fitness  : father.ab_fitness,
-                                          p_fitness   : father.p_fitness,
-                                          crashes     : father.crashes,
+                                          p_fitness   : father.p_fitness.clone(),
+                                          crashes     : father.crashes.clone(),
                                           ratio_run   : father.ratio_run,
                                           runtime     : father.runtime,
                                           visited_map : father.visited_map.clone(),
@@ -658,7 +681,8 @@ pub fn tournament (population: &Population,
         let offspring = mate(&parents,
                              &population.params,
                              &mut rng,
-                             &mut uc);
+                             &mut uc,
+                             &population.primordial_ooze);
         let t_best = specimens[0].0.clone();
         if t_best.fitness == None {
             panic!("t_best.fitness is None!");
@@ -746,20 +770,25 @@ match clump.link_fit {
 }
 
 fn splice_point (chain: &Chain, 
-                                  rng: &mut ThreadRng,
-                                  use_viscosity: bool) -> usize {
+                 rng: &mut ThreadRng,
+                 use_viscosity: bool) -> usize {
     let mut wheel : Vec<Weighted<usize>> = Vec::new();
     let mut i : usize = 0;
+    let ratio_run = chain.ratio_run;
+    let clumps_run = (chain.size() as f32 * ratio_run).ceil() as usize;
     if chain.size() == 0 {
             panic!("Empty chain in splice_point(). Why?");
     }
     for clump in &chain.clumps {
+        /* avoid making children into exact clones */
+        if i == 0 && chain.size() > 0 { i += 1; continue };
         assert!(clump.visc() <= MAX_VISC);
-        let vw : u32 = if use_viscosity {
+        let mut vw : u32 = if use_viscosity {
             1 + (MAX_VISC - clump.visc()) as u32
         } else {
             50
         };
+        if i < clumps_run { vw /= 2 }; /* increase likelihood of splicing at active clumps */
         wheel.push(Weighted { weight: vw,
                               item: i });
         i += 1;
@@ -769,20 +798,49 @@ fn splice_point (chain: &Chain,
 }
 
 fn shufflefuck (parents:    &Vec<&Chain>, 
-                                    params:     &Params,
-                                    rng:        &mut ThreadRng) -> Vec<Chain> {
+                params:     &Params,
+                rng:        &mut ThreadRng,
+                ooze:       &Vec<Clump>) -> Vec<Chain> {
         let brood_size = params.brood_size;
         let max_len    = params.max_len;
         let use_viscosity = params.use_viscosity;
+        assert!(parents.len() == 2); /* otherwise we'll need to adjust the algorithm below */
         let mut brood : Vec<Chain> = Vec::new();
+        let mut homo = false;
+        let mut last_m_i = None;
+        let mut last_f_i = None;
         for i in 0..brood_size {
             let m_idx  : usize  = i % 2;
             let mother : &Chain = &(parents[m_idx]);
             let father : &Chain = &(parents[(m_idx+1) % 2]);
-            let m_i : usize = splice_point(&mother, rng, use_viscosity);
-            let f_i : usize = splice_point(&father, rng, use_viscosity);
-            let m_n : usize = mother.size() - (m_i+1);
-            let f_n : usize = father.size() - (f_i+1);
+            let m_i : usize = if let Some(x) = last_f_i { x } else { splice_point(&mother, rng, use_viscosity) };
+            let f_i : usize = if let Some(x) = last_m_i { x } else { 
+                if (params.homologous_crossover 
+                        && mother.crashes.len() == 0
+                        && rng.gen::<f32>() > mother.fitness.unwrap_or(1.0)) {
+                /* there's only sense in using hX for sufficiently fit specimens */
+                /* choose the splice point of the clump with the nearest ret_addr */
+                    let mut splice_point = splice_point(&father, rng, use_viscosity);
+                    let mut nearest = 0x10;
+                    let mut i = 0;
+                    for clump in &father.clumps {
+                        let gap = (clump.ret_addr as i64 - mother[m_i].ret_addr as i64).abs();
+                        if gap < nearest {
+                            splice_point = i;
+                            nearest = gap;
+                        }
+                        i += 1;
+                    }
+                    if nearest != 0x10 {
+                        println!("[=] homologous splice point between mother[{}] with ret_addr {:08x} and father[{}] with ret_addr {:08x}", m_i, mother[m_i].ret_addr, splice_point, father[splice_point].ret_addr);
+                        homo = true;
+                    }
+                    splice_point
+                } else {
+                    splice_point(&father, rng, use_viscosity)
+                }
+            };
+
 
             /*
               * println!("==> m viscosity at splice point: {}",
@@ -793,25 +851,68 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             
             let mut child_clumps : Vec<Clump> = Vec::new();
             let mut i = 0;
+            /* First, push onto the child the maternal clumps */
             for m in 0..m_i {
-                child_clumps.push(mother.clumps[m].clone());
-                child_clumps[i].link_age += 1;
+                let mut c = mother.clumps[m].clone();
+                c.link_age += 1;
+                if mother.crashes.contains(&m) { c.ttl /= 2 };
+                if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
+                if c.ttl == 0 { /* FIXME may be causing program to hang. */
+                    /* make a random clump and push it */
+                    println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
+                    let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
+                    while (c_.words.len() as i32) < c_.sp_delta {
+                        c_.push(c[i as usize % c.size()])
+                    }
+                    assert!(saturated(&c_));
+                    c_.ttl = params.ttl;
+                    println!("new clump:\n{}",c_);
+                    child_clumps.push(c_);
+
+                } else {
+                    child_clumps.push(c);
+                }
+                //println!("== pushed maternal clump {} ret {:08x} to child index {}", m, child_clumps[i].ret_addr, i);
                 i += 1;
             }
             /* By omitting the following lines, we drop the splicepoint */
-            if mother.clumps[f_i].viscosity >= VISC_DROP_THRESH {
-                child_clumps.push(mother.clumps[f_i].clone());
+            /* !homo, because in case of homologous xover, the last maternal
+             * clump and first paternal clump will often be the same gadget */
+            if !homo && mother.clumps[m_i].viscosity >= VISC_DROP_THRESH {
+                let mut c = mother.clumps[m_i].clone();
+                if mother.crashes.contains(&m_i) { c.ttl /= 2 };
+                if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
+                if c.ttl > 0 {
+                    child_clumps.push(mother.clumps[m_i].clone());
+                };
+                //println!("== pushed maternal clump {} ret {:08x} to child index {}", m_i, child_clumps[i].ret_addr, i);
+
                 i += 1;
             } 
-            if i > 0 { 
+            if i > 0 && child_clumps.len() > i-1 { 
                 child_clumps[i-1].link_age = 0;
                 child_clumps[i-1].link_fit = None;
             };
             /***********************************************************/
-            for f in f_n..father.size() {
+            for f in f_i..father.size() {
                 if i >= max_len { break };
-                child_clumps.push(father.clumps[f].clone());
-                child_clumps[i].link_age += 1;
+                let mut c = father.clumps[f].clone();
+                if father.crashes.contains(&f) { c.ttl /= 2 };
+                if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
+                c.link_age += 1;
+                if c.ttl == 0 { /* FIXME may be causing program to hang */
+                    let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
+                    /** saturate */
+                    while (c_.words.len() as i32) < c_.sp_delta {
+                        c_.push(c[i as usize % c.size()])
+                    }
+                    assert!(saturated(&c_));
+                    child_clumps.push(c_);
+                } else {
+                    child_clumps.push(c);
+                }
+                //println!("== pushed paternal clump {} ret {:08x} to child index {}", f, child_clumps[i].ret_addr, i);
+
                 i += 1;
                 /* adjust link_fit later, obviously */
             }
@@ -821,18 +922,21 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             let mut child : Chain = Chain::new(child_clumps);
             child.generation = max(mother.generation, father.generation)+1;
             child.p_fitness = {
+                /* vector of parents' fitness*/
                 let mut f = Vec::new();
-                if let Some(x) = mother.fitness {f.push(x)};
-                if let Some(x) = father.fitness {f.push(x)};
-                if f.len() == 0 {None} else {Some(mean(&f))}
+                if let Some(x) = mother.ab_fitness {f.push(x)};
+                if let Some(x) = father.ab_fitness {f.push(x)};
+                //if f.len() == 0 {None} else {Some(mean(&f))}
+                f
             };
+            //if homo { println!("==== At ({},{}), mated \n{}==== and\n{} to produce\n{}", m_i, f_i, &mother, &father, &child); };
             brood.push(child);
         }
         brood
 }
 
 pub fn saturate_clumps <'a,I> (unsat: &mut Vec<Clump>,
-                                                              pool:  &mut I)  //Vec<u32>,
+                               pool:  &mut I)  //Vec<u32>,
         where I: Iterator <Item=u32> {
 let mut u : usize = 0;
 //let mut sat: Vec<Clump> = Vec::new();
@@ -854,7 +958,7 @@ while u < unsat.len() {
 }
 
 pub fn saturate_clump <'a,I> (unsat: &mut Clump,
-                                                            pool:  &mut I)  //Vec<u32>,
+                              pool:  &mut I)  //Vec<u32>,
         where I: Iterator <Item=u32> {
 let needs = (unsat.sp_delta-1) as usize;
         for _ in 0..needs {

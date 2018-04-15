@@ -384,7 +384,7 @@ pub fn memdump (uc: &CpuARM) -> Vec<(u64,Vec<u8>)> {
             _     => { println!("Error dumping {:x} bytes from {:08x}", region.begin - region.end, region.begin); }
         }
     }
-    println!("-- memdump took {} nanoseconds", start.elapsed().subsec_nanos());
+    //println!("-- memdump took {} nanoseconds", start.elapsed().subsec_nanos());
     data
 }
 
@@ -411,12 +411,12 @@ pub fn seek_reference (bytes: &Vec<u8>, mem: &Vec<(u64,Vec<u8>)>) -> Option<u64>
                 };
             }
             if ok { 
-                println!("+++ found {:?} at {:08x} in {} nanoseconds", bytes, begin+i, start.elapsed().subsec_nanos());
+                //println!("+++ found {:?} at {:08x} in {} nanoseconds", bytes, begin+i, start.elapsed().subsec_nanos());
                 return Some((begin + i) as u64); 
             };
         }
     }
-    println!("+++ did not find {:?} in {} nanoseconds", bytes, start.elapsed().subsec_nanos());
+    //println!("+++ did not find {:?} in {} nanoseconds", bytes, start.elapsed().subsec_nanos());
     None
 }
 

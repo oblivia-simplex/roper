@@ -19,10 +19,8 @@ doc/nonpublic/
 *.toc
 *.xdv
 *.snm
-
-
-
-
+18/*
 scratch
 target
 .colors
+core

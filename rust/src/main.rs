@@ -1,5 +1,6 @@
 #[allow(dead_code)]
 extern crate elf;
+extern crate ansi_term;
 extern crate unicorn;
 extern crate capstone;
 extern crate rand;
@@ -8,6 +9,10 @@ extern crate scoped_threadpool;
 
 extern crate ctrlc;
 extern crate backtrace;
+extern crate chrono;
+
+use self::chrono::prelude::*;
+use self::ansi_term::Colour::*;
 
 use scoped_threadpool::Pool;
 use std::sync::mpsc::channel;
@@ -59,9 +64,9 @@ fn get_gba_addr_data (path: &str) -> Vec<(u64, Vec<u8>)> {
 
 #[derive(PartialEq,Eq,Clone,Debug)]
 enum Challenge {
-    Data,
-    Pattern,
-    Game,
+    Data(String),
+    Pattern(String),
+    Game(String),
     Kafka,
     Undecided,
 }
@@ -90,12 +95,14 @@ fn main() {
     opts.optflag("S", "fitness_sharing", "enable fitness sharing to encourage niching, where applicable");
     opts.optflag("V", "noviscosity", "do not use viscosity modulations to encourage gene linkage");
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("H", "homo", "enable homologous crossover");
     opts.optflag("y", "dynamic_crash_penalty", "dynamically adjust the crash penalty in response to the population's crash rate");
 
     opts.optopt("0", "crash_penalty", "penalty to additively apply to crashing chains", "<float>");
     opts.optopt("A", "apples", "number of apples, used for snek", "<integer>");
     opts.optopt("C", "cacti", "number of cacti, used for snek", "<integer>");
     opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
+    opts.optopt("I", "stack_input_sampling", "set proportion of stack slots used to carry input data", "<float>");
     opts.optopt("L", "label", "set a label for the trial", "<string>");
     opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
     opts.optopt("X", "comment", "a comment to write into the logs and repeat on the screen", "<string>");
@@ -107,6 +114,7 @@ fn main() {
     opts.optopt("c", "crossover", "set crossover (vs. clone+mutate) rate", "<float between 0.0 and 1.0>");
     opts.optopt("d", "data", "set data path", "<path to data file>");
     opts.optopt("e", "edirate", "set initial explicitly defined introns rate", "<float between 0.0 and 1.0>");
+    opts.optopt("+", "edi_toggle_rate", "set likelihood of an edi toggle in mutation", "<float between 0.0 and 1.0>");
     opts.optopt("g", "goal", "set fitness goal (default 0)", "<float between 0.0 and 1.0>");
     opts.optopt("l", "init_length", "set initial length for snek", "<integer>");
     opts.optopt("m", "migration", "set migration rate", "<float between 0.0 and 1.0>");
@@ -116,6 +124,7 @@ fn main() {
     opts.optopt("r", "radius", "game board radius, used for snek", "<integer of 3 or greater>");
     opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
     opts.optopt("t", "threads", "set number of threads", "<positive integer>");
+    opts.optopt("v", "ttl", "set initial clump TTL", "<positive integer>");
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -127,6 +136,18 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
+
+    let homologous_crossover = matches.opt_present("H");
+
+    let ttl = match matches.opt_str("v") {
+        None => 16,
+        Some(n) => n.parse::<usize>().expect("Failed to parse ttl"),
+    };
+
+    let stack_input_sampling = match matches.opt_str("I") {
+        None => 0.0,
+        Some(n) => n.parse::<f32>().expect("Failed to parse stack_input_sampling"),
+    };
     
     let comment = match matches.opt_str("X") {
         None => "".to_string(),
@@ -156,6 +177,11 @@ fn main() {
     let edirate = match matches.opt_str("e") {
         None => 0.10,
         Some(n) => n.parse::<f32>().expect("Failed to parse edirate (-e)"),
+    };
+
+    let edi_toggle_rate = match matches.opt_str("+") {
+        None => 0.01,
+        Some(n) => n.parse::<f32>().expect("Failed to parse edi_toggle_rate (-+)"),
     };
 
     let crash_penalty = match matches.opt_str("0") {
@@ -195,7 +221,7 @@ fn main() {
     let host_port = match matches.opt_str("a") {
         None    => "".to_string(),
         Some(s) => {
-            challenge = Challenge::Game;
+            challenge = Challenge::Game(s.to_string());
             s.to_string()
         },
     };
@@ -224,12 +250,17 @@ fn main() {
         None => "roper".to_string(),
         Some(n) => n.to_string(),
     };
-    let rpattern_str = matches.opt_str("p");
-    if rpattern_str != None {challenge = Challenge::Pattern};
+    if let Some(rp) = matches.opt_str("p") {
+        challenge = Challenge::Pattern(rp.to_string())
+    };
 
-    let fitness_sharing = matches.opt_present("S") && rpattern_str == None;
-    let data_path    = matches.opt_str("d");
-    if data_path != None {challenge = Challenge::Data};
+    let fitness_sharing = matches.opt_present("S");
+
+    match matches.opt_str("d") {
+        None => (),
+        Some(d) => challenge = Challenge::Data(d.clone()),
+    };
+
 
     let threads : usize = match matches.opt_str("t") {
         None => 8,
@@ -259,9 +290,9 @@ fn main() {
     // ugly kludge here
   
     let mut params : Params = Params::new(&label);
-    let io_targets = match challenge {
-        Challenge::Data => {
-            let io = process_data2(&data_path.unwrap(), num_attrs).shuffle();
+    let io_targets = match &challenge {
+        &Challenge::Data(ref dp) => {
+            let io = process_data2(&dp, num_attrs, num_classes, &mut params).shuffle();
             params.outregs = (0..(num_classes)).collect(); //vec![5,6,7];
             params.inregs  = (num_classes..(num_classes+num_attrs)).collect(); //vec![1,2,3,4];
             println!(">> inregs: {:?}\n>> outregs: {:?}", 
@@ -269,14 +300,14 @@ fn main() {
             assert!(io.len() > 0);
             io
         },
-        Challenge::Pattern => {
+        &Challenge::Pattern(ref pat) => {
             // outregs are actually ignored now, when dealing with RPattern tasks
             params.outregs = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
             IoTargets::from_vec(TargetKind::PatternMatch,
-                vec![Problem::new(vec![0;16], mk_pattern(&rpattern_str.unwrap()))],
+                vec![Problem::new(vec![0;16], mk_pattern(&pat))],
                 1)
         },
-        Challenge::Game => {
+        &Challenge::Game(ref hostport) => {
             /* This should be read from a per-game config file */
             params.inregs = vec![3,4,5,6,7,8,9,10];
             params.outregs= vec![0,1,2];
@@ -285,21 +316,21 @@ fn main() {
             for i in 0..game_seeds {
                 gs.push(Problem::new(vec![0,0,0],
                         Target::Game(GameData {
-                            addr: host_port.clone(),
+                            addr: hostport.clone(),
                             params: vec![i, radius, radius * 8 +1, 0, apples, cacti, init_length]
                         })));
                 num_classes += 1;
             }
             IoTargets::from_vec(TargetKind::Game, gs, num_classes)
         },
-        Challenge::Kafka => {
+        &Challenge::Kafka => {
             params.inregs = (0..16).collect();
             params.outregs = (0..16).collect();
             IoTargets::from_vec(TargetKind::Kafka,
                                 vec![Problem::new_kafkaesque()],
                                 1)
         },
-        Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
+        &Challenge::Undecided => panic!("Challenge type undecided. Specify one."),
     };
 
     let (testing,training) = (io_targets.clone(), io_targets.clone()); //io_targets.split_at(io_targets.len()/3);
@@ -371,12 +402,17 @@ fn main() {
     params.population_size = popsize;
     params.binary_path = elf_path.clone();
     params.host_port = host_port; 
+    params.homologous_crossover = homologous_crossover;
     params.season_divisor = 1;
     params.random_override = random_override;
     params.set_init_difficulties();
     params.use_edis = use_edis;
+    params.edi_toggle_rate = edi_toggle_rate;
+    params.initial_edi_rate = edirate;
     params.crash_penalty = crash_penalty;
     params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
+    params.stack_input_sampling = stack_input_sampling;
+    params.ttl = ttl;
     
     if !use_edis {
         params.initial_edi_rate = 0.0;
@@ -400,9 +436,9 @@ fn main() {
 
     let mut debug_machinery : Machinery 
         = Machinery::new(&elf_path,
-                                          mode,
-                                          1,
-                                          true);
+                         mode,
+                         1,
+                         true);
     add_debug_hooks(&mut debug_machinery.cluster[0].unwrap_mut());
     let printevery = 1;
     let mut champion : Option<Chain> = None;
@@ -414,8 +450,6 @@ fn main() {
     let mut first_log = true;
     let mut i = 0; 
     let mut crash_rate : f32 = 0.5;
-    let mut fitness_deltas : CircBuffer<f32> = CircBuffer::new(100);
-    let mut improvement_ratio = None;
     
     let peek_path = format!("/tmp/roper/{}.peek", label);
     let peek_path = Path::new(&peek_path);
@@ -430,7 +464,7 @@ fn main() {
         && (champion == None 
         || champion.as_ref()
                    .expect("Failed to unwrap champion reference (1)")
-                   .crashes == Some(true)
+                   .crashes.len() > 0
         || champion.as_ref()
                    .expect("Failed to unwrap champion reference (2)")
                    .ab_fitness > Some(params.fit_goal))
@@ -442,6 +476,7 @@ fn main() {
         let n_workers = threads as u32;
         let n_jobs    = machinery.cluster.len();
         let mut pool  = Pool::new(n_workers);
+        let challenge = challenge.clone();
         pool.scoped(|scope| {
             let mut vdeme = thread_rng().gen::<usize>() % num_demes;
             for e in machinery.cluster.iter_mut() {
@@ -479,7 +514,6 @@ fn main() {
                                                                mut_pop,
                                                                true,
                                                                &mut heatmap);
-                    fitness_deltas.push_all(f_deltas);
                     if updated != None {
                         champion = updated.clone();
                     };
@@ -544,13 +578,6 @@ fn main() {
                   * then the algorithm should be more exploitative; if more
                   * than 1 in 5 is fitter, the algorithm should be more exploratory.
                   */
-                if fitness_deltas.primed() {
-                    improvement_ratio = Some(fitness_deltas.as_vec()
-                                                           .iter()
-                                                           .filter(|x| **x < 0.0)
-                                                           .count() as f32 
-                                                    / fitness_deltas.cap() as f32);
-                }
 
             } // end mut block
           
@@ -575,42 +602,43 @@ fn main() {
                                                         .io_targets
                                                         .difficulty_profile();
                 println!("[*] ITERATION {}, SEASON {}", iteration, season);
-                print!  ("[+] CRASH RATE:  {:1.6}    ", crash_rate);
-                println!("[+] AVG GEN:     {:1.6}", avg_pop_gen);
-                print!  ("[+] AVG FIT:     {:1.6}    ", avg_pop_fit);
-                println!("[+] AVG AB_FIT:  {:1.6}", avg_pop_abfit);
-                print!  ("[+] MIN FIT:     {:1.6}    ", min_fit);
-                println!("[+] MIN AB_FIT:  {:1.6}", min_abfit);
-                print!  ("[+] BEST FIT:    {:1.6}    ", champ.fitness
+                print!  ("[+] CRASH RATE:  {:2.6}    ", crash_rate);
+                println!("[+] AVG GEN:     {:2.6}", avg_pop_gen);
+                print!  ("[+] AVG FIT:     {:2.6}    ", avg_pop_fit);
+                println!("[+] AVG AB_FIT:  {:2.6}", avg_pop_abfit);
+                print!  ("[+] MIN FIT:     {:2.6}    ", min_fit);
+                println!("[+] MIN AB_FIT:  {:2.6}", min_abfit);
+                print!  ("[+] BEST FIT:    {:2.6}    ", champ.fitness
                                                                                                   .unwrap());
-                println!("[+] BEST AB_FIT: {:1.6}  ", champ.ab_fitness
+                println!("[+] BEST AB_FIT: {:2.6}  ", champ.ab_fitness
                                                                                                   .unwrap());
                 print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
-                println!("[+] IMPROVEMENT:   {:1.6}  ", improvement_ratio.unwrap_or(0.0));
-                print!  ("[+] STRAY RATE:    {:1.6}  ",pop_read.avg_stray_addr_rate());
-                println!("[+] RATIO RUN:     {:1.6}  ",pop_read.avg_ratio_run());
-                println!("[+] VISIT DIVERS:  {:1.6}  ",pop_read.avg_visitation_diversity());
 
-                println!("[+] EDI RATE:      {:1.6}  ",pop_read.avg_edi_rate());
+                println!  ("[+] STRAY RATE:    {:2.6}  ",pop_read.avg_stray_addr_rate());
+                print!("[+] XOVER DELTA:   {:2.6}  ", pop_read.avg_crossover_delta());
+                println!("[+] MUT. DELTA:    {:2.6}  ", pop_read.avg_mutation_delta());
+                print!("[+] RATIO RUN:     {:2.6}  ",pop_read.avg_ratio_run());
+                println!("[+] VISIT DIVERS:  {:2.6}  ",pop_read.avg_visitation_diversity());
+
+                println!("[+] EDI RATE:      {:2.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));
                 println!("[+] MEAN DIFFICULTIES BY CLASS:");
-                
                 let mut c = 0;
                 for d in pop_local.read()
                                   .expect("Failed to open read lock on pop_local")
                                   .params
                                   .io_targets
                                   .class_mean_difficulties() {
-                    println!("    {} -> {:1.6}", c, d);
+                    println!("    {} -> {:2.6}", c, d);
                     c += 1;
                 }
                 
                 println!("[+] STDDEV DIFFICULTIES BY CLASS:");
                 let mut c = 0;
                 for d in class_stddev_difficulties {
-                    println!("    {} -> {:1.6}", c, d);
+                    println!("    {} -> {:2.6}", c, d);
                     c += 1;
                 }
                 
@@ -619,8 +647,14 @@ fn main() {
                 print!("\r[{}]                 ",iteration);
                 io::stdout().flush().ok().expect("Could not flush stdout");
             }
-            println!("{}",comment);
-            println!("------------------------------------------------");
+            println!("TASK: {:?}\n{} ({}) on {} at {}\nREM: {}",
+                     &challenge,
+                     Red.bold().paint(label.clone()), 
+                     &params.population_size,
+                     &params.binary_path,
+                     Local::now().format("%H:%M:%S"), 
+                     comment);
+            //println!("------------------------------------------------");
         }); // END POOL SCOPE
         i += 1;
     } // END OF MAIN LOOP
@@ -657,8 +691,8 @@ fn main() {
              
 
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
-    println!("[*] Absolute fitness of champion on testing run: {:1.6}",
+    println!("[*] Absolute fitness of champion on testing run: {:2.6}",
                       testing_res.ab_fitness);
-    println!("[*] Crash on testing run: {}", testing_res.crashes);
+    println!("[*] Crash on testing run: {:?}", testing_res.crashes);
     println!("[*] Logged at {}", pop_local.read().unwrap().params.csv_path);
 }
