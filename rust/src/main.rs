@@ -89,6 +89,7 @@ fn main() {
     let mut opts = Options::new();
     opts.parsing_style(ParsingStyle::FloatingFrees);
 
+    opts.optflag("B", "use_buckets", "use register buckets for classification task, instead of bitmasks");
     opts.optflag("E", "use_edis", "use explicitly defined introns (set rate with -e)");
     opts.optflag("K", "kafka", "use an arbitrary and inscrutable fitness function");
     opts.optflag("O", "random_override", "override random seeds sent to game with fresh seed from ROPER's rng");
@@ -125,6 +126,8 @@ fn main() {
     opts.optopt("s", "sample_ratio", "set ratio of samples to evaluate on per training cycle", "<float > 0.0 and <= 1.0>");
     opts.optopt("t", "threads", "set number of threads", "<positive integer>");
     opts.optopt("v", "ttl", "set initial clump TTL", "<positive integer>");
+    opts.optopt("w", "visitation_diversity_weight", "set weight for visitation diversity wrt population", "<float between 0.0 and 1.0>");
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m },
         Err(f) => { panic!(f.to_string()) },
@@ -136,7 +139,14 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
+    
+    let use_buckets = matches.opt_present("B");
 
+    let visitation_diversity_weight = match matches.opt_str("w") {
+        None => 0.2,
+        Some(n) => n.parse::<f32>().expect("failed to parse visit visitation_diversity_weight")
+    };
+    
     let homologous_crossover = matches.opt_present("H");
 
     let ttl = match matches.opt_str("v") {
@@ -290,6 +300,39 @@ fn main() {
     // ugly kludge here
   
     let mut params : Params = Params::new(&label);
+    params.use_buckets  = use_buckets;
+    // params.data = vec![rodata_data.clone()];
+    // params.data_addrs   = vec![rodata_addr as u32];
+    params.comment      = comment.clone();
+    params.t_size       = t_size;
+    params.fitness_sharing = fitness_sharing;
+    params.fit_goal     = goal;
+    params.migration    = migration;
+    params.verbose      = verbose;
+    params.threads      = threads;
+    params.num_demes    = num_demes;
+    params.use_viscosity = use_viscosity;
+    params.crossover_rate = crossover_rate;
+    params.sample_ratio = sample_ratio;
+    params.set_log_dir(&log_dir);
+    params.population_size = popsize;
+    params.host_port = host_port; 
+    params.homologous_crossover = homologous_crossover;
+    params.season_divisor = 1;
+    params.random_override = random_override;
+    params.set_init_difficulties();
+    params.use_edis = use_edis;
+    params.edi_toggle_rate = edi_toggle_rate;
+    params.initial_edi_rate = edirate;
+    params.crash_penalty = crash_penalty;
+    params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
+    params.stack_input_sampling = stack_input_sampling;
+    params.ttl = ttl;
+    params.visitation_diversity_weight = visitation_diversity_weight;
+    if !use_edis {
+        params.initial_edi_rate = 0.0;
+        params.edi_toggle_rate  = 0.0;
+    };
     let io_targets = match &challenge {
         &Challenge::Data(ref dp) => {
             let io = process_data2(&dp, num_attrs, num_classes, &mut params).shuffle();
@@ -336,6 +379,8 @@ fn main() {
     let (testing,training) = (io_targets.clone(), io_targets.clone()); //io_targets.split_at(io_targets.len()/3);
     println!(">> testing.len() = {}; training.len() = {}", testing.len(), training.len());
 
+    params.io_targets   = training;
+    params.test_targets = testing;
     //let debug_samples = training.clone();
     /*
     let sample1 = "tomato-RT-AC3200-ARM-132-AIO-httpd";
@@ -355,6 +400,7 @@ fn main() {
         Some(p) => p,
     };
   
+    params.binary_path = elf_path.clone();
     
     let (secs,segs) = get_elf_addr_data(&elf_path);
     println!("****************** ELF {} **********************", elf_path);
@@ -380,44 +426,11 @@ fn main() {
      * I don't think they currently are. 
      */
     let constants = suggest_constants(&io_targets);
+    
+    params.constants    = constants.iter().map(|&x| x as u32).collect();
     params.code = text_data.clone();
     params.code_addr = text_addr as u32;
-    // params.data = vec![rodata_data.clone()];
-    // params.data_addrs   = vec![rodata_addr as u32];
-    params.comment      = comment.clone();
-    params.constants    = constants.iter().map(|&x| x as u32).collect();
-    params.t_size       = t_size;
-    params.fitness_sharing = fitness_sharing;
-    params.io_targets   = training;
-    params.test_targets = testing;
-    params.fit_goal     = goal;
-    params.migration    = migration;
-    params.verbose      = verbose;
-    params.threads      = threads;
-    params.num_demes    = num_demes;
-    params.use_viscosity = use_viscosity;
-    params.crossover_rate = crossover_rate;
-    params.sample_ratio = sample_ratio;
-    params.set_log_dir(&log_dir);
-    params.population_size = popsize;
-    params.binary_path = elf_path.clone();
-    params.host_port = host_port; 
-    params.homologous_crossover = homologous_crossover;
-    params.season_divisor = 1;
-    params.random_override = random_override;
-    params.set_init_difficulties();
-    params.use_edis = use_edis;
-    params.edi_toggle_rate = edi_toggle_rate;
-    params.initial_edi_rate = edirate;
-    params.crash_penalty = crash_penalty;
-    params.use_dynamic_crash_penalty = use_dynamic_crash_penalty;
-    params.stack_input_sampling = stack_input_sampling;
-    params.ttl = ttl;
     
-    if !use_edis {
-        params.initial_edi_rate = 0.0;
-        params.edi_toggle_rate  = 0.0;
-    };
 
     //params.io_targets.num_classes = params.outregs.len();
     // add string search function
@@ -458,7 +471,9 @@ fn main() {
     /***************************
       * The Main Evolution Loop *
       ***************************/
-    let mut heatmap : HashMap<u32,usize> = HashMap::new();
+    let heatmap = HashMap::new();
+    let heatmap = RwLock::new(heatmap);
+    let heatmap : Arc<RwLock<HashMap<u32,usize>>> = Arc::new(heatmap);
     let mut all_heatmaps : Vec<HashMap<u32,usize>> = Vec::new();
     while i < max_iterations
         && (champion == None 
@@ -482,18 +497,22 @@ fn main() {
             for e in machinery.cluster.iter_mut() {
                 let tx = tx.clone();
                 let p = pop_arc.clone();
+                let hm = heatmap.clone();
                 let verbose = false; //vdeme == 0 && season > 1 && iteration % show_every == show_every % threads;
                 scope.execute(move || {
                     let t = tournament(&p.read()
-                                         .expect("Failed to open read lock on tournament"),
+                                         .expect("Failed to open read lock on population for tournament"),
                                         e,
                                         Batch::TRAINING,
                                         vdeme,
-                                        verbose);
+                                        verbose,
+                                        &hm.read()
+                                           .expect("Failed to open read lock on heatmap for tournament"));
                     tx.send(t).expect("Failed to sent tournament result down channel");
                 });
                 vdeme = (vdeme + 1) % num_demes;
             }
+            let hm = heatmap.clone();
             let mut trs : Vec<TournamentResult> = rx.iter()
                                                     .take(n_jobs)
                                                     .collect();
@@ -513,7 +532,7 @@ fn main() {
                     let (updated, f_deltas) = patch_population(&tr,
                                                                mut_pop,
                                                                true,
-                                                               &mut heatmap);
+                                                               &mut hm.write().expect("failed to open write lock on heatmap for updating in patch_population"));
                     if updated != None {
                         champion = updated.clone();
                     };
@@ -535,11 +554,18 @@ fn main() {
                         println!("[*] Verbosely evaluating new champion:\n{}",
                                 champion.as_ref()
                                 .expect("Failed to unwrap champion"));
-                        evaluate_fitness(&mut (debug_machinery.cluster[0].unwrap_mut()),
-                                &champion.expect("Failed to unwrap champion"),
+                        evaluate_fitness(&mut (debug_machinery.cluster[0]
+                                                              .unwrap_mut()),
+                                         &champion.expect(
+                                             "Failed to unwrap champion"),
                                          &params,
                                          Batch::TESTING,
-                                         true);
+                                         true,
+                                         &hm.read()
+                                            .expect("failed to open read
+                                                    lock on heatmap for 
+                                                    debug run")
+                                            );
                     }
                     /* TODO: try commenting out the next line to hold crash penalty constant */
                     if mut_pop.params.use_dynamic_crash_penalty {
@@ -560,14 +586,14 @@ fn main() {
                                           season);
                     println!("--- DUMPING HEATMAP ---");
                     /* cumulative heatmap dump */
-                    dump_heatmap(&heatmap, &params.binary_path, &hm_path);
+                    dump_heatmap(&hm.read().unwrap(), &params.binary_path, &hm_path);
                     let out = Command::new(&format!("{}/visitplot.lisp", script_dir))
                                       .args(&["-H", &hm_path])
                                       .output()
                                       .expect("Failed to run visitplot.lisp on heatmap");
                     println!("> {:?}",out);
-                    all_heatmaps.push(heatmap.clone());
-                    heatmap = HashMap::new();
+                    //all_heatmaps.push(heatmap.clone());
+                    //heatmap = HashMap::new();
 
                 };
                 class_stddev_difficulties = mut_pop.params
@@ -602,25 +628,25 @@ fn main() {
                                                         .io_targets
                                                         .difficulty_profile();
                 println!("[*] ITERATION {}, SEASON {}", iteration, season);
-                print!  ("[+] CRASH RATE:  {:2.6}    ", crash_rate);
-                println!("[+] AVG GEN:     {:2.6}", avg_pop_gen);
-                print!  ("[+] AVG FIT:     {:2.6}    ", avg_pop_fit);
-                println!("[+] AVG AB_FIT:  {:2.6}", avg_pop_abfit);
-                print!  ("[+] MIN FIT:     {:2.6}    ", min_fit);
-                println!("[+] MIN AB_FIT:  {:2.6}", min_abfit);
-                print!  ("[+] BEST FIT:    {:2.6}    ", champ.fitness
+                print!  ("[+] CRASH RATE:  {:6.6}    ", crash_rate);
+                println!("[+] AVG GEN:     {:6.6}", avg_pop_gen);
+                print!  ("[+] AVG FIT:     {:6.6}    ", avg_pop_fit);
+                println!("[+] AVG AB_FIT:  {:6.6}", avg_pop_abfit);
+                print!  ("[+] MIN FIT:     {:6.6}    ", min_fit);
+                println!("[+] MIN AB_FIT:  {:6.6}", min_abfit);
+                print!  ("[+] BEST FIT:    {:6.6}    ", champ.fitness
                                                                                                   .unwrap());
-                println!("[+] BEST AB_FIT: {:2.6}  ", champ.ab_fitness
+                println!("[+] BEST AB_FIT: {:6.6}  ", champ.ab_fitness
                                                                                                   .unwrap());
                 print!  ("[+] AVG LEN:       {:3.5}  ", pop_read.avg_len());     
 
-                println!  ("[+] STRAY RATE:    {:2.6}  ",pop_read.avg_stray_addr_rate());
-                print!("[+] XOVER DELTA:   {:2.6}  ", pop_read.avg_crossover_delta());
-                println!("[+] MUT. DELTA:    {:2.6}  ", pop_read.avg_mutation_delta());
-                print!("[+] RATIO RUN:     {:2.6}  ",pop_read.avg_ratio_run());
-                println!("[+] VISIT DIVERS:  {:2.6}  ",pop_read.avg_visitation_diversity());
+                println!  ("[+] STRAY RATE:    {:6.6}  ",pop_read.avg_stray_addr_rate());
+                print!("[+] XOVER DELTA:   {:6.6}  ", pop_read.avg_crossover_delta());
+                println!("[+] MUT. DELTA:    {:6.6}  ", pop_read.avg_mutation_delta());
+                print!("[+] RATIO RUN:     {:6.6}  ",pop_read.avg_ratio_run());
+                println!("[+] VISIT DIVERS:  {:6.6}  ",pop_read.avg_visitation_diversity());
 
-                println!("[+] EDI RATE:      {:2.6}  ",pop_read.avg_edi_rate());
+                println!("[+] EDI RATE:      {:6.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));
@@ -631,14 +657,14 @@ fn main() {
                                   .params
                                   .io_targets
                                   .class_mean_difficulties() {
-                    println!("    {} -> {:2.6}", c, d);
+                    println!("    {} -> {:6.6}", c, d);
                     c += 1;
                 }
                 
                 println!("[+] STDDEV DIFFICULTIES BY CLASS:");
                 let mut c = 0;
                 for d in class_stddev_difficulties {
-                    println!("    {} -> {:2.6}", c, d);
+                    println!("    {} -> {:6.6}", c, d);
                     c += 1;
                 }
                 
@@ -670,11 +696,15 @@ fn main() {
     }
     let testing_res =
     {
-        let r = evaluate_fitness(&mut(debug_machinery.cluster[0].unwrap_mut()),
-                         &mut champion.as_mut().unwrap(),
-                         &pop_local.read().unwrap().params,
-                         Batch::TRAINING, // there's a bug right now causing the testing set to be empty. fix it. 
-                         true);
+        let r = evaluate_fitness(&mut(debug_machinery.cluster[0]
+                                                     .unwrap_mut()),
+                                 &mut champion.as_mut()
+                                              .unwrap(),
+                                 &pop_local.read()
+                                           .unwrap().params,
+                                 Batch::TRAINING, // FIXME Testing empty
+                                 true,
+                                 &HashMap::new());
     //champion.unwrap().dump("stdout", 
     //                       &params.binary_path, 
     //                       debug_machinery.cluster[0].unwrap(),
@@ -691,7 +721,7 @@ fn main() {
              
 
     println!("\n{}", pop_local.read().unwrap().best.clone().unwrap());
-    println!("[*] Absolute fitness of champion on testing run: {:2.6}",
+    println!("[*] Absolute fitness of champion on testing run: {:6.6}",
                       testing_res.ab_fitness);
     println!("[*] Crash on testing run: {:?}", testing_res.crashes);
     println!("[*] Logged at {}", pop_local.read().unwrap().params.csv_path);

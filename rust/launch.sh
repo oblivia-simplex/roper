@@ -50,7 +50,7 @@ case "$PROBLEM" in
         ;;
     iris)
         TASKFLAGS=$DATASTRING
-        GOAL=0.15
+        GOAL=0.00
         CLASSIFICATION=1
         add_flag --crossover 0.5 
         add_flag --crash_penalty 0.5
@@ -197,14 +197,14 @@ function run () {
   CMD="RUST_BACKTRACE=1 cargo run \
                              -- ${TASKFLAGS} \
                                 --binary $BINARY \
-                                --homo \
                                 --logs $PROJECT_ROOT/logs \
-                                --goal $GOAL \
                                 --sample_ratio 1.0 \
                                 --population $POPULATION \
                                 --threads $ROPER_THREADS \
                                 --demes 4 \
                                 --migration 0.05 \
+                                -E \
+                                --edi_toggle_rate 0.3 \
                                 --init_length 32 \
                                 --label $LABEL \
                                 $EXTRAFLAGS"
@@ -293,6 +293,7 @@ plot "$CSVFILE" $(popplotline $AVG_FIT) , \
   "" $(popplotline $STRAY_RATE), \
   "" $(popplotline $RATIO_RUN), \
   "" $(popplotline $XOVER_DELTA), \
+  "" $(popplotline $VISIT_DIVERS), \
   "" $(popplotline $TTL_RATIO)
 EOF
 
@@ -329,7 +330,10 @@ EOF
 echo "[+] logging to $CSVFILE"
 
 function plot () {
-    sleep 30 && gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt 
+    while ! [ -f $CSVFILE ]; do
+        sleep 1
+    done
+    gnuplot $PLOTFILE 2>> /tmp/gnuplot-err.txt 
 }
 
 plot &

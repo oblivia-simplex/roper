@@ -102,6 +102,7 @@ pub struct Params {
         pub ttl              : usize,
         pub use_edis         : bool,
         pub use_viscosity    : bool,
+        pub use_buckets      : bool,
         pub use_dynamic_crash_penalty : bool,
         pub verbose          : bool,
         pub visitation_diversity_weight : f32,
@@ -145,6 +146,9 @@ impl Display for Params {
             s.push_str(&format!("{} threads: {}\n", rem, self.threads));
             s.push_str(&format!("{} use_dynamic_crash_penalty: {:?}\n", rem, self.use_dynamic_crash_penalty));
             s.push_str(&format!("{} use_viscosity: {}\n", rem, self.use_viscosity));
+            s.push_str(&format!("{} reward_visitation_diversity: {}\n", rem, self.reward_visitation_diversity));
+            s.push_str(&format!("{} visitation_diversity_weight: {}\n", rem, self.visitation_diversity_weight));
+            s.push_str(&format!("{} use_buckets: {}\n", rem, self.use_buckets));
             write!(f, "{}",s)
         }
             
@@ -203,6 +207,7 @@ impl Params {
                 timestamp:        timestamp.clone(),
                 training_ht:      HashMap::new(),
                 ttl:              16,
+                use_buckets:      false,
                 use_dynamic_crash_penalty: false,
                 use_edis:         false,
                 use_viscosity:    false,
@@ -1256,7 +1261,9 @@ impl Population {
                         .map(|ref x| avg_ttl(x))
                         .map(|x| (x as f32) / self.params.ttl as f32)
                         .collect::<Vec<f32>>();
-            mean(&x)
+            let res = mean(&x);
+            println!("avg_ttl_ratio ---> {}", res);
+            res
         }
 
         pub fn avg_ratio_run (&self) -> f32 {
@@ -1543,7 +1550,7 @@ impl Problem {
                 },
                 &Target::Vote(ref cls) => {
                     /** Let's try this with bitmasks on R0, instead. */
-                    let class_guess = cls.classify(registers[0]);
+                    let class_guess = cls.classify(registers[0], registers, outregs);
                     //println!("CLASSIFIED: R0 = {:032b}, so class_guess = {} ({})", registers[0], class_guess, if class_guess == cls.class { "PASS" } else if class_guess == cls.num_classes { "AUTOFAIL" } else {"FAIL"});
 
                     /*
@@ -1750,16 +1757,31 @@ impl Classification {
             predifficulty: 1.0,
         }
     }
-    fn classify (&self, reg: u32) -> usize {
+    fn classify (&self, reg: u32, registers: &Vec<u32>, outregs: &Vec<usize>) -> usize {
         if reg == 0 {
             /* no decision made. return automatic fail */
             self.num_classes /* will register as incorrect */
         } else {
-            class_mask_classify(reg, &self.class_masks)
+            if self.class_masks.len() > 0 {
+                class_mask_classify(reg, &self.class_masks)
+            } else {
+                let mut output : Vec<i32> = Vec::new();
+                for idx in outregs {
+                    output.push(registers[*idx] as i32);
+                }
+                let tie = output.iter()
+                                .filter(|&x| *x == output[0])
+                                .count() == output.len();
+                //if tie {
+                //  println!("Equal bins. no winner: {:?}", output);
+                // }
+                let (class_guess, val) = output.iter()
+                                               .enumerate()
+                                               .max_by_key(|&(_,item)| item)
+                                               .unwrap(); // output not empty
+                class_guess
+            }
         }
-    }
-    fn classify_and_check (&self, reg: u32) -> bool {
-        self.classify(reg) == self.class
     }
 }
 

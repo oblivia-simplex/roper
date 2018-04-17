@@ -52,7 +52,9 @@ fn calc_link_fit (clump: &Clump, c_fit: f32) -> Option<f32>{
   * 2. offset bloat (or encourage bloat! we'll see...)
   */
 
-fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
+fn mutate_addr (clump: &mut Clump, 
+                rng: &mut ThreadRng, 
+                ooze: &Vec<Clump>) {
         if clump.ret_addr < clump.words[0] {
             println!("[WARNING] clump.ret_addr = {:08x}\nclump.words[0] = {:08x}",
                               clump.ret_addr, clump.words[0]);
@@ -65,17 +67,30 @@ fn mutate_addr (clump: &mut Clump, rng: &mut ThreadRng) {
         } else {
             2
         };
-        if d > inst_size || rng.gen::<bool>() {
-            clump.words[0] += inst_size;
-        } else if d < (inst_size * 8) {
-            clump.words[0] -= inst_size;
+        if rng.gen::<bool>() {
+            let oldret = clump.ret_addr;
+            let words = clump.words.clone();
+            let mut new_clump = ooze[rng.gen::<usize>() % ooze.len()].clone();
+            let mut i = 0;
+            while (new_clump.words.len() as i32) < new_clump.sp_delta {
+               new_clump.words.push(words[i % words.len()]); 
+            }
+            println!("--- replacing clump that had ret_addr {:08x} with clump having ret_addr {:08x}", oldret, new_clump.ret_addr);
+            *clump = new_clump
+        } else {
+            if d > inst_size || rng.gen::<bool>() {
+                clump.words[0] += inst_size;
+            } else if d < (inst_size * 8) {
+                clump.words[0] -= inst_size;
+            }
         }
 }
 
 fn mutate(chain: &mut Chain, 
           params: &Params, 
           uc: &unicorn::CpuARM, 
-          rng: &mut ThreadRng) {
+          rng: &mut ThreadRng,
+          ooze: &Vec<Clump>) {
         /* mutations will only affect the immediate part of the clump */
         /* we'll let shufflefuck handle the rest. */
         /* Add permutation operation, shuffling immeds */
@@ -104,7 +119,7 @@ fn mutate(chain: &mut Chain,
         let mut_kind : u8 = rng.gen::<u8>() % 6;
         match mut_kind {
             0 => clump.words[idx] = mang(clump.words[idx].clone(), rng),
-            1 => mutate_addr(&mut clump, rng),
+            1 => mutate_addr(&mut clump, rng, &ooze),
             2 => match deref(&(uc.emu()), clump.words[idx].clone()) {
                 Some(x) => { 
                    // println!("==> deref mutation: {:x} -> {:x}", clump.words[idx], x);
@@ -147,13 +162,14 @@ fn mutate_edi (chain: &mut Chain, params: &Params, rng: &mut ThreadRng) {
 fn clone_and_mutate (parents: &Vec<&Chain>,
                      params:  &Params,
                      uc:      &unicorn::CpuARM,
-                     rng:     &mut ThreadRng) -> Vec<Chain> {
+                     rng:     &mut ThreadRng,
+                     ooze:    &Vec<Clump>) -> Vec<Chain> {
         let mut brood : Vec<Chain> = Vec::new();
         let n = params.brood_size;
         for i in 0..n {
             let spawnclumps = parents[i % 2].clumps.clone();
             let mut spawn = Chain::new(spawnclumps);
-            mutate(&mut spawn, &params, uc, rng);
+            mutate(&mut spawn, &params, uc, rng, ooze);
             if params.use_edis { mutate_edi(&mut spawn, &params, rng); };
             /* remember: headless chicken parents won't have a fitness,
              * but it makes sense to treat their children as if born
@@ -183,7 +199,8 @@ fn mate (parents: &Vec<&Chain>,
             clone_and_mutate(parents,
                              params,
                              uc,
-                             rng)
+                             rng,
+                             ooze)
         };
         cull_brood(&mut brood, 2, uc, &params);
         brood
@@ -236,13 +253,18 @@ fn eval_case (uc: &mut CpuARM,
                                         &result.registers,
                                         &result.reg_deref, 
                                         uc);
-    let counter = result.counter;
+    let counter = min(chain.effective_size(), result.counter);
     let crash = result.error != None || result.isnull();
     
     /* instead, let's make crashes a vector of addresses where the crashes happened */
+    /* FIXME double check the math here. am i blaming good clumps? */
+    /* the counter := 1 after the first clump returns (if not stray)
+     * so if counter == 1 at crash, the second clump (clumps[1]) is
+     * likely the culprit for the crash (but not necessarily). 
+     */
     let mut crashes = Vec::new();
     if crash {
-        crashes.push(min(chain.size()-1, counter + 1));
+        crashes.push(min(chain.size()-1, counter)); /* formerly: counter + 1*/
     }
 
     EvalCaseResult {
@@ -267,7 +289,8 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                          chain: &Chain, 
                          params: &Params,
                          batch: Batch,
-                         verbose: bool)
+                         verbose: bool,
+                         heatmap: &HashMap<u32,usize>)
                          -> EvalResult //(f32,Option<usize>)
 {
         /* Empty chains can be discarded immediately */
@@ -360,26 +383,54 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
         let ab_fitness = f32::min(1.0, ab_fitness);
         let mut fitness = f32::min(1.0, fitness);
         let mut divers = 0.0; 
-        if  io_targets.len() > 1 && params.reward_visitation_diversity {
+        let ratio_run = f32::min(1.0, mean(&ratio_run_vec));
+        if  params.reward_visitation_diversity 
+            && heatmap.len() > 0 && params.visitation_diversity_weight > 0.0 {
+            let start = Instant::now();
             let mut visits : Vec<Vec<u32>> = visited_map.values()
                                                         .map(|x| x.clone())
                                                         .collect();
             let total : f32 = visits.len() as f32;
-            visits.sort();
-            visits.dedup();
-            let uniq  : f32 = visits.len() as f32;
-            divers = uniq / total;
-            let nondivers = 1.0 - divers;
-            let adjusted = fitness * nondivers; // because lower = better
-            let w = params.visitation_diversity_weight;
-            fitness = (w * adjusted) + ((1.0 - w) * fitness);
+            /** compare with heatmap **/
+            let max_vis = max(1, *(heatmap.values()
+                                          .max()
+                                          .unwrap()));
+            
+            let mut weighted_hm = HashMap::new();
+            for (k,v) in heatmap {
+                   weighted_hm.insert(*k,(*v as f32)/(max_vis as f32));
+            }
+            //println!("max_vis = {}, weighted_hm:\n{:?}", max_vis,weighted_hm);
+            let mut address_novelty_factor = 
+                visits.iter()
+                      .map(|vec| vec.iter()
+                                    .map(|a| weighted_hm.get(a).unwrap_or(&0.0))
+                                    .sum::<f32>() / vec.len() as f32)
+                      .sum::<f32>() / visits.len() as f32;
+            //let rr_address_novelty_factor = address_novelty_factor * (1.0 - ratio_run);
+            let elapsed = start.elapsed();
+            println!("--- address_novelty_factor of {:8.8} calculated in {} ns", address_novelty_factor, elapsed.subsec_nanos());
+            assert!(address_novelty_factor <= 1.0);
+            let vw = params.visitation_diversity_weight;
+            let oldfit = fitness;
+            fitness = (fitness * (1.0 - vw)) + (address_novelty_factor * vw);
+            divers = address_novelty_factor;
+            //println!("--- vis.divers.: fitness {} -> {}", oldfit, fitness);
+            // /** now look for inter-problem diversity of control flow */
+            //visits.sort();
+            //visits.dedup();
+            //let uniq  : f32 = visits.len() as f32;
+            //divers = uniq / total;
+            //let nondivers = 1.0 - divers;
+            //let adjusted = fitness * nondivers; // because lower = better
+            //let w = params.visitation_diversity_weight;
+            //fitness = (w * adjusted) + ((1.0 - w) * fitness);
             /* oh ffs, this reduces fitness to zero when io_targets.len() == 1 !! */
         }
         let fitness = fitness;
         assert!(0.0 <= fitness && fitness <= 1.0);
         assert!(0.0 <= ab_fitness && ab_fitness <= 1.0);
         
-        let ratio_run = mean(&ratio_run_vec);
         all_crashes.dedup();
         EvalResult {
             fitness      : fitness,
@@ -538,7 +589,8 @@ pub fn tournament (population: &Population,
                    engine: &mut Engine,
                    batch: Batch,
                    vdeme: usize,
-                   verbose: bool)
+                   verbose: bool,
+                   heatmap: &RwLockReadGuard<HashMap<u32,usize>>)
                    -> TournamentResult 
 {
         let season = population.season;
@@ -581,7 +633,8 @@ pub fn tournament (population: &Population,
                                        &specimen,
                                        &population.params,
                                        batch,
-                                       verbose); // verbose
+                                       verbose,
+                                       &heatmap); // verbose
             let ratio_run : f32 = res.mean_ratio_run;
             let crash   = res.crashes.clone();
             //println!("==> ratio_run = {:1.6}, crash? {:?}",ratio_run, crash);
@@ -724,9 +777,9 @@ fn select_mates(specimens: &mut Vec<(Chain,usize)>,
 }
 
 fn cull_brood (brood: &mut Vec<Chain>, 
-                              n: usize,
-                              uc: &mut CpuARM,
-                              params: &Params) {
+               n: usize,
+               uc: &mut CpuARM,
+               params: &Params) {
         /* Sort by fitness - most to least */
         let mut i = 0;
         if brood.len() <= n { return; };
@@ -741,7 +794,8 @@ fn cull_brood (brood: &mut Vec<Chain>,
                              &spawn, 
                              &params, 
                              Batch::TRAINING,
-                             false); 
+                             false,
+                             &HashMap::new()); 
         }
         brood.sort();
         /* Now eliminate the least fit */
@@ -855,7 +909,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 let mut c = mother.clumps[m].clone();
                 c.link_age += 1;
                 if mother.crashes.contains(&m) { c.ttl /= 2 };
-                if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
+                //if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 if c.ttl == 0 { /* FIXME may be causing program to hang. */
                     /* make a random clump and push it */
                     println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
@@ -880,7 +934,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
             if !homo && mother.clumps[m_i].viscosity >= VISC_DROP_THRESH {
                 let mut c = mother.clumps[m_i].clone();
                 if mother.crashes.contains(&m_i) { c.ttl /= 2 };
-                if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
+                //if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 if c.ttl > 0 {
                     child_clumps.push(mother.clumps[m_i].clone());
                 };
