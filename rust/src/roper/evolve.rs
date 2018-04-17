@@ -895,6 +895,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 }
             };
 
+
             /*
               * println!("==> m viscosity at splice point: {}",
                               mother[m_i].viscosity);
@@ -939,6 +940,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                     child_clumps.push(mother.clumps[m_i].clone());
                 };
                 //println!("== pushed maternal clump {} ret {:08x} to child index {}", m_i, child_clumps[i].ret_addr, i);
+
                 i += 1;
             } 
             if i > 0 && child_clumps.len() > i-1 { 
@@ -964,6 +966,7 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                     child_clumps.push(c);
                 }
                 //println!("== pushed paternal clump {} ret {:08x} to child index {}", f, child_clumps[i].ret_addr, i);
+
                 i += 1;
                 /* adjust link_fit later, obviously */
             }
