@@ -78,11 +78,15 @@ fi
 POPNAME=$1
 set_population_vars
 
+NEW=0
+
 while :; do 
+    NEW=0
     for champ in `ls $POPNAME_*champion*.txt`; do
         if (grep -q $champ <<< "$PROCESSED_SPECIMENS"); then
             continue
         fi
+        NEW=1
         echo "[-] setting specimen vars for $champ"
         set_specimen_vars $champ
         scrape_data $champ
@@ -92,7 +96,7 @@ while :; do
         add_to_plotlist $OUTFILE
         echo
     done
-    [ -n "$PLOTLIST" ] && make_montage
+    [ -n "$PLOTLIST" ] && (( $NEW )) && make_montage
     echo "waiting for new champions"
     sleep 5
 done
