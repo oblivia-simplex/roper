@@ -57,6 +57,8 @@ case "$PROBLEM" in
         add_flag --fitness_sharing
         add_flag --dynamic_crash_penalty
         add_flag --stack_input_sampling 0.2
+        add_flag --class_masks "98694840,2282b112,514062d"
+        # those class masks seem to be a lucky choice. 
         ;;
     2blobs)
         TASKFLAGS="-d ${PROJECT_ROOT}/data/2_simple_blobs.csv -N 2 -Z 2"
@@ -201,7 +203,8 @@ function run () {
                                 --sample_ratio 1.0 \
                                 --population $POPULATION \
                                 --threads $ROPER_THREADS \
-                                --demes 4 \
+                                --demes $ROPER_THREADS \
+                                --ttl 1000000 \
                                 --migration 0.05 \
                                 -E \
                                 --edi_toggle_rate 0.3 \

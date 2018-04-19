@@ -105,6 +105,7 @@ fn main() {
     opts.optopt("D", "demes", "set number of subpopulations", "<positive integer>");
     opts.optopt("I", "stack_input_sampling", "set proportion of stack slots used to carry input data", "<float>");
     opts.optopt("L", "label", "set a label for the trial", "<string>");
+    opts.optopt("M", "class_masks", "comma-separated list of hex integers to use as classification bitmasks", "<string>");
     opts.optopt("N", "num_attrs", "number of attributes in dataset", "<integer>");
     opts.optopt("X", "comment", "a comment to write into the logs and repeat on the screen", "<string>");
     opts.optopt("Z", "num_classes", "number of classes in dataset", "<integer>");
@@ -149,8 +150,18 @@ fn main() {
     
     let homologous_crossover = matches.opt_present("H");
 
+    let class_masks : Vec<(u32,usize)> = match matches.opt_str("M") {
+        None => Vec::new(),
+        Some(s) => s.split(",")
+                    .map(|x| u32::from_str_radix(x, 16)
+                                 .expect("Failed to parse class_mask"))
+                    .enumerate()
+                    .map(|(a,b)| (b,a))
+                    .collect(),
+    };
+
     let ttl = match matches.opt_str("v") {
-        None => 16,
+        None => 65536,
         Some(n) => n.parse::<usize>().expect("Failed to parse ttl"),
     };
 

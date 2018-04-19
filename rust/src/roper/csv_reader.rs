@@ -9,12 +9,26 @@ use roper::phylostructs::*;
 pub fn process_data2 (path: &str, 
                       num_attrs: usize,
                       num_classes: usize,
-                      params: &mut Params) 
+                      params: &mut Params)
                       -> IoTargets {
         let file = File::open(path).unwrap();
         let rdr = BufReader::new(file);
-        let class_masks = if params.use_buckets { Vec::new() } else {class_masks_randomized(num_classes)};
-        params.class_masks = class_masks.clone();
+        let class_masks = if params.use_buckets { 
+            Vec::new() 
+        } else if params.class_masks.len() > 0 {
+            let c = params.class_masks.clone();
+            let sum_check = c.iter()
+                             .fold(0u32, |a,b| (a | b.0));
+            println!("class_mask sum: {:032b}", sum_check);
+            println!("ones: {}", sum_check.count_ones());
+            println!("should be: {}", (32 % c.len()));
+            assert_eq!(sum_check.count_ones() as usize, 32 % c.len());
+            c
+        } else {
+            let c = class_masks_randomized(num_classes);
+            params.class_masks = c.clone();
+            c
+        };
         let mut ids : Vec<String> = Vec::new();
         let mut io_targets : IoTargets = IoTargets::new(TargetKind::Classification);
         for line in rdr.lines() {
