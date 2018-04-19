@@ -5,6 +5,16 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+
+OUTFILE=""
+SPECIMEN=""
+IRISDATA=""
+POPNAME=""
+POPDIR=""
+ITERATION=""
+PROCESSED_SPECIMENS=""
+PLOTLIST=""
+
 function make_gnuplot_script () {
     gp_tmp=$(mktemp)
     cat ~/ROPER/scripts/iris_template.gnuplot \
@@ -25,13 +35,11 @@ function scrape_data () {
     awk -f ~/ROPER/scripts/class_scraper.awk $1 > $IRISDATA
 }
 
-OUTFILE=""
-SPECIMEN=""
-IRISDATA=""
-POPNAME=""
-POPDIR=""
-ITERATION=""
-PROCESSED_SPECIMENS=""
+function make_montage() {
+    echo "[+] Making montage of $PLOTLIST"
+    rm -f ${POPNAME}_iris_montage.pdf
+    montage -geometry +1+1 ~/ROPER/scripts/iris_plot.pdf $PLOTLIST ${POPNAME}_iris_montage.pdf
+}
 
 function set_population_vars () {
     POPDIR=$(echo ~/ROPER/logs/*/*/*/$POPNAME)
@@ -59,6 +67,10 @@ function showvars () {
     echo "IRISDATA = $IRISDATA"
 }
 
+function add_to_plotlist () {
+    PLOTLIST=`echo "$PLOTLIST $1" | sort -t_ -k2 -n | uniq`
+}
+
 if [ -z "$1" ]; then
     echo "Usage $0 <population name>"
     exit 1
@@ -77,10 +89,12 @@ while :; do
         showvars
         make_gnuplot_script
         PROCESSED_SPECIMENS="$PROCESSED_SPECIMENS $champ"
+        add_to_plotlist $OUTFILE
         echo
     done
-sleep 5
-echo "waiting for new champions"
+    [ -n "$PLOTLIST" ] && make_montage
+    echo "waiting for new champions"
+    sleep 5
 done
 exit
 
