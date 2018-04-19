@@ -27,6 +27,7 @@ function make_gnuplot_script () {
         echo "[X] Gnuplot failed. See $gp_tmp for plot script."
         exit 1
     fi
+    rm $IRISDATA
     rm $gp_tmp
 }
 

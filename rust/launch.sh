@@ -139,7 +139,7 @@ OUTFILE="${LOGDIR}/${LABEL}.out"
 ERRORFILE="${LOGDIR}/${LABEL}.err"
 PLOTFILE=${LOGDIR}/${LABEL}.gnuplot
 CSVFILE=${LOGDIR}/${LABEL}.csv
-GITNOTE=${LOGDIR}/git_note.log
+GITNOTE=${LOGDIR}/git_note.txt
 git log | head -n6 > $GITNOTE
 
 

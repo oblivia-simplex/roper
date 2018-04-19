@@ -913,15 +913,15 @@ fn shufflefuck (parents:    &Vec<&Chain>,
                 //if let Some(n) = c.ttl.checked_sub(1) { c.ttl = n };
                 if c.ttl == 0 { /* FIXME may be causing program to hang. */
                     /* make a random clump and push it */
-                    println!("!!! TTL expired on clump with ret {:08x}; generating new clump !!!", c.ret_addr);
-                    let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
-                    while (c_.words.len() as i32) < c_.sp_delta {
-                        c_.push(c[i as usize % c.size()])
-                    }
-                    assert!(saturated(&c_));
-                    c_.ttl = params.ttl;
-                    println!("new clump:\n{}",c_);
-                    child_clumps.push(c_);
+                    println!("!!! TTL expired on clump:\n{}",&c);
+                    //let mut c_ = ooze[rng.gen::<usize>() % ooze.len()].clone();
+                    //while (c_.words.len() as i32) < c_.sp_delta {
+                    //    c_.push(c[i as usize % c.size()])
+                    //}
+                    //assert!(saturated(&c_));
+                    //c_.ttl = params.ttl;
+                    //println!("new clump:\n{}",c_);
+                    //child_clumps.push(c_);
 
                 } else {
                     child_clumps.push(c);
