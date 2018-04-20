@@ -813,6 +813,13 @@ impl Chain {
             None
         }
         
+        pub fn calc_combined_fitness_delta (&self) -> Option<f32> {
+          if let Some((t,d)) = self.calc_fitness_delta() {
+            Some(d)
+          } else {
+            None
+          }
+        }
 
         pub fn stray_addr_rate (&self) -> f32 {
             // later do this nicely, with a binary search tree or smth
@@ -1299,6 +1306,17 @@ impl Population {
             if cdeltas.len() == 0 { 0.0} else { mean(&cdeltas) }
         }
 
+        pub fn avg_fitness_delta (&self) -> f32 {
+            let deltas = self.deme
+                              .iter()
+                              .map(|x| x.calc_combined_fitness_delta())
+                              .filter(|&x| x != None)
+                              .map(|x| x.unwrap())
+                              .collect::<Vec<f32>>();
+            if deltas.len() == 0 { 0.0} else { mean(&deltas) }
+        
+        }
+        
         pub fn avg_mutation_delta (&self) -> f32 {
             let mdeltas = self.deme
                               .iter()

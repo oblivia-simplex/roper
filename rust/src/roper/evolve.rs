@@ -409,7 +409,7 @@ pub fn evaluate_fitness (uc: &mut CpuARM,
                       .sum::<f32>() / visits.len() as f32;
             //let rr_address_novelty_factor = address_novelty_factor * (1.0 - ratio_run);
             let elapsed = start.elapsed();
-            println!("--- address_novelty_factor of {:8.8} calculated in {} ns", address_novelty_factor, elapsed.subsec_nanos());
+            //println!("--- address_novelty_factor of {:8.8} calculated in {} ns", address_novelty_factor, elapsed.subsec_nanos());
             assert!(address_novelty_factor <= 1.0);
             let vw = params.visitation_diversity_weight;
             let oldfit = fitness;

@@ -538,6 +538,21 @@ fn main() {
                                                 .expect(
                                     "Failed to open write lock on population");
                 iteration = mut_pop.iteration.clone();
+                /* try adjusting the mutation/crossover rate in response 
+                 * to deltas */
+                let r = mut_pop.params.crossover_rate;
+                /* if the fit delta is negative, which is good, then
+                 * we want more crossover and less mutation. If it's 
+                 * possible, explore the space more aggressively with
+                 * more mutation.
+                 */
+                /* let's use an activation function */
+                let delta = mut_pop.avg_fitness_delta();
+                fn sigmoid (x: f32) -> f32 {
+                  1.0 - (1.0 + (-1000.0 * x).exp()).powf(-1.0)
+                }
+                mut_pop.params.crossover_rate = sigmoid(delta);
+
                 for tr in trs {
                     patch_io_targets(&tr, &mut mut_pop.params, iteration);
                     let (updated, f_deltas) = patch_population(&tr,
@@ -659,6 +674,7 @@ fn main() {
 
                 println!("[+] EDI RATE:      {:6.6}  ",pop_read.avg_edi_rate());
                 //println!("[+] SEASONS ELAPSED: {}", season);
+                println!("[+] CROSSOVER v MUT RATE: {:6.6}", pop_read.params.crossover_rate);
                 println!("[+] STANDARD DEVIATION OF DIFFICULTY: {}",  
                                   standard_deviation(&dprof));
                 println!("[+] MEAN DIFFICULTIES BY CLASS:");
