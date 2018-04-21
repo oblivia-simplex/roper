@@ -204,7 +204,6 @@ function run () {
                                 --population $POPULATION \
                                 --threads $ROPER_THREADS \
                                 --demes $ROPER_THREADS \
-                                --ttl 1000000 \
                                 --migration 0.05 \
                                 -E \
                                 --edi_toggle_rate 0.3 \
