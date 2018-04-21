@@ -349,8 +349,8 @@ version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "roper-redux"
-version = "0.1.0"
+name = "roper2"
+version = "0.2.0"
 dependencies = [
  "capstone 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "capstone-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",

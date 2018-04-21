@@ -115,19 +115,26 @@ pub fn hatch (pod: &mut Pod, emu: &mut Emu) -> bool {
 
 // make Pod type as Sendable, interior-mutable encasement for Chain
 //
-lazy_static! {
-    static ref CODE_BUFFER: Vec<u8> = Vec::new();
-}
 pub fn spawn_hatchery (path: &'static str, params: &Params) 
     -> (Sender<Pod>, Receiver<Pod>, JoinHandle<()>) {
 
     let (alice_tx, bob_rx) = channel();
     let (bob_tx, alice_rx) = channel();
+    lazy_static! {
+        static ref CODE_BUFFER: Vec<u8>
+            = {
+                let path = Path::new("/home/vagrant/ROPER/data/openssl");
+                let mut fd = File::open(path).unwrap();
+                let mut buffer = Vec::new();
+                fd.read_to_end(&mut buffer).unwrap();
+                buffer
+            };
+    }
     /** THE MAIN HATCHERY THREAD **/
     let handle = spawn(move || {
         let mut inner_handles = Vec::new();
         let emu_pool = Arc::new((0..100)
-            .map(|_| Mutex::new(loader::init_emulator(CODE_BUFFER, ARM_ARM).unwrap()))
+            .map(|_| Mutex::new(loader::init_emulator(&CODE_BUFFER, ARM_ARM).unwrap()))
             .collect::<Vec<Mutex<Emu>>>());
         /** INNER HATCHERY THREAD: SPAWNS ONE PER INCOMING **/
         for mut incoming in alice_rx {

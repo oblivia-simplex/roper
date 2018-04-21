@@ -1,7 +1,16 @@
 [package]
-name = "roper-redux"
-version = "0.1.0"
+name = "roper2"
+version = "0.2.0"
 authors = ["oblivia simplex <oblivia@paranoici.org>"]
+
+
+[lib]
+name = "libroper"
+path = "src/lib.rs"
+
+[[bin]]
+name = "roper"
+path = "src/bin/roper.rs"
 
 [dependencies]
 unicorn = "0.8.0"
