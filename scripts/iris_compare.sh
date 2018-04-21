@@ -69,7 +69,7 @@ function showvars () {
 }
 
 function add_to_plotlist () {
-    PLOTLIST=`echo "$PLOTLIST $1" | sort -t_ -k2 -n | uniq`
+    PLOTLIST=`echo "$PLOTLIST $1" | tr " " "\n" | sort -un -t_ -k2 `
 }
 
 if [ -z "$1" ]; then
