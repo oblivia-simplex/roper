@@ -1568,9 +1568,9 @@ impl Problem {
                 },
                 &Target::Vote(ref cls) => {
                     /** Let's try this with bitmasks on R0, instead. */
-                    //let class_guess = cls.classify(registers[0], registers, outregs);
-                    /** FIXME Temporary for testing: choose by R0 mod |classes| **/
-                    let class_guess = registers[0] as usize % cls.num_classes;
+                    let class_guess = cls.classify(registers[0], registers, outregs);
+                    /* FIXME Temporary for testing: choose by R0 mod |classes| **/
+                    //let class_guess = registers[0] as usize % cls.num_classes;
                     //println!("CLASSIFIED: R0 = {:032b}, so class_guess = {} ({})", registers[0], class_guess, if class_guess == cls.class { "PASS" } else if class_guess == cls.num_classes { "AUTOFAIL" } else {"FAIL"});
 
                     /*
