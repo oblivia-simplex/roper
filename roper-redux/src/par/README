@@ -1,0 +1,2 @@
+Functions for parsing configuration files and reading command
+line parameters, and for populating the Params struct.

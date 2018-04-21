@@ -1,0 +1,23 @@
+* TODO proper package layout
+** TODO unit tests
+** TODO documentation
+** TODO sensible structure
+* TODO fitness functions defined as ketos scripts
+* TODO proper concurrency system
+* TODO more parametric polymorphism
+* TODO sensible lifetime handling instead of relying on cloning and fork/join
+* TODO Cool ideas to implement
+** Autoconstruction, and, eventually, self-replicating ROP viruses
+*** Let the child of a chain just be its residue in writeable memory
+    This seems like it should be feasible. Crossover could be implemented
+    by running both chains one after the other from nearby stack locations,
+    with a randomized offset, so that the second overwrites some section
+    of the first. Any additional corruption to the stack can be treated as
+    mutation. 
+** Stop conditions
+   Instead of stopping at address zero, hook syscall instructions, and use
+   those as stop conditions. Seed the primordial ooze with a sufficient number
+   of syscall addresses.
+   
+   This will make it easier to use the stack residue for reproductive purposes.
+
