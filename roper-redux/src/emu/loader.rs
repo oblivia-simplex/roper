@@ -8,12 +8,17 @@ use std::io::Read;
 use std::path::Path;
 use self::goblin::{Object,elf};
 use self::unicorn::*;
+use par::statics::CODE_BUFFER;
 
 const VERBOSE : bool = false;
 pub const STACK_SIZE : usize = 0x1000;
 pub const ARM_ARM   : ArchMode = ArchMode::Arm(Mode::Arm);
 pub const ARM_THUMB : ArchMode = ArchMode::Arm(Mode::Thumb);
 
+/* for ease and efficiency, let's keep data that we need frequent recourse
+ * to in a lazily initialized static variable
+ * TODO: move this and other lazy static inits to par module. 
+ */
 
 pub static MIPS_REGISTERS : [RegisterMIPS; 33] = [ RegisterMIPS::PC,
                                                    RegisterMIPS::ZERO,
@@ -376,6 +381,10 @@ impl Seg {
     }
 }
 
+
+pub fn init_emulator_with_code_buffer (archmode: ArchMode) -> Result<Emu,String> {
+    init_emulator(&CODE_BUFFER, archmode)
+}
 
 pub fn init_emulator (buffer: &Vec<u8>, archmode: ArchMode) -> Result<Emu,String> { 
 

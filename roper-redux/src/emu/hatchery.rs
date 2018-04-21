@@ -24,6 +24,7 @@ use emu::loader::{ARM_ARM,ArchMode,Mode,Emu};
  * it in its local emulator, and sends the results back on the channel. 
  */
 
+
 const OK: u32 = 0;
 
 pub struct Params {pub foo:usize} /*placeholder */ 
@@ -120,21 +121,13 @@ pub fn spawn_hatchery (path: &'static str, params: &Params)
 
     let (alice_tx, bob_rx) = channel();
     let (bob_tx, alice_rx) = channel();
-    lazy_static! {
-        static ref CODE_BUFFER: Vec<u8>
-            = {
-                let path = Path::new("/home/vagrant/ROPER/data/openssl");
-                let mut fd = File::open(path).unwrap();
-                let mut buffer = Vec::new();
-                fd.read_to_end(&mut buffer).unwrap();
-                buffer
-            };
-    }
+    /* Initialize the code buffer once, and never again! */
     /** THE MAIN HATCHERY THREAD **/
     let handle = spawn(move || {
         let mut inner_handles = Vec::new();
         let emu_pool = Arc::new((0..100)
-            .map(|_| Mutex::new(loader::init_emulator(&CODE_BUFFER, ARM_ARM).unwrap()))
+            .map(|_| Mutex::new(loader::init_emulator_with_code_buffer(ARM_ARM)
+                                       .unwrap()))
             .collect::<Vec<Mutex<Emu>>>());
         /** INNER HATCHERY THREAD: SPAWNS ONE PER INCOMING **/
         for mut incoming in alice_rx {
