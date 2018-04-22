@@ -6,13 +6,10 @@ extern crate rayon;
 
 
 use std::thread::{spawn,sleep,JoinHandle,Thread};
-use std::sync::mpsc::{channel,Sender,Receiver};
+use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
 use std::sync::{Arc,RwLock,MutexGuard,Mutex};
 use std::cell::{RefCell};
-use std::fs::File;
 use std::ops::Deref;
-use std::io::Read;
-use std::path::Path;
 use std::time::Duration;
 use self::rand::{Rng,thread_rng};
 use self::rayon::prelude::*;
@@ -34,7 +31,7 @@ const OK: u32 = 0;
 pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
     /** a very simple version of hatch_chain **/
     let payload = pod.chain.pack();
-    hexdump::hexdump(&payload); /* NB: debugging only */
+    //hexdump::hexdump(&payload); /* NB: debugging only */
     let start_addr = pod.chain.entry();
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
@@ -55,10 +52,10 @@ pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
     let registers = emu.read_general_registers().unwrap();
     let memory = emu.writeable_memory();
     /* print registers, for debugging */
-    for reg in &registers {
-        print!("{:08x} ", reg);
-    }
-    println!("");
+    //for reg in &registers {
+    //    print!("{:08x} ", reg);
+   // }
+    //println!("");
     pod.registers = registers;
     pod.memory = memory;
     true
@@ -66,11 +63,11 @@ pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
 
 // make gen::Pod type as Sendable, interior-mutable encasement for Chain
 //
-pub fn spawn_hatchery (path: &'static str, num_engines: usize)
-    -> (Sender<gen::Pod>, Receiver<gen::Pod>, JoinHandle<()>) {
+pub fn spawn_hatchery (num_engines: usize)
+    -> (SyncSender<gen::Pod>, Receiver<gen::Pod>, JoinHandle<()>) {
 
-    let (alice_tx, bob_rx) = channel();
-    let (bob_tx, alice_rx) = channel();
+    let (alice_tx, bob_rx) = sync_channel(20000);
+    let (bob_tx, alice_rx) = sync_channel(20000);
     /* Initialize the code buffer once, and never again! */
     /** THE MAIN HATCHERY THREAD **/
     let handle = spawn(move || {
@@ -93,7 +90,7 @@ pub fn spawn_hatchery (path: &'static str, num_engines: usize)
                     'trying_emus: for emu in emu_pool.iter() {
                         match emu.try_lock() {
                             Ok(x) => { 
-                                println!("Got emu {} {:?}", i, x); 
+                                //println!("Got emu {} {:?}", i, x); 
                                 emulator = Some(x);
                                 break 'waiting_for_emu; 
                             },
@@ -116,7 +113,7 @@ pub fn spawn_hatchery (path: &'static str, num_engines: usize)
                 let mut x : gen::Pod = incoming;
                 /******* Where the magic happens *******/
                 let res = hatch(&mut x, &mut emu);
-                sleep(Duration::from_millis(thread_rng().gen::<u64>() % 100));
+                //sleep(Duration::from_millis(thread_rng().gen::<u64>() % 100));
                 /******* Now, send back the result ******/
                 alice_tx_clone.send(x).unwrap();
             }));
