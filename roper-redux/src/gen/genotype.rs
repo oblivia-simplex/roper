@@ -35,10 +35,9 @@ impl Chain {
             p.extend_from_slice(&wp);
             /* now, pack as many pads as needed to saturate sp_delta */
             if gad.sp_delta <= 1 { continue };
-            let mut i = 0;
             let padnum = self.pads.len();
             if padnum == 0 { continue };
-            for _ in 1..gad.sp_delta {
+            for i in 0..(gad.sp_delta-1) {
                 let w = self.pads[i % padnum];
                 let wp = pack_word(w, self.wordsize, self.endian);
                 p.extend_from_slice(&wp);
@@ -46,17 +45,35 @@ impl Chain {
         }
         p
     }
+
     pub fn entry(&self) -> u64 {
         assert!(self.gads.len() > 0);
         self.gads[0].entry
     }
+
+    pub fn ab_fit(&self) -> Option<f32> {
+        match self.metadata.get("ab_fit") {
+            None => None,
+            Some(&x) => Some(x),
+        }
+    }
+
+    pub fn set_ab_fit(&mut self, ab_fit: f32) -> () {
+        self.metadata.insert("ab_fit", ab_fit);
+    }
 }
 
-
-pub type Metadata = HashMap<String,f32>;
-
-pub struct Clump {
-}
+/* by using a hashmap instead of separate struct fields
+ * for the various bits of metadata, we end up with a 
+ * much more flexible structure, that won't require
+ * dozens of fiddly signature changes every time we
+ * want to add or modify a field. f32 should work 
+ * for most of the fields we're interested in.
+ * We can dispense with Option fields, by just letting
+ * "None" be the absence of a field in the hashmap. 
+ * Accessor functions will provide an easy interface. 
+ */
+pub type Metadata = HashMap<&'static str,f32>;
 
 
 pub struct Population {

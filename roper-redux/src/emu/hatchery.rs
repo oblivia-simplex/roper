@@ -54,6 +54,11 @@ pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
      */
     let registers = emu.read_general_registers().unwrap();
     let memory = emu.writeable_memory();
+    /* print registers, for debugging */
+    for reg in &registers {
+        print!("{:08x} ", reg);
+    }
+    println!("");
     pod.registers = registers;
     pod.memory = memory;
     true
@@ -120,7 +125,7 @@ pub fn spawn_hatchery (path: &'static str, num_engines: usize)
         for h in inner_handles {
             jcount += 1;
             h.join().unwrap();
-            println!("[+] joined {}",jcount);
+            //println!("[+] joined {}",jcount);
         }
     });
 

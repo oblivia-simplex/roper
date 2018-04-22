@@ -19,7 +19,7 @@ fn main() {
                             ret_addr: 0,
                             sp_delta: 7,
                         }],
-            pads: vec![0xdeadbeef, 0xbaadf00d, 0xcafebabe],
+            pads: vec![i, i+0xdeadbeef, i+0xbaadf00d, i+0xcafebabe],
             wordsize: 4,
             endian: Endian::Little,
             metadata: Metadata::new(),
