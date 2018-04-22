@@ -5,3 +5,6 @@ use self::emu::*;
 
 pub mod par;
 use self::par::*;
+
+pub mod gen;
+use self::gen::*;

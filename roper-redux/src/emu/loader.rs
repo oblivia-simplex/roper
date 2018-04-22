@@ -10,15 +10,18 @@ use self::goblin::{Object,elf};
 use self::unicorn::*;
 use par::statics::CODE_BUFFER;
 
+/* iT WOULD be nice to have a static map of the Elf/Object headers, for easy
+ * reference, and to avoid the need to pass back copies of read-only memory,
+ * for pointer dereference in mutation and fitness evaluation. 
+ * Perhaps put this in par::statics. That would mean moving the goblin parsing
+ * over there, which would also speed up the emu generation process. 
+ */
 const VERBOSE : bool = false;
 pub const STACK_SIZE : usize = 0x1000;
 pub const ARM_ARM   : ArchMode = ArchMode::Arm(Mode::Arm);
 pub const ARM_THUMB : ArchMode = ArchMode::Arm(Mode::Thumb);
 
-/* for ease and efficiency, let's keep data that we need frequent recourse
- * to in a lazily initialized static variable
- * TODO: move this and other lazy static inits to par module. 
- */
+pub type MemImage = Vec<(u64,Vec<u8>)>;
 
 pub static MIPS_REGISTERS : [RegisterMIPS; 33] = [ RegisterMIPS::PC,
                                                    RegisterMIPS::ZERO,
@@ -152,10 +155,7 @@ impl Emu {
     }
 
     /* I prefer having usize here, instead of i32 */
-    pub fn reg_read_batch(&self, regids: &Vec<usize>) -> Result<Vec<u64>, Error> {
-        let regids = regids.iter()
-                           .map(|&x| x as i32)
-                           .collect::<Vec<i32>>();
+    pub fn read_general_registers(&self) -> Result<Vec<u64>, Error> {
         match self {
             &Emu::UcArm(ref uc) => {
                 Ok(ARM_REGISTERS.iter()
@@ -172,6 +172,7 @@ impl Emu {
             }
         }
     }
+
 
     pub fn start(&mut self,
                  begin: u64, 
@@ -217,7 +218,7 @@ impl Emu {
         }
     }
 
-    pub fn writeable_memory (&self) -> Vec<(u64,Vec<u8>)> {
+    pub fn writeable_memory (&self) -> MemImage {
         let mut wmem = Vec::new();
         for rgn in self.mem_regions()
                        .unwrap()
@@ -232,6 +233,7 @@ impl Emu {
         wmem
     }
 }
+
 
 pub fn umode_from_usize(x: usize) -> unicorn::Mode {
     match x {
@@ -382,11 +384,11 @@ impl Seg {
 }
 
 
-pub fn init_emulator_with_code_buffer (archmode: ArchMode) -> Result<Emu,String> {
+pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,String> {
     init_emulator(&CODE_BUFFER, archmode)
 }
 
-pub fn init_emulator (buffer: &Vec<u8>, archmode: ArchMode) -> Result<Emu,String> { 
+pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,String> { 
 
     //let path = Path::new(path);
     //let mut fd = File::open(path).unwrap();

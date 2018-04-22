@@ -1,5 +1,7 @@
 extern crate unicorn;
+extern crate hexdump;
 extern crate rand;
+extern crate rayon;
 
 
 
@@ -13,91 +15,27 @@ use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 use self::rand::{Rng,thread_rng};
+use self::rayon::prelude::*;
 
 use emu::loader;
 use emu::loader::{ARM_ARM,ArchMode,Mode,Emu};
-
-/*
- * what we want here is a function that spawns a listener loop and returns
- * the sending end of a channel to it. 
- * when the loop receives a message -- a serialized chain -- it executes 
- * it in its local emulator, and sends the results back on the channel. 
- */
+use gen;
 
 
 const OK: u32 = 0;
 
-pub struct Params {pub foo:usize} /*placeholder */ 
-
-#[derive(Eq,PartialEq,Debug,Clone,Copy)]
-pub struct HatchError (u32);
-
-unsafe impl Send for HatchError {}
-
-impl Default for HatchError { 
-    fn default() -> Self { HatchError(0) }
-}
-
-#[derive(Eq,PartialEq,Clone,Debug,Default)]
-pub struct HatchResult {
-    pub regs: Vec<u32>,
-    pub mem:  Vec<u8>,
-    pub visited: Vec<u32>,
-    pub status: HatchError,
-}
-
-impl HatchResult {
-    fn new () -> Self {
-        HatchResult {
-            regs: Vec::new(),
-            mem: Vec::new(),
-            visited: Vec::new(),
-            status: HatchError(OK),
-        }
-    }
-}
-
-unsafe impl Send for HatchResult {}
-
-#[derive(Clone,Debug,PartialEq,Eq)]
-pub struct Egg {
-    pub packed: Vec<u8>, /* later, we can stick more control info in here */
-}
-
-unsafe impl Send for Egg {}
-
-#[derive(Clone,Debug,PartialEq,Eq)]
-pub enum HatchMsg {
-    ToHatch(Egg),
-    Hatched(HatchResult),
-}
-
-unsafe impl Send for HatchMsg {}
-
-#[derive(Clone,Debug,PartialEq,Eq)]
-pub struct Pod (Vec<u32>); /* placeholder */
-impl Pod {
-    pub fn new (i: Vec<u32>) -> Self {
-        Pod(i)
-    }
-}
-unsafe impl Send for Pod {}
-
-pub fn pack_word32le_vec (v: &Vec<u32>) -> Vec<u8> {
-    let mut p : Vec<u8> = Vec::new();
-    for word in v {
-        p.extend_from_slice(&[(word & 0xFF) as u8,
-                              ((word & 0xFF00) >> 0x08) as u8,
-                              ((word & 0xFF0000) >> 0x10) as u8,
-                              ((word & 0xFF000000) >> 0x18) as u8]);
-    }
-    p
-}
-
-pub fn hatch (pod: &mut Pod, emu: &mut Emu) -> bool {
+/* The gen::Pod data structure will be implemented in the gen::genotype
+ * module. It will contain (a) a genotype, and (b) any information
+ * required in order to evaluate that genotype on the emulator --
+ * input registers, problem specification, etc., perhaps a reference
+ * to a ketos script that will perform the fitness evaluation on 
+ * the phenotype.
+ */
+pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
     /** a very simple version of hatch_chain **/
-    let payload = pack_word32le_vec(&pod.0);
-    let start_addr = pod.0[0] as u64;
+    let payload = pod.chain.pack();
+    hexdump::hexdump(&payload); /* NB: debugging only */
+    let start_addr = pod.chain.entry();
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /** save writeable regions **/
@@ -110,14 +48,21 @@ pub fn hatch (pod: &mut Pod, emu: &mut Emu) -> bool {
     
     /** Hatch! **/
     let x = emu.start(start_addr, 0, 0, 1024); /* FIXME don't hardcode these params */
-
+   
+    /* Now, get the resulting CPU context (the "phenotype"), and
+     * attach it to the mutable pod
+     */
+    let registers = emu.read_general_registers().unwrap();
+    let memory = emu.writeable_memory();
+    pod.registers = registers;
+    pod.memory = memory;
     true
 }
 
-// make Pod type as Sendable, interior-mutable encasement for Chain
+// make gen::Pod type as Sendable, interior-mutable encasement for Chain
 //
-pub fn spawn_hatchery (path: &'static str, params: &Params) 
-    -> (Sender<Pod>, Receiver<Pod>, JoinHandle<()>) {
+pub fn spawn_hatchery (path: &'static str, num_engines: usize)
+    -> (Sender<gen::Pod>, Receiver<gen::Pod>, JoinHandle<()>) {
 
     let (alice_tx, bob_rx) = channel();
     let (bob_tx, alice_rx) = channel();
@@ -125,8 +70,11 @@ pub fn spawn_hatchery (path: &'static str, params: &Params)
     /** THE MAIN HATCHERY THREAD **/
     let handle = spawn(move || {
         let mut inner_handles = Vec::new();
-        let emu_pool = Arc::new((0..100)
-            .map(|_| Mutex::new(loader::init_emulator_with_code_buffer(ARM_ARM)
+        let emu_pool = Arc::new((0..num_engines)
+            .map(|_| ARM_ARM)
+            .collect::<Vec<ArchMode>>()
+            .par_iter()
+            .map(|ref x| Mutex::new(loader::init_emulator_with_code_buffer(x)
                                        .unwrap()))
             .collect::<Vec<Mutex<Emu>>>());
         /** INNER HATCHERY THREAD: SPAWNS ONE PER INCOMING **/
@@ -136,7 +84,6 @@ pub fn spawn_hatchery (path: &'static str, params: &Params)
             inner_handles.push(spawn(move || {
                 let mut i = 0;
                 let mut emulator = None;
-                sleep(Duration::from_millis(thread_rng().gen::<u64>() % 500));
                 'waiting_for_emu: loop {
                     'trying_emus: for emu in emu_pool.iter() {
                         match emu.try_lock() {
@@ -145,16 +92,26 @@ pub fn spawn_hatchery (path: &'static str, params: &Params)
                                 emulator = Some(x);
                                 break 'waiting_for_emu; 
                             },
-                            Err(_) => { println!("emu {} is busy", i); },
+                            Err(_) => { /* println!("emu {} is busy", i); */ },
                         }
                         i += 1;
                     }
                 }
+                /* Assuming an average runtime in the emulator of 0.1 seconds,
+                 * which is roughly what we see in the best specimens of ROPER
+                 * 1, and which we can use as a tentative approximate upper
+                 * bound, here, I'm finding that, over 10000 evaluations in a
+                 * batch, the highest number we hit in the "emu # is busy"
+                 * messages is 203. We can probably set the number of emulators
+                 * to 256, in most purposes, even if we are using comparatively
+                 * large batches of evaluations (in fitness-proportionate
+                 * selection, for example). 
+                 */
                 let mut emu = emulator.unwrap();
-                let mut x : Pod = incoming;
-                x.0.push(0xdeadbeef);
+                let mut x : gen::Pod = incoming;
                 /******* Where the magic happens *******/
                 let res = hatch(&mut x, &mut emu);
+                sleep(Duration::from_millis(thread_rng().gen::<u64>() % 100));
                 /******* Now, send back the result ******/
                 alice_tx_clone.send(x).unwrap();
             }));
