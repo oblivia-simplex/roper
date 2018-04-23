@@ -50,17 +50,6 @@ impl Chain {
         assert!(self.gads.len() > 0);
         self.gads[0].entry
     }
-
-    pub fn ab_fit(&self) -> Option<f32> {
-        match self.metadata.get("ab_fit") {
-            None => None,
-            Some(&x) => Some(x),
-        }
-    }
-
-    pub fn set_ab_fit(&mut self, ab_fit: f32) -> () {
-        self.metadata.insert("ab_fit", ab_fit);
-    }
 }
 
 /* by using a hashmap instead of separate struct fields
@@ -74,11 +63,6 @@ impl Chain {
  * Accessor functions will provide an easy interface. 
  */
 pub type Metadata = HashMap<&'static str,f32>;
-
-
-pub struct Population {
-
-}
 
 fn pack_word(word: u64, size: usize, endian: Endian) -> Vec<u8> {
     let mut p : Vec<u8> = Vec::new();

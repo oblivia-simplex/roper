@@ -1,7 +1,12 @@
+extern crate rand;
+
 use std::fs::File;
+use std::sync::{Arc,RwLock};
 use std::io::Read;
 use std::path::Path;
 use std::env;
+use self::rand::{Rng,SeedableRng};
+use self::rand::isaac::Isaac64Rng;
 
 pub static CONFIG_DIR : &'static str = ".roper_config/";
 
@@ -43,15 +48,30 @@ lazy_static! {
         };
 }
 
+pub type RngSeed = Vec<u64>;
+
 lazy_static! {
-    pub static ref RNG_SEED: Vec<u64> /* for Isaac64Rng */
+    pub static ref RNG_SEED: RngSeed /* for Isaac64Rng */
         = {
             let seed_txt = read_conf("isaac64_seed.txt");
             let mut seed_vec = Vec::new();
             for row in seed_txt.lines() {
-                seed_vec.push(row.parse::<u64>()
+                seed_vec.push(u64::from_str_radix(row,16)
                                  .expect("Failed to parse seed"));
             }
             seed_vec
         };
 }
+
+lazy_static! {
+    pub static ref MUTABLE_RNG_SEED: Arc<RwLock<RngSeed>>
+        = Arc::new(RwLock::new(RNG_SEED.clone()));
+}
+/* Wait: if this is accessed from multiple threads, there will be another
+ * source of indeterminacy and unrepeatability: the order of access cannot
+ * be assured. So make sure you only access this from a single thread, then
+ * pass the seed to each spun thread. 
+ *
+ * Perhaps every thread could just take the base RNG_SEED, and xor it with 
+ * its own thread id?
+ */

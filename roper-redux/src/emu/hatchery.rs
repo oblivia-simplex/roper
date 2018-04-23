@@ -11,7 +11,8 @@ use std::sync::{Arc,RwLock,MutexGuard,Mutex};
 use std::cell::{RefCell};
 use std::ops::Deref;
 use std::time::Duration;
-use self::rand::{Rng,thread_rng};
+use self::rand::{SeedableRng,Rng,thread_rng};
+use self::rand::isaac::Isaac64Rng;
 use self::rayon::prelude::*;
 
 use emu::loader;
@@ -28,11 +29,11 @@ const OK: u32 = 0;
  * to a ketos script that will perform the fitness evaluation on 
  * the phenotype.
  */
-pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
+pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     /** a very simple version of hatch_chain **/
-    let payload = pod.chain.pack();
+    let payload = creature.genome.pack();
     //hexdump::hexdump(&payload); /* NB: debugging only */
-    let start_addr = pod.chain.entry();
+    let start_addr = creature.genome.entry();
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /** save writeable regions **/
@@ -56,15 +57,15 @@ pub fn hatch (pod: &mut gen::Pod, emu: &mut Emu) -> bool {
     //    print!("{:08x} ", reg);
    // }
     //println!("");
-    pod.registers = registers;
-    pod.memory = memory;
+    let pod = gen::Pod::new(registers,memory,Vec::new());
+    creature.phenome = Some(pod);
     true
 }
 
 // make gen::Pod type as Sendable, interior-mutable encasement for Chain
 //
 pub fn spawn_hatchery (num_engines: usize)
-    -> (SyncSender<gen::Pod>, Receiver<gen::Pod>, JoinHandle<()>) {
+    -> (SyncSender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
 
     let (alice_tx, bob_rx) = sync_channel(20000);
     let (bob_tx, alice_rx) = sync_channel(20000);
@@ -98,6 +99,7 @@ pub fn spawn_hatchery (num_engines: usize)
                         }
                         i += 1;
                     }
+                    sleep(Duration::from_millis(1u64)); /* to avoid hogging CPU */
                 }
                 /* Assuming an average runtime in the emulator of 0.1 seconds,
                  * which is roughly what we see in the best specimens of ROPER
@@ -110,7 +112,7 @@ pub fn spawn_hatchery (num_engines: usize)
                  * selection, for example). 
                  */
                 let mut emu = emulator.unwrap();
-                let mut x : gen::Pod = incoming;
+                let mut x : gen::Creature = incoming;
                 /******* Where the magic happens *******/
                 let res = hatch(&mut x, &mut emu);
                 //sleep(Duration::from_millis(thread_rng().gen::<u64>() % 100));
