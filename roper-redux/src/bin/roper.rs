@@ -9,10 +9,10 @@ use libroper::gen::*;
 use libroper::emu::loader::Mode;
 use rand::{SeedableRng,Rng};
 use rand::isaac::{Isaac64Rng};
-use libroper::par::statics::RNG_SEED;
-
+use libroper::par::statics::*;
 
 fn main() {
+    let mem_image = MEM_IMAGE.clone();
     let mut engines = match env::var("ROPER_ENGINES") {
         Err(_) => 64,
         Ok(n)  => n.parse::<usize>().expect("Failed to parse ROPER_ENGINES env var"),

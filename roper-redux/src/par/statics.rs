@@ -115,14 +115,16 @@ lazy_static! {
                             let end = seg.aligned_end() as usize;
                             image.push((seg.aligned_start(), 
                                         seg.perm,
+                                        seg.aligned_size(),
                                         Vec::new()));
-                            sizes.push(end - start);
                         }
                     }
                     /* Low memory */
-                    image.push((0, loader::PROT_READ, Vec::new()));
+                    image.push((0, loader::PROT_READ, 0x1000, Vec::new()));
+                    sizes.push(0x1000); /* Low memory size, i guess. bit of a KLUDGE */
 
                     /* now fill in the bytes */
+                    assert_eq!(sizes.len(), image.len());
                     for shdr in shdrs {
                         let (i,j) = (shdr.sh_offset as usize, 
                                      (shdr.sh_offset+shdr.sh_size) as usize);
@@ -134,7 +136,7 @@ lazy_static! {
                             if shdr.sh_addr >= row.0 
                                 && shdr.sh_addr < (row.0 + sizes[s] as u64) {
                                 /* then we found a fit */
-                                row.2 = sdata.clone();
+                                row.3 = sdata.clone();
                                 break;
                             }
                             s += 1;
@@ -143,13 +145,18 @@ lazy_static! {
                     /* now allocate the stack */
                     let mut bottom = 0;
                     for row in &image {
-                        let b = row.0 + row.2.len() as u64;
+                        let b = row.0 + row.2 as u64;
                         if b > bottom { bottom = b + 1 };
                     }
-                    image.push((bottom, PROT_READ|PROT_WRITE, vec![0; STACK_SIZE]));
+                    image.push((bottom, PROT_READ|PROT_WRITE, STACK_SIZE, vec![0; STACK_SIZE]));
                 },
                 _ => panic!("Not yet implemented."),
             }
             image
         };
+}
+
+#[test]
+fn test_init_emulator_with_MEM_IMAGE() {
+    loader::init_emulator_with_code_buffer(&loader::ARM_ARM).unwrap();
 }

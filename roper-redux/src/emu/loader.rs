@@ -24,7 +24,7 @@ pub const PROT_EXEC: Perm = unicorn::PROT_EXEC;
 pub const PROT_WRITE: Perm = unicorn::PROT_WRITE;
 
 pub type Perm = unicorn::Protection;
-pub type MemImage = Vec<(u64, Perm, Vec<u8>)>;
+pub type MemImage = Vec<(u64, Perm, usize, Vec<u8>)>;
 
 pub static MIPS_REGISTERS : [RegisterMIPS; 33] = [ RegisterMIPS::PC,
                                                    RegisterMIPS::ZERO,
@@ -287,7 +287,7 @@ impl Emu {
             let data: Vec<u8> = self.mem_read(rgn.begin,
                                               (rgn.end-rgn.begin) as usize)
                                     .unwrap();
-            wmem.push((rgn.begin, rgn.perms, data));
+            wmem.push((rgn.begin, rgn.perms, (rgn.end-rgn.begin) as usize, data));
         }
         wmem
     }
@@ -445,12 +445,12 @@ impl Seg {
 }
 
 
-pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,String> {
+pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,unicorn::Error> {
     init_emulator(&CODE_BUFFER, archmode)
 }
 
 
-pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,String> { 
+pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unicorn::Error> { 
 
     let obj = Object::parse(&buffer).unwrap();
     let (arch, mode) = archmode.as_uc();
@@ -459,12 +459,15 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,Strin
     assert_eq!(arch, unicorn::Arch::ARM);
     let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
     let mem_image: MemImage = MEM_IMAGE.to_vec();
+    println!("MEM_IMAGE: {:?}", mem_image);
     for segment in mem_image {
-        /* segment is: (addr, perm, data) */
-        let (addr, perm, data) = (segment.0, segment.1, &segment.2);
-        uc.mem_map(addr, data.len(), perm);
-        uc.mem_write(addr, data);
+        /* segment is: (addr, perm, aligned_size, data) */ /* TODO: make MemImage Vec<struct>*/
+        let (addr, perm, size, data) = (segment.0, segment.1, segment.2, &segment.3);
+        uc.mem_map(addr, data.len(), perm).expect(&format!("Mapping error with: addr = {}, data.len() = {}", addr, size));
+        uc.mem_write(addr, data)?;
     }
+    println!("regions: {:?}", uc.mem_regions()?);
+    assert!(false);
     Ok(Emu::UcArm(uc))
 
     /*
