@@ -1,10 +1,8 @@
 extern crate unicorn;
 extern crate goblin;
 
-use std::fs::File;
-use std::fmt::{Debug,Display,format,Formatter};
+use std::fmt::{Debug,Formatter};
 use std::fmt;
-use std::io::Read;
 use std::path::Path;
 use std::sync::{Mutex,Arc};
 use self::goblin::{Object,elf};
@@ -355,6 +353,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug)]
 pub enum ArchMode {
     Arm(Mode),
     Mips(Mode),

@@ -5,7 +5,7 @@ extern crate rayon;
 extern crate capstone;
 
 
-use std::thread::{spawn,sleep,JoinHandle,Thread};
+use std::thread::{spawn,sleep,JoinHandle};
 use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
 use std::sync::{Arc,RwLock,MutexGuard,Mutex};
 use std::rc::Rc;
@@ -22,7 +22,7 @@ use gen;
 use log;
 
 
-const OK: u32 = 0;
+//const OK: u32 = 0;
 
 /* The gen::Pod data structure will be implemented in the gen::genotype
  * module. It will contain (a) a genotype, and (b) any information
@@ -32,47 +32,47 @@ const OK: u32 = 0;
  * the phenotype.
  */
 pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
-    /** a very simple version of hatch_chain **/
+    /* a very simple version of hatch_chain **/
     let payload = creature.genome.pack();
     //hexdump::hexdump(&payload); /* NB: debugging only */
     let start_addr = creature.genome.entry();
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
-    /** save writeable regions **/
-    let mut saved_regions: Vec<(u64,Vec<u8>)> = emu.writeable_memory();
+    /* save writeable regions **/
+    let saved_regions: Vec<(u64,Vec<u8>)> = emu.writeable_memory();
 
-    /** load payload **/
+    /* load payload **/
     emu.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
     let risc_width = emu.risc_width();
     emu.set_sp(stack_entry + risc_width);
     
     let visitor: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
-    let mut hook = None;
-    /** Set hooks **/
+    let hook;
+    /* Set hooks **/
     {
         let visitor = visitor.clone();
         let callback = move|uc: &unicorn::Unicorn, addr: u64, size: u32| {
             let mut vmut = visitor.lock().unwrap();
             vmut.push(addr); /* maybe track mode here too */
             /* debugging */
-            //let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
-            //let mode = if size == 4 { ArchMode::Arm(Mode::Arm) } else { ArchMode::Arm(Mode::Thumb) };
-            //let dis = log::disas(&inst, &mode);
-            //println!("{:08x}\t{}",addr, dis);
+            let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
+            let mode = if size == 4 { ArchMode::Arm(Mode::Arm) } else { ArchMode::Arm(Mode::Thumb) };
+            let dis = log::disas(&inst, &mode);
+            println!("{:08x}\t{}",addr, dis);
 
         };
-        hook = Some(emu.hook_exec_mem(callback));
+        hook = emu.hook_exec_mem(callback);
         //println!("{:?}",hook);
 /* Okay, we're getting segfaults now.
  * And when we don't the runtime has gone from 1.5 seconds to 5s.
  * Maybe there's a lighter way than hooking everything. 
  */
     }
-    /** Hatch! **/ /* FIXME don't hardcode these params */
+    /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
     match hook {
-        Some(Ok(h)) =>  { emu.remove_hook(h); },
-        Some(Err(_)) | None => { },
+        Ok(h)  => { emu.remove_hook(h).unwrap(); },
+        Err(_) => { },
     }
 
    
@@ -93,6 +93,17 @@ pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     true
 }
 
+
+fn spawn_subhatchery (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
+    /* a thread-local emulator */
+    let mut emu = loader::init_emulator_with_code_buffer(ARM_ARM);
+    for incoming in rx {
+        let mut creature = incoming;
+        let _ = hatch(&mut creature, &mut emu);
+        tx.send(creature);
+    }
+}
+
 // make gen::Pod type as Sendable, interior-mutable encasement for Chain
 //
 pub fn spawn_hatchery (num_engines: usize)
@@ -101,7 +112,7 @@ pub fn spawn_hatchery (num_engines: usize)
     let (alice_tx, bob_rx) = sync_channel(20000);
     let (bob_tx, alice_rx) = sync_channel(20000);
     /* Initialize the code buffer once, and never again! */
-    /** THE MAIN HATCHERY THREAD **/
+    /* THE MAIN HATCHERY THREAD **/
     let handle = spawn(move || {
         let mut inner_handles = Vec::new();
         let emu_pool = Arc::new((0..num_engines)
@@ -111,24 +122,22 @@ pub fn spawn_hatchery (num_engines: usize)
             .map(|ref x| Mutex::new(loader::init_emulator_with_code_buffer(x)
                                        .unwrap()))
             .collect::<Vec<Mutex<Emu>>>());
-        /** INNER HATCHERY THREAD: SPAWNS ONE PER INCOMING **/
+        /* INNER HATCHERY THREAD: SPAWNS ONE PER INCOMING **/
         for mut incoming in alice_rx {
             let alice_tx_clone = alice_tx.clone();
             let emu_pool = emu_pool.clone();
             inner_handles.push(spawn(move || {
-                let mut i = 0;
-                let mut emulator = None;
+                let emulator;
                 'waiting_for_emu: loop {
                     'trying_emus: for emu in emu_pool.iter() {
                         match emu.try_lock() {
                             Ok(x) => { 
                                 //println!("Got emu {} {:?}", i, x); 
-                                emulator = Some(x);
+                                emulator = x;
                                 break 'waiting_for_emu; 
                             },
                             Err(_) => { /* println!("emu {} is busy", i); */ },
                         }
-                        i += 1;
                     }
                     sleep(Duration::from_millis(1u64)); /* to avoid hogging CPU */
                 }
@@ -142,20 +151,17 @@ pub fn spawn_hatchery (num_engines: usize)
                  * large batches of evaluations (in fitness-proportionate
                  * selection, for example). 
                  */
-                let mut emu = emulator.unwrap();
+                let mut emu = emulator;
                 let mut x : gen::Creature = incoming;
-                /******* Where the magic happens *******/
+                /****** Where the magic happens *******/
                 let res = hatch(&mut x, &mut emu);
                 //sleep(Duration::from_millis(thread_rng().gen::<u64>() % 100));
-                /******* Now, send back the result ******/
+                /****** Now, send back the result ******/
                 alice_tx_clone.send(x).unwrap();
             }));
         }
-        let mut jcount = 0;
         for h in inner_handles {
-            jcount += 1;
             h.join().unwrap();
-            //println!("[+] joined {}",jcount);
         }
     });
 
