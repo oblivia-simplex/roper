@@ -128,7 +128,11 @@ impl Population {
         let mut mutexed_creatures = Vec::new();
         let mut creatures = creatures;
         while creatures.len() > 0 {
-            mutexed_creatures.push(Mutex::new(Arc::new(RefCell::new(creatures.pop().unwrap()))))
+            mutexed_creatures.push(Mutex::new(
+                                     Arc::new(
+                                       RefCell::new(
+                                         creatures.pop()
+                                                  .unwrap()))))
         }
             
         Population {
@@ -154,6 +158,8 @@ impl Population {
                 Err(_) => continue,
                 Ok(x)  => chosen.push(x.clone()),
             }
+            /* if you observe a lot of busy waiting here, try adding a very
+             * short sleep() (especially in small populations)  */
         }
         chosen
     }

@@ -6,6 +6,7 @@ use std::fmt::{Debug,Display,format,Formatter};
 use std::fmt;
 use std::io::Read;
 use std::path::Path;
+use std::sync::{Mutex,Arc};
 use self::goblin::{Object,elf};
 use self::unicorn::*;
 use par::statics::CODE_BUFFER;
@@ -81,6 +82,11 @@ pub enum Emu {
     UcMips(unicorn::CpuMIPS),
 }
 
+#[derive(Clone)]
+pub struct EmuLock ( pub Arc<Mutex<Emu>> );
+unsafe impl Sync for EmuLock { }
+unsafe impl Send for EmuLock { }
+
 impl Debug for Emu {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {
         match self {
@@ -143,6 +149,61 @@ impl Emu {
                 }
             },
             _ => panic!("Failed to get mode"),
+        }
+    }
+
+    pub fn add_code_hook<F>(&mut self,
+                         hooktype: unicorn::CodeHookType,
+                         start_addr: u64,
+                         stop_addr: u64,
+                         callback: F)
+        -> Result<unicorn::uc_hook, Error>
+        where F: Fn(&Unicorn, u64, u32) -> () + 'static,
+    {
+        match self {
+            &mut Emu::UcArm(ref mut uc) => uc.add_code_hook(hooktype,
+                                                         start_addr,
+                                                         stop_addr,
+                                                         callback),
+            &mut Emu::UcMips(ref mut uc) => uc.add_code_hook(hooktype,
+                                                          start_addr,
+                                                          stop_addr,
+                                                          callback),
+        }
+    }
+
+    pub fn hook_exec_mem<F> (&mut self,
+                             callback: F) 
+        -> Result<unicorn::uc_hook, Error>
+        where F: Fn(&Unicorn, u64, u32) -> () + 'static, 
+    {
+        let regions = self.mem_regions().unwrap();
+        let mut exec_start = None;
+        let mut exec_stop = None;
+        for region in regions {
+            if !region.perms.intersects(PROT_EXEC) { continue; }
+            if exec_start == None || region.begin < exec_start.unwrap() {
+                exec_start = Some(region.begin)
+            };
+            if exec_stop == None || region.end > exec_stop.unwrap() {
+                exec_stop = Some(region.end)
+            };
+        }
+        if exec_start == None || exec_stop == None {
+            Err(unicorn::Error::ARG)
+        } else {
+            //println!("> exec_start: {:08x}, exec_stop: {:08x}", exec_start.unwrap(), exec_stop.unwrap());
+            self.add_code_hook(unicorn::CodeHookType::CODE,
+                               exec_start.unwrap(),
+                               exec_stop.unwrap(),
+                               callback)
+        }
+    }
+
+    pub fn remove_hook(&mut self, uc_hook: unicorn::uc_hook) -> Result<(),Error> {
+        match self {
+            &mut Emu::UcArm(ref mut uc) => uc.remove_hook(uc_hook),
+            &mut Emu::UcMips(ref mut uc) => uc.remove_hook(uc_hook),
         }
     }
 
@@ -248,7 +309,7 @@ pub fn umode_from_usize(x: usize) -> unicorn::Mode {
         _ => unicorn::Mode::LITTLE_ENDIAN,
     }
 }
-
+//unsafe impl Sync for Emu { }
 unsafe impl Send for Emu {}
 
 impl Clone for Emu {
@@ -275,6 +336,7 @@ impl Clone for Emu {
     }
 }
 
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
 pub enum Mode {
     Arm,
     Thumb,
@@ -386,6 +448,10 @@ impl Seg {
 
 pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,String> {
     init_emulator(&CODE_BUFFER, archmode)
+}
+
+pub fn init_emulock_with_code_buffer (archmode: &ArchMode) -> EmuLock {
+    EmuLock(Arc::new(Mutex::new(init_emulator(&CODE_BUFFER, archmode).unwrap())))
 }
 
 pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,String> { 

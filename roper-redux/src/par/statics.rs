@@ -1,14 +1,23 @@
 extern crate rand;
 
 use std::fs::File;
-use std::sync::{Arc,RwLock};
+use std::sync::{Arc,RwLock,Mutex};
 use std::io::Read;
 use std::path::Path;
 use std::env;
+
 use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
-pub static CONFIG_DIR : &'static str = ".roper_config/";
+use emu::loader;
+
+lazy_static! {
+    pub static ref CONFIG_DIR: String 
+        = match env::var("ROPER_CONFIG_DIR") {
+                Err(_) => ".roper_config/".to_string(),
+                Ok(d)  => d.to_string(),
+          };
+}
 
 /// Reads the config file specified from the default config directory,
 /// which is ~/ + CONFIG_DIR, and trims any trailing whitespace from
@@ -17,7 +26,8 @@ fn read_conf (filename: &str) -> String {
     let mut p = String::new();
     p.push_str(env::home_dir().unwrap().to_str().unwrap());
     p.push_str("/");
-    p.push_str(CONFIG_DIR);
+    p.push_str(&CONFIG_DIR);
+    p.push_str("/");
     p.push_str(filename);
     let path = Path::new(&p);
     let mut fd = File::open(path).unwrap();
@@ -39,12 +49,30 @@ lazy_static! {
         = {
             /* first, read the config */
             let bp = read_conf("binary_path.txt");
-            println!("[*] Read binary path as {:?}",bp);
+            //println!("[*] Read binary path as {:?}",bp);
             let path = Path::new(&bp);
             let mut fd = File::open(path).unwrap();
             let mut buffer = Vec::new();
             fd.read_to_end(&mut buffer).unwrap();
             buffer
+        };
+}
+
+
+lazy_static! {
+    pub static ref EMU_POOL: Arc<Vec<loader::EmuLock>>
+        = {
+            let num_engines = match env::var("ROPER_ENGINES") {
+                Err(_) => 64,
+                Ok(n)  => n.parse::<usize>()
+                            .expect("Failed to parse ROPER_ENGINES env var."),
+            };
+            let mut v = Vec::new();
+            for _ in 0..num_engines {
+                let e = loader::init_emulock_with_code_buffer(&loader::ARM_ARM);
+                v.push(e);
+            }
+            Arc::new(v)
         };
 }
 

@@ -6,6 +6,7 @@ use std::env;
 use std::time::Instant;
 use libroper::emu::*;
 use libroper::gen::*;
+use libroper::emu::loader::Mode;
 use rand::{SeedableRng,Rng};
 use rand::isaac::{Isaac64Rng};
 use libroper::par::statics::RNG_SEED;
@@ -13,7 +14,7 @@ use libroper::par::statics::RNG_SEED;
 
 fn main() {
     let mut engines = match env::var("ROPER_ENGINES") {
-        Err(_) => 256,
+        Err(_) => 64,
         Ok(n)  => n.parse::<usize>().expect("Failed to parse ROPER_ENGINES env var"),
     };
     let engine_period = 16;
@@ -26,14 +27,16 @@ fn main() {
         for i in 0..20000 { /* 100000 is too much to handle. but unlikely */
             let chain = Chain {
                 gads: vec![Gadget {
-                                entry: rng.gen::<u32>() as u64,
+                                entry: 0x8000 + (rng.gen::<u32>() as u64 % 0x30000),
                                 ret_addr: 0, /* not using this yet */
                                 sp_delta: rng.gen::<usize>() % 16,
+                                mode: Mode::Arm,
                             },
                             Gadget {
-                                entry: rng.gen::<u32>() as u64,
+                                entry: 0x8000 + (rng.gen::<u32>() as u64 % 0x30000),
                                 ret_addr: 0,
                                 sp_delta: rng.gen::<usize>() % 16,
+                                mode: Mode::Thumb,
                             }],
                 pads: vec![i, i+0xdeadbeef, i+0xbaadf00d, i+0xcafebabe],
                 wordsize: 4,
@@ -53,6 +56,7 @@ fn main() {
         handle.join().unwrap();
         let elapsed = start.elapsed();
         println!("{} {}", engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
+        //break;
         counter -= 1;
         if counter == 0 {
             counter = engine_period;

@@ -8,3 +8,6 @@ use self::par::*;
 
 pub mod gen;
 use self::gen::*;
+
+pub mod log;
+use self::log::*;

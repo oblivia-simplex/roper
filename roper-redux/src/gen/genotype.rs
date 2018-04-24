@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use emu::loader::Mode;
 
 
 #[derive(Clone,Debug,PartialEq,Eq)]
@@ -6,6 +7,7 @@ pub struct Gadget {
     pub ret_addr : u64,
     pub entry    : u64,
     pub sp_delta : usize,
+    pub mode     : Mode,
 }
 unsafe impl Send for Gadget {}
 
@@ -30,7 +32,10 @@ impl Chain {
     pub fn pack(&self) -> Vec<u8> {
         let mut p: Vec<u8> = Vec::new();
         for gad in self.gads.iter() {
-            let w = gad.entry;
+            let mut w = gad.entry;
+            /* Jumps to thumb addresses are indicated by a LSB of 1 */
+            /* NB: Check to make sure Unicorn is actually following this */
+            if gad.mode == Mode::Thumb { w |= 1 };
             let wp = pack_word(w, self.wordsize, self.endian);
             p.extend_from_slice(&wp);
             /* now, pack as many pads as needed to saturate sp_delta */

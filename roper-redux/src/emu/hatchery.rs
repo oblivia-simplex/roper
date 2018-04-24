@@ -2,13 +2,14 @@ extern crate unicorn;
 extern crate hexdump;
 extern crate rand;
 extern crate rayon;
-
+extern crate capstone;
 
 
 use std::thread::{spawn,sleep,JoinHandle,Thread};
 use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
 use std::sync::{Arc,RwLock,MutexGuard,Mutex};
-use std::cell::{RefCell};
+use std::rc::Rc;
+use std::cell::{RefMut,RefCell};
 use std::ops::Deref;
 use std::time::Duration;
 use self::rand::{SeedableRng,Rng,thread_rng};
@@ -18,6 +19,7 @@ use self::rayon::prelude::*;
 use emu::loader;
 use emu::loader::{ARM_ARM,ArchMode,Mode,Emu};
 use gen;
+use log;
 
 
 const OK: u32 = 0;
@@ -44,20 +46,49 @@ pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     let risc_width = emu.risc_width();
     emu.set_sp(stack_entry + risc_width);
     
-    /** Hatch! **/
-    let x = emu.start(start_addr, 0, 0, 1024); /* FIXME don't hardcode these params */
+    let visitor: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut hook = None;
+    /** Set hooks **/
+    {
+        let visitor = visitor.clone();
+        let callback = move|uc: &unicorn::Unicorn, addr: u64, size: u32| {
+            let mut vmut = visitor.lock().unwrap();
+            vmut.push(addr); /* maybe track mode here too */
+            /* debugging */
+            //let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
+            //let mode = if size == 4 { ArchMode::Arm(Mode::Arm) } else { ArchMode::Arm(Mode::Thumb) };
+            //let dis = log::disas(&inst, &mode);
+            //println!("{:08x}\t{}",addr, dis);
+
+        };
+        hook = Some(emu.hook_exec_mem(callback));
+        //println!("{:?}",hook);
+/* Okay, we're getting segfaults now.
+ * And when we don't the runtime has gone from 1.5 seconds to 5s.
+ * Maybe there's a lighter way than hooking everything. 
+ */
+    }
+    /** Hatch! **/ /* FIXME don't hardcode these params */
+    let x = emu.start(start_addr, 0, 0, 1024);
+    match hook {
+        Some(Ok(h)) =>  { emu.remove_hook(h); },
+        Some(Err(_)) | None => { },
+    }
+
    
     /* Now, get the resulting CPU context (the "phenotype"), and
      * attach it to the mutable pod
      */
     let registers = emu.read_general_registers().unwrap();
     let memory = emu.writeable_memory();
+    let vtmp = visitor.clone();
+    let visited = vtmp.lock().unwrap().clone().to_vec();
     /* print registers, for debugging */
     //for reg in &registers {
     //    print!("{:08x} ", reg);
    // }
     //println!("");
-    let pod = gen::Pod::new(registers,memory,Vec::new());
+    let pod = gen::Pod::new(registers,memory,visited);
     creature.phenome = Some(pod);
     true
 }
