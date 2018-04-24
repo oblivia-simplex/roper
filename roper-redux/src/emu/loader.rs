@@ -80,10 +80,6 @@ pub enum Emu {
     UcMips(unicorn::CpuMIPS),
 }
 
-#[derive(Clone)]
-pub struct EmuLock ( pub Arc<Mutex<Emu>> );
-unsafe impl Sync for EmuLock { }
-unsafe impl Send for EmuLock { }
 
 impl Debug for Emu {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {
@@ -308,7 +304,7 @@ pub fn umode_from_usize(x: usize) -> unicorn::Mode {
     }
 }
 //unsafe impl Sync for Emu { }
-unsafe impl Send for Emu {}
+//unsafe impl Send for Emu {}
 
 impl Clone for Emu {
     fn clone(&self) -> Self {
@@ -449,9 +445,6 @@ pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,String
     init_emulator(&CODE_BUFFER, archmode)
 }
 
-pub fn init_emulock_with_code_buffer (archmode: &ArchMode) -> EmuLock {
-    EmuLock(Arc::new(Mutex::new(init_emulator(&CODE_BUFFER, archmode).unwrap())))
-}
 
 pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,String> { 
 

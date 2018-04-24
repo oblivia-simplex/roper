@@ -59,22 +59,6 @@ lazy_static! {
 }
 
 
-lazy_static! {
-    pub static ref EMU_POOL: Arc<Vec<loader::EmuLock>>
-        = {
-            let num_engines = match env::var("ROPER_ENGINES") {
-                Err(_) => 64,
-                Ok(n)  => n.parse::<usize>()
-                            .expect("Failed to parse ROPER_ENGINES env var."),
-            };
-            let mut v = Vec::new();
-            for _ in 0..num_engines {
-                let e = loader::init_emulock_with_code_buffer(&loader::ARM_ARM);
-                v.push(e);
-            }
-            Arc::new(v)
-        };
-}
 
 pub type RngSeed = Vec<u64>;
 

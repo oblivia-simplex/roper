@@ -17,14 +17,19 @@ fn main() {
         Err(_) => 64,
         Ok(n)  => n.parse::<usize>().expect("Failed to parse ROPER_ENGINES env var"),
     };
+    let expect = match env::var("ROPER_STRESS_EXPECT") {
+        Err(_) => 20000,
+        Ok(n) => n.parse::<usize>().expect("Failed to parse ROPER_STRESS_EXPECT"),
+    };
     let engine_period = 16;
     let mut counter = engine_period;
     loop {
         if engines == 0 { break };
-        let (tx,rx,handle) = spawn_hatchery(engines);
+        let (tx,rx,handle) = spawn_hatchery(engines, expect);
         let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
         let start = Instant::now();
-        for i in 0..20000 { /* 100000 is too much to handle. but unlikely */
+        for i in 0..expect { /* 100000 is too much to handle. but unlikely */
+            let i = i as u64;
             let chain = Chain {
                 gads: vec![Gadget {
                                 entry: 0x8000 + (rng.gen::<u32>() as u64 % 0x30000),
@@ -48,15 +53,15 @@ fn main() {
             tx.send(creature).unwrap();
         }
 
-        for i in 0..20000 {
+        for i in 0..expect {
             let pod = rx.recv().unwrap();
         }
         
         drop(tx);
         handle.join().unwrap();
         let elapsed = start.elapsed();
-        println!("{} {}", engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
-        //break;
+        println!("{} {} {}", expect, engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
+        break;
         counter -= 1;
         if counter == 0 {
             counter = engine_period;
