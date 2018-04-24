@@ -39,7 +39,7 @@ pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /* save writeable regions **/
-    let saved_regions: Vec<(u64,Vec<u8>)> = emu.writeable_memory();
+    let saved_regions: loader::MemImage = emu.writeable_memory();
 
     /* load payload **/
     emu.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
@@ -144,7 +144,6 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
                 h.join();
             };
         }
-        println!("");
     });
 
     /* clean up threads? */

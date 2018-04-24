@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::{Mutex,Arc};
 use self::goblin::{Object,elf};
 use self::unicorn::*;
-use par::statics::CODE_BUFFER;
+use par::statics::*;
 
 /* iT WOULD be nice to have a static map of the Elf/Object headers, for easy
  * reference, and to avoid the need to pass back copies of read-only memory,
@@ -16,11 +16,15 @@ use par::statics::CODE_BUFFER;
  * over there, which would also speed up the emu generation process. 
  */
 const VERBOSE : bool = false;
-pub const STACK_SIZE : usize = 0x1000;
 pub const ARM_ARM   : ArchMode = ArchMode::Arm(Mode::Arm);
 pub const ARM_THUMB : ArchMode = ArchMode::Arm(Mode::Thumb);
 
-pub type MemImage = Vec<(u64,Vec<u8>)>;
+pub const PROT_READ: Perm = unicorn::PROT_READ;
+pub const PROT_EXEC: Perm = unicorn::PROT_EXEC;
+pub const PROT_WRITE: Perm = unicorn::PROT_WRITE;
+
+pub type Perm = unicorn::Protection;
+pub type MemImage = Vec<(u64, Perm, Vec<u8>)>;
 
 pub static MIPS_REGISTERS : [RegisterMIPS; 33] = [ RegisterMIPS::PC,
                                                    RegisterMIPS::ZERO,
@@ -93,8 +97,8 @@ impl Debug for Emu {
 impl Emu {
     pub fn mem_write(&mut self, addr: u64, data: &Vec<u8>) -> Result<(), unicorn::Error> {
         match self {
-            &mut Emu::UcArm(ref uc) => uc.mem_write(addr, data),
-            &mut Emu::UcMips(ref uc) => uc.mem_write(addr, data),
+            &mut Emu::UcArm(ref mut uc) => uc.mem_write(addr, data),
+            &mut Emu::UcMips(ref mut uc) => uc.mem_write(addr, data),
         }
     }
 
@@ -102,8 +106,8 @@ impl Emu {
         -> Result<(), Error> 
     {
         match self {
-            &mut Emu::UcArm(ref uc) => uc.mem_map(address, size, perms),
-            &mut Emu::UcMips(ref uc) => uc.mem_map(address, size, perms),
+            &mut Emu::UcArm(ref mut uc) => uc.mem_map(address, size, perms),
+            &mut Emu::UcMips(ref mut uc) => uc.mem_map(address, size, perms),
         }
     }
 
@@ -237,8 +241,8 @@ impl Emu {
         -> Result<(), Error> 
     {
         match self {
-            &mut Emu::UcArm(ref uc)  => uc.emu_start(begin, until, timeout, count),
-            &mut Emu::UcMips(ref uc) => uc.emu_start(begin, until, timeout, count),
+            &mut Emu::UcArm(ref mut uc)  => uc.emu_start(begin, until, timeout, count),
+            &mut Emu::UcMips(ref mut uc) => uc.emu_start(begin, until, timeout, count),
         }
     }
 
@@ -283,7 +287,7 @@ impl Emu {
             let data: Vec<u8> = self.mem_read(rgn.begin,
                                               (rgn.end-rgn.begin) as usize)
                                     .unwrap();
-            wmem.push((rgn.begin, data));
+            wmem.push((rgn.begin, rgn.perms, data));
         }
         wmem
     }
@@ -410,7 +414,7 @@ impl SegType {
 pub struct Seg {
     pub addr: u64,
     pub memsz: usize,
-    pub perm: unicorn::Protection,
+    pub perm: Perm,
     pub segtype: SegType,
 }
 impl Seg {
@@ -448,18 +452,22 @@ pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,String
 
 pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,String> { 
 
-    //let path = Path::new(path);
-    //let mut fd = File::open(path).unwrap();
-    //let mut buffer = Vec::new();
-    //fd.read_to_end(&mut buffer).unwrap();
     let obj = Object::parse(&buffer).unwrap();
-    //let mut segs = Vec::new();
-    //let mut secs = Vec::new();
     let (arch, mode) = archmode.as_uc();
 
     /* stopgap */
     assert_eq!(arch, unicorn::Arch::ARM);
-    let uc = CpuARM::new(mode).expect("Failed to create CpuARM");
+    let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
+    let mem_image: MemImage = MEM_IMAGE.to_vec();
+    for segment in mem_image {
+        /* segment is: (addr, perm, data) */
+        let (addr, perm, data) = (segment.0, segment.1, &segment.2);
+        uc.mem_map(addr, data.len(), perm);
+        uc.mem_write(addr, data);
+    }
+    Ok(Emu::UcArm(uc))
+
+    /*
     if let Object::Elf(e) = obj {
         let string_table = &e.shdr_strtab;
         let sname = |s: &elf::SectionHeader| string_table.get(s.sh_name);
@@ -471,7 +479,7 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,Strin
             /* get permissions */
 
             let seg = Seg::from_phdr(&phdr);
-            if true && seg.loadable() {
+            if seg.loadable() {
                 if VERBOSE && cfg!(debug_assertions) {
                     println!("[+] mapping {:?}",seg);
                 }
@@ -517,5 +525,6 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,Strin
     } else {
         Err(format!("Lucca didn't finish this function"))
     }
+*/
 
 }

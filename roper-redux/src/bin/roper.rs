@@ -21,7 +21,7 @@ fn main() {
         Err(_) => 20000,
         Ok(n) => n.parse::<usize>().expect("Failed to parse ROPER_STRESS_EXPECT"),
     };
-    let engine_period = 16;
+    let engine_period = 4;
     let mut counter = engine_period;
     loop {
         if engines == 0 { break };
@@ -61,7 +61,6 @@ fn main() {
         handle.join().unwrap();
         let elapsed = start.elapsed();
         println!("{} {} {}", expect, engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
-        break;
         counter -= 1;
         if counter == 0 {
             counter = engine_period;

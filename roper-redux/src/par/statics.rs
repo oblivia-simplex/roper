@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate goblin;
 
 use std::fs::File;
 use std::sync::{Arc,RwLock,Mutex};
@@ -6,10 +7,14 @@ use std::io::Read;
 use std::path::Path;
 use std::env;
 
+use self::goblin::{Object,elf};
 use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
 use emu::loader;
+use emu::loader::{PROT_READ,PROT_WRITE,PROT_EXEC};
+
+pub const STACK_SIZE: usize = 0x1000;
 
 lazy_static! {
     pub static ref CONFIG_DIR: String 
@@ -87,3 +92,64 @@ lazy_static! {
  * Perhaps every thread could just take the base RNG_SEED, and xor it with 
  * its own thread id?
  */
+
+
+lazy_static! {
+    pub static ref MEM_IMAGE: loader::MemImage
+        = {
+            let obj = Object::parse(&CODE_BUFFER).unwrap();
+            let mut image: loader::MemImage = loader::MemImage::new();
+            match obj {
+                /* FIXME: Don't map directly from CODE_BUFFER. Use the Section
+                 * Headers for reference to get the virtual addresses right.
+                 */
+                Object::Elf(e) => {
+                    let mut sizes = Vec::new();
+                    let shdrs = &e.section_headers;
+
+                    let phdrs = &e.program_headers;
+                    for phdr in phdrs {
+                        let seg = loader::Seg::from_phdr(&phdr);
+                        if seg.loadable() {
+                            let start = seg.aligned_start() as usize;
+                            let end = seg.aligned_end() as usize;
+                            image.push((seg.aligned_start(), 
+                                        seg.perm,
+                                        Vec::new()));
+                            sizes.push(end - start);
+                        }
+                    }
+                    /* Low memory */
+                    image.push((0, loader::PROT_READ, Vec::new()));
+
+                    /* now fill in the bytes */
+                    for shdr in shdrs {
+                        let (i,j) = (shdr.sh_offset as usize, 
+                                     (shdr.sh_offset+shdr.sh_size) as usize);
+                        let aj = usize::min(j, CODE_BUFFER.len());
+                        let sdata = CODE_BUFFER[i..aj].to_vec();
+                        /* find the appropriate segment */
+                        let mut s = 0;
+                        for row in image.iter_mut() {
+                            if shdr.sh_addr >= row.0 
+                                && shdr.sh_addr < (row.0 + sizes[s] as u64) {
+                                /* then we found a fit */
+                                row.2 = sdata.clone();
+                                break;
+                            }
+                            s += 1;
+                        }
+                    }
+                    /* now allocate the stack */
+                    let mut bottom = 0;
+                    for row in &image {
+                        let b = row.0 + row.2.len() as u64;
+                        if b > bottom { bottom = b + 1 };
+                    }
+                    image.push((bottom, PROT_READ|PROT_WRITE, vec![0; STACK_SIZE]));
+                },
+                _ => panic!("Not yet implemented."),
+            }
+            image
+        };
+}
