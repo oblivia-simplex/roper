@@ -104,7 +104,6 @@ lazy_static! {
                  * Headers for reference to get the virtual addresses right.
                  */
                 Object::Elf(e) => {
-                    let mut sizes = Vec::new();
                     let shdrs = &e.section_headers;
 
                     let phdrs = &e.program_headers;
@@ -121,10 +120,7 @@ lazy_static! {
                     }
                     /* Low memory */
                     image.push((0, loader::PROT_READ, 0x1000, Vec::new()));
-                    sizes.push(0x1000); /* Low memory size, i guess. bit of a KLUDGE */
 
-                    /* now fill in the bytes */
-                    assert_eq!(sizes.len(), image.len());
                     for shdr in shdrs {
                         let (i,j) = (shdr.sh_offset as usize, 
                                      (shdr.sh_offset+shdr.sh_size) as usize);
@@ -134,7 +130,7 @@ lazy_static! {
                         let mut s = 0;
                         for row in image.iter_mut() {
                             if shdr.sh_addr >= row.0 
-                                && shdr.sh_addr < (row.0 + sizes[s] as u64) {
+                                && shdr.sh_addr < (row.0 + row.2 as u64) {
                                 /* then we found a fit */
                                 row.3 = sdata.clone();
                                 break;
@@ -146,7 +142,7 @@ lazy_static! {
                     let mut bottom = 0;
                     for row in &image {
                         let b = row.0 + row.2 as u64;
-                        if b > bottom { bottom = b + 1 };
+                        if b > bottom { bottom = b };
                     }
                     image.push((bottom, PROT_READ|PROT_WRITE, STACK_SIZE, vec![0; STACK_SIZE]));
                 },

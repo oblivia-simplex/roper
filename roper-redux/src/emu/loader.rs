@@ -459,15 +459,14 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unico
     assert_eq!(arch, unicorn::Arch::ARM);
     let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
     let mem_image: MemImage = MEM_IMAGE.to_vec();
-    println!("MEM_IMAGE: {:?}", mem_image);
     for segment in mem_image {
         /* segment is: (addr, perm, aligned_size, data) */ /* TODO: make MemImage Vec<struct>*/
+        println!("Segment: addr: {:x}, perm: {:?}, size: {:x}", segment.0, segment.1, segment.2);
         let (addr, perm, size, data) = (segment.0, segment.1, segment.2, &segment.3);
-        uc.mem_map(addr, data.len(), perm).expect(&format!("Mapping error with: addr = {}, data.len() = {}", addr, size));
+        uc.mem_map(addr, size, perm).expect(&format!("Mapping error with: addr = 0x{:x}, data.len() = 0x{:x}", addr, size));
         uc.mem_write(addr, data)?;
     }
     println!("regions: {:?}", uc.mem_regions()?);
-    assert!(false);
     Ok(Emu::UcArm(uc))
 
     /*
