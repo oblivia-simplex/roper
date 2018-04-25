@@ -19,6 +19,7 @@ const VERBOSE : bool = false;
 pub const ARM_ARM   : Arch = Arch::Arm(Mode::Arm);
 pub const ARM_THUMB : Arch = Arch::Arm(Mode::Thumb);
 pub const STACK_SIZE: usize = 0x1000;
+pub const UNINITIALIZED_BYTE: u8 = 0x00;
 
 pub const PROT_READ: Perm = unicorn::PROT_READ;
 pub const PROT_EXEC: Perm = unicorn::PROT_EXEC;
@@ -518,16 +519,18 @@ impl Seg {
         if phdr.is_executable() { uc_perm |= PROT_EXEC  };
         if phdr.is_write()      { uc_perm |= PROT_WRITE };
         if phdr.is_read()       { uc_perm |= PROT_READ  };
-        let size = (phdr.vm_range().end - phdr.vm_range().start) as usize;
-        let data = vec![0; size];
-        Seg {
+        let mut s = Seg {
             addr:    phdr.vm_range().start as u64,
-            memsz:   size,
+            memsz:   (phdr.vm_range().end - phdr.vm_range().start) as usize,
             perm:    uc_perm,
             segtype: SegType::new(phdr.p_type),
-            data:    data,
-        }
+            data:    Vec::new(),
+        };
+        let size = (s.aligned_end() - s.aligned_start()) as usize;
+        s.data = vec![UNINITIALIZED_BYTE; size];
+        s
     }
+
     pub fn aligned_start(&self) -> u64 {
         self.addr & 0xFFFFF000
     }
@@ -687,6 +690,12 @@ lazy_static! {
                                     seg.data[v_off] = byte;
                                     v_off += 1;
                                 }
+                                /*
+                                while v_off+1 < seg.aligned_end() as usize {
+                                    seg.data.push(UNINITIALIZED_BYTE);
+                                    v_off += 1;
+                                }
+                                */
                                 break;
                             }
                             s += 1;
@@ -726,6 +735,16 @@ pub fn read_static_mem (addr: u64, size: usize) -> Option<Vec<u8>> {
     if let Some(seg) = find_static_seg(addr) {
         let offset = (addr - seg.aligned_start()) as usize;
         let offend = offset + size;
+        if offend > seg.data.len() {
+            println!("ERROR: addr: {:x}, size: {:x}, offset = {:x}, offend = {:x}, seg.data.len() = {:x}",
+                     addr, size, offset, offend, seg.data.len());
+            println!("this seg: {}", seg);
+            for seg in MEM_IMAGE.iter() {
+                println!("{}",seg);
+            }
+            panic!("Index error!");
+        }
+        let offend = usize::min(offend, seg.data.len());
         Some(seg.data[offset..offend].to_vec())
     } else { None }
 }

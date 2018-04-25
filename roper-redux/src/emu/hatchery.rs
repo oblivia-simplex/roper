@@ -173,7 +173,7 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: SyncSender<gen::Creature>) -> ()
             let pc = uc.reg_read(11).unwrap(); /* FIXME don't hardcode this arch-specific regid
                                          and don't leave it as a read-unfriendly i32.
                                          */
-            println!("INTERRUPT at PC {:08x}! {:x}", pc,what);
+            //println!("INTERRUPT at PC {:08x}! {:x}", pc,what);
             uc.emu_stop().unwrap();
         };
         hook = emu.hook_interrupts(cb);

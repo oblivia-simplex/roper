@@ -29,10 +29,10 @@ fn main() {
     };
     let engine_period = 4;
     let mut counter = engine_period;
+    let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
     loop {
         if engines == 0 { break };
         let (tx,rx,handle) = spawn_hatchery(engines, expect);
-        let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
         let start = Instant::now();
         for i in 0..expect { /* 100000 is too much to handle. but unlikely */
             let i = i as u64;
@@ -68,8 +68,10 @@ fn main() {
 
         for i in 0..expect {
             let creature = rx.recv().unwrap();
-            println!("VISITED BY {} {}",creature.name, creature.disas_visited().join("\n"));
-            println!("{}",&creature.genome)
+            if cfg!(debug_assertions) {
+                println!("VISITED BY {} {}",creature.name, creature.disas_visited().join("\n"));
+                println!("{}",&creature.genome)
+            }
         }
         
         drop(tx);
