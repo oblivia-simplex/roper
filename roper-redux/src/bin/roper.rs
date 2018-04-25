@@ -51,25 +51,25 @@ fn main() {
                             }],
                 pads: vec![Pad::Const(i), 
                            Pad::Const(i+0xdeadbeef), 
+                           Pad::Input(0),
+                           Pad::Input(9),
                            Pad::Const(i+0xbaadf00d),
+                           Pad::Input(2),
                            Pad::Const(i+0xcafebabe)],
                 wordsize: 4,
                 endian: Endian::Little,
                 metadata: Metadata::new(),
             };
-            let creature = Creature::new(chain,0);
+            let mut creature = Creature::new(chain,0);
+            creature.pose_problem(&vec![1,2,3,4]);
 
             tx.send(creature).unwrap();
         }
 
         for i in 0..expect {
             let creature = rx.recv().unwrap();
-            for pod in creature.phenome.values() {
-                println!("VISITED BY {}:\n\t{}", 
-                         &creature.name,
-                         pod.disas_visited().join("\n\t"));
-            }
-            //println!("{:?}", &creature.phenome.unwrap().visited);
+            println!("VISITED BY {} {}",creature.name, creature.disas_visited().join("\n"));
+            println!("{}",&creature.genome)
         }
         
         drop(tx);

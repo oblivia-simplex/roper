@@ -32,15 +32,19 @@ use log;
  * the phenotype.
  */
 
+/* I think some of this data cloning could be optimized away. FIXME */
 pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     let mut map = gen::Phenome::new();
     {
-        let mut inputs: Vec<gen::Input> = creature.phenome.keys().map(|x| x.clone()).collect();
+        let mut inputs: Vec<gen::Input> = creature.phenome
+                                                  .keys()
+                                                  .map(|x| x.clone())
+                                                  .collect();
         while inputs.len() > 0 {
             let input = inputs.pop().unwrap(); 
         /* This can't really be threaded, due to the unsendability of emu */
             let pod = hatch(creature, &input, emu);
-            map.insert(input.to_vec(),pod);
+            map.insert(input.to_vec(),Some(pod));
         }
     }
     creature.phenome = map;

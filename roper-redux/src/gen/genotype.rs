@@ -1,3 +1,5 @@
+use std::fmt::{Display};
+use std::fmt;
 use std::collections::HashMap;
 use emu::loader::Mode;
 
@@ -10,6 +12,16 @@ pub struct Gadget {
     pub mode     : Mode,
 }
 unsafe impl Send for Gadget {}
+
+impl Display for Gadget {
+    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[Entry: {:08x}, Ret: {:08x}, SpD: {:x}, Mode: {:?}]",
+               self.entry,
+               self.ret_addr,
+               self.sp_delta,
+               self.mode)
+    }
+}
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
 pub enum Endian {
@@ -24,6 +36,15 @@ pub enum Pad {
 }
 unsafe impl Send for Pad {}
 
+impl Display for Pad {
+    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Pad::Const(x) => write!(f, "[Const {:08x}]", x),
+            &Pad::Input(i) => write!(f, "[Input Slot #{}]", i),
+        }
+    }
+}
+
 #[derive(Clone,Debug,PartialEq)]
 pub struct Chain {
     pub gads: Vec<Gadget>,
@@ -35,9 +56,29 @@ pub struct Chain {
 
 unsafe impl Send for Chain {}
 
+impl Display for Chain {
+    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut s = String::new();
+        let mut pad_offset = 0;
+        for gad in self.gads.iter() {
+            s.push_str(&format!("{}\n",gad));
+            if gad.sp_delta <= 1 { continue };
+            let padnum = self.pads.len();
+            if padnum == 0 { continue };
+            for i in 0..(gad.sp_delta-1) {
+                let o = i + pad_offset;
+                let w = self.pads[o % padnum];
+                s.push_str(&format!("{}\n",w));
+            }
+        }
+        write!(f, "{}", s)
+    }
+}
+
 impl Chain {
     pub fn pack(&self, input: &Vec<u64>) -> Vec<u8> {
         let mut p: Vec<u8> = Vec::new();
+        let mut pad_offset = 0;
         for gad in self.gads.iter() {
             let mut w = gad.entry;
             /* Jumps to thumb addresses are indicated by a LSB of 1 */
@@ -50,10 +91,11 @@ impl Chain {
             let padnum = self.pads.len();
             if padnum == 0 { continue };
             for i in 0..(gad.sp_delta-1) {
-                let w = match self.pads[i % padnum] {
+                let o = i + pad_offset;
+                let w = match self.pads[o % padnum] {
                     Pad::Const(x) => x,
                     Pad::Input(i) => if input.len() > 0 { 
-                        input[i % input.len()] 
+                        input[o % input.len()] 
                     } else { 0 },
                 };
                 let wp = pack_word(w, self.wordsize, self.endian);

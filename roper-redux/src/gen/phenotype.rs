@@ -56,7 +56,7 @@ unsafe impl Send for Pod {}
  */
 
 pub type Input = Vec<u64>; /* a static reference would be better FIXME */
-pub type Phenome = HashMap<Input,Pod>;
+pub type Phenome = HashMap<Input,Option<Pod>>;
 
 #[derive(Debug,Clone)]
 pub struct Creature {
@@ -118,6 +118,24 @@ impl Creature {
 
     pub fn set_ab_fit(&mut self, ab_fit: f32) -> () {
         self.metadata.insert("ab_fit", ab_fit);
+    }
+
+    pub fn pose_problem(&mut self, input: &Input) -> () {
+        self.phenome.insert(input.clone(), None);
+    }
+
+    pub fn disas_visited(&self) -> Vec<String> {
+        let mut dump = Vec::new();
+        for (input,pod) in &self.phenome {
+            if pod == &None { continue };
+            dump.push(format!("ON INPUT {:?}\n\t{}",
+                              input,
+                              pod.as_ref()
+                                 .unwrap()
+                                 .disas_visited()
+                                 .join("\n\t")));
+        }
+        dump
     }
 }
 
