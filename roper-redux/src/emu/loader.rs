@@ -569,79 +569,17 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &Arch) -> Result<Emu,unicorn::
 
     let obj = Object::parse(&buffer).unwrap();
     let (arch, mode) = archmode.as_uc();
-
-    /* stopgap */
+    
+    /* FIXME: Delete once other arches are implemented here */
     assert_eq!(arch, unicorn::Arch::ARM);
+
     let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
     let mem_image: MemImage = MEM_IMAGE.to_vec();
     for seg in mem_image {
-        /* segment is: (addr, perm, aligned_size, data) */ 
-        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; //.expect(&format!("Mapping error for {:?}", seg));
+        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; 
         uc.mem_write(seg.addr, &seg.data)?;
     }
-    //println!("regions: {:?}", uc.mem_regions()?);
     Ok(Emu::UcArm(uc))
-
-    /*
-    if let Object::Elf(e) = obj {
-        let string_table = &e.shdr_strtab;
-        let sname = |s: &elf::SectionHeader| string_table.get(s.sh_name);
-        let phdrs = &e.program_headers;
-        let shdrs = &e.section_headers;
-
-        /* first, map the segments */
-        for phdr in phdrs {
-            /* get permissions */
-
-            let seg = Seg::from_phdr(&phdr);
-            if seg.loadable() {
-                if VERBOSE && cfg!(debug_assertions) {
-                    println!("[+] mapping {:?}",seg);
-                }
-                uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)
-                  .expect(&format!("Failed to map segment {:?}",seg))
-            }
-        }
-        /* map a page of low memory, since elf likes to write some info there */
-        uc.mem_map(0, 0x1000, PROT_READ)
-          .expect("Failed to map 0x1000 bytes of low memory.");
-        /* now allocate a stack */
-        let mut bottom = 0;
-        let regions = uc.mem_regions().unwrap();
-        for region in &regions {
-            if VERBOSE && cfg!(debug_assertions) {
-                println!("[+] region: {:x} - {:x} {:?}", 
-                     region.begin, region.end, region.perms);
-            }
-            if region.end > bottom { bottom = region.end + 1; };
-        }
-        if VERBOSE && cfg!(debug_assertions) {
-            println!("[+] mapping stack: {:x} bytes at {:x}", STACK_SIZE, bottom);
-        }
-        uc.mem_map(bottom, STACK_SIZE, PROT_READ|PROT_WRITE)
-          .expect(&format!("Failed to allocate stack of {:x} bytes at {:x}",
-                           STACK_SIZE, bottom));
-        /* now, write the sections */
-        for shdr in shdrs {
-            if VERBOSE && cfg!(debug_assertions) {
-                println!("shdr {:?}> {:?}",sname(&shdr), shdr);
-            }
-            let (i,j) = (shdr.sh_offset as usize, (shdr.sh_offset+shdr.sh_size) as usize);
-            let aj = usize::min(j, buffer.len());
-            let sdata = buffer[i..aj].to_vec();
-            uc.mem_write(shdr.sh_addr, &sdata)
-              .expect(&format!("Failed to write {:x} bytes of data to uc addr {:x}",
-                               sdata.len(), shdr.sh_addr)); 
-
-        }
-        /* some debugging prints to see if this worked */
-
-        Ok(Emu::UcArm(uc))
-    } else {
-        Err(format!("Lucca didn't finish this function"))
-    }
-*/
-
 }
 
 

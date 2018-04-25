@@ -23,7 +23,7 @@ fn main() {
         Err(_) => 4,
         Ok(n)  => n.parse::<usize>().expect("Failed to parse ROPER_ENGINES env var"),
     };
-    let expect = match env::var("ROPER_STRESS_EXPECT") {
+    let expect = match env::var("ROPER_STRESS_LOAD") {
         Err(_) => 1024,
         Ok(n) => n.parse::<usize>().expect("Failed to parse ROPER_STRESS_EXPECT"),
     };
