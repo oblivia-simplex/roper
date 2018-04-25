@@ -9,25 +9,38 @@ use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
 use genotype::*;
-use emu::loader::MemImage;
+use emu::loader::{Mode,MemImage};
 use par::statics::*;
+use log;
 
 #[derive(Clone,Debug,PartialEq)]
 pub struct Pod {
     pub registers: Vec<u64>,
-    pub memory: MemImage,
-    pub visited: Vec<u64>,
+    //pub memory: MemImage,
+    pub visited: Vec<(u64,Mode)>,
+    pub writelog: Vec<(u64,u64)>,
 }
 
 impl Pod {
     pub fn new(registers: Vec<u64>, 
-               memory:    MemImage,
-               visited:   Vec<u64>) -> Self {
+              // memory:    MemImage,
+               visited:   Vec<(u64,Mode)>,
+               writelog:  Vec<(u64,u64)>) -> Self {
         Pod {
             registers: registers,
-            memory: memory,
+            //memory: memory,
             visited: visited,
+            writelog: writelog,
         }
+    }
+    /// Dump a vector of strings containing the disassembly
+    /// of each address visited by the phenotype.
+    pub fn disas_visited (&self) -> Vec<String> {
+        let mut v = Vec::new();
+        for &(addr, mode) in &self.visited {
+            v.push(log::disas_static(addr, mode));
+        }
+        v
     }
 }
 
@@ -42,11 +55,13 @@ unsafe impl Send for Pod {}
  * doesn't need to be done that way. 
  */
 
+pub type Input = Vec<u64>; /* a static reference would be better FIXME */
+pub type Phenome = HashMap<Input,Pod>;
 
 #[derive(Debug,Clone)]
 pub struct Creature {
     pub genome: Chain,
-    pub phenome: Option<Pod>,
+    pub phenome: Phenome,
     pub index: usize,
     pub metadata: Metadata,
     pub name: String,
@@ -61,7 +76,7 @@ impl Eq for Creature {}
 
 fn baptise_chain (chain: &Chain) -> String {
     let syllables = 8;
-    let p = chain.pack();
+    let p = chain.pack(&Vec::new());
     let mut hasher = DefaultHasher::new();
     p.hash(&mut hasher);
     let hash: u64 = hasher.finish();
@@ -87,7 +102,7 @@ impl Creature {
         let name = baptise_chain(&genome);
         Creature {
             genome: genome,
-            phenome: None,
+            phenome: Phenome::new(),
             index: index,
             metadata: Metadata::new(),
             name: name,

@@ -8,11 +8,12 @@ use std::path::Path;
 use std::env;
 
 use self::goblin::{Object,elf};
+use self::goblin::elf::Elf;
 use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
 use emu::loader;
-use emu::loader::{PROT_READ,PROT_WRITE,PROT_EXEC};
+use emu::loader::{Arch,Mode,PROT_READ,PROT_WRITE,PROT_EXEC};
 
 
 lazy_static! {
@@ -89,5 +90,21 @@ lazy_static! {
             let mut buffer = Vec::new();
             fd.read_to_end(&mut buffer).unwrap();
             buffer
+        };
+}
+
+lazy_static! {
+    pub static ref ARCHITECTURE: Arch
+        = {
+            let arch_magic = match Object::parse(&CODE_BUFFER).unwrap() {
+                Object::Elf(e) => e.header.e_machine,
+                _ => panic!("Binary format unimplemented."),
+            };
+            match arch_magic {
+                40 => Arch::Arm(Mode::Arm),
+                8  => Arch::Mips(Mode::Be),
+                10 => Arch::Mips(Mode::Le),
+                _  => panic!("arch_magic not recognized!"),
+            }
         };
 }

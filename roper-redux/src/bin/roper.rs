@@ -4,6 +4,8 @@ extern crate rand;
 
 use std::env;
 use std::time::Instant;
+use std::collections::HashMap;
+
 use libroper::emu::*;
 use libroper::gen::*;
 use libroper::emu::loader::Mode;
@@ -11,14 +13,18 @@ use rand::{SeedableRng,Rng};
 use rand::isaac::{Isaac64Rng};
 use libroper::par::statics::*;
 
+/* The optimal combination, so far, seems to be something like:
+ * batch of 1024, channels throttled to 512, number of engines: 4-6
+ * 0.09 seconds to evaluate 1024 specimens!
+ */
 fn main() {
     let mem_image = MEM_IMAGE.clone();
     let mut engines = match env::var("ROPER_ENGINES") {
-        Err(_) => 64,
+        Err(_) => 4,
         Ok(n)  => n.parse::<usize>().expect("Failed to parse ROPER_ENGINES env var"),
     };
     let expect = match env::var("ROPER_STRESS_EXPECT") {
-        Err(_) => 20000,
+        Err(_) => 1024,
         Ok(n) => n.parse::<usize>().expect("Failed to parse ROPER_STRESS_EXPECT"),
     };
     let engine_period = 4;
@@ -43,7 +49,10 @@ fn main() {
                                 sp_delta: rng.gen::<usize>() % 16,
                                 mode: Mode::Thumb,
                             }],
-                pads: vec![i, i+0xdeadbeef, i+0xbaadf00d, i+0xcafebabe],
+                pads: vec![Pad::Const(i), 
+                           Pad::Const(i+0xdeadbeef), 
+                           Pad::Const(i+0xbaadf00d),
+                           Pad::Const(i+0xcafebabe)],
                 wordsize: 4,
                 endian: Endian::Little,
                 metadata: Metadata::new(),
@@ -54,7 +63,13 @@ fn main() {
         }
 
         for i in 0..expect {
-            let pod = rx.recv().unwrap();
+            let creature = rx.recv().unwrap();
+            for pod in creature.phenome.values() {
+                println!("VISITED BY {}:\n\t{}", 
+                         &creature.name,
+                         pod.disas_visited().join("\n\t"));
+            }
+            //println!("{:?}", &creature.phenome.unwrap().visited);
         }
         
         drop(tx);
@@ -64,7 +79,7 @@ fn main() {
         counter -= 1;
         if counter == 0 {
             counter = engine_period;
-            engines -= 1;
+            //engines -= 1;
         };
     } 
 }

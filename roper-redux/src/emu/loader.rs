@@ -1,7 +1,7 @@
 extern crate unicorn;
 extern crate goblin;
 
-use std::fmt::{Debug,Formatter};
+use std::fmt::{Debug,Formatter,Display};
 use std::fmt;
 use std::path::Path;
 use std::sync::{Mutex,Arc};
@@ -16,8 +16,8 @@ use par::statics::*;
  * over there, which would also speed up the emu generation process. 
  */
 const VERBOSE : bool = false;
-pub const ARM_ARM   : ArchMode = ArchMode::Arm(Mode::Arm);
-pub const ARM_THUMB : ArchMode = ArchMode::Arm(Mode::Thumb);
+pub const ARM_ARM   : Arch = Arch::Arm(Mode::Arm);
+pub const ARM_THUMB : Arch = Arch::Arm(Mode::Thumb);
 pub const STACK_SIZE: usize = 0x1000;
 
 pub const PROT_READ: Perm = unicorn::PROT_READ;
@@ -171,6 +171,54 @@ impl Emu {
         }
     }
 
+    pub fn hook_writeable_mem<F> (&mut self,
+                                  callback: F)
+        -> Result<unicorn::uc_hook, Error>
+        where 
+            F: Fn(&Unicorn, 
+                  unicorn::MemType, 
+                  u64, 
+                  usize, 
+                  i64) -> bool + 'static 
+    {
+        
+        let writeable = self.writeable_memory();
+        let mut begin = None;
+        let mut end = None;
+        for seg in &writeable {
+            let b = seg.aligned_start();
+            let e = seg.aligned_end();
+            if begin == None || b < begin.unwrap() { begin = Some(b) };
+            if end == None || e > end.unwrap() { end = Some(e) };
+        }
+        assert!(begin != None && end != None);
+        self.add_mem_hook(unicorn::MemHookType::MEM_WRITE,
+                          begin.unwrap(),
+                          end.unwrap(),
+                          callback)
+    }
+
+    pub fn add_mem_hook<F> (&mut self,
+                            hook_type: unicorn::MemHookType,
+                            begin: u64,
+                            end: u64,
+                            callback: F) -> Result<uc_hook, Error>
+        where F: Fn(&Unicorn, MemType, u64, usize, i64) -> bool + 'static,
+    {
+        match self {
+            &mut Emu::UcArm(ref mut uc) => uc.add_mem_hook(hook_type,
+                                                           begin,
+                                                           end,
+                                                           callback),
+            &mut Emu::UcMips(ref mut uc) => uc.add_mem_hook(hook_type,
+                                                            begin,
+                                                            end,
+                                                            callback),
+        }
+    }
+            
+                            
+
     pub fn hook_exec_mem<F> (&mut self,
                              callback: F) 
         -> Result<unicorn::uc_hook, Error>
@@ -199,6 +247,29 @@ impl Emu {
         }
     }
 
+    pub fn hook_interrupts<F> (&mut self,
+                               callback: F)
+        -> Result<unicorn::uc_hook, Error>
+        where F: Fn(&Unicorn, u32) -> () + 'static,
+    {
+        match self {
+            &mut Emu::UcArm(ref mut uc) => uc.add_intr_hook(callback),
+            &mut Emu::UcMips(ref mut uc) => uc.add_intr_hook(callback),
+        }
+
+    }
+
+    /*
+    pub fn add_insn_in_hook<F>(&mut self, callback: F) -> Result<uc_hook, Error>
+        where F: Fn(&Unicorn, u32, usize) -> u32 + 'static,
+    {
+        /* TODO: write a macro that does this repetitive "match self" business */
+        match self {
+            &mut Emu::UcArm(ref mut uc) => uc.add_insn_in_hook(callback),
+            &mut Emu::UcMips(ref mut uc) => uc.add_insn_in_hook(callback),
+        }
+    }
+*/
     pub fn remove_hook(&mut self, uc_hook: unicorn::uc_hook) -> Result<(),Error> {
         match self {
             &mut Emu::UcArm(ref mut uc) => uc.remove_hook(uc_hook),
@@ -360,17 +431,23 @@ impl Mode {
     }
 }
 
-#[derive(Debug)]
-pub enum ArchMode {
+#[derive(PartialEq,Eq,Debug)]
+pub enum Arch {
     Arm(Mode),
     Mips(Mode),
 }
 
-impl ArchMode {
+impl Arch {
     pub fn as_uc(&self) -> (unicorn::Arch, unicorn::Mode) {
         match self {
-            &ArchMode::Arm(ref m) => (unicorn::Arch::ARM, m.as_uc()),
-            &ArchMode::Mips(ref m) => (unicorn::Arch::MIPS, m.as_uc()),
+            &Arch::Arm(ref m) => (unicorn::Arch::ARM, m.as_uc()),
+            &Arch::Mips(ref m) => (unicorn::Arch::MIPS, m.as_uc()),
+        }
+    }
+    pub fn mode(&self) -> Mode {
+        match self {
+            &Arch::Arm(ref m) => m.clone(),
+            &Arch::Mips(ref m) => m.clone(),
         }
     }
     //pub fn as_cs(&self) -> capstone::
@@ -426,6 +503,15 @@ pub struct Seg {
     pub data: Vec<u8>,
 }
 
+impl Display for Seg {
+    fn fmt (&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "[aligned {:08x} -- {:08x}: {:?}]",
+               self.aligned_start(),
+               self.aligned_end(),
+               self.perm)
+    }
+}
+
 impl Seg {
     pub fn from_phdr(phdr: &elf::ProgramHeader) -> Self {
         let mut uc_perm = PROT_NONE;
@@ -456,13 +542,27 @@ impl Seg {
     }
 }
 
+/* from raw Unicorn instance. Useful inside callbacks, for disassembling */
+pub fn get_uc_mode(uc: &Unicorn) -> Mode {
+    /* TODO keep a global static architecture variable, for reference
+     * in situations like these. for now, we're just assuming ARM, but
+     * plan to extend the system to cover, at least, MIPS, too.
+     */
+    let raw = uc.query(unicorn::Query::MODE).unwrap();
 
-pub fn init_emulator_with_code_buffer (archmode: &ArchMode) -> Result<Emu,unicorn::Error> {
+    match raw {
+        0b00000 => Mode::Arm,
+        0b10000 => Mode::Thumb,
+        _ => panic!("Mode not recognized"),
+    }
+}
+
+pub fn init_emulator_with_code_buffer (archmode: &Arch) -> Result<Emu,unicorn::Error> {
     init_emulator(&CODE_BUFFER, archmode)
 }
 
 
-pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unicorn::Error> { 
+pub fn init_emulator (buffer: &Vec<u8>, archmode: &Arch) -> Result<Emu,unicorn::Error> { 
 
     let obj = Object::parse(&buffer).unwrap();
     let (arch, mode) = archmode.as_uc();
@@ -476,7 +576,7 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unico
         uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; //.expect(&format!("Mapping error for {:?}", seg));
         uc.mem_write(seg.addr, &seg.data)?;
     }
-    println!("regions: {:?}", uc.mem_regions()?);
+    //println!("regions: {:?}", uc.mem_regions()?);
     Ok(Emu::UcArm(uc))
 
     /*
@@ -548,9 +648,6 @@ lazy_static! {
             let obj = Object::parse(&CODE_BUFFER).unwrap();
             let mut segs: Vec<Seg> = Vec::new();
             match obj {
-                /* FIXME: Don't map directly from CODE_BUFFER. Use the Section
-                 * Headers for reference to get the virtual addresses right.
-                 */
                 Object::Elf(e) => {
                     let shdrs = &e.section_headers;
 
@@ -613,6 +710,24 @@ lazy_static! {
             }
             segs
         };
+}
+
+fn find_static_seg (addr: u64) -> Option<&'static Seg> {
+    let mut this_seg = None;
+    for seg in MEM_IMAGE.iter() {
+        if seg.aligned_start() <= addr && addr < seg.aligned_end() {
+            this_seg = Some(seg);
+        };
+    }
+    this_seg
+}
+
+pub fn read_static_mem (addr: u64, size: usize) -> Option<Vec<u8>> {
+    if let Some(seg) = find_static_seg(addr) {
+        let offset = (addr - seg.aligned_start()) as usize;
+        let offend = offset + size;
+        Some(seg.data[offset..offend].to_vec())
+    } else { None }
 }
 
 #[test]

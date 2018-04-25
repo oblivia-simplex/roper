@@ -17,7 +17,7 @@ use self::rand::isaac::Isaac64Rng;
 use self::rayon::prelude::*;
 
 use emu::loader;
-use emu::loader::{ARM_ARM,ArchMode,Mode,Emu};
+use emu::loader::{ARM_ARM,Arch,Mode,Emu};
 use gen;
 use log;
 
@@ -31,9 +31,26 @@ use log;
  * to a ketos script that will perform the fitness evaluation on 
  * the phenotype.
  */
-pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
+
+pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
+    let mut map = gen::Phenome::new();
+    {
+        let mut inputs: Vec<gen::Input> = creature.phenome.keys().map(|x| x.clone()).collect();
+        while inputs.len() > 0 {
+            let input = inputs.pop().unwrap(); 
+        /* This can't really be threaded, due to the unsendability of emu */
+            let pod = hatch(creature, &input, emu);
+            map.insert(input.to_vec(),pod);
+        }
+    }
+    creature.phenome = map;
+    true
+}
+
+pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -> gen::Pod {
     /* a very simple version of hatch_chain **/
-    let payload = creature.genome.pack();
+
+    let payload = creature.genome.pack(input);
     //hexdump::hexdump(&payload); /* NB: debugging only */
     let start_addr = creature.genome.entry();
     let (stack_addr, stack_size) = emu.find_stack();
@@ -46,33 +63,59 @@ pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
     let risc_width = emu.risc_width();
     emu.set_sp(stack_entry + risc_width);
     
-    let visitor: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
-    let hook;
-    /* Set hooks **/
-    {
+    let visitor: Rc<RefCell<Vec<(u64,Mode)>>> = Rc::new(RefCell::new(Vec::new()));
+    let writelog = Rc::new(RefCell::new(Vec::new()));
+
+    let mem_write_hook = {
+        let writelog = writelog.clone();
+        let callback = move |uc: &unicorn::Unicorn, 
+                             _memtype: unicorn::MemType,
+                             addr: u64, 
+                             size: usize, 
+                             val: i64| {
+            let mut wmut = writelog.borrow_mut();
+            wmut.push((addr, val as u64));
+            /*
+            let pc = uc.reg_read(11).unwrap(); /* FIXME KLUDGE ARM id for PC */
+            let inst = uc.mem_read(pc, 4);
+            let mode = loader::get_uc_mode(&uc);
+            
+            let dis = match inst {
+                Err(_) => "out of bounds".to_string(),
+                Ok(v)  => log::disas(&v, mode),
+            };
+            //println!("WRITE with PC {:x} ({}): addr: {:x}, size: {:x}, val: {:x}", pc, dis, addr, size, val);
+            */
+            true
+        };
+        emu.hook_writeable_mem(callback)
+    };
+
+    let visit_hook = {
         let visitor = visitor.clone();
-        let callback = move|uc: &unicorn::Unicorn, addr: u64, size: u32| {
-            let mut vmut = visitor.lock().unwrap();
-            vmut.push(addr); /* maybe track mode here too */
+        let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
+            let mut vmut = visitor.borrow_mut();
+            let mode = loader::get_uc_mode(uc);
+            //let dis1 = log::disas_static(addr, mode);
+            //let size = if mode == Mode::Thumb {2} else {4};
+            //let inst = uc.mem_read(addr, size).unwrap();
+            //let dis2 = log::disas(&inst, mode);
+            //println!("STATIC: {}\nLIVE:   {} {:?}\n", dis1, dis2, inst);
+            vmut.push((addr,mode)); /* maybe track mode here too */
             /* debugging */
-            if false && cfg!(debug_assertions) {
-                let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
-                let mode = if size == 4 { ArchMode::Arm(Mode::Arm) } else { ArchMode::Arm(Mode::Thumb) };
-                let dis = log::disas(&inst, &mode);
-                println!("{:08x}\t{}",addr, dis);
-            }
 
         };
-        hook = emu.hook_exec_mem(callback);
-        //println!("{:?}",hook);
-/* Okay, we're getting segfaults now.
- * And when we don't the runtime has gone from 1.5 seconds to 5s.
- * Maybe there's a lighter way than hooking everything. 
- */
-    }
+        emu.hook_exec_mem(callback)
+    };
     /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
-    match hook {
+    /* for debugging */
+    /*
+     * for seg in &emu.writeable_memory() {
+        println!("{}, #bytes: 0x{:x}",seg, seg.data.len());
+    }
+    */
+    match visit_hook {
         Ok(h)  => { emu.remove_hook(h).unwrap(); },
         Err(_) => { },
     }
@@ -82,37 +125,81 @@ pub fn hatch (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
      * attach it to the mutable pod
      */
     let registers = emu.read_general_registers().unwrap();
-    let memory = emu.writeable_memory();
+    //let memory = emu.writeable_memory();
     let vtmp = visitor.clone();
-    let visited = vtmp.lock().unwrap().clone().to_vec();
+    let visited = vtmp.borrow().to_vec();
+    let wtmp = writelog.clone();
+    let writelog = wtmp.borrow().to_vec();
+    //print!("writelog (len: 0x{:x}): ", writelog.len());
+    //for &(addr, data) in &writelog {
+    //    print!(" {:08x} -> {:x};", addr, data);
+   // }
+    //println!("");
     /* print registers, for debugging */
     //for reg in &registers {
     //    print!("{:08x} ", reg);
    // }
     //println!("");
-    let pod = gen::Pod::new(registers,memory,visited);
-    creature.phenome = Some(pod);
-    true
+    /* Now, restore the state of writeable memory */
+    for seg in &saved_regions {
+        emu.mem_write(seg.aligned_start(), &seg.data);
+    }
+    let pod = gen::Pod::new(registers,visited,writelog);
+    pod
 }
 
 
 fn spawn_coop (rx: Receiver<gen::Creature>, tx: SyncSender<gen::Creature>) -> () {
     /* a thread-local emulator */
     let mut emu = loader::init_emulator_with_code_buffer(&ARM_ARM).unwrap();
+
+    /* The syscall hooks will remain in place for the duration of the
+     * emulator's life, since they're not phenome-specific, but will be
+     * used to terminate execution. We'll install them here. 
+     */
+    let hook;
+    {
+        let cb = move |uc: &unicorn::Unicorn, what: u32| {
+            //if cfg!(debug_assertions) {
+                //let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
+                //let mode = loader::get_uc_mode(&uc);
+                //let dis = log::disas(&inst, &mode);
+                //println!("INTERRUPT: {:08x}\t{}",addr, dis);
+            //}
+            let pc = uc.reg_read(11).unwrap(); /* FIXME don't hardcode this arch-specific regid
+                                         and don't leave it as a read-unfriendly i32.
+                                         */
+            println!("INTERRUPT at PC {:08x}! {:x}", pc,what);
+            uc.emu_stop().unwrap();
+        };
+        hook = emu.hook_interrupts(cb);
+    }
+
+    /* Hatch each incoming creature as it arrives, and send the creature
+     * back to the caller of spawn_hatchery. */
     for incoming in rx {
         let mut creature = incoming;
-        let _ = hatch(&mut creature, &mut emu);
+        let _ = hatch_cases(&mut creature, &mut emu);
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
+    }
+    
+    /* Cleanup */
+    match hook {
+        Ok(h) => { emu.remove_hook(h).unwrap(); },
+        Err(_) => { },
     }
 }
 
 // make gen::Pod type as Sendable, interior-mutable encasement for Chain
 //
+// the segfauls appear to be resulting from a stack overflow, when the
+// number of simultaneous threads (and therefore channels) is very high. 
+// Perhaps boxing the channels would help?
 pub fn spawn_hatchery (num_engines: usize, expect: usize)
     -> (SyncSender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
 
-    let (alice_tx, bob_rx) = sync_channel(20000);
-    let (bob_tx, alice_rx) = sync_channel(20000);
+    let (alice_tx, bob_rx) = sync_channel(num_engines);
+    let (bob_tx, alice_rx) = sync_channel(num_engines);
 
     /* think of ways to dynamically scale the workload, using a more
      * sophisticated data structure than a circular buffer for carousel */

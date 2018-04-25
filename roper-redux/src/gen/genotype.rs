@@ -17,10 +17,17 @@ pub enum Endian {
     Little,
 }
 
+#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+pub enum Pad {
+    Const(u64),
+    Input(usize),
+}
+unsafe impl Send for Pad {}
+
 #[derive(Clone,Debug,PartialEq)]
 pub struct Chain {
     pub gads: Vec<Gadget>,
-    pub pads: Vec<u64>,
+    pub pads: Vec<Pad>,
     pub wordsize: usize,
     pub endian: Endian,
     pub metadata: Metadata,
@@ -29,7 +36,7 @@ pub struct Chain {
 unsafe impl Send for Chain {}
 
 impl Chain {
-    pub fn pack(&self) -> Vec<u8> {
+    pub fn pack(&self, input: &Vec<u64>) -> Vec<u8> {
         let mut p: Vec<u8> = Vec::new();
         for gad in self.gads.iter() {
             let mut w = gad.entry;
@@ -43,7 +50,12 @@ impl Chain {
             let padnum = self.pads.len();
             if padnum == 0 { continue };
             for i in 0..(gad.sp_delta-1) {
-                let w = self.pads[i % padnum];
+                let w = match self.pads[i % padnum] {
+                    Pad::Const(x) => x,
+                    Pad::Input(i) => if input.len() > 0 { 
+                        input[i % input.len()] 
+                    } else { 0 },
+                };
                 let wp = pack_word(w, self.wordsize, self.endian);
                 p.extend_from_slice(&wp);
             }
