@@ -18,13 +18,14 @@ use par::statics::*;
 const VERBOSE : bool = false;
 pub const ARM_ARM   : ArchMode = ArchMode::Arm(Mode::Arm);
 pub const ARM_THUMB : ArchMode = ArchMode::Arm(Mode::Thumb);
+pub const STACK_SIZE: usize = 0x1000;
 
 pub const PROT_READ: Perm = unicorn::PROT_READ;
 pub const PROT_EXEC: Perm = unicorn::PROT_EXEC;
 pub const PROT_WRITE: Perm = unicorn::PROT_WRITE;
 
 pub type Perm = unicorn::Protection;
-pub type MemImage = Vec<(u64, Perm, usize, Vec<u8>)>;
+pub type MemImage = Vec<Seg>;
 
 pub static MIPS_REGISTERS : [RegisterMIPS; 33] = [ RegisterMIPS::PC,
                                                    RegisterMIPS::ZERO,
@@ -287,7 +288,13 @@ impl Emu {
             let data: Vec<u8> = self.mem_read(rgn.begin,
                                               (rgn.end-rgn.begin) as usize)
                                     .unwrap();
-            wmem.push((rgn.begin, rgn.perms, (rgn.end-rgn.begin) as usize, data));
+            wmem.push( Seg {
+                addr: rgn.begin,
+                perm: rgn.perms,
+                memsz: (rgn.end - rgn.begin) as usize,
+                data: data,
+                segtype: SegType::Load,
+            });
         }
         wmem
     }
@@ -410,24 +417,29 @@ impl SegType {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(PartialEq,Eq,Debug,Clone)]
 pub struct Seg {
     pub addr: u64,
     pub memsz: usize,
     pub perm: Perm,
     pub segtype: SegType,
+    pub data: Vec<u8>,
 }
+
 impl Seg {
     pub fn from_phdr(phdr: &elf::ProgramHeader) -> Self {
         let mut uc_perm = PROT_NONE;
         if phdr.is_executable() { uc_perm |= PROT_EXEC  };
         if phdr.is_write()      { uc_perm |= PROT_WRITE };
         if phdr.is_read()       { uc_perm |= PROT_READ  };
+        let size = (phdr.vm_range().end - phdr.vm_range().start) as usize;
+        let data = vec![0; size];
         Seg {
             addr:    phdr.vm_range().start as u64,
-            memsz:   (phdr.vm_range().end - phdr.vm_range().start) as usize,
+            memsz:   size,
             perm:    uc_perm,
             segtype: SegType::new(phdr.p_type),
+            data:    data,
         }
     }
     pub fn aligned_start(&self) -> u64 {
@@ -459,12 +471,10 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unico
     assert_eq!(arch, unicorn::Arch::ARM);
     let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
     let mem_image: MemImage = MEM_IMAGE.to_vec();
-    for segment in mem_image {
-        /* segment is: (addr, perm, aligned_size, data) */ /* TODO: make MemImage Vec<struct>*/
-        println!("Segment: addr: {:x}, perm: {:?}, size: {:x}", segment.0, segment.1, segment.2);
-        let (addr, perm, size, data) = (segment.0, segment.1, segment.2, &segment.3);
-        uc.mem_map(addr, size, perm).expect(&format!("Mapping error with: addr = 0x{:x}, data.len() = 0x{:x}", addr, size));
-        uc.mem_write(addr, data)?;
+    for seg in mem_image {
+        /* segment is: (addr, perm, aligned_size, data) */ 
+        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; //.expect(&format!("Mapping error for {:?}", seg));
+        uc.mem_write(seg.addr, &seg.data)?;
     }
     println!("regions: {:?}", uc.mem_regions()?);
     Ok(Emu::UcArm(uc))
@@ -529,4 +539,83 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &ArchMode) -> Result<Emu,unico
     }
 */
 
+}
+
+
+lazy_static! {
+    pub static ref MEM_IMAGE: MemImage
+        = {
+            let obj = Object::parse(&CODE_BUFFER).unwrap();
+            let mut segs: Vec<Seg> = Vec::new();
+            match obj {
+                /* FIXME: Don't map directly from CODE_BUFFER. Use the Section
+                 * Headers for reference to get the virtual addresses right.
+                 */
+                Object::Elf(e) => {
+                    let shdrs = &e.section_headers;
+
+                    let phdrs = &e.program_headers;
+                    for phdr in phdrs {
+                        let seg = Seg::from_phdr(&phdr);
+                        if seg.loadable() {
+                            let start = seg.aligned_start() as usize;
+                            let end = seg.aligned_end() as usize;
+                            segs.push(seg);
+                        }
+                    }
+                    /* Low memory */
+                    segs.push(Seg { addr: 0,
+                                    memsz: 0x1000,
+                                    perm: PROT_READ,
+                                    segtype: SegType::Load,
+                                    data: vec![0; 0x1000],
+                    });
+
+                    for shdr in shdrs {
+                        let (i,j) = (shdr.sh_offset as usize, 
+                                     (shdr.sh_offset+shdr.sh_size) as usize);
+                        let aj = usize::min(j, CODE_BUFFER.len());
+                        let sdata = CODE_BUFFER[i..aj].to_vec();
+                        /* find the appropriate segment */
+                        let mut s = 0;
+                        
+                        for seg in segs.iter_mut() {
+                            if shdr.sh_addr >= seg.aligned_start()
+                                && shdr.sh_addr < seg.aligned_end() {
+                                /* then we found a fit */
+                                /* copy over the section data, at the correct offset */
+                                let mut v_off 
+                                    = (shdr.sh_addr - seg.aligned_start()) as usize;
+                                for byte in sdata {
+                                    seg.data[v_off] = byte;
+                                    v_off += 1;
+                                }
+                                break;
+                            }
+                            s += 1;
+                        }
+                    }
+                    /* now allocate the stack */
+                    let mut bottom = 0;
+                    for seg in &segs {
+                        let b = seg.aligned_end();
+                        if b > bottom { bottom = b };
+                    }
+                    segs.push(Seg { addr: bottom,
+                                    perm: PROT_READ|PROT_WRITE,
+                                    segtype: SegType::Load,
+                                    memsz: STACK_SIZE,
+                                    data: vec![0; STACK_SIZE]
+                    });
+
+                },
+                _ => panic!("Not yet implemented."),
+            }
+            segs
+        };
+}
+
+#[test]
+fn test_init_emulator_with_MEM_IMAGE() {
+    init_emulator_with_code_buffer(&ARM_ARM).unwrap();
 }
