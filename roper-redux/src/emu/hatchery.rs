@@ -19,11 +19,14 @@ use self::rand::isaac::Isaac64Rng;
 use self::rayon::prelude::*;
 
 use emu::loader;
-use emu::loader::{ARM_ARM,Arch,Mode,Emu};
+use emu::loader::{ARM_ARM,Arch,Mode,Engine};
+use par::statics::ARCHITECTURE;
 use gen;
 use log;
 
-
+fn snooze (millis: u64) {
+    sleep(Duration::from_millis(millis))
+}
 //const OK: u32 = 0;
 
 /* The gen::Pod data structure will be implemented in the gen::genotype
@@ -35,7 +38,8 @@ use log;
  */
 
 /* I think some of this data cloning could be optimized away. FIXME */
-pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
+#[inline]
+pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phenome {
     let mut map = gen::Phenome::new();
     {
         let mut inputs: Vec<gen::Input> = creature.phenome
@@ -49,12 +53,21 @@ pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Emu) -> bool {
             map.insert(input.to_vec(),Some(pod));
         }
     }
-    creature.phenome = map;
-    true
+    map
 }
 
-pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -> gen::Pod {
+/* TODO: it seems to work -- slowly -- with the emu recreated in each hatch function.
+ * why? figure this out. 
+ * try moving hooks to same scope and lifetime as the emu. i have a feeling that that
+ * might be the issue (though it caused no trouble in ROPER I).
+ * experiment with different thread types. scoped?
+ */
+#[inline]
+pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine) -> gen::Pod {
     /* a very simple version of hatch_chain **/
+    /* FIXME out of desperation, let's see if we get the crash if we create a new
+     * emulator for every fucking hatch. */
+    /* END KLUDGE */
 
     let payload = creature.genome.pack(input);
     //hexdump::hexdump(&payload); /* NB: debugging only */
@@ -65,13 +78,14 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
     let saved_regions: loader::MemImage = emu.writeable_memory();
 
     /* load payload **/
-    emu.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
-    let risc_width = emu.risc_width();
+    emu.uc.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
+    let risc_width = emu.risc_width() as u64;
     emu.set_sp(stack_entry + risc_width);
     
     let visitor: Rc<RefCell<Vec<(u64,Mode)>>> = Rc::new(RefCell::new(Vec::new()));
     let writelog = Rc::new(RefCell::new(Vec::new()));
 
+    /* hm. I seem to have been forgetting to remove this hook. */
     let mem_write_hook = {
         let writelog = writelog.clone();
         let callback = move |uc: &unicorn::Unicorn, 
@@ -94,7 +108,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
             */
             true
         };
-        //emu.hook_writeable_mem(callback)
+        emu.hook_writeable_mem(callback)
     };
 
     let visit_hook = {
@@ -124,7 +138,11 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
     */
     match visit_hook {
         Ok(h)  => { emu.remove_hook(h).unwrap(); },
-        Err(_) => { },
+        Err(_) => { println!("visit_hook didn't take"); },
+    }
+    match mem_write_hook {
+        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
+        Err(_) => { println!("mem_write_hook didn't take"); },
     }
     
 
@@ -135,9 +153,12 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
     let registers = emu.read_general_registers().unwrap();
     //let memory = emu.writeable_memory();
     let vtmp = visitor.clone();
-    let visited = vtmp.borrow().to_vec();
+    let visited = vtmp.borrow().to_vec().clone();
     let wtmp = writelog.clone();
-    let writelog = wtmp.borrow().to_vec();
+    let writelog = wtmp.borrow().to_vec().clone();
+    drop(vtmp);
+    drop(wtmp);
+    
     //print!("writelog (len: 0x{:x}): ", writelog.len());
     //for &(addr, data) in &writelog {
     //    print!(" {:08x} -> {:x};", addr, data);
@@ -150,7 +171,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
     //println!("");
     /* Now, restore the state of writeable memory */
     for seg in &saved_regions {
-        emu.mem_write(seg.aligned_start(), &seg.data);
+        emu.uc.mem_write(seg.aligned_start(), &seg.data);
     }
     let pod = gen::Pod::new(registers,visited,writelog);
     pod
@@ -159,13 +180,24 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
 
 fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     /* a thread-local emulator */
-    let mut emu = Box::new(loader::init_emulator_with_code_buffer(&ARM_ARM).unwrap());
+    let mut emu = Engine::new(*ARCHITECTURE);
 
     /* Hatch each incoming creature as it arrives, and send the creature
      * back to the caller of spawn_hatchery. */
+    //let mut best_before = 500; /* hideous, awful kludge, for which i deserve the gallows */
+    let init_best_before = 1;
+    let mut best_before = init_best_before;
     for incoming in rx {
+        best_before -= 1;
+        if best_before == 0 {
+//            println!("[+] This is not called execution. It is called 'retirement.'");
+            //emu.reset();  
+
+            best_before = init_best_before;
+        }
         let mut creature = incoming;
-        let _ = hatch_cases(&mut creature, &mut emu);
+        let phenome = hatch_cases(&mut creature, &mut emu);
+        creature.phenome = phenome;
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
     }
     

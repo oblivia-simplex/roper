@@ -20,7 +20,7 @@ use libroper::par::statics::*;
  * 0.09 seconds to evaluate 1024 specimens!
  */
 
-fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng) 
+fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng, counter: usize) 
 {
     let (tx,rx,handle) = spawn_hatchery(engines, expect);
     let start = Instant::now();
@@ -66,7 +66,7 @@ fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng)
     drop(rx);
     handle.join().unwrap();
     let elapsed = start.elapsed();
-    println!("{} {} {}", expect, engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
+    println!("{} {} {} {}", expect, engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0, counter);
 }
 
 
@@ -88,7 +88,7 @@ fn main() {
     let mut counter = engine_period;
     let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
     
-    for _ in 0..loops {
-        do_the_thing(engines, expect, &mut rng);
+    for counter in 0..loops {
+        do_the_thing(engines, expect, &mut rng, counter);
     }
 }

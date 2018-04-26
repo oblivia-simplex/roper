@@ -9,6 +9,7 @@ use std::env;
 
 use self::goblin::{Object,elf};
 use self::goblin::elf::Elf;
+use self::goblin::elf::header::machine_to_str;
 use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
@@ -100,13 +101,15 @@ lazy_static! {
     pub static ref ARCHITECTURE: Arch
         = {
             let arch_magic = match Object::parse(&CODE_BUFFER).unwrap() {
-                Object::Elf(e) => e.header.e_machine,
+                Object::Elf(e) => machine_to_str(e.header.e_machine),
                 _ => panic!("Binary format unimplemented."),
             };
             match arch_magic {
-                40 => Arch::Arm(Mode::Arm),
-                8  => Arch::Mips(Mode::Be),
-                10 => Arch::Mips(Mode::Le),
+                "ARM" => Arch::Arm(Mode::Arm),
+                "MIPS"  => Arch::Mips(Mode::Be),
+                "MIPS_RS3_LE" => Arch::Mips(Mode::Le),
+                "X86_64" => Arch::X86(Mode::Bits64),
+                "386" => Arch::X86(Mode::Bits32),
                 _  => panic!("arch_magic not recognized!"),
             }
         };

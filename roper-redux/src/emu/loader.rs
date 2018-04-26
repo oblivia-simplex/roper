@@ -1,6 +1,9 @@
 extern crate unicorn;
 extern crate goblin;
+extern crate rand;
 
+use std::collections::HashMap;
+use self::rand::{Rng,ThreadRng,thread_rng};
 use std::fmt::{Debug,Formatter,Display};
 use std::fmt;
 use std::path::Path;
@@ -79,77 +82,195 @@ pub static ARM_REGISTERS : [RegisterARM; 16] = [RegisterARM::R0,
                                                 RegisterARM::LR,
                                                 RegisterARM::PC];
 
+pub static X86_64_REGISTERS: [RegisterX86; 18] = [RegisterX86::EFLAGS,
+                                                  RegisterX86::RAX,
+                                                  RegisterX86::RBP,
+                                                  RegisterX86::RBX,
+                                                  RegisterX86::RCX,
+                                                  RegisterX86::RDI,
+                                                  RegisterX86::RDX,
+                                                  RegisterX86::RIP,
+                                                  RegisterX86::RIZ,
+                                                  RegisterX86::RSI,
+                                                  RegisterX86::RSP,
+                                                  RegisterX86::R9,
+                                                  RegisterX86::R10,
+                                                  RegisterX86::R11,
+                                                  RegisterX86::R12,
+                                                  RegisterX86::R13,
+                                                  RegisterX86::R14,
+                                                  RegisterX86::R15,
+];
 
-/* TODO: implement clone for unicorn */
-pub enum Emu {
-    UcArm(unicorn::CpuARM),
-    UcMips(unicorn::CpuMIPS),
+pub fn regids<T>(regs: &'static [T]) -> Vec<i32>
+where T: Register,
+{
+    regs.iter()
+        .map(|x| x.to_i32())
+        .collect::<Vec<i32>>()
 }
 
-
-impl Debug for Emu {
-    fn fmt (&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            &Emu::UcArm(_) => write!(f, "Unicorn ARM CPU with regions: {:?}", self.mem_regions()),
-            &Emu::UcMips(_) => write!(f, "Unicorn MIPS CPU with regions: {:?}", self.mem_regions()), 
-        }
+pub fn mem_image_deep_copy () -> MemImage {
+    let mut mi = Vec::new();
+    for seg in MEM_IMAGE.to_vec() {
+        mi.push(seg.deep_copy())
     }
+    mi
 }
 
-impl Emu {
-    pub fn mem_write(&mut self, addr: u64, data: &Vec<u8>) -> Result<(), unicorn::Error> {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.mem_write(addr, data),
-            &mut Emu::UcMips(ref mut uc) => uc.mem_write(addr, data),
+fn mem_image_to_mem_table () -> Vec<(u64,usize,unicorn::Protection, *mut u8)> {
+    let mut table = Vec::new();
+    for seg in &*MEM_IMAGE {
+        let mut data = seg.data.clone();
+        let mut data_ptr = data.as_mut_ptr();
+        table.push((seg.aligned_start(),
+                    seg.aligned_size(),
+                    seg.perm,
+                    data_ptr));
+    }
+    table
+}
+
+fn uc_mem_table(emu: &Unicorn) -> Vec<(u64,usize,unicorn::Protection, Vec<u8>)> {
+    let mut table = Vec::new();
+    for region in emu.mem_regions().unwrap() {
+        let begin = region.begin;
+        let size = (region.end - region.begin) as usize + 1;
+        let perms = region.perms;
+        let mut data = emu.mem_read(begin, size).unwrap();
+        let mut ptr = data;
+        table.push((begin,size,perms,ptr));
+    }
+    table
+}
+
+pub struct Engine {
+    pub uc: Box<unicorn::Unicorn>,
+    pub arch: Arch,
+    pub regids: Vec<i32>,
+    mem: MemImage,
+    bak: MemImage,
+}
+
+impl Engine {
+    
+    pub fn new (arch: Arch) -> Self {
+        let mut mem: MemImage = mem_image_deep_copy();
+        let bak: MemImage = mem_image_deep_copy();
+        let emu = init_emulator(arch, &mut mem, false).unwrap(); 
+        let regids = match arch {
+            Arch::Arm(_) => regids(&ARM_REGISTERS),
+            Arch::Mips(_) => regids(&MIPS_REGISTERS),
+            Arch::X86(Bits64) => regids(&X86_64_REGISTERS),
+            _ => unreachable!("Not implemented"),
+        };
+        Engine {
+           uc: Box::new(emu),
+           arch: arch,
+           mem: mem,
+           bak: bak,
+           regids: regids,
         }
     }
 
-    pub fn mem_map(&mut self, address: u64, size: usize, perms: Protection)
+    pub fn reset (&mut self) -> () {
+        let (uc_arch, uc_mode) = self.arch.as_uc();
+        let mut uc = unicorn::Unicorn::new(uc_arch, uc_mode).unwrap();
+        for seg in &self.mem {
+            uc.mem_map(seg.aligned_start(),
+                       seg.aligned_size(),
+                       seg.perm).unwrap();
+            uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
+        }
+        let _ = self.uc;
+        self.uc = Box::new(uc);
+    }
+
+    pub fn uc_mode (&self) -> unicorn::Mode {
+        umode_from_usize(self.uc.query(unicorn::Query::MODE).unwrap())
+    }
+
+    pub fn mode (&self) -> Mode {
+        match self.uc_mode() {
+            unicorn::Mode::LITTLE_ENDIAN => Mode::Arm,
+            unicorn::Mode::THUMB => Mode::Thumb,
+            _ => panic!("I'll get around to this later."),
+        }
+    }
+
+    pub fn risc_width (&self) -> usize {
+        if self.uc_mode() == unicorn::Mode::THUMB {2} else {4}
+    }
+    
+    pub fn find_stack (&self) -> (u64, usize) {
+        let regions = self.uc.mem_regions().unwrap();
+        let mut bottom : Option<u64> = None;
+        let mut stack : Option<MemRegion> = None;
+        for region in regions.iter() {
+            if region.perms.intersects(PROT_READ|PROT_WRITE) &&
+               region.begin >= bottom.unwrap_or(0) {
+                   bottom = Some(region.begin);
+                   stack = Some(region.clone());
+               };
+        };
+        let stack = stack
+                    .expect(
+                       &format!("[!] Could not find stack bottom! Regions: {:?}",
+                                regions));
+        (stack.begin, (stack.end - stack.begin) as usize)
+    }
+    
+    pub fn set_sp (&mut self, val: u64) -> Result<(),Error> {
+        match self.arch {
+            Arch::Arm(_) => {
+                let sp = RegisterARM::SP as i32;
+                self.uc.reg_write(sp, val)
+            },
+            Arch::Mips(_) => {
+                let sp = RegisterMIPS::SP as i32;
+                self.uc.reg_write(sp, val)
+            },
+            Arch::X86(Bits64) => {
+                let sp = RegisterX86::RSP as i32;
+                self.uc.reg_write(sp, val)
+            },
+            _ => unreachable!("Not implemented"),
+        }
+    }
+    
+    pub fn writeable_memory (&self) -> MemImage {
+        let mut wmem = Vec::new();
+        for rgn in self.uc.mem_regions()
+                          .unwrap()
+                          .iter()
+                          .filter(|r| r.perms.intersects(PROT_WRITE)) 
+        {
+            let data: Vec<u8> = self.uc.mem_read(rgn.begin,
+                                              (rgn.end-rgn.begin) as usize)
+                                       .unwrap();
+            wmem.push( Seg {
+                addr: rgn.begin,
+                perm: rgn.perms,
+                memsz: (rgn.end - rgn.begin) as usize,
+                data: data,
+                segtype: SegType::Load,
+            });
+        }
+        wmem
+    }
+    
+    pub fn start(&mut self,
+                 begin: u64, 
+                 until: u64, 
+                 timeout: u64, 
+                 count: usize) 
         -> Result<(), Error> 
     {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.mem_map(address, size, perms),
-            &mut Emu::UcMips(ref mut uc) => uc.mem_map(address, size, perms),
-        }
+        self.uc.emu_start(begin, until, timeout, count)
     }
-
-    pub fn mem_read(&self, address: u64, size: usize) -> Result<Vec<u8>, Error> {
-        match self {
-            &Emu::UcArm(ref uc) => uc.mem_read(address, size),
-            &Emu::UcMips(ref uc) => uc.mem_read(address, size),
-        }
-    }
-
-    pub fn mem_regions(&self) -> Result<Vec<MemRegion>, unicorn::Error> {
-        match self {
-            &Emu::UcArm(ref uc)  => uc.mem_regions(),
-            &Emu::UcMips(ref uc) => uc.mem_regions(),
-        }
-    }
-
-    pub fn query(&self, query: Query) -> Result<usize, Error> {
-        match self {
-            &Emu::UcArm(ref uc) => uc.query(query),
-            &Emu::UcMips(ref uc) => uc.query(query),
-        }
-    }
-
-    pub fn get_mode(&self) -> Mode {
-        match self.query(Query::MODE) {
-            Ok(n) => {
-                let m = umode_from_usize(n);
-                match m {
-                    unicorn::Mode::LITTLE_ENDIAN => match self {
-                        &Emu::UcArm(_) => Mode::Arm,
-                        _ => Mode::Le,
-                    },
-                    unicorn::Mode::THUMB => Mode::Thumb,
-                    _ => panic!("unimplemented"),
-
-                }
-            },
-            _ => panic!("Failed to get mode"),
-        }
+    
+    pub fn remove_hook(&mut self, uc_hook: unicorn::uc_hook) -> Result<(),Error> {
+        self.uc.remove_hook(uc_hook)
     }
 
     pub fn add_code_hook<F>(&mut self,
@@ -160,15 +281,44 @@ impl Emu {
         -> Result<unicorn::uc_hook, Error>
         where F: Fn(&Unicorn, u64, u32) -> () + 'static,
     {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.add_code_hook(hooktype,
-                                                         start_addr,
-                                                         stop_addr,
-                                                         callback),
-            &mut Emu::UcMips(ref mut uc) => uc.add_code_hook(hooktype,
-                                                          start_addr,
-                                                          stop_addr,
-                                                          callback),
+        self.uc.add_code_hook(hooktype,
+                              start_addr,
+                              stop_addr,
+                              callback)
+    }
+
+    pub fn read_general_registers(&self) -> Result<Vec<u64>, Error> {
+        Ok(self.regids.iter()
+                 .map(|&x| self.uc.reg_read(x)
+                                  .expect("Error reading registers"))
+                 .collect::<Vec<u64>>())
+    }
+    
+    pub fn hook_exec_mem<F> (&mut self,
+                             callback: F) 
+        -> Result<unicorn::uc_hook, Error>
+        where F: Fn(&Unicorn, u64, u32) -> () + 'static, 
+    {
+        let regions = self.uc.mem_regions().unwrap();
+        let mut exec_start = None;
+        let mut exec_stop = None;
+        for region in regions {
+            if !region.perms.intersects(PROT_EXEC) { continue; }
+            if exec_start == None || region.begin < exec_start.unwrap() {
+                exec_start = Some(region.begin)
+            };
+            if exec_stop == None || region.end > exec_stop.unwrap() {
+                exec_stop = Some(region.end)
+            };
+        }
+        if exec_start == None || exec_stop == None {
+            Err(unicorn::Error::ARG)
+        } else {
+            //println!("> exec_start: {:08x}, exec_stop: {:08x}", exec_start.unwrap(), exec_stop.unwrap());
+            self.uc.add_code_hook(unicorn::CodeHookType::CODE,
+                                  exec_start.unwrap(),
+                                  exec_stop.unwrap(),
+                                  callback)
         }
     }
 
@@ -193,193 +343,14 @@ impl Emu {
             if end == None || e > end.unwrap() { end = Some(e) };
         }
         assert!(begin != None && end != None);
-        self.add_mem_hook(unicorn::MemHookType::MEM_WRITE,
-                          begin.unwrap(),
-                          end.unwrap(),
-                          callback)
-    }
-
-    pub fn add_mem_hook<F> (&mut self,
-                            hook_type: unicorn::MemHookType,
-                            begin: u64,
-                            end: u64,
-                            callback: F) -> Result<uc_hook, Error>
-        where F: Fn(&Unicorn, MemType, u64, usize, i64) -> bool + 'static,
-    {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.add_mem_hook(hook_type,
-                                                           begin,
-                                                           end,
-                                                           callback),
-            &mut Emu::UcMips(ref mut uc) => uc.add_mem_hook(hook_type,
-                                                            begin,
-                                                            end,
-                                                            callback),
-        }
-    }
-            
-                            
-
-    pub fn hook_exec_mem<F> (&mut self,
-                             callback: F) 
-        -> Result<unicorn::uc_hook, Error>
-        where F: Fn(&Unicorn, u64, u32) -> () + 'static, 
-    {
-        let regions = self.mem_regions().unwrap();
-        let mut exec_start = None;
-        let mut exec_stop = None;
-        for region in regions {
-            if !region.perms.intersects(PROT_EXEC) { continue; }
-            if exec_start == None || region.begin < exec_start.unwrap() {
-                exec_start = Some(region.begin)
-            };
-            if exec_stop == None || region.end > exec_stop.unwrap() {
-                exec_stop = Some(region.end)
-            };
-        }
-        if exec_start == None || exec_stop == None {
-            Err(unicorn::Error::ARG)
-        } else {
-            //println!("> exec_start: {:08x}, exec_stop: {:08x}", exec_start.unwrap(), exec_stop.unwrap());
-            self.add_code_hook(unicorn::CodeHookType::CODE,
-                               exec_start.unwrap(),
-                               exec_stop.unwrap(),
-                               callback)
-        }
-    }
-
-    pub fn hook_interrupts<F> (&mut self,
-                               callback: F)
-        -> Result<unicorn::uc_hook, Error>
-        where F: Fn(&Unicorn, u32) -> () + 'static,
-    {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.add_intr_hook(callback),
-            &mut Emu::UcMips(ref mut uc) => uc.add_intr_hook(callback),
-        }
-
-    }
-
-    /*
-    pub fn add_insn_in_hook<F>(&mut self, callback: F) -> Result<uc_hook, Error>
-        where F: Fn(&Unicorn, u32, usize) -> u32 + 'static,
-    {
-        /* TODO: write a macro that does this repetitive "match self" business */
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.add_insn_in_hook(callback),
-            &mut Emu::UcMips(ref mut uc) => uc.add_insn_in_hook(callback),
-        }
-    }
-*/
-    pub fn remove_hook(&mut self, uc_hook: unicorn::uc_hook) -> Result<(),Error> {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => uc.remove_hook(uc_hook),
-            &mut Emu::UcMips(ref mut uc) => uc.remove_hook(uc_hook),
-        }
-    }
-
-    pub fn risc_width(&self) -> u64 {
-        match self.get_mode() {
-            Mode::Arm => 4,
-            Mode::Thumb => 2,
-            _ => panic!("unimplemented!"),
-        }
-    }
-
-    /* I prefer having usize here, instead of i32 */
-    pub fn read_general_registers(&self) -> Result<Vec<u64>, Error> {
-        match self {
-            &Emu::UcArm(ref uc) => {
-                Ok(ARM_REGISTERS.iter()
-                                .map(|&x| uc.reg_read(x)
-                                            .expect("Error reading registers"))
-                                .collect())
-                                         
-            }
-            &Emu::UcMips(ref uc) => {
-                Ok(MIPS_REGISTERS.iter()
-                                 .map(|&x| uc.reg_read(x)
-                                             .expect("Error reading registers"))
-                                 .collect())
-            }
-        }
-    }
-
-
-    pub fn start(&mut self,
-                 begin: u64, 
-                 until: u64, 
-                 timeout: u64, 
-                 count: usize) 
-        -> Result<(), Error> 
-    {
-        match self {
-            &mut Emu::UcArm(ref mut uc)  => uc.emu_start(begin, until, timeout, count),
-            &mut Emu::UcMips(ref mut uc) => uc.emu_start(begin, until, timeout, count),
-        }
-    }
-
-    pub fn find_stack (&self) -> (u64, usize) {
-        let regions = self.mem_regions().unwrap();
-        let mut bottom : Option<u64> = None;
-        let mut stack : Option<MemRegion> = None;
-        for region in regions.iter() {
-            if region.perms.intersects(PROT_READ|PROT_WRITE) &&
-               region.begin >= bottom.unwrap_or(0) {
-                   bottom = Some(region.begin);
-                   stack = Some(region.clone());
-               };
-        };
-        let stack = stack
-                    .expect(
-                       &format!("[!] Could not find stack bottom! Regions: {:?}",
-                                regions));
-        (stack.begin, (stack.end - stack.begin) as usize)
-    }
-
-    pub fn set_sp (&mut self, val: u64) -> Result<(),Error> {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => {
-                let sp = RegisterARM::SP;
-                uc.reg_write(sp, val)
-            },
-            &mut Emu::UcMips(ref mut uc) => {
-                let sp = RegisterMIPS::SP;
-                uc.reg_write(sp, val)
-            },
-        }
-    }
-
-    pub fn writeable_memory (&self) -> MemImage {
-        let mut wmem = Vec::new();
-        for rgn in self.mem_regions()
-                       .unwrap()
-                       .iter()
-                       .filter(|r| r.perms.intersects(PROT_WRITE)) 
-        {
-            let data: Vec<u8> = self.mem_read(rgn.begin,
-                                              (rgn.end-rgn.begin) as usize)
-                                    .unwrap();
-            wmem.push( Seg {
-                addr: rgn.begin,
-                perm: rgn.perms,
-                memsz: (rgn.end - rgn.begin) as usize,
-                data: data,
-                segtype: SegType::Load,
-            });
-        }
-        wmem
+        self.uc.add_mem_hook(unicorn::MemHookType::MEM_WRITE,
+                             begin.unwrap(),
+                             end.unwrap(),
+                             callback)
     }
 }
 
-impl Drop for Emu {
-    fn drop(&mut self) {
-        match self {
-            &mut Emu::UcArm(ref mut uc) => drop(uc),
-            &mut Emu::UcMips(ref mut uc) => drop(uc),
-        }
-    }
-}
+
 
 
 pub fn umode_from_usize(x: usize) -> unicorn::Mode {
@@ -395,32 +366,6 @@ pub fn umode_from_usize(x: usize) -> unicorn::Mode {
         _ => unicorn::Mode::LITTLE_ENDIAN,
     }
 }
-//unsafe impl Sync for Emu { }
-//unsafe impl Send for Emu {}
-
-impl Clone for Emu {
-    fn clone(&self) -> Self {
-        let regions = self.mem_regions().unwrap();
-        let uc_mode = umode_from_usize(self.query(Query::MODE).unwrap());
-        let mut new : Emu = match self {
-            &Emu::UcArm(_) => Emu::UcArm(CpuARM::new(uc_mode).unwrap()),
-            &Emu::UcMips(_) => Emu::UcMips(CpuMIPS::new(uc_mode).unwrap()),
-        };
-        /* map the same regions, and copy the data */
-        for region in regions {
-            let addr = region.begin;
-            let size = (region.end - region.begin) as usize;
-            let perms = region.perms;
-            new.mem_map(addr, size, perms);
-            /* read the data for each region */
-            let data = self.mem_read(addr, size).unwrap();
-            new.mem_write(addr, &data);
-        }
-        /* now, the registers */
-        /* meh. later. TODO */
-        new
-    }
-}
 
 #[derive(Clone,Copy,Debug,PartialEq,Eq)]
 pub enum Mode {
@@ -428,6 +373,9 @@ pub enum Mode {
     Thumb,
     Be,
     Le,
+    Bits16,
+    Bits32,
+    Bits64,
 }
 
 impl Mode {
@@ -437,14 +385,18 @@ impl Mode {
             &Mode::Thumb => unicorn::Mode::THUMB,
             &Mode::Be => unicorn::Mode::BIG_ENDIAN,
             &Mode::Le => unicorn::Mode::LITTLE_ENDIAN,
+            &Mode::Bits16 => unicorn::Mode::MODE_16,
+            &Mode::Bits32 => unicorn::Mode::MODE_32,
+            &Mode::Bits64 => unicorn::Mode::MODE_64,
         }
     }
 }
 
-#[derive(PartialEq,Eq,Debug)]
+#[derive(Clone,Copy,PartialEq,Eq,Debug)]
 pub enum Arch {
     Arm(Mode),
     Mips(Mode),
+    X86(Mode),
 }
 
 impl Arch {
@@ -452,12 +404,14 @@ impl Arch {
         match self {
             &Arch::Arm(ref m) => (unicorn::Arch::ARM, m.as_uc()),
             &Arch::Mips(ref m) => (unicorn::Arch::MIPS, m.as_uc()),
+            &Arch::X86(ref m) => (unicorn::Arch::X86, m.as_uc()),
         }
     }
     pub fn mode(&self) -> Mode {
         match self {
             &Arch::Arm(ref m) => m.clone(),
             &Arch::Mips(ref m) => m.clone(),
+            &Arch::X86(ref m) => m.clone(),
         }
     }
     //pub fn as_cs(&self) -> capstone::
@@ -523,6 +477,17 @@ impl Display for Seg {
 }
 
 impl Seg {
+
+    pub fn deep_copy (&self) -> Seg {
+        Seg {
+            addr: self.addr,
+            memsz: self.memsz,
+            perm: self.perm,
+            segtype: self.segtype,
+            data: self.data.clone(),
+        }
+    }
+
     pub fn from_phdr(phdr: &elf::ProgramHeader) -> Self {
         let mut uc_perm = PROT_NONE;
         if phdr.is_executable() { uc_perm |= PROT_EXEC  };
@@ -569,26 +534,25 @@ pub fn get_uc_mode(uc: &Unicorn) -> Mode {
     }
 }
 
-pub fn init_emulator_with_code_buffer (archmode: &Arch) -> Result<Emu,unicorn::Error> {
-    init_emulator(&CODE_BUFFER, archmode)
-}
 
+pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool) -> Result<Unicorn, unicorn::Error> {
 
-pub fn init_emulator (buffer: &Vec<u8>, archmode: &Arch) -> Result<Emu,unicorn::Error> { 
-
-    let obj = Object::parse(&buffer).unwrap();
     let (arch, mode) = archmode.as_uc();
     
     /* FIXME: Delete once other arches are implemented here */
     assert_eq!(arch, unicorn::Arch::ARM);
 
-    let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
-    let mem_image: MemImage = MEM_IMAGE.to_vec();
-    for seg in mem_image {
-        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; 
-        uc.mem_write(seg.aligned_start(), &seg.data)?;
+    let mut uc = Unicorn::new(arch, mode)?;
+    
+    for seg in mem {
+        if unsafely {
+            unsafe { uc.mem_map_ptr(seg.aligned_start(), seg.aligned_size(), seg.perm, seg.data.as_mut_ptr()) }?; 
+        } else {
+            uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; 
+            uc.mem_write(seg.aligned_start(), &seg.data)?;
+        }
     }
-    Ok(Emu::UcArm(uc))
+    Ok(uc)
 }
 
 
@@ -669,6 +633,7 @@ lazy_static! {
         };
 }
 
+
 fn find_static_seg (addr: u64) -> Option<&'static Seg> {
     let mut this_seg = None;
     for seg in MEM_IMAGE.iter() {
@@ -698,6 +663,49 @@ pub fn read_static_mem (addr: u64, size: usize) -> Option<Vec<u8>> {
 }
 
 #[test]
-fn test_init_emulator_with_MEM_IMAGE() {
-    init_emulator_with_code_buffer(&ARM_ARM).unwrap();
+fn test_engine_new () {
+    let emu = Engine::new(*ARCHITECTURE);
+}
+
+#[test]
+fn test_engine_reset() {
+    let mut emu = Engine::new(*ARCHITECTURE);
+    let mem1 = emu.writeable_memory();
+    let rgn1 = emu.uc.mem_regions().unwrap();
+    println!("About to reset...");
+    emu.reset();
+    let mem2 = emu.writeable_memory();
+    let rgn2 = emu.uc.mem_regions().unwrap();
+    assert_eq!(mem1, mem2);
+    for (r1,r2) in rgn1.iter().zip(&rgn2) {
+        assert_eq!(r1.perms, r2.perms);
+        assert_eq!(r1.begin, r2.begin);
+        assert_eq!(r1.end, r2.end);
+    }
+}
+
+#[test]
+fn stress_test_unicorn() {
+    let mode = unicorn::Mode::LITTLE_ENDIAN;
+    let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
+    let mem_image: MemImage = MEM_IMAGE.to_vec();
+    for seg in mem_image {
+        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm).unwrap(); 
+        uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
+    }
+    let mut rng = thread_rng();
+    for i in 0..1000000 {
+        //println!("{}",i);
+        uc.emu_start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);
+    }
+}
+
+#[test]
+fn stress_test_emulator() {
+    let mut rng = thread_rng();
+    let mut emu = Engine::new(ARM_ARM);
+    for i in 0..1000000 {
+        //println!("{}",i);
+        emu.start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);
+    }
 }
