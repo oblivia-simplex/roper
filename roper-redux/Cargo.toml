@@ -14,7 +14,8 @@ path = "src/bin/roper.rs"
 
 [dependencies]
 unicorn = { git = "https://github.com/oblivia-simplex/unicorn-rs", branch = "master" }
-# libunicorn-sys = "0.8.0"
+#unicorn = "0.8.0"
+#libunicorn-sys = "0.8.0"
 ketos = "0.10.0"
 ketos_derive = "0.10.0"
 goblin = "0.0.14"

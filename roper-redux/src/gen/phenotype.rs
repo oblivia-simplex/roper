@@ -1,16 +1,22 @@
 extern crate rand;
 extern crate evmap;
+
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::sync::{Arc,Mutex,RwLock,MutexGuard};
 use std::hash::{Hash,Hasher};
+use std::fmt;
+use std::fmt::{Display};
+
 use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
 use genotype::*;
 use emu::loader::{Mode,MemImage};
 use par::statics::*;
+use emu::loader;
 use log;
 
 #[derive(Clone,Debug,PartialEq)]
@@ -42,9 +48,27 @@ impl Pod {
         }
         v
     }
+
+    /// Dump information about the writes performed by the
+    /// phenotype.
+    pub fn dump_written (&self) -> Vec<String> {
+        let mut v = Vec::new();
+        for &(addr, data) in &self.writelog {
+            let addr = addr as u32;
+            let data = data as u32; /* KLUDGE */
+            let row
+                = format!("{:08x} -> {:08x} | {}",
+                          addr,
+                          data,
+                          log::disas(&pack_word32le(data),
+                                     loader::Mode::Arm)); /* assuming LE */
+            v.push(row);
+        }
+        v
+    }
 }
 
-unsafe impl Send for Pod {}
+//unsafe impl Send for Pod {}
 
 /* Retain the Pod after hatching. Initialized genomes in an otherwise
  * empty Pod. Or with an Option<Pod>. We only ever need to hatch a
@@ -73,6 +97,16 @@ impl PartialEq for Creature {
 }
 
 impl Eq for Creature {}
+
+impl Display for Creature {
+    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "BIOGRAPHY OF {}\nGENOME:\n\t{}\nPHENOME:\n{}\n{}",
+               self.name,
+               self.genome,
+               self.disas_visited().join("\t\n"),
+               self.dump_written().join("\t\n"))
+    }
+}
 
 fn baptise_chain (chain: &Chain) -> String {
     let syllables = 8;
@@ -128,7 +162,7 @@ impl Creature {
         let mut dump = Vec::new();
         for (input,pod) in &self.phenome {
             if pod == &None { continue };
-            dump.push(format!("ON INPUT {:?}\n\t{}",
+            dump.push(format!("ON INPUT {:?}, VISITED:\n\t{}",
                               input,
                               pod.as_ref()
                                  .unwrap()
@@ -137,9 +171,23 @@ impl Creature {
         }
         dump
     }
+
+    pub fn dump_written(&self) -> Vec<String> {
+        let mut dump = Vec::new();
+        for (input,pod) in &self.phenome {
+            if pod == &None { continue };
+            dump.push(format!("ON INPUT {:?}, WROTE:\n\t{}",
+                              input,
+                              pod.as_ref()
+                                 .unwrap()
+                                 .dump_written()
+                                 .join("\n\t")));
+        }
+        dump
+    }
 }
 
-unsafe impl Send for Creature {}
+//unsafe impl Send for Creature {}
 
 type Larva = Mutex<Creature>;
 

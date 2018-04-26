@@ -1,3 +1,4 @@
+#![recursion_limit="2048"]
 #[macro_use] extern crate lazy_static;
 
 pub mod emu;

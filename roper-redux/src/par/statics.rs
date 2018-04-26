@@ -83,7 +83,10 @@ lazy_static! {
     pub static ref CODE_BUFFER: Vec<u8>
         = {
             /* first, read the config */
-            let bp = read_conf("binary_path.txt");
+            let bp = match env::var("ROPER_BINARY") {
+                Ok(s)  => s,
+                Err(_) => read_conf("binary_path.txt"),
+            };
             //println!("[*] Read binary path as {:?}",bp);
             let path = Path::new(&bp);
             let mut fd = File::open(path).unwrap();

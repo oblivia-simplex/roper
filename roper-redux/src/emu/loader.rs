@@ -372,6 +372,15 @@ impl Emu {
     }
 }
 
+impl Drop for Emu {
+    fn drop(&mut self) {
+        match self {
+            &mut Emu::UcArm(ref mut uc) => drop(uc),
+            &mut Emu::UcMips(ref mut uc) => drop(uc),
+        }
+    }
+}
+
 
 pub fn umode_from_usize(x: usize) -> unicorn::Mode {
     match x {
@@ -577,7 +586,7 @@ pub fn init_emulator (buffer: &Vec<u8>, archmode: &Arch) -> Result<Emu,unicorn::
     let mem_image: MemImage = MEM_IMAGE.to_vec();
     for seg in mem_image {
         uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; 
-        uc.mem_write(seg.addr, &seg.data)?;
+        uc.mem_write(seg.aligned_start(), &seg.data)?;
     }
     Ok(Emu::UcArm(uc))
 }
@@ -620,6 +629,7 @@ lazy_static! {
                         for seg in segs.iter_mut() {
                             if shdr.sh_addr >= seg.aligned_start()
                                 && shdr.sh_addr < seg.aligned_end() {
+                                //println!("*** Loading data from sec\n*** {:?}\n*** into seg: {}\n", &shdr, &seg);
                                 /* then we found a fit */
                                 /* copy over the section data, at the correct offset */
                                 let mut v_off 

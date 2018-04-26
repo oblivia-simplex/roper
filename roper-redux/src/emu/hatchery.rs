@@ -1,3 +1,4 @@
+// #![feature(fnbox)]
 extern crate unicorn;
 extern crate hexdump;
 extern crate rand;
@@ -5,6 +6,7 @@ extern crate rayon;
 extern crate capstone;
 
 
+//use std::boxed::FnBox;
 use std::thread::{spawn,sleep,JoinHandle};
 use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
 use std::sync::{Arc,RwLock,MutexGuard,Mutex};
@@ -92,7 +94,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
             */
             true
         };
-        emu.hook_writeable_mem(callback)
+        //emu.hook_writeable_mem(callback)
     };
 
     let visit_hook = {
@@ -111,6 +113,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
         };
         emu.hook_exec_mem(callback)
     };
+    
     /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
     /* for debugging */
@@ -123,6 +126,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
         Ok(h)  => { emu.remove_hook(h).unwrap(); },
         Err(_) => { },
     }
+    
 
    
     /* Now, get the resulting CPU context (the "phenotype"), and
@@ -153,31 +157,9 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Emu) -
 }
 
 
-fn spawn_coop (rx: Receiver<gen::Creature>, tx: SyncSender<gen::Creature>) -> () {
+fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     /* a thread-local emulator */
-    let mut emu = loader::init_emulator_with_code_buffer(&ARM_ARM).unwrap();
-
-    /* The syscall hooks will remain in place for the duration of the
-     * emulator's life, since they're not phenome-specific, but will be
-     * used to terminate execution. We'll install them here. 
-     */
-    let hook;
-    {
-        let cb = move |uc: &unicorn::Unicorn, what: u32| {
-            //if cfg!(debug_assertions) {
-                //let inst: Vec<u8> = uc.mem_read(addr, size as usize).unwrap();
-                //let mode = loader::get_uc_mode(&uc);
-                //let dis = log::disas(&inst, &mode);
-                //println!("INTERRUPT: {:08x}\t{}",addr, dis);
-            //}
-            let pc = uc.reg_read(11).unwrap(); /* FIXME don't hardcode this arch-specific regid
-                                         and don't leave it as a read-unfriendly i32.
-                                         */
-            //println!("INTERRUPT at PC {:08x}! {:x}", pc,what);
-            uc.emu_stop().unwrap();
-        };
-        hook = emu.hook_interrupts(cb);
-    }
+    let mut emu = Box::new(loader::init_emulator_with_code_buffer(&ARM_ARM).unwrap());
 
     /* Hatch each incoming creature as it arrives, and send the creature
      * back to the caller of spawn_hatchery. */
@@ -187,23 +169,14 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: SyncSender<gen::Creature>) -> ()
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
     }
     
-    /* Cleanup */
-    match hook {
-        Ok(h) => { emu.remove_hook(h).unwrap(); },
-        Err(_) => { },
-    }
+    //drop(emu)
 }
 
-// make gen::Pod type as Sendable, interior-mutable encasement for Chain
-//
-// the segfauls appear to be resulting from a stack overflow, when the
-// number of simultaneous threads (and therefore channels) is very high. 
-// Perhaps boxing the channels would help?
 pub fn spawn_hatchery (num_engines: usize, expect: usize)
-    -> (SyncSender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
+    -> (Sender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
 
-    let (alice_tx, bob_rx) = sync_channel(num_engines);
-    let (bob_tx, alice_rx) = sync_channel(num_engines);
+    let (alice_tx, bob_rx) = channel(); //sync_channel(num_engines);
+    let (bob_tx, alice_rx) = channel(); //sync_channel(num_engines);
 
     /* think of ways to dynamically scale the workload, using a more
      * sophisticated data structure than a circular buffer for carousel */

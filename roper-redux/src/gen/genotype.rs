@@ -11,7 +11,7 @@ pub struct Gadget {
     pub sp_delta : usize,
     pub mode     : Mode,
 }
-unsafe impl Send for Gadget {}
+//unsafe impl Send for Gadget {}
 
 impl Display for Gadget {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -34,7 +34,7 @@ pub enum Pad {
     Const(u64),
     Input(usize),
 }
-unsafe impl Send for Pad {}
+//unsafe impl Send for Pad {}
 
 impl Display for Pad {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -54,24 +54,24 @@ pub struct Chain {
     pub metadata: Metadata,
 }
 
-unsafe impl Send for Chain {}
+//unsafe impl Send for Chain {}
 
 impl Display for Chain {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = String::new();
+        let mut s = Vec::new();
         let mut pad_offset = 0;
         for gad in self.gads.iter() {
-            s.push_str(&format!("{}\n",gad));
+            s.push(format!("{}",gad));
             if gad.sp_delta <= 1 { continue };
             let padnum = self.pads.len();
             if padnum == 0 { continue };
             for i in 0..(gad.sp_delta-1) {
                 let o = i + pad_offset;
                 let w = self.pads[o % padnum];
-                s.push_str(&format!("{}\n",w));
+                s.push(format!("{}",w));
             }
         }
-        write!(f, "{}", s)
+        write!(f, "{}", s.join("\n\t"))
     }
 }
 
