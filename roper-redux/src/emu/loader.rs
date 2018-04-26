@@ -102,6 +102,24 @@ pub static X86_64_REGISTERS: [RegisterX86; 18] = [RegisterX86::EFLAGS,
                                                   RegisterX86::R15,
 ];
 
+/// Returns the regid for the program counter, on the
+/// current ARCHITECTURE (wrt static variable)
+pub fn whats_pc() -> i32 {
+    match *ARCHITECTURE {
+        Arch::Arm(_) => RegisterARM::PC.to_i32(),
+        Arch::Mips(_) => RegisterMIPS::PC.to_i32(),
+        Arch::X86(Bits64) => RegisterX86::RIP.to_i32(),
+        Arch::X86(Bits32) => RegisterX86::EIP.to_i32(),
+        Arch::X86(Bits16) => RegisterX86::IP.to_i32(),
+    }
+}
+
+/// Reads the program counter. Architecture independent. Raw Unicorn needed.
+/// Suited for callbacks. 
+pub fn read_pc(uc: &Unicorn) -> Result<u64,unicorn::Error> {
+    uc.reg_read(whats_pc())
+}
+
 pub fn regids<T>(regs: &'static [T]) -> Vec<i32>
 where T: Register,
 {
@@ -150,11 +168,13 @@ pub struct Engine {
     pub regids: Vec<i32>,
     mem: MemImage,
     bak: MemImage,
+    default_uc_mode: unicorn::Mode,
 }
 
 impl Engine {
     
     pub fn new (arch: Arch) -> Self {
+        let (uc_arch, uc_mode) = arch.as_uc();
         let mut mem: MemImage = mem_image_deep_copy();
         let bak: MemImage = mem_image_deep_copy();
         let emu = init_emulator(arch, &mut mem, false).unwrap(); 
@@ -170,6 +190,7 @@ impl Engine {
            mem: mem,
            bak: bak,
            regids: regids,
+           default_uc_mode: uc_mode,
         }
     }
 
@@ -187,14 +208,21 @@ impl Engine {
     }
 
     pub fn uc_mode (&self) -> unicorn::Mode {
-        umode_from_usize(self.uc.query(unicorn::Query::MODE).unwrap())
+        let q = self.uc.query(unicorn::Query::MODE);
+        match q {
+            Ok(n) => umode_from_usize(n),
+            Err(_) => self.default_uc_mode,
+        }
     }
 
     pub fn mode (&self) -> Mode {
         match self.uc_mode() {
             unicorn::Mode::LITTLE_ENDIAN => Mode::Arm,
             unicorn::Mode::THUMB => Mode::Thumb,
-            _ => panic!("I'll get around to this later."),
+            unicorn::Mode::MODE_64 => Mode::Bits64,
+            unicorn::Mode::MODE_32 => Mode::Bits32,
+            unicorn::Mode::MODE_16 => Mode::Bits16,
+            _ => panic!("***** UNIMPLEMENTED! ****"),
         }
     }
 
@@ -505,6 +533,12 @@ impl Seg {
         s
     }
 
+    pub fn is_executable(&self) -> bool { self.perm.intersects(PROT_EXEC) }
+
+    pub fn is_writeable(&self) -> bool { self.perm.intersects(PROT_WRITE) }
+
+    pub fn is_readable(&self) -> bool { self.perm.intersects(PROT_READ) }
+
     pub fn aligned_start(&self) -> u64 {
         self.addr & 0xFFFFF000
     }
@@ -520,16 +554,20 @@ impl Seg {
 }
 
 /* from raw Unicorn instance. Useful inside callbacks, for disassembling */
-pub fn get_uc_mode(uc: &Unicorn) -> Mode {
+pub fn get_mode(uc: &Unicorn) -> Mode {
     /* TODO keep a global static architecture variable, for reference
      * in situations like these. for now, we're just assuming ARM, but
      * plan to extend the system to cover, at least, MIPS, too.
      */
-    let raw = uc.query(unicorn::Query::MODE).unwrap();
+    let raw = uc.query(unicorn::Query::MODE);
 
     match raw {
-        0b00000 => Mode::Arm,
-        0b10000 => Mode::Thumb,
+        Ok(0b00000) => Mode::Arm,
+        Ok(0b10000) => Mode::Thumb,
+        Ok(0b01000) => Mode::Bits64,
+        Ok(0b00100) => Mode::Bits32,
+        Ok(0b00010) => Mode::Bits16,
+        Err(_) => ARCHITECTURE.mode(), /* global default */
         _ => panic!("Mode not recognized"),
     }
 }
@@ -539,17 +577,18 @@ pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool) -> Res
 
     let (arch, mode) = archmode.as_uc();
     
-    /* FIXME: Delete once other arches are implemented here */
-    assert_eq!(arch, unicorn::Arch::ARM);
-
     let mut uc = Unicorn::new(arch, mode)?;
     
     for seg in mem {
         if unsafely {
             unsafe { uc.mem_map_ptr(seg.aligned_start(), seg.aligned_size(), seg.perm, seg.data.as_mut_ptr()) }?; 
         } else {
+            //println!("init_emulator: mapping Seg: {}",seg);
             uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm)?; 
-            uc.mem_write(seg.aligned_start(), &seg.data)?;
+            //println!("uc regions: {:?}", uc.mem_regions().unwrap());
+            //println!("               writing 0x{:x} bytes of segment data", seg.data.len());
+            uc.mem_write(seg.aligned_start(), &seg.data); /* FIXME: removed ? to try to be more tolerant... */
+            //println!("write successful");
         }
     }
     Ok(uc)
@@ -563,24 +602,27 @@ lazy_static! {
             let mut segs: Vec<Seg> = Vec::new();
             match obj {
                 Object::Elf(e) => {
+                    let mut page_one = false;
                     let shdrs = &e.section_headers;
-
                     let phdrs = &e.program_headers;
                     for phdr in phdrs {
                         let seg = Seg::from_phdr(&phdr);
                         if seg.loadable() {
                             let start = seg.aligned_start() as usize;
+                            if start == 0 { page_one = true };
                             let end = seg.aligned_end() as usize;
                             segs.push(seg);
                         }
                     }
                     /* Low memory */
-                    segs.push(Seg { addr: 0,
-                                    memsz: 0x1000,
-                                    perm: PROT_READ,
-                                    segtype: SegType::Load,
-                                    data: vec![0; 0x1000],
-                    });
+                    if !page_one {
+                        segs.push(Seg { addr: 0,
+                                        memsz: 0x1000,
+                                        perm: PROT_READ,
+                                        segtype: SegType::Load,
+                                        data: vec![0; 0x1000],
+                        });
+                    };
 
                     for shdr in shdrs {
                         let (i,j) = (shdr.sh_offset as usize, 

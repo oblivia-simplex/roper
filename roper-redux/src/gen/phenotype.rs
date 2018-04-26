@@ -61,7 +61,7 @@ impl Pod {
                           addr,
                           data,
                           log::disas(&pack_word32le(data),
-                                     loader::Mode::Arm)); /* assuming LE */
+                                     ARCHITECTURE.mode())); /* assuming LE */
             v.push(row);
         }
         v

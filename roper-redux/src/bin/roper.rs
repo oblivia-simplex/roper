@@ -23,21 +23,35 @@ use libroper::par::statics::*;
 fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng, counter: usize) 
 {
     let (tx,rx,handle) = spawn_hatchery(engines, expect);
+    let (exec_seg, addr_range) = {
+        let mut size = 0;
+        let mut eseg: Option<&Seg> = None;
+        for seg in &*MEM_IMAGE {
+            if seg.is_executable() {
+                if seg.aligned_size() > size {
+                    size = seg.aligned_size();
+                    eseg = Some(&seg);
+                }
+            }
+        }
+        (eseg.unwrap(), size as u64) /* should be *some* exec seg */
+    };
+    let lower_addr = exec_seg.aligned_start();
     let start = Instant::now();
     for i in 0..expect { /* 100000 is too much to handle. but unlikely */
         let i = i as u64;
         let chain = Chain {
             gads: vec![Gadget {
-                            entry: 0x8000 + (rng.gen::<u32>() as u64 % 0x30000),
+                            entry: lower_addr + rng.gen::<u64>() % addr_range,
                             ret_addr: 0, /* not using this yet */
                             sp_delta: rng.gen::<usize>() % 16,
-                            mode: Mode::Arm,
+                            mode: Mode::Bits64,
                         },
                         Gadget {
-                            entry: 0x8000 + (rng.gen::<u32>() as u64 % 0x30000),
+                            entry: lower_addr + rng.gen::<u64>() % addr_range,
                             ret_addr: 0,
                             sp_delta: rng.gen::<usize>() % 16,
-                            mode: Mode::Thumb,
+                            mode: Mode::Bits64,
                         }],
             pads: vec![Pad::Const(i), 
                        Pad::Const(i+0xdeadbeef), 

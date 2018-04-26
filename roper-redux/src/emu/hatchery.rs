@@ -19,7 +19,7 @@ use self::rand::isaac::Isaac64Rng;
 use self::rayon::prelude::*;
 
 use emu::loader;
-use emu::loader::{ARM_ARM,Arch,Mode,Engine};
+use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode};
 use par::statics::ARCHITECTURE;
 use gen;
 use log;
@@ -115,7 +115,8 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
         let visitor = visitor.clone();
         let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
             let mut vmut = visitor.borrow_mut();
-            let mode = loader::get_uc_mode(uc);
+            let mode = get_mode(&uc);
+            let pc = uc.read_pc().unwrap();
             //let dis1 = log::disas_static(addr, mode);
             //let size = if mode == Mode::Thumb {2} else {4};
             //let inst = uc.mem_read(addr, size).unwrap();
