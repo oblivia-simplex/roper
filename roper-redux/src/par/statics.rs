@@ -1,12 +1,15 @@
 extern crate rand;
 extern crate goblin;
+extern crate num;
 
 use std::fs::File;
 use std::sync::{Arc,RwLock,Mutex};
 use std::io::Read;
 use std::path::Path;
 use std::env;
+use std::fmt;
 
+use self::num::PrimInt;
 use self::goblin::{Object,elf};
 use self::goblin::elf::Elf;
 use self::goblin::elf::header::machine_to_str;
@@ -97,6 +100,7 @@ lazy_static! {
         };
 }
 
+// set addr size here too. dispense with risc_width() calls, which are confused
 lazy_static! {
     pub static ref ARCHITECTURE: Arch
         = {
@@ -113,4 +117,24 @@ lazy_static! {
                 _  => panic!("arch_magic not recognized!"),
             }
         };
+}
+
+lazy_static! {
+    pub static ref ADDR_WIDTH: usize
+        = { 
+            match *ARCHITECTURE {
+                Arch::X86(_) => 8,
+                _ => 4,
+            }
+        };
+}
+
+/// A tiny machine word formatter
+#[inline]
+pub fn wf<T: PrimInt + fmt::LowerHex> (w: T) -> String {
+    match *ARCHITECTURE {
+        Arch::X86(Bits64) => format!("{:016x}", w),
+        Arch::X86(Bits16) => format!("{:04x}", w),
+        _ => format!("{:08x}", w),
+    }
 }

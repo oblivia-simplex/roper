@@ -19,7 +19,7 @@ use self::rand::isaac::Isaac64Rng;
 use self::rayon::prelude::*;
 
 use emu::loader;
-use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode};
+use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode,read_pc};
 use par::statics::ARCHITECTURE;
 use gen;
 use log;
@@ -82,7 +82,8 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
     let risc_width = emu.risc_width() as u64;
     emu.set_sp(stack_entry + risc_width);
     
-    let visitor: Rc<RefCell<Vec<(u64,Mode)>>> = Rc::new(RefCell::new(Vec::new()));
+    let visitor: Rc<RefCell<Vec<(u64,Mode,usize)>>> 
+        = Rc::new(RefCell::new(Vec::new()));
     let writelog = Rc::new(RefCell::new(Vec::new()));
 
     /* hm. I seem to have been forgetting to remove this hook. */
@@ -102,7 +103,7 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
             
             let dis = match inst {
                 Err(_) => "out of bounds".to_string(),
-                Ok(v)  => log::disas(&v, mode),
+                Ok(v)  => log::disas(&v, mode, 1),
             };
             //println!("WRITE with PC {:x} ({}): addr: {:x}, size: {:x}, val: {:x}", pc, dis, addr, size, val);
             */
@@ -116,13 +117,18 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
         let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
             let mut vmut = visitor.borrow_mut();
             let mode = get_mode(&uc);
-            let pc = uc.read_pc().unwrap();
             //let dis1 = log::disas_static(addr, mode);
             //let size = if mode == Mode::Thumb {2} else {4};
             //let inst = uc.mem_read(addr, size).unwrap();
-            //let dis2 = log::disas(&inst, mode);
+            //let dis2 = log::disas(&inst, mode, 1);
             //println!("STATIC: {}\nLIVE:   {} {:?}\n", dis1, dis2, inst);
-            vmut.push((addr,mode)); /* maybe track mode here too */
+            // TODO add size to visited tuple. CISC!
+            /* NB: on x86, the size sometimes shows as 0xf1f1f1f1 when the
+             * instruction is invalid. This wreaks havoc on the disassembler.
+             */
+            //let size: usize = if size == 0xf1f1f1f1 {1} else {size as usize};
+            let size: usize = (size & 0xF) as usize;
+            vmut.push((addr,mode,size)); /* maybe track mode here too */
             /* debugging */
 
         };

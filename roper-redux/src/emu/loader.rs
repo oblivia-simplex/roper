@@ -641,6 +641,10 @@ lazy_static! {
                                 let mut v_off 
                                     = (shdr.sh_addr - seg.aligned_start()) as usize;
                                 for byte in sdata {
+                                    if (v_off >= seg.data.len()) {
+                                        println!("[x] v_off 0x{:x} > seg.data.len() 0x{:x}. Look into this. Line {} of loader.rs.", v_off, seg.data.len(), line!());
+                                        break;
+                                    };
                                     seg.data[v_off] = byte;
                                     v_off += 1;
                                 }
@@ -689,7 +693,7 @@ fn find_static_seg (addr: u64) -> Option<&'static Seg> {
 pub fn read_static_mem (addr: u64, size: usize) -> Option<Vec<u8>> {
     if let Some(seg) = find_static_seg(addr) {
         let offset = (addr - seg.aligned_start()) as usize;
-        let offend = offset + size;
+        let offend = usize::min(offset + size, seg.data.len());
         if offend > seg.data.len() {
             println!("ERROR: addr: {:x}, size: {:x}, offset = {:x}, offend = {:x}, seg.data.len() = {:x}",
                      addr, size, offset, offend, seg.data.len());
@@ -727,25 +731,45 @@ fn test_engine_reset() {
 }
 
 #[test]
-fn stress_test_unicorn() {
-    let mode = unicorn::Mode::LITTLE_ENDIAN;
-    let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
-    let mem_image: MemImage = MEM_IMAGE.to_vec();
-    for seg in mem_image {
-        uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm).unwrap(); 
-        uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
+fn stress_test_unicorn_cpu_arm() {
+    if let Arch::Arm(_) = *ARCHITECTURE {
+        let mode = unicorn::Mode::LITTLE_ENDIAN;
+        let mut uc = CpuARM::new(mode).expect("Failed to create CpuARM");
+        let mem_image: MemImage = MEM_IMAGE.to_vec();
+        for seg in mem_image {
+            uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm).unwrap(); 
+            uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
+        }
+        let mut rng = thread_rng();
+        for i in 0..1000000 {
+            //println!("{}",i);
+            uc.emu_start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);
+        }
     }
-    let mut rng = thread_rng();
-    for i in 0..1000000 {
-        //println!("{}",i);
-        uc.emu_start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);
+}
+
+#[test]
+fn stress_test_unicorn_cpu_x86_64() {
+    if let Arch::X86(_) = *ARCHITECTURE {
+        let mode = unicorn::Mode::MODE_64;
+        let mut uc = CpuX86::new(mode).expect("Failed to create CpuX86");
+        let mem_image: MemImage = MEM_IMAGE.to_vec();
+        for seg in mem_image {
+            uc.mem_map(seg.aligned_start(), seg.aligned_size(), seg.perm).unwrap(); 
+            uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
+        }
+        let mut rng = thread_rng();
+        for i in 0..1000000 {
+            //println!("{}",i);
+            uc.emu_start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);
+        }
     }
 }
 
 #[test]
 fn stress_test_emulator() {
     let mut rng = thread_rng();
-    let mut emu = Engine::new(ARM_ARM);
+    let mut emu = Engine::new(*ARCHITECTURE);
     for i in 0..1000000 {
         //println!("{}",i);
         emu.start(0x8000 + rng.gen::<u64>() % 0x30000, 0,0, 1024);

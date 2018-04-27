@@ -22,19 +22,16 @@ use log;
 #[derive(Clone,Debug,PartialEq)]
 pub struct Pod {
     pub registers: Vec<u64>,
-    //pub memory: MemImage,
-    pub visited: Vec<(u64,Mode)>,
+    pub visited: Vec<(u64,Mode,usize)>,
     pub writelog: Vec<(u64,u64)>,
 }
 
 impl Pod {
     pub fn new(registers: Vec<u64>, 
-              // memory:    MemImage,
-               visited:   Vec<(u64,Mode)>,
+               visited:   Vec<(u64,Mode,usize)>,
                writelog:  Vec<(u64,u64)>) -> Self {
         Pod {
             registers: registers,
-            //memory: memory,
             visited: visited,
             writelog: writelog,
         }
@@ -43,25 +40,28 @@ impl Pod {
     /// of each address visited by the phenotype.
     pub fn disas_visited (&self) -> Vec<String> {
         let mut v = Vec::new();
-        for &(addr, mode) in &self.visited {
-            v.push(log::disas_static(addr, mode));
+        for &(addr, mode, size) in &self.visited {
+            v.push(log::disas_static(addr, size, mode, size));
         }
         v
     }
 
     /// Dump information about the writes performed by the
     /// phenotype.
+    /// TODO: adjust the word size used in these contexts, dependent on 
+    /// architecture. (FIXME)
     pub fn dump_written (&self) -> Vec<String> {
         let mut v = Vec::new();
         for &(addr, data) in &self.writelog {
-            let addr = addr as u32;
-            let data = data as u32; /* KLUDGE */
+            let addr = addr;
+            let data = data; /* KLUDGE */
             let row
-                = format!("{:08x} -> {:08x} | {}",
-                          addr,
-                          data,
-                          log::disas(&pack_word32le(data),
-                                     ARCHITECTURE.mode())); /* assuming LE */
+                = format!("{} -> {} | {}",
+                          wf(addr),
+                          wf(data),
+                          log::disas(&pack_word64le(data),
+                                     ARCHITECTURE.mode(),
+                                     8)); /* up to 1 inst per byte */
             v.push(row);
         }
         v

@@ -2,7 +2,7 @@ use std::fmt::{Display};
 use std::fmt;
 use std::collections::HashMap;
 use emu::loader::Mode;
-
+use par::statics::*;
 
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct Gadget {
@@ -15,9 +15,9 @@ pub struct Gadget {
 
 impl Display for Gadget {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[Entry: {:08x}, Ret: {:08x}, SpD: {:x}, Mode: {:?}]",
-               self.entry,
-               self.ret_addr,
+        write!(f, "[Entry: {}, Ret: {}, SpD: {:x}, Mode: {:?}]",
+               wf(self.entry),
+               wf(self.ret_addr),
                self.sp_delta,
                self.mode)
     }
@@ -39,7 +39,7 @@ pub enum Pad {
 impl Display for Pad {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Pad::Const(x) => write!(f, "[Const {:08x}]", x),
+            &Pad::Const(x) => write!(f, "[Const {}]", wf(x)),
             &Pad::Input(i) => write!(f, "[Input Slot #{}]", i),
         }
     }
