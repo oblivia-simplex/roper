@@ -81,6 +81,7 @@ impl Pod {
 
 pub type Input = Vec<u64>; /* a static reference would be better FIXME */
 pub type Phenome = HashMap<Input,Option<Pod>>;
+pub type Fitness<T: Clone + Ord + PartialEq + Send> = T;
 
 #[derive(Debug,Clone)]
 pub struct Creature {
@@ -89,7 +90,9 @@ pub struct Creature {
     pub index: usize,
     pub metadata: Metadata,
     pub name: String,
+    pub fitness: Option<Fitness<Vec<f32>>>,
 }
+
 impl PartialEq for Creature {
     fn eq(&self, other: &Creature) -> bool {
         self.name == other.name
@@ -140,6 +143,7 @@ impl Creature {
             index: index,
             metadata: Metadata::new(),
             name: name,
+            fitness: None,
         }
     }
 
