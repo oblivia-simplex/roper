@@ -1,6 +1,7 @@
 extern crate unicorn;
 extern crate goblin;
 extern crate rand;
+extern crate capstone;
 
 use std::collections::HashMap;
 use self::rand::{Rng,ThreadRng,thread_rng};
@@ -119,6 +120,9 @@ pub fn whats_pc() -> i32 {
 pub fn read_pc(uc: &Unicorn) -> Result<u64,unicorn::Error> {
     uc.reg_read(whats_pc())
 }
+
+// TODO /// Converts a unicorn register id to a capstone one 
+// pub fn uc2cs_reg(
 
 pub fn regids<T>(regs: &'static [T]) -> Vec<i32>
 where T: Register,
@@ -442,6 +446,14 @@ impl Arch {
             &Arch::X86(ref m) => m.clone(),
         }
     }
+    /// Returns a new Arch enum with specified mode
+    pub fn with_mode(&self, mode: Mode) -> Arch {
+        match self {
+            &Arch::Arm(_)  => Arch::Arm(mode),
+            &Arch::Mips(_) => Arch::Mips(mode),
+            &Arch::X86(_)  => Arch::X86(mode),
+        }
+    }
     //pub fn as_cs(&self) -> capstone::
 }
 
@@ -592,6 +604,42 @@ pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool) -> Res
         }
     }
     Ok(uc)
+}
+
+pub fn align_inst_addr(addr: u64, mode: Mode) -> u64 {
+    match mode {
+        Mode::Arm|Mode::Le|Mode::Be =>  addr & 0xFFFFFFFC,
+        Mode::Thumb                 => (addr & 0xFFFFFFFE)|1,
+        Mode::Bits16                =>  addr & 0xFFFF,
+        Mode::Bits32                =>  addr & 0xFFFFFFFF,
+        Mode::Bits64                =>  addr & 0xFFFFFFFFFFFFFFFF,
+    }
+}
+
+pub fn calc_sp_delta(addr: u64, mode: Mode) -> usize {
+    let arch_mode = ARCHITECTURE.with_mode(mode);
+    /* TODO ! */
+    match arch_mode {
+        Arch::X86(Bits64) => x86_64_calc_sp_delta(addr),
+        Arch::Arm(Mode::Arm) => arm_calc_sp_delta(addr),
+        Arch::Arm(Mode::Thumb) => thumb_calc_sp_delta(addr),
+        _ => panic!("unimplemented sp_delta arch/mode"),
+    }
+    
+}
+
+fn x86_64_calc_sp_delta(addr: u64) -> usize {
+    /* use capstone to disasm_count 1 instruction from addr */
+    /* inspect operands and implicit writes, to gauge effect on RSP */
+    0
+}
+
+fn arm_calc_sp_delta(addr: u64) -> usize {
+    0
+}
+
+fn thumb_calc_sp_delta(addr: u64) -> usize {
+    0
 }
 
 

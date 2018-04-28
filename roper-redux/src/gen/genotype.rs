@@ -1,8 +1,13 @@
+extern crate rand;
+
 use std::fmt::{Display};
 use std::fmt;
 use std::collections::HashMap;
-use emu::loader::Mode;
+use emu::loader::{Mode,Seg,align_inst_addr};
 use par::statics::*;
+
+use self::rand::isaac::Isaac64Rng;
+use self::rand::{Rng,SeedableRng};
 
 #[derive(Clone,Debug,PartialEq,Eq)]
 pub struct Gadget {
@@ -109,6 +114,52 @@ impl Chain {
         assert!(self.gads.len() > 0);
         self.gads[0].entry
     }
+
+    /* 
+     *
+    /* TODO: create a separate thread that maintains the
+     * pool of random seeds, and serves them on request,
+     * over a channel, maybe. 
+     */
+    /* TODO alignment function, which depends on ARCHITECTURE */
+    pub fn from_seed(seed: &[u64],
+                     len_range: (usize, usize)) -> Self {
+        
+        let mut rng = Isaac64Rng::from_seed(seed);
+        let exec_segs = MEM_IMAGE.iter()
+                                 .filter(|s| s.is_executable())
+                                 .collect::<Vec<Seg>>();
+        let pick_addr = (|| -> u64 {
+                let rng = &mut rng;
+                /* TODO weight this, so that small segs are overly sampled */
+                let seg = &exec_segs[rng.gen::<usize>() % exec_segs.len()];
+                let addr = seg.aligned_start() + rng.gen::<u64>() % seg.aligned_size();
+                let mode = ARCHITECTURE.mode(); /* choose mode randomly if ARM */
+                let aligned_addr = align_inst_addr(addr, mode);
+                (aligned_addr,mode)
+            });
+
+        let mut gads = Vec<Gadget>;
+        let (min_len, max_len) = len_range;
+        let glen = rng.gen::<usize>() % (max_len - min_len) + min_len;
+
+        for 0..glen {
+            let (addr,mode) = pick_addr();
+            let mut gad = Gadget {
+                entry: addr,
+                ret_addr: 0, /* TODO */
+                sp_delta: 0, /* TODO */
+                mode: mode,  /* TODO - for ARM decide mode */
+            };
+            gads.push(gad);
+        }
+        /* if i initialize the spd at random, will evolution bring it into 
+         * alignment with the actual spd?
+         */
+    /* define crossover and mutation operations as traits of the genome 
+     * but allow for them to take callbacks, scripts, etc., eventually 
+     */
+      */  
 }
 
 /* by using a hashmap instead of separate struct fields

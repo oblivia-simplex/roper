@@ -2,6 +2,7 @@
 
 import sys
 import os
+import argparse
 
 from ropper import *
 
@@ -21,7 +22,7 @@ def parse_numeric_operand(op):
     except ValueError:
         return None
 
-def calc_sp_delta(gad, arch):
+def calc_sp_delta_arm(gad, arch):
     """
     Analyses a gadget, and returns its estimated stack pointer delta.
     """
@@ -46,6 +47,17 @@ def calc_sp_delta(gad, arch):
                 sp_delta -= n
     return sp_delta
                   
+
+def calc_sp_delta_x86(gad, arch):
+
+    pass
+    return 0
+
+def calc_sp_delta(gad, arch):
+    if 'ARM' in arch:
+        return calc_sp_delta_arm(gad, arch)
+    elif 'x86' in arch:
+        return calc_sp_delta_x86(gad, arch)
 
 def tabrow(*args):
     return '\t'.join(['{}'.format(x) for x in args])
@@ -77,9 +89,23 @@ def main(path, arch, with_disasm=False):
             print tabrow(arch, entry, ret_addr, sp_delta)
 
 
-show_disasm = bool(os.environ['SHOW_DISASM']) if 'SHOW_DISASM' in os.environ else False
-
-main(sys.argv[1], "ARMTHUMB", show_disasm)
-main(sys.argv[1], "ARM", show_disasm)
 
 
+def cli():
+    """ Command line interface """
+    parser = argparse.ArgumentParser(description="generate gadget tables")
+    parser.add_argument("--file", metavar="<path>", type=str,
+            help="file to harvest gadgets from")
+    parser.add_argument("--arch", metavar="<ARM|X86>", type=str, help="architecture")
+    parser.add_argument("--disas", action="store_true", type=bool, default=False, 
+            help="disassemble")
+    args = parser.parse_args()
+    if arch == "ARM":
+        main(args.file, "ARM", args.disas)
+        main(args.file, "ARMTHUMB", args.disas)
+    elif arch == "x86":
+        main(args.file, args.arch, args.disas)
+
+
+
+cli()
