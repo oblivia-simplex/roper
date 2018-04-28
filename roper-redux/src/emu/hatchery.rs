@@ -16,7 +16,7 @@ use std::ops::Deref;
 use std::time::Duration;
 use self::rand::{SeedableRng,Rng,thread_rng};
 use self::rand::isaac::Isaac64Rng;
-use self::rayon::prelude::*;
+//use self::rayon::prelude::*;
 
 use emu::loader;
 use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode,read_pc};

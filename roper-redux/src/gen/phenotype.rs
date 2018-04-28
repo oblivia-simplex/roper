@@ -229,7 +229,8 @@ impl Population {
     /// Selects num individuals at random, using the RngSeed, and
     /// ensures that the chosen are all internally mutable, wrt their
     /// RwLocks.
-    pub fn choose(&self, seed: RngSeed, num: usize) -> Vec<Arc<RefCell<Creature>>> {
+    pub fn choose(&self, seed: RngSeed, num: usize) 
+        -> Vec<Arc<RefCell<Creature>>> {
         let mut rng = Isaac64Rng::from_seed(&seed);
         //sample(&mut rng, self.hive, num)       
         // choose unlocked

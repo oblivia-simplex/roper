@@ -133,8 +133,8 @@ lazy_static! {
 #[inline]
 pub fn wf<T: PrimInt + fmt::LowerHex> (w: T) -> String {
     match *ARCHITECTURE {
-        Arch::X86(Bits64) => format!("{:016x}", w),
-        Arch::X86(Bits16) => format!("{:04x}", w),
+        Arch::X86(Mode::Bits64) => format!("{:016x}", w),
+        Arch::X86(Mode::Bits16) => format!("{:04x}", w),
         _ => format!("{:08x}", w),
     }
 }

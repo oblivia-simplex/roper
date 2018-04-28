@@ -7,6 +7,7 @@ use std::time::Instant;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
+use std::sync::mpsc::{channel,Sender,Receiver};
 
 use libroper::emu::*;
 use libroper::gen::*;
@@ -14,15 +15,21 @@ use libroper::emu::loader::Mode;
 use rand::{SeedableRng,Rng};
 use rand::isaac::{Isaac64Rng};
 use libroper::par::statics::*;
+use libroper::log;
 
 /* The optimal combination, so far, seems to be something like:
  * batch of 1024, channels throttled to 512, number of engines: 4-6
  * 0.09 seconds to evaluate 1024 specimens!
  */
 
-fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng, counter: usize) 
+fn do_the_thing (engines: usize, 
+                 expect: usize, 
+                 rng: &mut Isaac64Rng, 
+                 counter: usize,
+                 log_tx: &Sender<Creature>) 
 {
     let (tx,rx,handle) = spawn_hatchery(engines, expect);
+
     let (exec_seg, addr_range) = {
         let mut size = 0;
         let mut eseg: Option<&Seg> = None;
@@ -71,9 +78,7 @@ fn do_the_thing (engines: usize, expect: usize, rng: &mut Isaac64Rng, counter: u
 
     for i in 0..expect {
         let creature = rx.recv().unwrap();
-        if cfg!(debug_assertions) {
-            println!("{}",creature);
-        }
+        log_tx.send(creature.clone()).unwrap();
     }
     
     drop(tx);
@@ -102,7 +107,10 @@ fn main() {
     let mut counter = engine_period;
     let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
     
+    let (log_tx,log_handle) = log::spawn_logger(0x1000);
     for counter in 0..loops {
-        do_the_thing(engines, expect, &mut rng, counter);
+        do_the_thing(engines, expect, &mut rng, counter, &log_tx);
     }
+    drop(log_tx);
+    log_handle.join();
 }
