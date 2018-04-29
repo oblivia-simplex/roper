@@ -411,7 +411,7 @@ pub fn umode_from_usize(x: usize) -> unicorn::Mode {
     }
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+#[derive(FromValue,IntoValue,ForeignValue,Clone,Copy,Debug,PartialEq,Eq)]
 pub enum Mode {
     Arm,
     Thumb,
@@ -436,7 +436,7 @@ impl Mode {
     }
 }
 
-#[derive(Clone,Copy,PartialEq,Eq,Debug)]
+#[derive(FromValue,IntoValue,ForeignValue,Clone,Copy,PartialEq,Eq,Debug)]
 pub enum Arch {
     Arm(Mode),
     Mips(Mode),
@@ -469,7 +469,7 @@ impl Arch {
     //pub fn as_cs(&self) -> capstone::
 }
 
-#[derive(Copy,Clone,PartialEq,Eq,Debug)]
+#[derive(FromValue,IntoValue,ForeignValue,Copy,Clone,PartialEq,Eq,Debug)]
 pub enum SegType {
     Null,
     Load,
@@ -510,7 +510,7 @@ impl SegType {
     }
 }
 
-#[derive(PartialEq,Eq,Debug,Clone)]
+#[derive(FromValue,IntoValue,ForeignValue,PartialEq,Eq,Debug,Clone)]
 pub struct Seg {
     pub addr: u64,
     pub memsz: usize,

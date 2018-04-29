@@ -9,7 +9,7 @@ use par::statics::*;
 use self::rand::isaac::Isaac64Rng;
 use self::rand::{Rng,SeedableRng};
 
-#[derive(Clone,Debug,PartialEq,Eq)]
+#[derive(IntoValue,StructValue,ForeignValue,FromValue,FromValueRef,Clone,Copy,Debug,PartialEq,Eq)]
 pub struct Gadget {
     pub ret_addr : u64,
     pub entry    : u64,
@@ -28,13 +28,13 @@ impl Display for Gadget {
     }
 }
 
-#[derive(Copy,Clone,Eq,PartialEq,Debug)]
+#[derive(ForeignValue,FromValue,FromValueRef,IntoValue,Copy,Clone,Eq,PartialEq,Debug)]
 pub enum Endian {
     Big,
     Little,
 }
 
-#[derive(Clone,Copy,Debug,PartialEq,Eq)]
+#[derive(ForeignValue,FromValue,FromValueRef,IntoValue,Clone,Copy,Debug,PartialEq,Eq)]
 pub enum Pad {
     Const(u64),
     Input(usize),
@@ -50,7 +50,7 @@ impl Display for Pad {
     }
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(StructValue,ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq)]
 pub struct Chain {
     pub gads: Vec<Gadget>,
     pub pads: Vec<Pad>,
@@ -172,7 +172,15 @@ impl Chain {
  * "None" be the absence of a field in the hashmap. 
  * Accessor functions will provide an easy interface. 
  */
-pub type Metadata = HashMap<&'static str,f32>;
+
+#[derive(ForeignValue,FromValue,IntoValue,Clone,Debug,PartialEq)]
+pub struct Metadata(pub HashMap<&'static str,f32>);
+impl Metadata {
+    pub fn new() -> Self {
+        Metadata( HashMap::new() )
+    }
+}
+
 
 fn pack_word(word: u64, size: usize, endian: Endian) -> Vec<u8> {
     let mut p : Vec<u8> = Vec::new();

@@ -1,5 +1,8 @@
-#![recursion_limit="2048"]
+// #![recursion_limit="2048"]
 #[macro_use] extern crate lazy_static;
+
+extern crate ketos;
+#[macro_use] extern crate ketos_derive;
 
 pub mod emu;
 use self::emu::*;
@@ -12,3 +15,7 @@ use self::gen::*;
 
 pub mod log;
 use self::log::*;
+
+pub mod fit;
+use self::fit::*;
+

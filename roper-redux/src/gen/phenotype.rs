@@ -19,7 +19,7 @@ use par::statics::*;
 use emu::loader;
 use log;
 
-#[derive(Clone,Debug,PartialEq,Eq)]
+#[derive(ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq,Eq)]
 pub struct WriteRecord {
     pub pc: u64,
     pub dest_addr: u64,
@@ -27,7 +27,7 @@ pub struct WriteRecord {
     pub size: usize,
 }
 
-#[derive(Clone,Debug,PartialEq,Eq)]
+#[derive(ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq,Eq)]
 pub struct VisitRecord {
     pub pc: u64,
     pub mode: Mode,
@@ -50,7 +50,7 @@ impl Display for VisitRecord {
     }
 }
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq)]
 pub struct Pod {
     pub registers: Vec<u64>,
     pub visited: Vec<VisitRecord>,
@@ -113,7 +113,7 @@ pub type Input = Vec<u64>; /* a static reference would be better FIXME */
 pub type Phenome = HashMap<Input,Option<Pod>>;
 pub type Fitness<T: Clone + Ord + PartialEq + Send> = T;
 
-#[derive(Debug,Clone)]
+#[derive(ForeignValue,FromValue,FromValueRef,Debug,Clone)]
 pub struct Creature {
     pub genome: Chain,
     pub phenome: Phenome,
@@ -178,14 +178,14 @@ impl Creature {
     }
 
     pub fn ab_fit(&self) -> Option<f32> {
-        match self.metadata.get("ab_fit") {
+        match self.metadata.0.get("ab_fit") {
             None => None,
             Some(&x) => Some(x),
         }
     }
 
     pub fn set_ab_fit(&mut self, ab_fit: f32) -> () {
-        self.metadata.insert("ab_fit", ab_fit);
+        self.metadata.0.insert("ab_fit", ab_fit);
     }
 
     pub fn pose_problem(&mut self, input: &Input) -> () {
