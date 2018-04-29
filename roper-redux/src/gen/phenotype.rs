@@ -19,17 +19,48 @@ use par::statics::*;
 use emu::loader;
 use log;
 
+#[derive(Clone,Debug,PartialEq,Eq)]
+pub struct WriteRecord {
+    pub pc: u64,
+    pub dest_addr: u64,
+    pub value: u64,
+    pub size: usize,
+}
+
+#[derive(Clone,Debug,PartialEq,Eq)]
+pub struct VisitRecord {
+    pub pc: u64,
+    pub mode: Mode,
+    pub inst_size: usize,
+    pub registers: Vec<u64>,
+}
+
+impl Display for VisitRecord {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}    [REGS: {}]", 
+               log::disas_static(self.pc, 
+                                 self.inst_size, 
+                                 self.mode, 
+                                 1),
+               self.registers
+                   .iter()
+                   .map(|r| format!("{:x}",r))
+                   .collect::<Vec<String>>()
+                   .join(" "))
+    }
+}
+
 #[derive(Clone,Debug,PartialEq)]
 pub struct Pod {
     pub registers: Vec<u64>,
-    pub visited: Vec<(u64,Mode,usize)>,
-    pub writelog: Vec<(u64,u64)>,
+    pub visited: Vec<VisitRecord>,
+    pub writelog: Vec<WriteRecord>,
 }
 
 impl Pod {
     pub fn new(registers: Vec<u64>, 
-               visited:   Vec<(u64,Mode,usize)>,
-               writelog:  Vec<(u64,u64)>) -> Self {
+               visited:   Vec<VisitRecord>,
+               writelog:  Vec<WriteRecord>) -> Self {
         Pod {
             registers: registers,
             visited: visited,
@@ -40,8 +71,8 @@ impl Pod {
     /// of each address visited by the phenotype.
     pub fn disas_visited (&self) -> Vec<String> {
         let mut v = Vec::new();
-        for &(addr, mode, size) in &self.visited {
-            v.push(log::disas_static(addr, size, mode, size));
+        for vrec in &self.visited {
+            v.push(format!("{}",vrec));
         }
         v
     }
@@ -52,16 +83,15 @@ impl Pod {
     /// architecture. (FIXME)
     pub fn dump_written (&self) -> Vec<String> {
         let mut v = Vec::new();
-        for &(addr, data) in &self.writelog {
-            let addr = addr;
-            let data = data; /* KLUDGE */
+        for wrec in &self.writelog {
             let row
-                = format!("{} -> {} | {}",
-                          wf(addr),
-                          wf(data),
-                          log::disas(&pack_word64le(data),
+                = format!("{}: {} -> {} | {}",
+                          wf(wrec.pc),
+                          wf(wrec.dest_addr),
+                          wf(wrec.value),
+                          log::disas(&pack_word64le(wrec.value)[0..wrec.size].to_vec(),
                                      ARCHITECTURE.mode(),
-                                     8)); /* up to 1 inst per byte */
+                                     wrec.size)); /* up to 1 inst per byte */
             v.push(row);
         }
         v

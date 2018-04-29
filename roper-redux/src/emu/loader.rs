@@ -83,17 +83,12 @@ pub static ARM_REGISTERS : [RegisterARM; 16] = [RegisterARM::R0,
                                                 RegisterARM::LR,
                                                 RegisterARM::PC];
 
-pub static X86_64_REGISTERS: [RegisterX86; 18] = [RegisterX86::EFLAGS,
-                                                  RegisterX86::RAX,
-                                                  RegisterX86::RBP,
+pub static X86_64_REGISTERS: [RegisterX86; 17] = [RegisterX86::RAX,
                                                   RegisterX86::RBX,
                                                   RegisterX86::RCX,
-                                                  RegisterX86::RDI,
                                                   RegisterX86::RDX,
-                                                  RegisterX86::RIP,
-                                                  RegisterX86::RIZ,
+                                                  RegisterX86::RDI,
                                                   RegisterX86::RSI,
-                                                  RegisterX86::RSP,
                                                   RegisterX86::R9,
                                                   RegisterX86::R10,
                                                   RegisterX86::R11,
@@ -101,6 +96,10 @@ pub static X86_64_REGISTERS: [RegisterX86; 18] = [RegisterX86::EFLAGS,
                                                   RegisterX86::R13,
                                                   RegisterX86::R14,
                                                   RegisterX86::R15,
+                                                  RegisterX86::RBP,
+                                                  RegisterX86::RSP,
+                                                  RegisterX86::RIP,
+                                                  RegisterX86::EFLAGS,
 ];
 
 /// Returns the regid for the program counter, on the
@@ -121,6 +120,19 @@ pub fn read_pc(uc: &Unicorn) -> Result<u64,unicorn::Error> {
     uc.reg_read(whats_pc())
 }
 
+pub fn uc_general_registers(uc: &Unicorn) -> Result<Vec<u64>,unicorn::Error> {
+    /* FIXME: optimize away this match, refer to a static instead */
+    let regids = match *ARCHITECTURE {
+        Arch::Arm(_) => regids(&ARM_REGISTERS),
+        Arch::Mips(_) => regids(&MIPS_REGISTERS),
+        Arch::X86(Bits64) => regids(&X86_64_REGISTERS),
+        _ => unreachable!("Not implemented"),
+    };
+    Ok(regids.iter()
+             .map(|&x| uc.reg_read(x)
+                         .expect("Error reading registers"))
+             .collect::<Vec<u64>>())
+}
 // TODO /// Converts a unicorn register id to a capstone one 
 // pub fn uc2cs_reg(
 

@@ -19,9 +19,10 @@ use self::rand::isaac::Isaac64Rng;
 //use self::rayon::prelude::*;
 
 use emu::loader;
-use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode,read_pc};
-use par::statics::ARCHITECTURE;
+use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode,read_pc,uc_general_registers};
+use par::statics::*;
 use gen;
+use gen::phenotype::{VisitRecord,WriteRecord};
 use log;
 
 fn snooze (millis: u64) {
@@ -56,14 +57,12 @@ pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phen
     map
 }
 
-/* TODO: it seems to work -- slowly -- with the emu recreated in each hatch function.
- * why? figure this out. 
- * try moving hooks to same scope and lifetime as the emu. i have a feeling that that
- * might be the issue (though it caused no trouble in ROPER I).
- * experiment with different thread types. scoped?
- */
+
+
 #[inline]
-pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine) -> gen::Pod {
+pub fn hatch (creature: &mut gen::Creature, 
+              input: &gen::Input, 
+              emu: &mut Engine) -> gen::Pod {
     /* a very simple version of hatch_chain **/
     /* FIXME out of desperation, let's see if we get the crash if we create a new
      * emulator for every fucking hatch. */
@@ -79,14 +78,17 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
 
     /* load payload **/
     emu.uc.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
-    let risc_width = emu.risc_width() as u64;
-    emu.set_sp(stack_entry + risc_width);
+    emu.set_sp(stack_entry + *ADDR_WIDTH as u64);
+    //emu.reset_registers(); /* TODO */
+    // this will need to iterate through *ALL* the registers, not just the 
+    // general purpose ones we're watching.
+    // also the general_registers method is a misnomer. rename it.
+    // eventually, we can replace this with a context restore.
     
-    let visitor: Rc<RefCell<Vec<(u64,Mode,usize)>>> 
+    let visitor: Rc<RefCell<Vec<VisitRecord>>> 
         = Rc::new(RefCell::new(Vec::new()));
     let writelog = Rc::new(RefCell::new(Vec::new()));
-
-    /* hm. I seem to have been forgetting to remove this hook. */
+    
     let mem_write_hook = {
         let writelog = writelog.clone();
         let callback = move |uc: &unicorn::Unicorn, 
@@ -95,18 +97,24 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
                              size: usize, 
                              val: i64| {
             let mut wmut = writelog.borrow_mut();
-            wmut.push((addr, val as u64));
-            /*
-            let pc = uc.reg_read(11).unwrap(); /* FIXME KLUDGE ARM id for PC */
-            let inst = uc.mem_read(pc, 4);
-            let mode = loader::get_uc_mode(&uc);
-            
-            let dis = match inst {
-                Err(_) => "out of bounds".to_string(),
-                Ok(v)  => log::disas(&v, mode, 1),
+            let pc = read_pc(uc).unwrap();
+            /* let's verify some things 
+            if cfg!(debug_assertions) {
+                let insts = uc.mem_read(pc, 15).unwrap();
+                let dis = log::disas(&insts, get_mode(&uc), 1);
+                println!("[*] pc: {} -- at {}, wrote {}, size {}", wf(pc), wf(addr), wf(val),size);
+                println!("    {}", dis);
+
             };
-            //println!("WRITE with PC {:x} ({}): addr: {:x}, size: {:x}, val: {:x}", pc, dis, addr, size, val);
             */
+            /* TODO: record size of writes as well. */
+            let write_record = WriteRecord {
+                pc: pc,
+                dest_addr: addr,
+                value: val as u64,
+                size: size,
+            };
+            wmut.push(write_record);
             true
         };
         emu.hook_writeable_mem(callback)
@@ -117,19 +125,15 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
         let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
             let mut vmut = visitor.borrow_mut();
             let mode = get_mode(&uc);
-            //let dis1 = log::disas_static(addr, mode);
-            //let size = if mode == Mode::Thumb {2} else {4};
-            //let inst = uc.mem_read(addr, size).unwrap();
-            //let dis2 = log::disas(&inst, mode, 1);
-            //println!("STATIC: {}\nLIVE:   {} {:?}\n", dis1, dis2, inst);
-            // TODO add size to visited tuple. CISC!
-            /* NB: on x86, the size sometimes shows as 0xf1f1f1f1 when the
-             * instruction is invalid. This wreaks havoc on the disassembler.
-             */
-            //let size: usize = if size == 0xf1f1f1f1 {1} else {size as usize};
             let size: usize = (size & 0xF) as usize;
-            vmut.push((addr,mode,size)); /* maybe track mode here too */
-            /* debugging */
+            let registers = uc_general_registers(&uc).unwrap();
+            let visit_record = VisitRecord {
+                pc: addr,
+                mode: mode,
+                inst_size: size,
+                registers: registers,
+            };
+            vmut.push(visit_record); 
 
         };
         emu.hook_exec_mem(callback)
@@ -137,12 +141,6 @@ pub fn hatch (creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine
     
     /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
-    /* for debugging */
-    /*
-     * for seg in &emu.writeable_memory() {
-        println!("{}, #bytes: 0x{:x}",seg, seg.data.len());
-    }
-    */
     match visit_hook {
         Ok(h)  => { emu.remove_hook(h).unwrap(); },
         Err(_) => { println!("visit_hook didn't take"); },
