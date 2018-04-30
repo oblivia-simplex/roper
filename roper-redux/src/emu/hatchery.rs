@@ -71,7 +71,7 @@ pub fn hatch (creature: &mut gen::Creature,
 
     /* load payload **/
     emu.restore_state();
-    emu.uc.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
+    emu.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
     emu.set_sp(stack_entry + *ADDR_WIDTH as u64);
     //emu.reset_registers(); /* TODO */
     // this will need to iterate through *ALL* the registers, not just the 

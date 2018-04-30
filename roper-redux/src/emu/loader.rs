@@ -271,6 +271,11 @@ impl Engine {
         self.restore_state();
     }
 
+    pub fn mem_write(&mut self, addr: u64, data: &Vec<u8>) 
+        -> Result<(), unicorn::Error> {
+        self.uc.mem_write(addr, data)
+    }
+
     pub fn uc_mode (&self) -> unicorn::Mode {
         let q = self.uc.query(unicorn::Query::MODE);
         match q {
