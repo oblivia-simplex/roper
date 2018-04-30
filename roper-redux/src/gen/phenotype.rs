@@ -113,7 +113,7 @@ pub type Input = Vec<u64>; /* a static reference would be better FIXME */
 pub type Phenome = HashMap<Input,Option<Pod>>;
 pub type Fitness<T: Clone + Ord + PartialEq + Send> = T;
 
-#[derive(ForeignValue,FromValue,FromValueRef,Debug,Clone)]
+#[derive(ForeignValue,IntoValue,FromValueRef,Debug,Clone)]
 pub struct Creature {
     pub genome: Chain,
     pub phenome: Phenome,

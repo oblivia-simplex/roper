@@ -120,6 +120,18 @@ pub fn read_pc(uc: &Unicorn) -> Result<u64,unicorn::Error> {
     uc.reg_read(whats_pc())
 }
 
+/// Returns the default accumulator register's identifier.
+/// For ARM, this is R0, and for x86_64, this is RAX.
+pub fn whats_accum() -> i32 {
+    match *ARCHITECTURE {
+        Arch::Arm(_) => RegisterARM::R0.to_i32(),
+        Arch::X86(Bits64) => RegisterX86::RAX.to_i32(),
+        Arch::X86(Bits32) => RegisterX86::EAX.to_i32(),
+        Arch::X86(Bits16) => RegisterX86::AX.to_i32(),
+        _ => panic!("not yet implemented"),
+    }
+}
+
 pub fn uc_general_registers(uc: &Unicorn) -> Result<Vec<u64>,unicorn::Error> {
     /* FIXME: optimize away this match, refer to a static instead */
     let regids = match *ARCHITECTURE {
@@ -183,8 +195,9 @@ pub struct Engine {
     pub arch: Arch,
     pub regids: Vec<i32>,
     mem: MemImage,
-    bak: MemImage,
+    writeable_bak: Option<MemImage>,
     default_uc_mode: unicorn::Mode,
+    saved_context: Option<*const unicorn::Context>
 }
 
 impl Engine {
@@ -192,7 +205,6 @@ impl Engine {
     pub fn new (arch: Arch) -> Self {
         let (uc_arch, uc_mode) = arch.as_uc();
         let mut mem: MemImage = mem_image_deep_copy();
-        let bak: MemImage = mem_image_deep_copy();
         let emu = init_emulator(arch, &mut mem, false).unwrap(); 
         let regids = match arch {
             Arch::Arm(_) => regids(&ARM_REGISTERS),
@@ -200,17 +212,53 @@ impl Engine {
             Arch::X86(Bits64) => regids(&X86_64_REGISTERS),
             _ => unreachable!("Not implemented"),
         };
-        Engine {
-           uc: Box::new(emu),
+        let mut emu = Engine {
+           uc: emu,
            arch: arch,
            mem: mem,
-           bak: bak,
            regids: regids,
            default_uc_mode: uc_mode,
+           saved_context: None,
+           writeable_bak: None,
+        };
+        emu.save_state();
+        emu
+    }
+
+    /// Saves the register context.
+    pub fn save_context(&mut self) -> () {
+        self.saved_context = Some(unsafe { self.uc.context_save().unwrap() });
+    }
+
+    /// Saves both the register context and the state of writeable memory.
+    pub fn save_state(&mut self) -> () {
+        self.writeable_bak = Some(self.writeable_memory());
+        self.save_context();
+    }
+
+    /// Restores the register context and the state of writeable memory to
+    /// their state at the last save_state() event.
+    pub fn restore_state(&mut self) -> () {
+        for seg in self.writeable_bak.as_ref().unwrap() {
+            self.uc.mem_write(seg.aligned_start(), &seg.data);
+        }
+        self.restore_context();
+    }
+
+    /// Restores the register context.
+    pub fn restore_context(&mut self) -> () {
+        if self.saved_context != None {
+            unsafe { self.uc.context_restore(self.saved_context.unwrap()).unwrap(); }
+        } else {
+            if cfg!(debug_assertions) {
+                println!("WARNING: Restoring context before saving!");
+            }
         }
     }
 
-    pub fn reset (&mut self) -> () {
+    /// Throws away the emulator, and creates another.
+    pub fn hard_reset (&mut self) -> () {
+        self.save_state();
         let (uc_arch, uc_mode) = self.arch.as_uc();
         let mut uc = unicorn::Unicorn::new(uc_arch, uc_mode).unwrap();
         for seg in &self.mem {
@@ -219,8 +267,8 @@ impl Engine {
                        seg.perm).unwrap();
             uc.mem_write(seg.aligned_start(), &seg.data).unwrap();
         }
-        let _ = self.uc;
-        self.uc = Box::new(uc);
+        self.uc = uc;
+        self.restore_state();
     }
 
     pub fn uc_mode (&self) -> unicorn::Mode {
@@ -338,11 +386,9 @@ impl Engine {
                  .collect::<Vec<u64>>())
     }
     
-    pub fn hook_exec_mem<F> (&mut self,
-                             callback: F) 
-        -> Result<unicorn::uc_hook, Error>
-        where F: Fn(&Unicorn, u64, u32) -> () + 'static, 
-    {
+    /// Limitation: Only returns the bounds of the largest executable
+    /// segment.
+    pub fn exec_mem_range (&self) -> (Option<u64>,Option<u64>) {
         let regions = self.uc.mem_regions().unwrap();
         let mut exec_start = None;
         let mut exec_stop = None;
@@ -355,6 +401,15 @@ impl Engine {
                 exec_stop = Some(region.end)
             };
         }
+        (exec_start, exec_stop)
+    }
+    
+    pub fn hook_exec_mem<F> (&mut self,
+                             callback: F) 
+        -> Result<unicorn::uc_hook, Error>
+        where F: Fn(&Unicorn, u64, u32) -> () + 'static, 
+    {
+        let (exec_start,exec_stop) = self.exec_mem_range();
         if exec_start == None || exec_stop == None {
             Err(unicorn::Error::ARG)
         } else {
@@ -597,7 +652,8 @@ pub fn get_mode(uc: &Unicorn) -> Mode {
 }
 
 
-pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool) -> Result<Unicorn, unicorn::Error> {
+pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool) 
+    -> Result<Box<Unicorn>, unicorn::Error> {
 
     let (arch, mode) = archmode.as_uc();
     
@@ -735,6 +791,9 @@ lazy_static! {
                 },
                 _ => panic!("Not yet implemented."),
             }
+            for seg in &segs {
+                println!("{}, data len: {:x}", seg, seg.data.len());
+            }
             segs
         };
 }
@@ -754,6 +813,7 @@ pub fn read_static_mem (addr: u64, size: usize) -> Option<Vec<u8>> {
     if let Some(seg) = find_static_seg(addr) {
         let offset = (addr - seg.aligned_start()) as usize;
         let offend = usize::min(offset + size, seg.data.len());
+        if offend < offset { return None };
         if offend > seg.data.len() {
             println!("ERROR: addr: {:x}, size: {:x}, offset = {:x}, offend = {:x}, seg.data.len() = {:x}",
                      addr, size, offset, offend, seg.data.len());

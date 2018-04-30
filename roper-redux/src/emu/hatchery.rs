@@ -63,20 +63,14 @@ pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phen
 pub fn hatch (creature: &mut gen::Creature, 
               input: &gen::Input, 
               emu: &mut Engine) -> gen::Pod {
-    /* a very simple version of hatch_chain **/
-    /* FIXME out of desperation, let's see if we get the crash if we create a new
-     * emulator for every fucking hatch. */
-    /* END KLUDGE */
-
     let payload = creature.genome.pack(input);
-    //hexdump::hexdump(&payload); /* NB: debugging only */
     let start_addr = creature.genome.entry();
     let (stack_addr, stack_size) = emu.find_stack();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /* save writeable regions **/
-    let saved_regions: loader::MemImage = emu.writeable_memory();
 
     /* load payload **/
+    emu.restore_state();
     emu.uc.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
     emu.set_sp(stack_entry + *ADDR_WIDTH as u64);
     //emu.reset_registers(); /* TODO */
@@ -156,7 +150,6 @@ pub fn hatch (creature: &mut gen::Creature,
      * attach it to the mutable pod
      */
     let registers = emu.read_general_registers().unwrap();
-    //let memory = emu.writeable_memory();
     let vtmp = visitor.clone();
     let visited = vtmp.borrow().to_vec().clone();
     let wtmp = writelog.clone();
@@ -164,20 +157,6 @@ pub fn hatch (creature: &mut gen::Creature,
     drop(vtmp);
     drop(wtmp);
     
-    //print!("writelog (len: 0x{:x}): ", writelog.len());
-    //for &(addr, data) in &writelog {
-    //    print!(" {:08x} -> {:x};", addr, data);
-   // }
-    //println!("");
-    /* print registers, for debugging */
-    //for reg in &registers {
-    //    print!("{:08x} ", reg);
-   // }
-    //println!("");
-    /* Now, restore the state of writeable memory */
-    for seg in &saved_regions {
-        emu.uc.mem_write(seg.aligned_start(), &seg.data);
-    }
     let pod = gen::Pod::new(registers,visited,writelog);
     pod
 }
@@ -186,6 +165,31 @@ pub fn hatch (creature: &mut gen::Creature,
 fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     /* a thread-local emulator */
     let mut emu = Engine::new(*ARCHITECTURE);
+
+    /* place a halt hook on syscalls, for all evaluations */
+    let syscall_hook = {
+        let callback = move |uc: &unicorn::Unicorn| {
+            let pc = read_pc(&uc).unwrap();
+            let dis = log::disas_static(pc, 15, ARCHITECTURE.mode(), 1);
+            println!("*** SYSCALL: {}", dis); 
+        };
+        let (exec_start, exec_stop) = emu.exec_mem_range();
+        emu.uc.add_insn_sys_hook(unicorn::InsnSysX86::SYSCALL,
+                                 exec_start.unwrap(),
+                                 exec_stop.unwrap(),
+                                 callback)
+    };
+
+    /*
+    let interrupt_hook = {
+        let callback = move |uc: &unicorn::Unicorn, num: u32| {
+            let pc = read_pc(&uc).unwrap();
+            let dis = log::disas_static(pc, 15, ARCHITECTURE.mode(), 1);
+            println!("*** INTERRUPT 0x{:x}: {}", num, dis);
+        };
+        emu.uc.add_intr_hook(callback)
+    };
+    */
 
     /* Hatch each incoming creature as it arrives, and send the creature
      * back to the caller of spawn_hatchery. */
@@ -206,6 +210,16 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
     }
     
+    match syscall_hook {
+        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
+        Err(_) => { println!("syscall_hook didn't take"); },
+    }
+   /* 
+    match interrupt_hook {
+        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
+        Err(_) => { println!("interrupt_hook didn't take"); },
+    }
+    */
     //drop(emu)
 }
 
