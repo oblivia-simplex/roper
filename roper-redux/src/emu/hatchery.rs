@@ -63,9 +63,11 @@ pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phen
 pub fn hatch (creature: &mut gen::Creature, 
               input: &gen::Input, 
               emu: &mut Engine) -> gen::Pod {
-    let payload = creature.genome.pack(input);
+    let mut payload = creature.genome.pack(input);
     let start_addr = creature.genome.entry();
     let (stack_addr, stack_size) = emu.find_stack();
+    payload.truncate(stack_size / 2);
+    let payload_len = payload.len();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /* save writeable regions **/
 
@@ -82,7 +84,9 @@ pub fn hatch (creature: &mut gen::Creature,
     let visitor: Rc<RefCell<Vec<VisitRecord>>> 
         = Rc::new(RefCell::new(Vec::new()));
     let writelog = Rc::new(RefCell::new(Vec::new()));
-    
+    let retlog = Rc::new(RefCell::new(Vec::new()));
+    let jmplog = Rc::new(RefCell::new(Vec::new()));
+
     let mem_write_hook = {
         let writelog = writelog.clone();
         let callback = move |uc: &unicorn::Unicorn, 
@@ -132,16 +136,54 @@ pub fn hatch (creature: &mut gen::Creature,
         };
         emu.hook_exec_mem(callback)
     };
+
+    let ret_hook = {
+        let retlog = retlog.clone();
+        let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
+            let mut retlog = retlog.borrow_mut();
+            let pc = addr;
+            let dis = log::disas_static(pc, size as usize, ARCHITECTURE.mode(), 1);
+            //println!("RET HOOK: {}", dis);
+            retlog.push(pc);
+        };
+        emu.hook_rets(callback)
+    };
+
+    let indirect_jump_hook = {
+        let jmplog = jmplog.clone();
+        let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
+            let mut jmplog = jmplog.borrow_mut();
+            let dis = log::disas_static(addr, size as usize, ARCHITECTURE.mode(), 1);
+            //println!("JMP HOOK: {}", dis);
+            jmplog.push(addr);
+        };
+        emu.hook_indirect_jumps(callback)
+    };
+
     
     /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
+
+    if jmplog.borrow().len() > 2 {
+        println!("PAYLOAD: 0x{:x} bytes, {} INSTS, {} RETS: {} IND.JMPS: {}", visitor.borrow().len(), payload_len, retlog.borrow().len(), retlog.borrow().iter().map(|x| format!("{:08x}",x)).collect::<Vec<String>>().join(" "), jmplog.borrow().len());
+    };
+    
+    /* Now, clean up the hooks */
     match visit_hook {
         Ok(h)  => { emu.remove_hook(h).unwrap(); },
-        Err(_) => { println!("visit_hook didn't take"); },
+        Err(e) => { println!("visit_hook didn't take {:?}",e); },
     }
     match mem_write_hook {
         Ok(h) =>  { emu.remove_hook(h).unwrap(); },
-        Err(_) => { println!("mem_write_hook didn't take"); },
+        Err(e) => { println!("mem_write_hook didn't take {:?}",e); },
+    }
+    match ret_hook {
+        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
+        Err(e) => { println!("ret_hook didn't take: {:?}",e); },
+    }
+    match indirect_jump_hook {
+        Ok(h) =>  { emu.remove_hook(h).unwrap(); }
+        Err(e) => { println!("indirect_jmp_hook didn't take: {:?}", e); },
     }
     
 
@@ -166,7 +208,7 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     /* a thread-local emulator */
     let mut emu = Engine::new(*ARCHITECTURE);
 
-    /* place a halt hook on syscalls, for all evaluations */
+    /* place a halt hook on syscalls, for all evaluations 
     let syscall_hook = {
         let callback = move |uc: &unicorn::Unicorn| {
             let pc = read_pc(&uc).unwrap();
@@ -180,7 +222,7 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
                                  callback)
     };
 
-    /*
+    
     let interrupt_hook = {
         let callback = move |uc: &unicorn::Unicorn, num: u32| {
             let pc = read_pc(&uc).unwrap();
@@ -210,11 +252,12 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
     }
     
+    /*
     match syscall_hook {
         Ok(h) =>  { emu.remove_hook(h).unwrap(); },
         Err(_) => { println!("syscall_hook didn't take"); },
     }
-   /* 
+    
     match interrupt_hook {
         Ok(h) =>  { emu.remove_hook(h).unwrap(); },
         Err(_) => { println!("interrupt_hook didn't take"); },
@@ -223,11 +266,12 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     //drop(emu)
 }
 
+/* An expect of 0 will cause this loop to run indefinitely */
 pub fn spawn_hatchery (num_engines: usize, expect: usize)
     -> (Sender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
 
-    let (alice_tx, bob_rx) = channel(); //sync_channel(num_engines);
-    let (bob_tx, alice_rx) = channel(); //sync_channel(num_engines);
+    let (from_hatch_tx, from_hatch_rx) = channel(); //sync_channel(num_engines);
+    let (into_hatch_tx, into_hatch_rx) = channel(); //sync_channel(num_engines);
 
     /* think of ways to dynamically scale the workload, using a more
      * sophisticated data structure than a circular buffer for carousel */
@@ -236,14 +280,14 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
         
         for i in 0..num_engines {
             let (eve_tx,eve_rx) = channel();
-            let alice_tx = alice_tx.clone();
-            let h = spawn(move || { spawn_coop(eve_rx, alice_tx); } );        
+            let from_hatch_tx = from_hatch_tx.clone();
+            let h = spawn(move || { spawn_coop(eve_rx, from_hatch_tx); } );        
             carousel.push((eve_tx, h));
         }
 
         let mut coop = 0;
         let mut counter = 0;
-        for incoming in alice_rx {
+        for incoming in into_hatch_rx {
             let &(ref tx, _) = &carousel[coop];
             let tx = tx.clone();
             tx.send(incoming);
@@ -263,6 +307,6 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
 
     /* clean up threads? */
 
-    (bob_tx, bob_rx, handle)
+    (into_hatch_tx, from_hatch_rx, handle)
 }
 

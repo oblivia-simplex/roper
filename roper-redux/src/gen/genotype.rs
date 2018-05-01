@@ -3,7 +3,7 @@ extern crate rand;
 use std::fmt::{Display};
 use std::fmt;
 use std::collections::HashMap;
-use emu::loader::{Mode,Seg,align_inst_addr};
+use emu::loader::{Mode,Seg,align_inst_addr,MEM_IMAGE};
 use par::statics::*;
 
 use self::rand::isaac::Isaac64Rng;
@@ -17,6 +17,8 @@ pub struct Gadget {
     pub mode     : Mode,
 }
 //unsafe impl Send for Gadget {}
+
+pub const ENDIAN: Endian = Endian::Little;
 
 impl Display for Gadget {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -54,8 +56,6 @@ impl Display for Pad {
 pub struct Chain {
     pub gads: Vec<Gadget>,
     pub pads: Vec<Pad>,
-    pub wordsize: usize,
-    pub endian: Endian,
     pub metadata: Metadata,
 }
 
@@ -89,7 +89,7 @@ impl Chain {
             /* Jumps to thumb addresses are indicated by a LSB of 1 */
             /* NB: Check to make sure Unicorn is actually following this */
             if gad.mode == Mode::Thumb { w |= 1 };
-            let wp = pack_word(w, self.wordsize, self.endian);
+            let wp = pack_word(w, *ADDR_WIDTH, ENDIAN);
             p.extend_from_slice(&wp);
             /* now, pack as many pads as needed to saturate sp_delta */
             if gad.sp_delta <= 1 { continue };
@@ -103,7 +103,7 @@ impl Chain {
                         input[o % input.len()] 
                     } else { 0 },
                 };
-                let wp = pack_word(w, self.wordsize, self.endian);
+                let wp = pack_word(w, *ADDR_WIDTH, ENDIAN);
                 p.extend_from_slice(&wp);
             }
         }
@@ -115,8 +115,6 @@ impl Chain {
         self.gads[0].entry
     }
 
-    /* 
-     *
     /* TODO: create a separate thread that maintains the
      * pool of random seeds, and serves them on request,
      * over a channel, maybe. 
@@ -124,27 +122,28 @@ impl Chain {
     /* TODO alignment function, which depends on ARCHITECTURE */
     pub fn from_seed(seed: &[u64],
                      len_range: (usize, usize)) -> Self {
-        
+
+        let input_slot_freq = INPUT_SLOT_FREQ;
         let mut rng = Isaac64Rng::from_seed(seed);
         let exec_segs = MEM_IMAGE.iter()
                                  .filter(|s| s.is_executable())
-                                 .collect::<Vec<Seg>>();
-        let pick_addr = (|| -> u64 {
-                let rng = &mut rng;
+                                 .collect::<Vec<&Seg>>();
+        let pick_addr = (|r| -> (u64,Mode) {
+                let mut rng = Isaac64Rng::from_seed(&[r]);
                 /* TODO weight this, so that small segs are overly sampled */
                 let seg = &exec_segs[rng.gen::<usize>() % exec_segs.len()];
-                let addr = seg.aligned_start() + rng.gen::<u64>() % seg.aligned_size();
+                let addr = seg.aligned_start() + rng.gen::<u64>() % seg.aligned_size() as u64;
                 let mode = ARCHITECTURE.mode(); /* choose mode randomly if ARM */
                 let aligned_addr = align_inst_addr(addr, mode);
                 (aligned_addr,mode)
             });
 
-        let mut gads = Vec<Gadget>;
+        let mut gads: Vec<Gadget> = Vec::new();
         let (min_len, max_len) = len_range;
         let glen = rng.gen::<usize>() % (max_len - min_len) + min_len;
 
-        for 0..glen {
-            let (addr,mode) = pick_addr();
+        for _ in 0..glen {
+            let (addr,mode) = pick_addr(rng.gen::<u64>());
             let mut gad = Gadget {
                 entry: addr,
                 ret_addr: 0, /* TODO */
@@ -153,13 +152,28 @@ impl Chain {
             };
             gads.push(gad);
         }
-        /* if i initialize the spd at random, will evolution bring it into 
-         * alignment with the actual spd?
-         */
-    /* define crossover and mutation operations as traits of the genome 
-     * but allow for them to take callbacks, scripts, etc., eventually 
-     */
-      */  
+        
+        let pad_num = gads.iter()
+                          .map(|x| x.sp_delta)
+                          .sum::<usize>();
+        let mut pads = Vec::new();
+        for _ in 0..pad_num {
+            let pad = if rng.gen::<f32>() < input_slot_freq {
+                Pad::Input(rng.gen::<usize>())
+            } else {
+                Pad::Const(rng.gen::<u64>())  /* TODO take const range param? */
+            };
+            pads.push(pad);
+        }
+
+        let genome = Chain { 
+            gads: gads,
+            pads: pads,
+            metadata: Metadata::new(),
+        };
+
+        genome
+    }
 }
 
 /* by using a hashmap instead of separate struct fields

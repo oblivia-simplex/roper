@@ -13,7 +13,7 @@ name = "roper"
 path = "src/bin/roper.rs"
 
 [dependencies]
-unicorn = { git = "https://github.com/oblivia-simplex/unicorn-rs", branch = "context-save-and-restore" }
+unicorn = { git = "https://github.com/oblivia-simplex/unicorn-rs", branch = "master" }
 #unicorn = "0.8.0"
 #libunicorn-sys = "0.8.0"
 ketos = "0.10.0"

@@ -138,3 +138,10 @@ pub fn wf<T: PrimInt + fmt::LowerHex> (w: T) -> String {
         _ => format!("{:08x}", w),
     }
 }
+
+lazy_static! {
+    pub static ref KILL_SWITCH: Arc<RwLock<bool>>
+        = Arc::new(RwLock::new(false));
+}
+
+pub const INPUT_SLOT_FREQ: f32 = 0.1;

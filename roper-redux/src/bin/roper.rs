@@ -47,19 +47,18 @@ fn do_the_thing (engines: usize,
     let start = Instant::now();
     for i in 0..expect { /* 100000 is too much to handle. but unlikely */
         let i = i as u64;
-        let chain = Chain {
-            gads: vec![Gadget {
+        let length = rng.gen::<usize>() % 64 + 2;
+        let mut gads = Vec::new();
+        for i in 0..length {
+            gads.push(Gadget {
                             entry: lower_addr + rng.gen::<u64>() % addr_range,
                             ret_addr: 0, /* not using this yet */
                             sp_delta: rng.gen::<usize>() % 16,
                             mode: Mode::Bits64,
-                        },
-                        Gadget {
-                            entry: lower_addr + rng.gen::<u64>() % addr_range,
-                            ret_addr: 0,
-                            sp_delta: rng.gen::<usize>() % 16,
-                            mode: Mode::Bits64,
-                        }],
+                      });
+        }
+        let chain = Chain {
+            gads: gads,
             pads: vec![Pad::Const(i), 
                        Pad::Const(i+0xdeadbeef), 
                        Pad::Input(0),
@@ -67,8 +66,6 @@ fn do_the_thing (engines: usize,
                        Pad::Const(i+0xbaadf00d),
                        Pad::Input(2),
                        Pad::Const(i+0xcafebabe)],
-            wordsize: 4,
-            endian: Endian::Little,
             metadata: Metadata::new(),
         };
         let mut creature = Creature::new(chain,0);

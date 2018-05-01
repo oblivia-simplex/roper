@@ -28,6 +28,16 @@ pub const UNINITIALIZED_BYTE: u8 = 0x00;
 pub const PROT_READ: Perm = unicorn::PROT_READ;
 pub const PROT_EXEC: Perm = unicorn::PROT_EXEC;
 pub const PROT_WRITE: Perm = unicorn::PROT_WRITE;
+pub const X86_RET: u8 = 0xC3;
+
+fn x86_ret(b: &Vec<u8>) -> bool { b[0] == X86_RET }
+/* An ARM return is a pop with PC as one of the destination registers */
+fn arm_ret(w: &Vec<u8>) -> bool { 
+    w[3] & 0x0E == 0x06 && 
+    w[0] & 0x10 == 0x10 && /* The instruction is a pop instruction, */
+    w[1] & 0x80 == 0x80    /* and R15 is a destination register     */
+}
+fn thumb_ret(w: &Vec<u8>) -> bool { w[0] & 0xF6 == 0xB4 && w[0] & 1 == 1 }
 
 pub type Perm = unicorn::Protection;
 pub type MemImage = Vec<Seg>;
@@ -197,7 +207,7 @@ pub struct Engine {
     mem: MemImage,
     writeable_bak: Option<MemImage>,
     default_uc_mode: unicorn::Mode,
-    saved_context: Option<*const unicorn::Context>
+    saved_context: unicorn::Context,
 }
 
 impl Engine {
@@ -218,7 +228,7 @@ impl Engine {
            mem: mem,
            regids: regids,
            default_uc_mode: uc_mode,
-           saved_context: None,
+           saved_context: unicorn::Context::new(),
            writeable_bak: None,
         };
         emu.save_state();
@@ -226,37 +236,37 @@ impl Engine {
     }
 
     /// Saves the register context.
-    pub fn save_context(&mut self) -> () {
-        self.saved_context = Some(unsafe { self.uc.context_save().unwrap() });
+    pub fn save_context(&mut self) -> Result<(),unicorn::Error> {
+        match self.uc.context_save() {
+            Ok(c) => { self.saved_context = c; Ok(()) },
+            Err(e) => Err(e),
+        }
     }
 
     /// Saves both the register context and the state of writeable memory.
-    pub fn save_state(&mut self) -> () {
+    pub fn save_state(&mut self) -> Result<(),unicorn::Error> {
         self.writeable_bak = Some(self.writeable_memory());
-        self.save_context();
+        self.save_context()
     }
 
     /// Restores the register context and the state of writeable memory to
     /// their state at the last save_state() event.
-    pub fn restore_state(&mut self) -> () {
+    pub fn restore_state(&mut self) -> Result<(),unicorn::Error> {
         for seg in self.writeable_bak.as_ref().unwrap() {
             self.uc.mem_write(seg.aligned_start(), &seg.data);
         }
-        self.restore_context();
+        self.restore_context()
     }
 
     /// Restores the register context.
-    pub fn restore_context(&mut self) -> () {
-        if self.saved_context != None {
-            unsafe { self.uc.context_restore(self.saved_context.unwrap()).unwrap(); }
-        } else {
-            if cfg!(debug_assertions) {
-                println!("WARNING: Restoring context before saving!");
-            }
-        }
+    pub fn restore_context(&mut self) -> Result<(),unicorn::Error> {
+        self.uc.context_restore(&self.saved_context)
     }
 
-    /// Throws away the emulator, and creates another.
+    /// Throws away the emulator, and creates another. This is only really necessary
+    /// as a workaround for a certain ARM Unicorn bug, which causes the QEMU tcg to
+    /// throw a segfault if the emulator is used repeatedly. In general, restore_state
+    /// usually suffices, and is much more efficient.
     pub fn hard_reset (&mut self) -> () {
         self.save_state();
         let (uc_arch, uc_mode) = self.arch.as_uc();
@@ -327,7 +337,7 @@ impl Engine {
                 let sp = RegisterMIPS::SP as i32;
                 self.uc.reg_write(sp, val)
             },
-            Arch::X86(Bits64) => {
+            Arch::X86(Mode::Bits64) => {
                 let sp = RegisterX86::RSP as i32;
                 self.uc.reg_write(sp, val)
             },
@@ -425,6 +435,84 @@ impl Engine {
                                   callback)
         }
     }
+    
+    pub fn hook_rets<F> (&mut self,
+                         callback: F)
+        -> Result<unicorn::uc_hook, unicorn::Error>
+        where F: Fn(&Unicorn, u64, u32) -> () + 'static,
+    {
+        let (exec_start, exec_stop) = self.exec_mem_range();
+        let arch = ARCHITECTURE.with_mode(self.mode());
+        match arch {
+            Arch::X86(_) => {
+                /* KLUDGE -- not sure why instruction hooking won't work here. */
+                let _callback = move |uc: &Unicorn, addr, size| {
+                    let pc = addr;
+                    if size != 1 { return };
+                    let bytecode = uc.mem_read(pc, 1); /* ret on x86 is C3 */
+                    match bytecode {
+                        Ok(v) => if v[0] == X86_RET { callback(uc, addr, size) } else {()},
+                        _ => (),
+                    }
+                };
+                self.hook_exec_mem(_callback)
+                /*
+                self.uc.add_x86_insn_hook(
+                unicorn::x86_const::InsnX86::RET,
+                exec_start.unwrap(),
+                exec_stop.unwrap(),
+                callback),
+                */
+            },
+            Arch::Arm(Mode::Arm) => {
+                let _callback = move |uc: &Unicorn, addr, size| {
+                    let pc = addr; //read_pc(uc).unwrap();
+                    let bytecode = uc.mem_read(pc,4);
+                    match bytecode {
+                        Ok(v) => if arm_ret(&v) { callback(uc, addr, size) } else {()},
+                        Err(_) => panic!("Failed to read instruction"),
+                    }
+                };
+                self.hook_exec_mem(_callback)
+            },
+            Arch::Arm(Mode::Thumb) => {
+                let _callback = move |uc: &Unicorn, addr, size| {
+                    let pc = addr; //read_pc(uc).unwrap();
+                    let bytecode = uc.mem_read(pc,2);
+                    match bytecode {
+                        Ok(v) => if thumb_ret(&v) {callback(uc, addr, size)} else {()},
+                        Err(_) => panic!("Failed to read instruction"),
+                    }
+                };
+                self.hook_exec_mem(_callback)
+            },
+            _ => panic!("Unimplemented. Will need to tinker with unicorn-rs a bit."),
+        }
+    }
+
+    pub fn hook_indirect_jumps<F> (&mut self,
+                                   callback: F) 
+        -> Result<unicorn::uc_hook,unicorn::Error> 
+    where F: Fn(&Unicorn, u64, u32) -> () + 'static,
+    {
+        let arch = ARCHITECTURE.with_mode(self.mode());
+        match arch {
+            Arch::X86(_) => {
+                let _callback = move |uc: &Unicorn, addr: u64, size: u32| {
+                    let size = u32::min(size,15);
+                    let bytecode = uc.mem_read(addr, size as usize);
+                    match bytecode {
+                        /* TODO Better indirect jump detector! */
+                        Ok(v) => if v[0] == 0xFF {callback(uc, addr, size)} else {()},
+                        Err(_) => println!("Failed to read instruction! {:?}",bytecode),
+                    }
+                };
+                self.hook_exec_mem(_callback)
+            },
+            _ => panic!("hook_jumps not yet implemented for this architecture"),
+        }
+    }
+        
 
     pub fn hook_writeable_mem<F> (&mut self,
                                   callback: F)
