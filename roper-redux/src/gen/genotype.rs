@@ -37,34 +37,49 @@ pub enum Endian {
 }
 
 #[derive(ForeignValue,FromValue,FromValueRef,IntoValue,Clone,Copy,Debug,PartialEq,Eq)]
-pub enum Pad {
-    Const(u64),
+pub enum Allele {
+    //Const(u64),
     Input(usize),
+    Gadget(Gadget),
 }
-//unsafe impl Send for Pad {}
 
-impl Display for Pad {
+impl Allele {
+    pub fn entry(&self) -> Option<u64> {
+        match self {
+            &Allele::Gadget(g) => Some(g.entry),
+            _ => None,
+        }
+    }
+}
+//unsafe impl Send for Allele {}
+
+impl Display for Allele {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Pad::Const(x) => write!(f, "[Const {}]", wf(x)),
-            &Pad::Input(i) => write!(f, "[Input Slot #{}]", i),
+            //&Allele::Const(x) => write!(f, "[Const {}]", wf(x)),
+            &Allele::Input(i) => write!(f, "[Input Slot #{}]", i),
+            &Allele::Gadget(g) => write!(f, "{}", g),
         }
     }
 }
 
 #[derive(StructValue,ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq)]
 pub struct Chain {
-    pub gads: Vec<Gadget>,
-    pub pads: Vec<Pad>,
+    pub alleles: Vec<Allele>,
     pub metadata: Metadata,
+    pub xbits    : u64, /* used to coordinate crossover and speciation */
 }
 
 //unsafe impl Send for Chain {}
 
 impl Display for Chain {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = Vec::new();
-        let mut pad_offset = 0;
+        //let mut s = Vec::new();
+        //let mut pad_offset = 0;
+        for allele in self.alleles.iter() {
+            write!(f, "\t{}\n", allele);
+        }
+        /*
         for gad in self.gads.iter() {
             s.push(format!("{}",gad));
             if gad.sp_delta <= 1 { continue };
@@ -75,14 +90,17 @@ impl Display for Chain {
                 let w = self.pads[o % padnum];
                 s.push(format!("{}",w));
             }
+            pad_offset += gad.sp_delta-1;
         }
-        write!(f, "{}", s.join("\n\t"))
+        */
+        write!(f, "\tXBITS: {:064b}\n", self.xbits)
     }
 }
 
 impl Chain {
     pub fn pack(&self, input: &Vec<u64>) -> Vec<u8> {
         let mut p: Vec<u8> = Vec::new();
+        /*
         let mut pad_offset = 0;
         for gad in self.gads.iter() {
             let mut w = gad.entry;
@@ -98,21 +116,45 @@ impl Chain {
             for i in 0..(gad.sp_delta-1) {
                 let o = i + pad_offset;
                 let w = match self.pads[o % padnum] {
-                    Pad::Const(x) => x,
-                    Pad::Input(i) => if input.len() > 0 { 
+                    Allele::Const(x) => x,
+                    Allele::Input(i) => if input.len() > 0 { 
                         input[o % input.len()] 
                     } else { 0 },
                 };
                 let wp = pack_word(w, *ADDR_WIDTH, ENDIAN);
                 p.extend_from_slice(&wp);
             }
+            pad_offset += gad.sp_delta-1;
+        }
+        */
+        let mut start = false;
+        for allele in self.alleles.iter() {
+            if allele.entry() == None && !start {
+                continue;
+            } else {
+                start = true;
+            };
+            let w = match allele {
+                //&Allele::Const(c) => c,
+                &Allele::Input(i) => if input.len() > 0 {
+                    input[i % input.len()]
+                } else { 
+                    0 
+                },
+                &Allele::Gadget(g) => g.entry,
+            };
+            p.extend_from_slice(&pack_word(w, *ADDR_WIDTH, ENDIAN));
         }
         p
     }
 
-    pub fn entry(&self) -> u64 {
-        assert!(self.gads.len() > 0);
-        self.gads[0].entry
+    pub fn entry(&self) -> Option<u64> {
+        for allele in self.alleles.iter() {
+            if let Some(e) = allele.entry() { return Some(e) };
+        }
+        println!("WARNING! NO ENTRY! NO GADGETS IN CHAIN?");
+        println!("{}",self);
+        None 
     }
 
     /* TODO: create a separate thread that maintains the
@@ -122,6 +164,8 @@ impl Chain {
     /* TODO alignment function, which depends on ARCHITECTURE */
     pub fn from_seed(seed: &[u64],
                      len_range: (usize, usize)) -> Self {
+
+        let xbits: u64 = seed[0];
 
         let input_slot_freq = INPUT_SLOT_FREQ;
         let mut rng = Isaac64Rng::from_seed(seed);
@@ -138,37 +182,49 @@ impl Chain {
                 (aligned_addr,mode)
             });
 
-        let mut gads: Vec<Gadget> = Vec::new();
+        let mut alleles: Vec<Allele> = Vec::new();
         let (min_len, max_len) = len_range;
         let glen = rng.gen::<usize>() % (max_len - min_len) + min_len;
 
         for _ in 0..glen {
             let (addr,mode) = pick_addr(rng.gen::<u64>());
-            let mut gad = Gadget {
-                entry: addr,
-                ret_addr: 0, /* TODO */
-                sp_delta: 0, /* TODO */
-                mode: mode,  /* TODO - for ARM decide mode */
-            };
-            gads.push(gad);
+            /* sp_delta-informed chance of choosing const or input TODO */
+            if alleles.len() > 0 && rng.gen::<f32>() < input_slot_freq {
+                /* NOTE: Artificially adding an upper bound on the number of inputs
+                 * at 15. This will almost certainly be more than enough, and will
+                 * make the input slots easier to read. 
+                 */
+                alleles.push(Allele::Input(rng.gen::<usize>() & 0x0F));
+            } else {
+                let mut gad = Gadget {
+                    entry: addr,
+                    ret_addr: 0, /* TODO */
+                    sp_delta: 0, /* TODO */
+                    mode: mode,  /* TODO - for ARM decide mode */
+                };
+                
+                alleles.push(Allele::Gadget(gad));
+            }
         }
         
+        /*
         let pad_num = gads.iter()
                           .map(|x| x.sp_delta)
                           .sum::<usize>();
         let mut pads = Vec::new();
         for _ in 0..pad_num {
             let pad = if rng.gen::<f32>() < input_slot_freq {
-                Pad::Input(rng.gen::<usize>())
+                Allele::Input(rng.gen::<usize>())
             } else {
-                Pad::Const(rng.gen::<u64>())  /* TODO take const range param? */
+                Allele::Const(rng.gen::<u64>())  /* TODO take const range param? */
             };
             pads.push(pad);
         }
+        */
 
         let genome = Chain { 
-            gads: gads,
-            pads: pads,
+            alleles: alleles,
+            xbits: xbits,
             metadata: Metadata::new(),
         };
 

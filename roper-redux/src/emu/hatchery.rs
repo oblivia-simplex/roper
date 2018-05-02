@@ -64,7 +64,11 @@ pub fn hatch (creature: &mut gen::Creature,
               input: &gen::Input, 
               emu: &mut Engine) -> gen::Pod {
     let mut payload = creature.genome.pack(input);
-    let start_addr = creature.genome.entry();
+    let start_addr = creature.genome.entry().unwrap();
+    /* A missing entry point should be considered an error,
+     * since we try to guard against this in our generation
+     * functions.
+     */
     let (stack_addr, stack_size) = emu.find_stack();
     payload.truncate(stack_size / 2);
     let payload_len = payload.len();
@@ -164,8 +168,8 @@ pub fn hatch (creature: &mut gen::Creature,
     /* Hatch! **/ /* FIXME don't hardcode these params */
     let x = emu.start(start_addr, 0, 0, 1024);
 
-    if jmplog.borrow().len() > 2 {
-        println!("PAYLOAD: 0x{:x} bytes, {} INSTS, {} RETS: {} IND.JMPS: {}", visitor.borrow().len(), payload_len, retlog.borrow().len(), retlog.borrow().iter().map(|x| format!("{:08x}",x)).collect::<Vec<String>>().join(" "), jmplog.borrow().len());
+    if retlog.borrow().len() > 2 {
+        //println!("PAYLOAD: 0x{:x} bytes, {} INSTS, {} RETS: {} IND.JMPS: {}", visitor.borrow().len(), payload_len, retlog.borrow().len(), retlog.borrow().iter().map(|x| format!("{:08x}",x)).collect::<Vec<String>>().join(" "), jmplog.borrow().len());
     };
     
     /* Now, clean up the hooks */
@@ -196,10 +200,12 @@ pub fn hatch (creature: &mut gen::Creature,
     let visited = vtmp.borrow().to_vec().clone();
     let wtmp = writelog.clone();
     let writelog = wtmp.borrow().to_vec().clone();
+    let rtmp = retlog.clone();
+    let retlog = rtmp.borrow().to_vec().clone();
     drop(vtmp);
     drop(wtmp);
     
-    let pod = gen::Pod::new(registers,visited,writelog);
+    let pod = gen::Pod::new(registers,visited,writelog,retlog);
     pod
 }
 
@@ -295,7 +301,6 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
             counter +=1;
             if counter == expect { break };
         }
-
         /* clean up the carousel */
         while carousel.len() > 0 {
             if let Some((tx, h)) = carousel.pop() {

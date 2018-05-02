@@ -145,3 +145,8 @@ lazy_static! {
 }
 
 pub const INPUT_SLOT_FREQ: f32 = 0.1;
+
+lazy_static! {
+    pub static ref CROSSOVER_DEGREE: f32 = 0.5;
+    /* TODO: Read this from a config file */
+}

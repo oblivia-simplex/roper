@@ -55,16 +55,19 @@ pub struct Pod {
     pub registers: Vec<u64>,
     pub visited: Vec<VisitRecord>,
     pub writelog: Vec<WriteRecord>,
+    pub retlog: Vec<u64>,
 }
 
 impl Pod {
     pub fn new(registers: Vec<u64>, 
                visited:   Vec<VisitRecord>,
-               writelog:  Vec<WriteRecord>) -> Self {
+               writelog:  Vec<WriteRecord>,
+               retlog:    Vec<u64>) -> Self {
         Pod {
             registers: registers,
             visited: visited,
             writelog: writelog,
+            retlog: retlog
         }
     }
     /// Dump a vector of strings containing the disassembly
@@ -133,7 +136,7 @@ impl Eq for Creature {}
 
 impl Display for Creature {
     fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "BIOGRAPHY OF {}\nGENOME:\n\t{}\nPHENOME:\n{}\n{}",
+        write!(f, "BIOGRAPHY OF {}\nGENOME:\n{}\nPHENOME:\n{}\n{}",
                self.name,
                self.genome,
                self.disas_visited().join("\t\n"),
@@ -196,12 +199,19 @@ impl Creature {
         let mut dump = Vec::new();
         for (input,pod) in &self.phenome {
             if pod == &None { continue };
-            dump.push(format!("ON INPUT {:?}, VISITED:\n\t{}",
+            dump.push(format!("ON INPUT {:?}, VISITED:\n\t{}\nRETS: {}",
                               input,
                               pod.as_ref()
                                  .unwrap()
                                  .disas_visited()
-                                 .join("\n\t")));
+                                 .join("\n\t"),
+                              pod.as_ref()
+                                 .unwrap()
+                                 .retlog
+                                 .iter()
+                                 .map(|x| wf(*x))
+                                 .collect::<Vec<String>>()
+                                 .join(" ")));
         }
         dump
     }
