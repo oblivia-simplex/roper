@@ -8,3 +8,6 @@ pub use genotype::*;
 
 pub mod phenotype;
 pub use phenotype::*;
+
+pub mod seeder;
+pub use seeder::*;

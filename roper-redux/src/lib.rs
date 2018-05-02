@@ -19,3 +19,5 @@ use self::log::*;
 pub mod fit;
 use self::fit::*;
 
+pub mod evo;
+pub use self::evo::*;

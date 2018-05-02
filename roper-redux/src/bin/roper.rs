@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
 use std::sync::mpsc::{channel,Sender,Receiver};
+use std::thread::{spawn,JoinHandle};
 
 use libroper::emu::*;
 use libroper::gen::*;
@@ -15,8 +16,8 @@ use libroper::emu::loader::Mode;
 use rand::{SeedableRng,Rng};
 use rand::isaac::{Isaac64Rng};
 use libroper::par::statics::*;
-use libroper::log;
 
+use libroper::{emu,gen,log};
 /* The optimal combination, so far, seems to be something like:
  * batch of 1024, channels throttled to 512, number of engines: 4-6
  * 0.09 seconds to evaluate 1024 specimens!
@@ -86,6 +87,46 @@ fn do_the_thing (engines: usize,
 }
 
 
+fn pipeline(rx: Receiver<Creature>, txs: Vec<Sender<Creature>>) 
+    -> JoinHandle<()> 
+{
+    let h = spawn(move || {
+        println!("Hello from pipeline");
+        let mut i = 1;
+        for x in rx {
+            i += 1;
+            for tx in &txs {
+                /* make a copy, unless we're on the last */
+                let x = x.clone(); //if i == txs.len() { x } else { x.clone() };
+                tx.send(x).unwrap();
+            }
+        }
+    });
+    h
+}
+
+fn seeder_hatchery_pipeline(engines: usize, expect: usize) {
+    let start = Instant::now();
+    let (seed_rx, seed_hdl) = gen::spawn_seeder(expect, 
+                                                (2,32),
+                                                &vec![vec![1,2,3]]);
+    let (hatch_tx, hatch_rx, hatch_hdl) 
+        = emu::spawn_hatchery(engines, expect);
+    let (logger_tx, logger_hdl) = log::spawn_logger(512);
+    let pipe_hdl_1 = pipeline(seed_rx, vec![hatch_tx]);
+    let pipe_hdl_2 = pipeline(hatch_rx, vec![logger_tx]);
+    
+   
+    
+    seed_hdl.join();   println!("seed_hdl joined");
+    hatch_hdl.join();  println!("hatch_hdl joined");
+    pipe_hdl_1.join(); println!("pipe_hdl_1 joined.");
+    logger_hdl.join(); println!("logger_hdl joined");
+    pipe_hdl_2.join(); println!("pipe_hdl_2 joined");
+    let elapsed = start.elapsed();
+    println!("{} {} {}", expect, engines, elapsed.as_secs() as f64 +  elapsed.subsec_nanos() as f64 / 1000000000.0);
+}
+
 fn main() {
     let mem_image = MEM_IMAGE.clone();
     let mut engines = match env::var("ROPER_ENGINES") {
@@ -100,14 +141,15 @@ fn main() {
         Err(_) => 1024,
         Ok(n) => n.parse::<usize>().expect("Failed to parse ROPER_LOOPS"),
     };
-    let engine_period = 4;
-    let mut counter = engine_period;
-    let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
+    //let mut rng = Isaac64Rng::from_seed(&RNG_SEED);
     
-    let (log_tx,log_handle) = log::spawn_logger(0x1000);
+    //let (log_tx,log_handle) = log::spawn_logger(0x1000);
+    /*
     for counter in 0..loops {
         do_the_thing(engines, expect, &mut rng, counter, &log_tx);
     }
-    drop(log_tx);
-    log_handle.join();
+    */
+    //drop(log_tx);
+    //log_handle.join();
+    seeder_hatchery_pipeline(engines, expect);
 }
