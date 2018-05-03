@@ -150,3 +150,25 @@ lazy_static! {
     pub static ref CROSSOVER_DEGREE: f32 = 0.5;
     /* TODO: Read this from a config file */
 }
+
+lazy_static! {
+    /* if true, then homologous xbit crossover selects only those slots
+     * for which mbit ^ pbit == 1. if false, it selects only those slots
+     * for which mbit ^ pbit == 0.
+     */
+    pub static ref CROSSOVER_XBIT: bool = true; 
+    /* TODO read from config file */
+}
+
+#[derive(Copy,Clone,PartialEq,Eq,Debug)]
+pub enum MaskOp {
+    Xor,
+    Nand,
+    OnePt,
+    Uniform,
+}
+
+lazy_static! {
+    /* TODO read from config file */
+    pub static ref CROSSOVER_MASK_COMBINER: MaskOp = MaskOp::Uniform;
+}
