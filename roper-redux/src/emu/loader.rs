@@ -932,7 +932,7 @@ fn test_engine_reset() {
     let mem1 = emu.writeable_memory();
     let rgn1 = emu.uc.mem_regions().unwrap();
     println!("About to reset...");
-    emu.reset();
+    emu.hard_reset();
     let mem2 = emu.writeable_memory();
     let rgn2 = emu.uc.mem_regions().unwrap();
     assert_eq!(mem1, mem2);

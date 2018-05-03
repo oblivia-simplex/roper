@@ -1,4 +1,6 @@
 extern crate capstone;
+extern crate unicorn;
+
 use self::capstone::prelude::*;
 use self::capstone::{Capstone};
 

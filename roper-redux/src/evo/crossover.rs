@@ -34,8 +34,7 @@ fn uniform_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
  * This may lead to a few potentially interesting effects:
  * - facilitation of emergent homological crossover
  * - emergent speciation
- * - incest prohibition (since X ^ X = 0)
- * 
+ *
  * We should have a float parameter crossover_degree, between 0.0 and 1.0,
  * which select a certain ratio of the xover sites to use in a each particular
  * crossover event. 
@@ -60,12 +59,16 @@ fn xbits_sites<R: Rng> (m_bits: u64,
     potential_sites.sort();
     potential_sites.dedup();
     let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
-    println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
+    if cfg!(debug_assertions) {
+        println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
+    }
 
     let mut actual_sites = rand::sample(&mut rng, 
                                         potential_sites.into_iter(), 
                                         num);
-    println!("actual sites: {:?}", &actual_sites);
+    if cfg!(debug_assertions) {
+        println!("actual sites: {:?}", &actual_sites);
+    }
                          
     (xbits, actual_sites)
 }
@@ -110,8 +113,12 @@ pub fn homologous_crossover (mother: &Creature,
         if zygote.entry() != None {
             offspring.push(Creature::new(zygote,0)); 
         };
-        println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}\n**************************************************",
-                 xbits, &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(), p0, p1, &offspring[offspring.len()-1]);
+        if cfg!(debug_assertions) {
+            println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}\n**********************************",
+                     xbits,
+                     &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(),
+                     p0, p1, &offspring[offspring.len()-1]);
+        }
     }
     offspring
 }

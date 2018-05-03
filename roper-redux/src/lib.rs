@@ -4,6 +4,8 @@
 extern crate ketos;
 #[macro_use] extern crate ketos_derive;
 
+extern crate unicorn;
+
 pub mod emu;
 use self::emu::*;
 
