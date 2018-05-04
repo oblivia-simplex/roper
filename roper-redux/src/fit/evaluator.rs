@@ -1,7 +1,6 @@
-
-use std::thread::{spawn,JoinHandle};
-use std::sync::mpsc::{channel,Sender,Receiver};
-use std::sync::{Arc,RwLock};
+use std::thread::{spawn, JoinHandle};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, RwLock};
 
 use gen::*;
 use circbuf::CircBuf;
@@ -16,10 +15,10 @@ use circbuf::CircBuf;
  * patch_io mechanism as well, since we have convenient reference to
  * a sliding window of specimens.
  */
-pub fn spawn_evaluator(num_evaluators: usize,
-                       circbuf_size: usize) 
-    -> (Sender<Creature>, Receiver<Creature>, JoinHandle<()>) {
-    
+pub fn spawn_evaluator(
+    num_evaluators: usize,
+    circbuf_size: usize,
+) -> (Sender<Creature>, Receiver<Creature>, JoinHandle<()>) {
     let (from_eval_tx, from_eval_rx) = channel();
     let (into_eval_tx, into_eval_rx) = channel();
 
@@ -30,14 +29,16 @@ pub fn spawn_evaluator(num_evaluators: usize,
         let mut carousel = Vec::new();
         let reading_window = circbuf.clone();
         for _ in 0..num_evaluators {
-            let (eval_tx,eval_rx) = channel();
+            let (eval_tx, eval_rx) = channel();
             let tx = from_eval_tx.clone();
             let window = reading_window.clone();
             /* Pass the slave_eval the sender received by this function, so
              * that it can send its results directly back to the caller of
              * spawn_evaluator.
              */
-            let h = spawn(move || { slave_eval(eval_rx, tx, window); } );
+            let h = spawn(move || {
+                slave_eval(eval_rx, tx, window);
+            });
             carousel.push((eval_tx, h));
         }
 
@@ -60,15 +61,15 @@ pub fn spawn_evaluator(num_evaluators: usize,
             }
         }
     });
-    
+
     (into_eval_tx, from_eval_rx, eval_handle)
 }
 
-
-fn slave_eval(eval_rx: Receiver<Creature>, 
-              eval_tx: Sender<Creature>,
-              _sliding_window: Arc<RwLock<CircBuf>>) -> () {
-
+fn slave_eval(
+    eval_rx: Receiver<Creature>,
+    eval_tx: Sender<Creature>,
+    _sliding_window: Arc<RwLock<CircBuf>>,
+) -> () {
     /*
     let interp = Interpreter::new();    
     interp.scope().register_struct_value::<Creature>();
@@ -97,5 +98,3 @@ fn slave_eval(eval_rx: Receiver<Creature>,
 /***
  * Various fitness functions, that can dispatches from slave_eval.
  */
-
-

@@ -1,26 +1,25 @@
 // #![feature(fnbox)]
-extern crate unicorn;
+extern crate capstone;
 extern crate hexdump;
 extern crate rand;
 extern crate rayon;
-extern crate capstone;
-
+extern crate unicorn;
 
 //use std::boxed::FnBox;
-use std::thread::{spawn,sleep,JoinHandle};
-use std::sync::mpsc::{channel,Sender,Receiver};
+use std::thread::{sleep, spawn, JoinHandle};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::rc::Rc;
-use std::cell::{RefCell};
+use std::cell::RefCell;
 use std::time::Duration;
 //use self::rayon::prelude::*;
 
-use emu::loader::{Engine,get_mode,read_pc,uc_general_registers};
+use emu::loader::{get_mode, read_pc, uc_general_registers, Engine};
 use par::statics::*;
 use gen;
-use gen::phenotype::{VisitRecord,WriteRecord};
+use gen::phenotype::{VisitRecord, WriteRecord};
 // use log;
 
-fn snooze (millis: u64) {
+fn snooze(millis: u64) {
     sleep(Duration::from_millis(millis))
 }
 //const OK: u32 = 0;
@@ -29,35 +28,28 @@ fn snooze (millis: u64) {
  * module. It will contain (a) a genotype, and (b) any information
  * required in order to evaluate that genotype on the emulator --
  * input registers, problem specification, etc., perhaps a reference
- * to a ketos script that will perform the fitness evaluation on 
+ * to a ketos script that will perform the fitness evaluation on
  * the phenotype.
  */
 
 /* I think some of this data cloning could be optimized away. FIXME */
 #[inline]
-pub fn hatch_cases (creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phenome {
+pub fn hatch_cases(creature: &mut gen::Creature, emu: &mut Engine) -> gen::Phenome {
     let mut map = gen::Phenome::new();
     {
-        let mut inputs: Vec<gen::Input> = creature.phenome
-                                                  .keys()
-                                                  .map(|x| x.clone())
-                                                  .collect();
+        let mut inputs: Vec<gen::Input> = creature.phenome.keys().map(|x| x.clone()).collect();
         while inputs.len() > 0 {
-            let input = inputs.pop().unwrap(); 
-        /* This can't really be threaded, due to the unsendability of emu */
+            let input = inputs.pop().unwrap();
+            /* This can't really be threaded, due to the unsendability of emu */
             let pod = hatch(creature, &input, emu);
-            map.insert(input.to_vec(),Some(pod));
+            map.insert(input.to_vec(), Some(pod));
         }
     }
     map
 }
 
-
-
 #[inline]
-pub fn hatch (creature: &mut gen::Creature, 
-              input: &gen::Input, 
-              emu: &mut Engine) -> gen::Pod {
+pub fn hatch(creature: &mut gen::Creature, input: &gen::Input, emu: &mut Engine) -> gen::Pod {
     let mut payload = creature.genome.pack(input);
     let start_addr = creature.genome.entry().unwrap();
     /* A missing entry point should be considered an error,
@@ -67,31 +59,31 @@ pub fn hatch (creature: &mut gen::Creature,
     let (stack_addr, stack_size) = emu.find_stack();
     payload.truncate(stack_size / 2);
     let _payload_len = payload.len();
-    let stack_entry = stack_addr + (stack_size/2) as u64;
+    let stack_entry = stack_addr + (stack_size / 2) as u64;
     /* save writeable regions **/
 
     /* load payload **/
     emu.restore_state();
-    emu.mem_write(stack_entry, &payload).expect("mem_write fail in hatch");
+    emu.mem_write(stack_entry, &payload)
+        .expect("mem_write fail in hatch");
     emu.set_sp(stack_entry + *ADDR_WIDTH as u64);
     //emu.reset_registers(); /* TODO */
-    // this will need to iterate through *ALL* the registers, not just the 
+    // this will need to iterate through *ALL* the registers, not just the
     // general purpose ones we're watching.
     // also the general_registers method is a misnomer. rename it.
     // eventually, we can replace this with a context restore.
-    
-    let visitor: Rc<RefCell<Vec<VisitRecord>>> 
-        = Rc::new(RefCell::new(Vec::new()));
+
+    let visitor: Rc<RefCell<Vec<VisitRecord>>> = Rc::new(RefCell::new(Vec::new()));
     let writelog = Rc::new(RefCell::new(Vec::new()));
     let retlog = Rc::new(RefCell::new(Vec::new()));
     let jmplog = Rc::new(RefCell::new(Vec::new()));
 
     let mem_write_hook = {
         let writelog = writelog.clone();
-        let callback = move |uc: &unicorn::Unicorn, 
+        let callback = move |uc: &unicorn::Unicorn,
                              _memtype: unicorn::MemType,
-                             addr: u64, 
-                             size: usize, 
+                             addr: u64,
+                             size: usize,
                              val: i64| {
             let mut wmut = writelog.borrow_mut();
             let pc = read_pc(uc).unwrap();
@@ -130,8 +122,7 @@ pub fn hatch (creature: &mut gen::Creature,
                 inst_size: size,
                 registers: registers,
             };
-            vmut.push(visit_record); 
-
+            vmut.push(visit_record);
         };
         emu.hook_exec_mem(callback)
     };
@@ -159,34 +150,48 @@ pub fn hatch (creature: &mut gen::Creature,
         emu.hook_indirect_jumps(callback)
     };
 
-    
-    /* Hatch! **/ /* FIXME don't hardcode these params */
+    /* Hatch! **/
+ /* FIXME don't hardcode these params */
     let _res = emu.start(start_addr, 0, 0, 1024);
 
     if retlog.borrow().len() > 2 {
         //println!("PAYLOAD: 0x{:x} bytes, {} INSTS, {} RETS: {} IND.JMPS: {}", visitor.borrow().len(), payload_len, retlog.borrow().len(), retlog.borrow().iter().map(|x| format!("{:08x}",x)).collect::<Vec<String>>().join(" "), jmplog.borrow().len());
     };
-    
+
     /* Now, clean up the hooks */
     match visit_hook {
-        Ok(h)  => { emu.remove_hook(h).unwrap(); },
-        Err(e) => { println!("visit_hook didn't take {:?}",e); },
+        Ok(h) => {
+            emu.remove_hook(h).unwrap();
+        }
+        Err(e) => {
+            println!("visit_hook didn't take {:?}", e);
+        }
     }
     match mem_write_hook {
-        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
-        Err(e) => { println!("mem_write_hook didn't take {:?}",e); },
+        Ok(h) => {
+            emu.remove_hook(h).unwrap();
+        }
+        Err(e) => {
+            println!("mem_write_hook didn't take {:?}", e);
+        }
     }
     match ret_hook {
-        Ok(h) =>  { emu.remove_hook(h).unwrap(); },
-        Err(e) => { println!("ret_hook didn't take: {:?}",e); },
+        Ok(h) => {
+            emu.remove_hook(h).unwrap();
+        }
+        Err(e) => {
+            println!("ret_hook didn't take: {:?}", e);
+        }
     }
     match indirect_jump_hook {
-        Ok(h) =>  { emu.remove_hook(h).unwrap(); }
-        Err(e) => { println!("indirect_jmp_hook didn't take: {:?}", e); },
+        Ok(h) => {
+            emu.remove_hook(h).unwrap();
+        }
+        Err(e) => {
+            println!("indirect_jmp_hook didn't take: {:?}", e);
+        }
     }
-    
 
-   
     /* Now, get the resulting CPU context (the "phenotype"), and
      * attach it to the mutable pod
      */
@@ -199,13 +204,12 @@ pub fn hatch (creature: &mut gen::Creature,
     let retlog = rtmp.borrow().to_vec().clone();
     drop(vtmp);
     drop(wtmp);
-    
-    let pod = gen::Pod::new(registers,visited,writelog,retlog);
+
+    let pod = gen::Pod::new(registers, visited, writelog, retlog);
     pod
 }
 
-
-fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
+fn spawn_coop(rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     /* a thread-local emulator */
     let mut emu = Engine::new(*ARCHITECTURE);
 
@@ -242,8 +246,8 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
     for incoming in rx {
         best_before -= 1;
         if best_before == 0 {
-//            println!("[+] This is not called execution. It is called 'retirement.'");
-            //emu.reset();  
+            //            println!("[+] This is not called execution. It is called 'retirement.'");
+            //emu.reset();
 
             best_before = init_best_before;
         }
@@ -252,7 +256,7 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
         creature.phenome = phenome;
         tx.send(creature); /* goes back to the thread that called spawn_hatchery */
     }
-    
+
     /*
     match syscall_hook {
         Ok(h) =>  { emu.remove_hook(h).unwrap(); },
@@ -268,9 +272,14 @@ fn spawn_coop (rx: Receiver<gen::Creature>, tx: Sender<gen::Creature>) -> () {
 }
 
 /* An expect of 0 will cause this loop to run indefinitely */
-pub fn spawn_hatchery (num_engines: usize, expect: usize)
-    -> (Sender<gen::Creature>, Receiver<gen::Creature>, JoinHandle<()>) {
-
+pub fn spawn_hatchery(
+    num_engines: usize,
+    expect: usize,
+) -> (
+    Sender<gen::Creature>,
+    Receiver<gen::Creature>,
+    JoinHandle<()>,
+) {
     let (from_hatch_tx, from_hatch_rx) = channel(); //sync_channel(num_engines);
     let (into_hatch_tx, into_hatch_rx) = channel(); //sync_channel(num_engines);
 
@@ -278,11 +287,13 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
      * sophisticated data structure than a circular buffer for carousel */
     let handle = spawn(move || {
         let mut carousel = Vec::new();
-        
+
         for _ in 0..num_engines {
-            let (eve_tx,eve_rx) = channel();
+            let (eve_tx, eve_rx) = channel();
             let from_hatch_tx = from_hatch_tx.clone();
-            let h = spawn(move || { spawn_coop(eve_rx, from_hatch_tx); } );        
+            let h = spawn(move || {
+                spawn_coop(eve_rx, from_hatch_tx);
+            });
             carousel.push((eve_tx, h));
         }
 
@@ -293,8 +304,10 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
             let tx = tx.clone();
             tx.send(incoming);
             coop = (coop + 1) % carousel.len();
-            counter +=1;
-            if counter == expect { break };
+            counter += 1;
+            if counter == expect {
+                break;
+            };
         }
         /* clean up the carousel */
         while carousel.len() > 0 {
@@ -309,4 +322,3 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
 
     (into_hatch_tx, from_hatch_rx, handle)
 }
-

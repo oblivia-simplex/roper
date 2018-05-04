@@ -1,12 +1,11 @@
 extern crate libroper;
-extern crate unicorn;
 extern crate rand;
+extern crate unicorn;
 
-
-use rand::{Rng,thread_rng};
+use rand::{thread_rng, Rng};
 use std::env;
 use std::time::Instant;
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::Sender;
 
 use libroper::gen::*;
 use libroper::{emu, gen, log};
@@ -17,7 +16,6 @@ use libroper::evo;
  * 0.09 seconds to evaluate 1024 specimens!
  */
 
-
 fn mkseed(u: u64) -> [u8; 32] {
     let mut seed = [0u8; 32];
     for i in 0..32 {
@@ -25,7 +23,6 @@ fn mkseed(u: u64) -> [u8; 32] {
     }
     seed
 }
-
 
 fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Creature>) {
     let start = Instant::now();
@@ -48,12 +45,10 @@ fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Cre
     //println!("hello");
     let pipe_hdl_2 = pipeline(hatch_rx, vec![logger_tx]);
 
-
-
     seed_hdl.join().unwrap(); //println!("seed_hdl joined");
     hatch_hdl.join().unwrap(); //println!("hatch_hdl joined");
     pipe_hdl_1.join().unwrap(); //println!("pipe_hdl_1 joined.");
-    //    logger_hdl.join(); println!("logger_hdl joined");
+                                //    logger_hdl.join(); println!("logger_hdl joined");
     pipe_hdl_2.join().unwrap(); //println!("pipe_hdl_2 joined");
     let elapsed = start.elapsed();
     println!(
@@ -67,20 +62,18 @@ fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Cre
 fn main() {
     let _dummy = unicorn::CpuX86::new(unicorn::Mode::MODE_64).unwrap();
     let engines = match env::var("ROPER_ENGINES") {
-        Err(_) => if cfg!(debug_assertions) { 1 } else { 4 },
-        Ok(n) => {
-            n.parse::<usize>().expect(
-                "Failed to parse ROPER_ENGINES env var",
-            )
-        }
+        Err(_) => if cfg!(debug_assertions) {
+            1
+        } else {
+            4
+        },
+        Ok(n) => n.parse::<usize>()
+            .expect("Failed to parse ROPER_ENGINES env var"),
     };
     let expect = match env::var("ROPER_STRESS_LOAD") {
         Err(_) => 1024,
-        Ok(n) => {
-            n.parse::<usize>().expect(
-                "Failed to parse ROPER_STRESS_EXPECT",
-            )
-        }
+        Ok(n) => n.parse::<usize>()
+            .expect("Failed to parse ROPER_STRESS_EXPECT"),
     };
     let loops = match env::var("ROPER_LOOPS") {
         Err(_) => 1024,

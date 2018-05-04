@@ -1,22 +1,17 @@
-use std::thread::{spawn,JoinHandle};
-use std::sync::mpsc::{channel,Sender};
-use std::sync::{Arc,RwLock};
+use std::thread::{spawn, JoinHandle};
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, RwLock};
 
 use gen::Creature;
 use fit::CircBuf;
-
-
 
 /* the statistical functions can be defined as methods on
  * CircBuf
  */
 
-
 /// The logger sits at the receiving end of a one-way channel.
 /// It's best to send cloned data to it, since you won't get it back.
-pub fn spawn_logger (circbuf_size: usize,
-                     log_freq: usize) -> (Sender<Creature>, JoinHandle<()>) {
-    
+pub fn spawn_logger(circbuf_size: usize, log_freq: usize) -> (Sender<Creature>, JoinHandle<()>) {
     println!("Logger spawned. Send clones!");
     let (log_tx, log_rx) = channel();
 
@@ -29,7 +24,7 @@ pub fn spawn_logger (circbuf_size: usize,
         for _ in analyse_rx {
             let window = window.read().unwrap();
             /* TODO here is where the analyses will be dispatched from */
-            println!("circbuf holds {}",window.buf.len());
+            println!("circbuf holds {}", window.buf.len());
             for creature in window.buf.iter() {
                 println!("LOGGER:\n{}", creature);
             }
@@ -44,12 +39,13 @@ pub fn spawn_logger (circbuf_size: usize,
         for incoming in log_rx {
             let mut received = received.write().unwrap();
             received.push(incoming);
-            if count % analysis_period == 0 { analyse_tx.send(true); };
+            if count % analysis_period == 0 {
+                analyse_tx.send(true);
+            };
             count += 1;
         }
         drop(analyse_tx);
     });
-
 
     (log_tx, handle)
 }

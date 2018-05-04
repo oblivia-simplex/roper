@@ -2,15 +2,15 @@ extern crate capstone;
 extern crate unicorn;
 
 use self::capstone::prelude::*;
-use self::capstone::{Capstone};
+use self::capstone::Capstone;
 
 use emu::loader;
-use emu::loader::{Mode,Arch};
-use par::statics::{ARCHITECTURE};
+use emu::loader::{Arch, Mode};
+use par::statics::ARCHITECTURE;
 use std::sync::Mutex;
 
 lazy_static! {
-    pub static ref X86_DISASSEMBLER: Mutex<Capstone> 
+    pub static ref X86_DISASSEMBLER: Mutex<Capstone>
         = Mutex::new(Capstone::new()
                               .x86()
                               .mode(arch::x86::ArchMode::Mode64)
@@ -19,7 +19,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref ARM_DISASSEMBLER: Mutex<Capstone> 
+    pub static ref ARM_DISASSEMBLER: Mutex<Capstone>
         = Mutex::new(Capstone::new()
                               .arm()
                               .mode(arch::arm::ArchMode::Arm)
@@ -28,7 +28,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref THUMB_DISASSEMBLER: Mutex<Capstone> 
+    pub static ref THUMB_DISASSEMBLER: Mutex<Capstone>
         = Mutex::new(Capstone::new()
                               .arm()
                               .mode(arch::arm::ArchMode::Thumb)
@@ -36,33 +36,32 @@ lazy_static! {
                               .expect("Failed to initialize THUMB_DISASSEMBLER"));
 }
 
-pub fn disas (insts: &Vec<u8>, mode: Mode, num_insts: usize) -> String {
+pub fn disas(insts: &Vec<u8>, mode: Mode, num_insts: usize) -> String {
     let arch = ARCHITECTURE.with_mode(mode);
-    
+
     let cs = match arch {
-        Arch::X86(Mode::Bits64) => {
-            X86_DISASSEMBLER.lock().unwrap()
-        },
-        Arch::Arm(Mode::Arm) => {
-            ARM_DISASSEMBLER.lock().unwrap()
-        },
-        Arch::Arm(Mode::Thumb) => {
-            THUMB_DISASSEMBLER.lock().unwrap()
-        },
+        Arch::X86(Mode::Bits64) => X86_DISASSEMBLER.lock().unwrap(),
+        Arch::Arm(Mode::Arm) => ARM_DISASSEMBLER.lock().unwrap(),
+        Arch::Arm(Mode::Thumb) => THUMB_DISASSEMBLER.lock().unwrap(),
         _ => panic!("not yet implemented"),
     };
     if let Ok(dis) = cs.disasm_count(insts, 0, num_insts) {
         dis.iter()
-           .map(|i| format!("{} {}",
-                            i.mnemonic().unwrap_or("??"), 
-                            i.op_str().unwrap_or("??")))
-           .collect::<Vec<String>>()
-           .join("; ")
+            .map(|i| {
+                format!(
+                    "{} {}",
+                    i.mnemonic().unwrap_or("??"),
+                    i.op_str().unwrap_or("??")
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("; ")
     } else {
-        insts.iter()
-             .map(|x| format!("{:02x}",x))
-             .collect::<Vec<String>>()
-             .join(" ")
+        insts
+            .iter()
+            .map(|x| format!("{:02x}", x))
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 /* There seem to have been some major API changes between capstone 0.0.4 and
@@ -101,10 +100,7 @@ pub fn disas (insts: &Vec<u8>, mode: Mode, num_insts: usize) -> String {
     format!("{}\t({:?})", dis.join("; "), mode)
 }
 */
-pub fn disas_static (addr: u64, 
-                     num_bytes: usize, 
-                     mode: Mode, 
-                     num_insts: usize) -> String {
+pub fn disas_static(addr: u64, num_bytes: usize, mode: Mode, num_insts: usize) -> String {
     let num_bytes = if num_bytes == 0 { 15 } else { num_bytes };
     let some_bytes = loader::read_static_mem(addr, num_bytes);
     if let Some(bytes) = some_bytes {

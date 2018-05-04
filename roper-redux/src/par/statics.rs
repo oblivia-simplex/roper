@@ -1,23 +1,22 @@
-extern crate rand;
 extern crate goblin;
 extern crate num;
+extern crate rand;
 
 use std::fs::File;
-use std::sync::{Arc,RwLock};
+use std::sync::{Arc, RwLock};
 use std::io::Read;
 use std::path::Path;
 use std::env;
 use std::fmt;
 
 use self::num::PrimInt;
-use self::goblin::{Object};
+use self::goblin::Object;
 use self::goblin::elf::header::machine_to_str;
 
-use emu::loader::{Arch,Mode};
-
+use emu::loader::{Arch, Mode};
 
 lazy_static! {
-    pub static ref CONFIG_DIR: String 
+    pub static ref CONFIG_DIR: String
         = match env::var("ROPER_CONFIG_DIR") {
                 Err(_) => ".roper_config/".to_string(),
                 Ok(d)  => d.to_string(),
@@ -27,7 +26,7 @@ lazy_static! {
 /// Reads the config file specified from the default config directory,
 /// which is ~/ + CONFIG_DIR, and trims any trailing whitespace from
 /// the result.
-fn read_conf (filename: &str) -> String {
+fn read_conf(filename: &str) -> String {
     let mut p = String::new();
     p.push_str(env::home_dir().unwrap().to_str().unwrap());
     p.push_str("/");
@@ -48,8 +47,6 @@ fn read_conf (filename: &str) -> String {
 fn test_read_conf() {
     assert_eq!(read_conf(".config_test"), "IT WORKS");
 }
-
-
 
 pub type RngSeed = [u8; 32];
 
@@ -76,9 +73,9 @@ lazy_static! {
 /* Wait: if this is accessed from multiple threads, there will be another
  * source of indeterminacy and unrepeatability: the order of access cannot
  * be assured. So make sure you only access this from a single thread, then
- * pass the seed to each spun thread. 
+ * pass the seed to each spun thread.
  *
- * Perhaps every thread could just take the base RNG_SEED, and xor it with 
+ * Perhaps every thread could just take the base RNG_SEED, and xor it with
  * its own thread id?
  */
 
@@ -120,7 +117,7 @@ lazy_static! {
 
 lazy_static! {
     pub static ref ADDR_WIDTH: usize
-        = { 
+        = {
             match *ARCHITECTURE {
                 Arch::X86(_) => 8,
                 _ => 4,
@@ -130,7 +127,7 @@ lazy_static! {
 
 /// A tiny machine word formatter
 #[inline]
-pub fn wf<T: PrimInt + fmt::LowerHex> (w: T) -> String {
+pub fn wf<T: PrimInt + fmt::LowerHex>(w: T) -> String {
     match *ARCHITECTURE {
         Arch::X86(Mode::Bits64) => format!("{:016x}", w),
         Arch::X86(Mode::Bits16) => format!("{:04x}", w),
@@ -159,7 +156,7 @@ lazy_static! {
     /* TODO read from config file */
 }
 
-#[derive(Copy,Clone,PartialEq,Eq,Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum MaskOp {
     Xor,
     Nand,
@@ -178,4 +175,3 @@ lazy_static! {
     /* TODO read */
     pub static ref CROSSOVER_MASK_INHERITANCE: MaskOp = MaskOp::Uniform;
 }
-

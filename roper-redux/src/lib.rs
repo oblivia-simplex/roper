@@ -1,8 +1,10 @@
 // #![recursion_limit="2048"]
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 
 extern crate ketos;
-#[macro_use] extern crate ketos_derive;
+#[macro_use]
+extern crate ketos_derive;
 
 extern crate unicorn;
 

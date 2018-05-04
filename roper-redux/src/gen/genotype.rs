@@ -1,41 +1,45 @@
 extern crate rand;
 
-use std::fmt::{Display};
+use std::fmt::Display;
 use std::fmt;
 use std::collections::HashMap;
-use emu::loader::{Mode,Seg,align_inst_addr,MEM_IMAGE};
+use emu::loader::{align_inst_addr, Mode, Seg, MEM_IMAGE};
 use par::statics::*;
 
-use self::rand::{Rng};
+use self::rand::Rng;
 
-#[derive(IntoValue,StructValue,ForeignValue,FromValue,FromValueRef,Clone,Copy,Debug,PartialEq,Eq)]
+#[derive(IntoValue, StructValue, ForeignValue, FromValue, FromValueRef, Clone, Copy, Debug,
+         PartialEq, Eq)]
 pub struct Gadget {
-    pub ret_addr : u64,
-    pub entry    : u64,
-    pub sp_delta : usize,
-    pub mode     : Mode,
+    pub ret_addr: u64,
+    pub entry: u64,
+    pub sp_delta: usize,
+    pub mode: Mode,
 }
 //unsafe impl Send for Gadget {}
 
 pub const ENDIAN: Endian = Endian::Little;
 
 impl Display for Gadget {
-    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[Entry: {}, Ret: {}, SpD: {:x}, Mode: {:?}]",
-               wf(self.entry),
-               wf(self.ret_addr),
-               self.sp_delta,
-               self.mode)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[Entry: {}, Ret: {}, SpD: {:x}, Mode: {:?}]",
+            wf(self.entry),
+            wf(self.ret_addr),
+            self.sp_delta,
+            self.mode
+        )
     }
 }
 
-#[derive(ForeignValue,FromValue,FromValueRef,IntoValue,Copy,Clone,Eq,PartialEq,Debug)]
+#[derive(ForeignValue, FromValue, FromValueRef, IntoValue, Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Endian {
     Big,
     Little,
 }
 
-#[derive(ForeignValue,FromValue,FromValueRef,IntoValue,Clone,Copy,Debug,PartialEq,Eq)]
+#[derive(ForeignValue, FromValue, FromValueRef, IntoValue, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Allele {
     //Const(u64),
     Input(usize),
@@ -53,7 +57,7 @@ impl Allele {
 //unsafe impl Send for Allele {}
 
 impl Display for Allele {
-    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             //&Allele::Const(x) => write!(f, "[Const {}]", wf(x)),
             &Allele::Input(i) => write!(f, "[Input Slot #{}]", i),
@@ -62,17 +66,17 @@ impl Display for Allele {
     }
 }
 
-#[derive(StructValue,ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq)]
+#[derive(StructValue, ForeignValue, FromValue, FromValueRef, Clone, Debug, PartialEq)]
 pub struct Chain {
     pub alleles: Vec<Allele>,
     pub metadata: Metadata,
-    pub xbits    : u64, /* used to coordinate crossover and speciation */
+    pub xbits: u64, /* used to coordinate crossover and speciation */
 }
 
 //unsafe impl Send for Chain {}
 
 impl Display for Chain {
-    fn fmt (&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //let mut s = Vec::new();
         //let mut pad_offset = 0;
         for allele in self.alleles.iter() {
@@ -137,8 +141,8 @@ impl Chain {
                 //&Allele::Const(c) => c,
                 &Allele::Input(i) => if input.len() > 0 {
                     input[i % input.len()]
-                } else { 
-                    0 
+                } else {
+                    0
                 },
                 &Allele::Gadget(g) => g.entry,
             };
@@ -149,28 +153,31 @@ impl Chain {
 
     pub fn entry(&self) -> Option<u64> {
         for allele in self.alleles.iter() {
-            if let Some(e) = allele.entry() { return Some(e) };
+            if let Some(e) = allele.entry() {
+                return Some(e);
+            };
         }
         println!("WARNING! NO ENTRY! NO GADGETS IN CHAIN?");
-        println!("{}",self);
-        None 
+        println!("{}", self);
+        None
     }
 
     /* TODO: create a separate thread that maintains the
      * pool of random seeds, and serves them on request,
-     * over a channel, maybe. 
+     * over a channel, maybe.
      */
     /* TODO alignment function, which depends on ARCHITECTURE */
-    pub fn from_seed<R>(rng: &mut R,
-                        len_range: (usize, usize)) -> Self
-    where R: Rng, {
-
+    pub fn from_seed<R>(rng: &mut R, len_range: (usize, usize)) -> Self
+    where
+        R: Rng,
+    {
         let xbits: u64 = rng.gen::<u64>();
 
         let input_slot_freq = INPUT_SLOT_FREQ;
-        let exec_segs = MEM_IMAGE.iter()
-                                 .filter(|s| s.is_executable())
-                                 .collect::<Vec<&Seg>>();
+        let exec_segs = MEM_IMAGE
+            .iter()
+            .filter(|s| s.is_executable())
+            .collect::<Vec<&Seg>>();
 
         let mut alleles: Vec<Allele> = Vec::new();
         let (min_len, max_len) = len_range;
@@ -178,15 +185,14 @@ impl Chain {
 
         for _ in 0..glen {
             let seg = &exec_segs[rng.gen::<usize>() % exec_segs.len()];
-            let unaligned_addr = seg.aligned_start() + rng.gen::<u64>()
-                % seg.aligned_size() as u64;
+            let unaligned_addr = seg.aligned_start() + rng.gen::<u64>() % seg.aligned_size() as u64;
             let mode = ARCHITECTURE.mode(); /* choose mode randomly if ARM */
             let addr = align_inst_addr(unaligned_addr, mode);
             /* sp_delta-informed chance of choosing const or input TODO */
             if alleles.len() > 0 && rng.gen::<f32>() < input_slot_freq {
                 /* NOTE: Artificially adding an upper bound on the number of inputs
                  * at 15. This will almost certainly be more than enough, and will
-                 * make the input slots easier to read. 
+                 * make the input slots easier to read.
                  */
                 alleles.push(Allele::Input(rng.gen::<usize>() & 0x0F));
             } else {
@@ -196,11 +202,11 @@ impl Chain {
                     sp_delta: 0, /* TODO */
                     mode: mode,  /* TODO - for ARM decide mode */
                 };
-                
+
                 alleles.push(Allele::Gadget(gad));
             }
         }
-        
+
         /*
         let pad_num = gads.iter()
                           .map(|x| x.sp_delta)
@@ -216,7 +222,7 @@ impl Chain {
         }
         */
 
-        let genome = Chain { 
+        let genome = Chain {
             alleles: alleles,
             xbits: xbits,
             metadata: Metadata::new(),
@@ -227,35 +233,34 @@ impl Chain {
 }
 
 /* by using a hashmap instead of separate struct fields
- * for the various bits of metadata, we end up with a 
+ * for the various bits of metadata, we end up with a
  * much more flexible structure, that won't require
  * dozens of fiddly signature changes every time we
- * want to add or modify a field. f32 should work 
+ * want to add or modify a field. f32 should work
  * for most of the fields we're interested in.
  * We can dispense with Option fields, by just letting
- * "None" be the absence of a field in the hashmap. 
- * Accessor functions will provide an easy interface. 
+ * "None" be the absence of a field in the hashmap.
+ * Accessor functions will provide an easy interface.
  */
 
-#[derive(ForeignValue,FromValue,IntoValue,Clone,Debug,PartialEq)]
-pub struct Metadata(pub HashMap<&'static str,f32>);
+#[derive(ForeignValue, FromValue, IntoValue, Clone, Debug, PartialEq)]
+pub struct Metadata(pub HashMap<&'static str, f32>);
 impl Metadata {
     pub fn new() -> Self {
-        Metadata( HashMap::new() )
+        Metadata(HashMap::new())
     }
 }
 
-
 fn pack_word(word: u64, size: usize, endian: Endian) -> Vec<u8> {
     let mut p = match size {
-        4 => { 
+        4 => {
             let w32 = if endian == Endian::Big {
                 (word & 0xFFFFFFFF00000000) as u32
             } else {
                 (word & 0x00000000FFFFFFFF) as u32
             };
             pack_word32le(w32)
-        },
+        }
         8 => pack_word64le(word),
         _ => panic!("Bad word size. Must be either 4 or 8."),
     };
@@ -265,35 +270,39 @@ fn pack_word(word: u64, size: usize, endian: Endian) -> Vec<u8> {
     p
 }
 
-pub fn pack_word32le (word: u32) -> Vec<u8> {
-    let mut p : Vec<u8> = Vec::new();
-    p.extend_from_slice(&[(word & 0xFF) as u8,
-                          ((word & 0xFF00) >> 0x08) as u8,
-                          ((word & 0xFF0000) >> 0x10) as u8,
-                          ((word & 0xFF000000) >> 0x18) as u8]);
+pub fn pack_word32le(word: u32) -> Vec<u8> {
+    let mut p: Vec<u8> = Vec::new();
+    p.extend_from_slice(&[
+        (word & 0xFF) as u8,
+        ((word & 0xFF00) >> 0x08) as u8,
+        ((word & 0xFF0000) >> 0x10) as u8,
+        ((word & 0xFF000000) >> 0x18) as u8,
+    ]);
     p
 }
 
-pub fn pack_word32le_vec (v: &Vec<u32>) -> Vec<u8> {
-    let mut p : Vec<u8> = Vec::new();
+pub fn pack_word32le_vec(v: &Vec<u32>) -> Vec<u8> {
+    let mut p: Vec<u8> = Vec::new();
     for word in v {
         p.extend_from_slice(&pack_word32le(*word))
     }
     p
 }
 
-pub fn pack_word64le (word: u64) -> Vec<u8> {
-    let (hi,lo) = (((word & 0xFFFFFFFF00000000) >> 0x20) as u32, (word & 0xFFFFFFFF) as u32);
+pub fn pack_word64le(word: u64) -> Vec<u8> {
+    let (hi, lo) = (
+        ((word & 0xFFFFFFFF00000000) >> 0x20) as u32,
+        (word & 0xFFFFFFFF) as u32,
+    );
     let mut p = pack_word32le(lo);
     p.extend_from_slice(&pack_word32le(hi));
     p
 }
 
-pub fn pack_word64le_vec (v: &Vec<u64>) -> Vec<u8> {
-    let mut p : Vec<u8> = Vec::new();
+pub fn pack_word64le_vec(v: &Vec<u64>) -> Vec<u8> {
+    let mut p: Vec<u8> = Vec::new();
     for word in v {
         p.extend_from_slice(&pack_word64le(*word));
     }
     p
 }
-

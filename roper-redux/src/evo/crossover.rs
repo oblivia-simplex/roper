@@ -1,5 +1,5 @@
 extern crate rand;
-use self::rand::{Rng};
+use self::rand::Rng;
 use gen::*;
 use par::statics::*;
 
@@ -19,10 +19,7 @@ fn uniform_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
     (mask & a) | (!mask & b)
 }
 
-fn combine_xbits<R: Rng>(m_bits: u64,
-                         p_bits: u64,
-                         combiner: MaskOp,
-                         mut rng: &mut R) -> u64 {
+fn combine_xbits<R: Rng>(m_bits: u64, p_bits: u64, combiner: MaskOp, mut rng: &mut R) -> u64 {
     match combiner {
         MaskOp::Xor => m_bits ^ p_bits,
         MaskOp::Nand => !(m_bits & p_bits),
@@ -32,48 +29,54 @@ fn combine_xbits<R: Rng>(m_bits: u64,
         MaskOp::Or => m_bits | p_bits,
     }
 }
-  fn xbits_sites<R: Rng>(
-      xbits: u64,
-      bound: usize,
-      crossover_degree: f32,
-      mut rng: &mut R,
-  ) -> Vec<usize> {
-      let mut potential_sites = (0..bound)
-          .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
-          .collect::<Vec<usize>>();
-      potential_sites.sort();
-      potential_sites.dedup();
-      let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
-      if cfg!(debug_assertions) {
-          println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
-      }
+fn xbits_sites<R: Rng>(
+    xbits: u64,
+    bound: usize,
+    crossover_degree: f32,
+    mut rng: &mut R,
+) -> Vec<usize> {
+    let mut potential_sites = (0..bound)
+        .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
+        .collect::<Vec<usize>>();
+    potential_sites.sort();
+    potential_sites.dedup();
+    let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
+    if cfg!(debug_assertions) {
+        println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
+    }
 
-      let mut actual_sites = rand::seq::sample_iter(&mut rng,
-                                                    potential_sites.into_iter(), num).unwrap();
-      if cfg!(debug_assertions) {
-          println!("actual sites: {:?}", &actual_sites);
-      }
-      actual_sites
-  }
+    let mut actual_sites =
+        rand::seq::sample_iter(&mut rng, potential_sites.into_iter(), num).unwrap();
+    if cfg!(debug_assertions) {
+        println!("actual sites: {:?}", &actual_sites);
+    }
+    actual_sites
+}
 // test
 
-pub fn homologous_crossover<R>(mother: &Creature,
-                               father: &Creature,
-                               mut rng: &mut R) -> Vec<Creature>
-where R: Rng, {
+pub fn homologous_crossover<R>(
+    mother: &Creature,
+    father: &Creature,
+    mut rng: &mut R,
+) -> Vec<Creature>
+where
+    R: Rng,
+{
     let crossover_degree = *CROSSOVER_DEGREE;
     let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
-    let xbits = combine_xbits(mother.genome.xbits, 
-                              father.genome.xbits, 
-                              *CROSSOVER_MASK_COMBINER, rng);
-    let child_xbits = combine_xbits(mother.genome.xbits, 
-                                    father.genome.xbits, 
-                                    *CROSSOVER_MASK_INHERITANCE, rng);
-    let sites = xbits_sites(xbits,
-                            bound, 
-                            crossover_degree, 
-                            &mut rng,
+    let xbits = combine_xbits(
+        mother.genome.xbits,
+        father.genome.xbits,
+        *CROSSOVER_MASK_COMBINER,
+        rng,
     );
+    let child_xbits = combine_xbits(
+        mother.genome.xbits,
+        father.genome.xbits,
+        *CROSSOVER_MASK_INHERITANCE,
+        rng,
+    );
+    let sites = xbits_sites(xbits, bound, crossover_degree, &mut rng);
     let mut offspring = Vec::new();
     let parents = vec![mother, father];
     let mut i = 0;

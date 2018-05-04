@@ -1,7 +1,7 @@
 extern crate rand;
 
-use std::thread::{spawn,JoinHandle};
-use std::sync::mpsc::{Sender,Receiver};
+use std::thread::{spawn, JoinHandle};
+use std::sync::mpsc::{Receiver, Sender};
 
 use emu;
 use fit;
@@ -20,9 +20,7 @@ use breeders::*;
  * -- reproduction routine sends them back here, to go on to hatchery
  */
 
-pub fn pipeline(rx: Receiver<Creature>, txs: Vec<Sender<Creature>>) 
-    -> JoinHandle<()> 
-{
+pub fn pipeline(rx: Receiver<Creature>, txs: Vec<Sender<Creature>>) -> JoinHandle<()> {
     assert!(txs.len() > 0);
     let h = spawn(move || {
         for x in rx {
@@ -38,28 +36,22 @@ pub fn pipeline(rx: Receiver<Creature>, txs: Vec<Sender<Creature>>)
     h
 }
 
-
-pub fn evolution_pipeline (num_engines: usize,
-                           num_evaluators: usize) -> () {
+pub fn evolution_pipeline(num_engines: usize, num_evaluators: usize) -> () {
     let expect = 0; /* indefinite hatchery loop */
     /* FIXME: expect here is just a placeholder. Not sure what to do with it yet. */
     let sel_meth = SelectionMethod::Tournament;
     let population_size = 4096;
 
-    let (from_seeder_rx, seed_handle)
-        = gen::spawn_seeder(population_size,
-                            (2,32),                   /* length range */
-                            &vec![vec![1,2,3]],       /* fake problem set */
-                            *RNG_SEED, /* but FIXME: refresh seed! */
-        );
-    let (into_hatch_tx, from_hatch_rx, hatch_handle) 
-        = emu::spawn_hatchery(num_engines, expect);
-    let (into_eval_tx, from_eval_rx, eval_handle)
-        = fit::spawn_evaluator(num_evaluators, 4096);
-    let (into_breed_tx, from_breed_rx, breed_handle)
-        = spawn_breeder(sel_meth);
-    let (into_log_tx, log_handle) 
-        = log::spawn_logger(4096, 4096);
+    let (from_seeder_rx, seed_handle) = gen::spawn_seeder(
+        population_size,
+        (2, 32),              /* length range */
+        &vec![vec![1, 2, 3]], /* fake problem set */
+        *RNG_SEED,            /* but FIXME: refresh seed! */
+    );
+    let (into_hatch_tx, from_hatch_rx, hatch_handle) = emu::spawn_hatchery(num_engines, expect);
+    let (into_eval_tx, from_eval_rx, eval_handle) = fit::spawn_evaluator(num_evaluators, 4096);
+    let (into_breed_tx, from_breed_rx, breed_handle) = spawn_breeder(sel_meth);
+    let (into_log_tx, log_handle) = log::spawn_logger(4096, 4096);
 
     /* now weld the pipelines together */
     let mut pipehandles = Vec::new();
@@ -68,9 +60,9 @@ pub fn evolution_pipeline (num_engines: usize,
     pipehandles.push(pipeline(from_eval_rx, vec![into_breed_tx, into_log_tx]));
     pipehandles.push(pipeline(from_breed_rx, vec![into_hatch_tx]));
     /* FIXME: as it stands, sending back to the into_hatch_tx will cause a send
-     * error. one of the channels is probably getting prematurely dropped. 
+     * error. one of the channels is probably getting prematurely dropped.
      * look into this. it would be nice to get a good, infinite "circle of life"
-     * going, all in one pipeline. 
+     * going, all in one pipeline.
      */
     /* the circle is now complete. */
 
@@ -83,10 +75,6 @@ pub fn evolution_pipeline (num_engines: usize,
     for ph in pipehandles {
         ph.join().unwrap();
     }
-
-
 }
 
-
 /* The phenotype->genotype pipeline */
-

@@ -14,58 +14,59 @@ those sites (mod 64) where the combined mask has a 1.
 
 #+NAME: homologous crossover
 #+BEGIN_SRC rust  :export none :comments link
-    pub fn homologous_crossover<R>(mother: &Creature,
-                                   father: &Creature,
-                                   mut rng: &mut R) -> Vec<Creature>
-    where R: Rng, {
-        let crossover_degree = *CROSSOVER_DEGREE;
-        let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
-        let xbits = combine_xbits(mother.genome.xbits, 
-                                  father.genome.xbits, 
-                                  ,*CROSSOVER_MASK_COMBINER, rng);
-        let child_xbits = combine_xbits(mother.genome.xbits, 
-                                        father.genome.xbits, 
-                                        ,*CROSSOVER_MASK_INHERITANCE, rng);
-        let sites = xbits_sites(xbits,
-                                bound, 
-                                crossover_degree, 
-                                &mut rng,
-        );
-        let mut offspring = Vec::new();
-        let parents = vec![mother, father];
-        let mut i = 0;
-        /* Like any respectable couple, the mother and father take
-         ,* turns inseminating one another...
-         ,*/
-        while offspring.len() < 2 {
-            let p0: &Creature = parents[i % 2];
-            let p1: &Creature = parents[(i + 1) % 2];
-            i += 1;
-            let mut egg = p0.genome.alleles.clone();
-            let mut sem = &p1.genome.alleles;
-            for site in sites.iter() {
-                egg[*site] = sem[*site];
-            }
-            let zygote = Chain {
-                alleles: egg,
-                metadata: Metadata::new(),
-                xbits: child_xbits,
-            };
-            /* The index will be filled in later, prior to filling
-             ,* the graves of the fallen
-             ,*/
-            if zygote.entry() != None {
-                offspring.push(Creature::new(zygote, 0));
-            };
-            if cfg!(debug_assertions) {
-                println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}\n**********************************",
-                         xbits,
-                         &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(),
-                         p0, p1, &offspring[offspring.len()-1]);
-            }
-        }
-        offspring
-    }
+  pub fn homologous_crossover<R>(mother: &Creature,
+                                 father: &Creature,
+                                 mut rng: &mut R) -> Vec<Creature>
+  where R: Rng, {
+      let crossover_degree = *CROSSOVER_DEGREE;
+      let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
+      let xbits = combine_xbits(mother.genome.xbits, 
+                                father.genome.xbits, 
+                                ,*CROSSOVER_MASK_COMBINER, rng);
+      let child_xbits = combine_xbits(mother.genome.xbits, 
+                                      father.genome.xbits, 
+                                      ,*CROSSOVER_MASK_INHERITANCE, rng);
+      let sites = xbits_sites(xbits,
+                              bound, 
+                              crossover_degree, 
+                              &mut rng,
+      );
+      let mut offspring = Vec::new();
+      let parents = vec![mother, father];
+      let mut i = 0;
+      /* Like any respectable couple, the mother and father take
+       ,* turns inseminating one another...
+       ,*/
+      while offspring.len() < 2 {
+          let p0: &Creature = parents[i % 2];
+          let p1: &Creature = parents[(i + 1) % 2];
+          i += 1;
+          let mut egg = p0.genome.alleles.clone();
+          let mut sem = &p1.genome.alleles;
+          for site in sites.iter() {
+              egg[*site] = sem[*site];
+          }
+          let zygote = Chain {
+              alleles: egg,
+              metadata: Metadata::new(),
+              xbits: child_xbits,
+          };
+          /* The index will be filled in later, prior to filling
+           ,* the graves of the fallen
+           ,*/
+          if zygote.entry() != None {
+              offspring.push(Creature::new(zygote, 0));
+          };
+          if cfg!(debug_assertions) {
+              println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}",
+                       xbits,
+                       &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(),
+                       p0, p1, &offspring[offspring.len()-1]);
+              println!("************************************************************");
+          }
+      }
+      offspring
+  }
 #+END_SRC
 
 ** Combining the Crossover Masks

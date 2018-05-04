@@ -1,4 +1,4 @@
-% Created 2018-05-04 Fri 10:08
+% Created 2018-05-04 Fri 10:16
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,17 +33,17 @@
 
 
 \section{Homologous Crossover in ROPER}
-\label{sec:orga3247b5}
+\label{sec:orgb7c2a99}
 The idea with the crossover mask (or, as its called in the source code, the
 "\texttt{xbits}") mechanism is this: With each genome we associate a bitmask (for now,
 this is in the form of an unsigned, 64-bit integer, but this is a bit of a
 shortcut -- we'd probably like to let it be as long as the longest possible
 genome). For the first generation, this value is initialized randomly. During
 crossover, the sites of genetic exchange are determined by \emph{combining} (\S
-\ref{orgb76ae83}) the parents' crossover masks: crossover may occur (only) at
+\ref{org05b900e}) the parents' crossover masks: crossover may occur (only) at
 those sites (mod 64) where the combined mask has a 1.
 
-\lstset{language=rust,label=org02e68b5,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=orgb372815,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 pub fn homologous_crossover<R>(mother: &Creature,
                                father: &Creature,
@@ -89,10 +89,11 @@ where R: Rng, {
             offspring.push(Creature::new(zygote, 0));
         };
         if cfg!(debug_assertions) {
-            println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}\n**********************************",
+            println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}",
                      xbits,
                      &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(),
                      p0, p1, &offspring[offspring.len()-1]);
+            println!("************************************************************");
         }
     }
     offspring
@@ -100,8 +101,8 @@ where R: Rng, {
 \end{lstlisting}
 
 \subsection{Combining the Crossover Masks}
-\label{sec:org5d54208}
-\label{orgb76ae83}
+\label{sec:orge8bde78}
+\label{org05b900e}
 
 The precise means of combining the \texttt{xbit} vectors is left open to
 experimentation, but a good starting point seems to be bitwise conjunction (the
@@ -135,7 +136,7 @@ parents', occasionally perturbed by a single bit-flip mutation.
 
 
 
-\lstset{language=rust,label=orgf927b9f,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=org04aecf7,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 fn xbits_sites<R: Rng>(
     xbits: u64,
@@ -169,7 +170,7 @@ fairly canonical bitwise crossover functions, as used in simple boolean
 \gls{ga}. Their use introduces a secondary evolutionary process, supervening on
 the primary evolution of \gls{roper} creatures (\gls{rop} chain payloads). 
 
-\lstset{language=rust,label=org31e8a38,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=org75b8850,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 /// One-point crossover, between two u64s, as bitvectors.
 fn onept_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
@@ -203,7 +204,7 @@ fn combine_xbits<R: Rng>(m_bits: u64,
 \end{lstlisting}
 
 \section{Dependencies}
-\label{sec:orgf86c45d}
+\label{sec:orga0d882f}
 
 For this to work, we'll need just a handful of dependencies: the pseudo-random
 number generator library in the \texttt{rand} crate, ROPER's own genotype structs in
@@ -213,7 +214,7 @@ a trivial implementation decision, and may change), and a few static parameter
 values that we essentially treat as immutable globals in this project, for
 the sake of convenience, sparing ourselves quite a bit of parameter clutter.
 
-\lstset{language=rust,label=org7e9046e,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=orge108ef8,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 extern crate rand;
 use self::rand::{Rng};
@@ -223,8 +224,8 @@ use par::statics::*;
 
 
 \section{Putting it Together}
-\label{sec:orga4cec05}
-\lstset{language=rust,label=orgd7cb406,caption= ,captionpos=b,numbers=none}
+\label{sec:org3f372d6}
+\lstset{language=rust,label=org17addcc,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 <<crossover-module-dependencies>>
 
