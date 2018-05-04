@@ -10,7 +10,13 @@ shortcut -- we'd probably like to let it be as long as the longest possible
 genome). For the first generation, this value is initialized randomly. During
 crossover, the sites of genetic exchange are determined by /combining/ (\S
 [[sec:combining]]) the parents' crossover masks: crossover may occur (only) at
-those sites (mod 64) where the combined mask has a 1.
+those sites (mod 64) where the combined mask has a 1. Every subsequent generation
+will inherit its own crossover masks from another /combination/ of its parents'
+masks -- though, as we'll see, there are good reasons for selecting distinct
+combination methods, here: the operation by which the parental masks are combined
+to generate the map of potential crossover sites should not necessarily be the
+same operation that generates the masks that the offspring will bring to their
+own future crossovers.
 
 #+NAME: homologous crossover
 #+BEGIN_SRC rust  :export none :comments link
@@ -19,7 +25,8 @@ those sites (mod 64) where the combined mask has a 1.
                                  mut rng: &mut R) -> Vec<Creature>
   where R: Rng, {
       let crossover_degree = *CROSSOVER_DEGREE;
-      let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
+      let bound = usize::min(mother.genome.alleles.len(), 
+                             father.genome.alleles.len());
       let xbits = combine_xbits(mother.genome.xbits, 
                                 father.genome.xbits, 
                                 ,*CROSSOVER_MASK_COMBINER, rng);
@@ -49,7 +56,7 @@ those sites (mod 64) where the combined mask has a 1.
           let zygote = Chain {
               alleles: egg,
               metadata: Metadata::new(),
-              xbits: child_xbits,
+              xbits: random_bit_flip(child_xbits, &mut rng),
           };
           /* The index will be filled in later, prior to filling
            ,* the graves of the fallen
@@ -91,8 +98,8 @@ is poorly suited to play the role of an inheritance operator: within a
 few generations, the crossover masks would converge to 0s. We could
 experiment with other canonical boolean operators -- ~xor~, for example,
 or ~nand~ -- that don't exhibit the fixed-point behaviour that ~and~ and
-~or~ do, but the most natural choice might be to just use a secondary
-/crossover/ operation to propagate the masks through the germ lines.
+~or~ do, but the most natural choice might just be to use a secondary
+/crossover/ operation to propagate the masks down the germ lines.
 One-point crossover seems like a poor fit, since it would disproportionately
 favour the first parent, but a simple, uniform crossover seems well
 suited to this task.
@@ -102,43 +109,7 @@ incorporated as well: the crossover mask that the child will inherit,
 and share with its siblings, will be a uniform crossover of its
 parents', occasionally perturbed by a single bit-flip mutation.
 
-
-
 #+NAME: combining crossover masks
-#+BEGIN_SRC rust :noweb tangle :export none :comments link 
-    fn xbits_sites<R: Rng>(
-        xbits: u64,
-        bound: usize,
-        crossover_degree: f32,
-        mut rng: &mut R,
-    ) -> Vec<usize> {
-        let mut potential_sites = (0..bound)
-            .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
-            .collect::<Vec<usize>>();
-        potential_sites.sort();
-        potential_sites.dedup();
-        let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
-        if cfg!(debug_assertions) {
-            println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
-        }
-
-        let mut actual_sites = rand::seq::sample_iter(&mut rng,
-                                                      potential_sites.into_iter(), num).unwrap();
-        if cfg!(debug_assertions) {
-            println!("actual sites: {:?}", &actual_sites);
-        }
-        actual_sites
-    }
-#+END_SRC
-
-The utility functions referenced in the above block cover those methods
-of combination that can't be reduced to simple boolean arithmetic, but
-require the additional contribution of a gls:prng. They are, in particular,
-fairly canonical bitwise crossover functions, as used in simple boolean
-gls:ga. Their use introduces a secondary evolutionary process, supervening on
-the primary evolution of gls:roper creatures (gls:rop chain payloads). 
-
-#+NAME: crossover-masks-utility-functions
 #+BEGIN_SRC rust  :export none :comments link
   /// One-point crossover, between two u64s, as bitvectors.
   fn onept_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
@@ -156,6 +127,16 @@ the primary evolution of gls:roper creatures (gls:rop chain payloads).
       (mask & a) | (!mask & b)
   }
 
+  /// A simple mutation operator to use on the crossover mask,
+  /// prior to passing it on to the offspring.
+  fn random_bit_flip<R: Rng>(u: u64, rng: &mut R) -> u64 {
+    if rng.gen::<f32>() < *CROSSOVER_MASK_MUT_RATE {
+        u ^ (1u64 << (rng.gen::<u64>() % 64)) 
+    } else {
+        u
+    }
+  }
+
   fn combine_xbits<R: Rng>(m_bits: u64,
                            p_bits: u64,
                            combiner: MaskOp,
@@ -168,6 +149,38 @@ the primary evolution of gls:roper creatures (gls:rop chain payloads).
           MaskOp::And => m_bits & p_bits,
           MaskOp::Or => m_bits | p_bits,
       }
+  }
+#+END_SRC
+
+Once the two parents' ~xbits~ have been combined into a crossover mask, we
+can use it to generate a list of sites to be used in the genomic crossover
+operation. 
+
+#+NAME: mapping masks to crossover sites
+#+BEGIN_SRC rust :noweb tangle :export none :comments link 
+  fn xbits_sites<R: Rng>(
+      xbits: u64,
+      bound: usize,
+      crossover_degree: f32,
+      mut rng: &mut R,
+  ) -> Vec<usize> {
+      let mut potential_sites = (0..bound)
+          .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
+          .collect::<Vec<usize>>();
+      potential_sites.sort();
+      potential_sites.dedup();
+      let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
+      if cfg!(debug_assertions) {
+          println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
+      }
+
+      let mut actual_sites = rand::seq::sample_iter(&mut rng,
+                                                    potential_sites.into_iter(), 
+                                                    num).unwrap();
+      if cfg!(debug_assertions) {
+          println!("actual sites: {:?}", &actual_sites);
+      }
+      actual_sites
   }
 #+END_SRC
 
@@ -195,8 +208,8 @@ the sake of convenience, sparing ourselves quite a bit of parameter clutter.
 #+BEGIN_SRC rust :noweb tangle :export none :tangle crossover.rs
   <<crossover-module-dependencies>>
     
-  <<crossover-masks-utility-functions>>
   <<combining crossover masks>>
+  <<mapping masks to crossover sites>>
   <<homologous crossover>>
 #+END_SRC
 

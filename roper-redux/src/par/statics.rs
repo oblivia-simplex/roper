@@ -174,4 +174,9 @@ lazy_static! {
 lazy_static! {
     /* TODO read */
     pub static ref CROSSOVER_MASK_INHERITANCE: MaskOp = MaskOp::Uniform;
+} 
+
+lazy_static! {
+    /* TODO read */
+    pub static ref CROSSOVER_MASK_MUT_RATE: f32 = 0.2;
 }

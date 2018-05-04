@@ -1,4 +1,4 @@
-% Created 2018-05-04 Fri 10:16
+% Created 2018-05-04 Fri 11:03
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,24 +33,31 @@
 
 
 \section{Homologous Crossover in ROPER}
-\label{sec:orgb7c2a99}
+\label{sec:org2bd754a}
 The idea with the crossover mask (or, as its called in the source code, the
 "\texttt{xbits}") mechanism is this: With each genome we associate a bitmask (for now,
 this is in the form of an unsigned, 64-bit integer, but this is a bit of a
 shortcut -- we'd probably like to let it be as long as the longest possible
 genome). For the first generation, this value is initialized randomly. During
 crossover, the sites of genetic exchange are determined by \emph{combining} (\S
-\ref{org05b900e}) the parents' crossover masks: crossover may occur (only) at
-those sites (mod 64) where the combined mask has a 1.
+\ref{org237e113}) the parents' crossover masks: crossover may occur (only) at
+those sites (mod 64) where the combined mask has a 1. Every subsequent generation
+will inherit its own crossover masks from another \emph{combination} of its parents'
+masks -- though, as we'll see, there are good reasons for selecting distinct
+combination methods, here: the operation by which the parental masks are combined
+to generate the map of potential crossover sites should not necessarily be the
+same operation that generates the masks that the offspring will bring to their
+own future crossovers.
 
-\lstset{language=rust,label=orgb372815,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=orga0b9dfc,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 pub fn homologous_crossover<R>(mother: &Creature,
                                father: &Creature,
                                mut rng: &mut R) -> Vec<Creature>
 where R: Rng, {
     let crossover_degree = *CROSSOVER_DEGREE;
-    let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
+    let bound = usize::min(mother.genome.alleles.len(), 
+                           father.genome.alleles.len());
     let xbits = combine_xbits(mother.genome.xbits, 
                               father.genome.xbits, 
                               *CROSSOVER_MASK_COMBINER, rng);
@@ -80,7 +87,7 @@ where R: Rng, {
         let zygote = Chain {
             alleles: egg,
             metadata: Metadata::new(),
-            xbits: child_xbits,
+            xbits: random_bit_flip(child_xbits, &mut rng),
         };
         /* The index will be filled in later, prior to filling
          * the graves of the fallen
@@ -101,8 +108,8 @@ where R: Rng, {
 \end{lstlisting}
 
 \subsection{Combining the Crossover Masks}
-\label{sec:orge8bde78}
-\label{org05b900e}
+\label{sec:org44f3265}
+\label{org237e113}
 
 The precise means of combining the \texttt{xbit} vectors is left open to
 experimentation, but a good starting point seems to be bitwise conjunction (the
@@ -123,8 +130,8 @@ is poorly suited to play the role of an inheritance operator: within a
 few generations, the crossover masks would converge to 0s. We could
 experiment with other canonical boolean operators -- \texttt{xor}, for example,
 or \texttt{nand} -- that don't exhibit the fixed-point behaviour that \texttt{and} and
-\texttt{or} do, but the most natural choice might be to just use a secondary
-\emph{crossover} operation to propagate the masks through the germ lines.
+\texttt{or} do, but the most natural choice might just be to use a secondary
+\emph{crossover} operation to propagate the masks down the germ lines.
 One-point crossover seems like a poor fit, since it would disproportionately
 favour the first parent, but a simple, uniform crossover seems well
 suited to this task.
@@ -134,9 +141,54 @@ incorporated as well: the crossover mask that the child will inherit,
 and share with its siblings, will be a uniform crossover of its
 parents', occasionally perturbed by a single bit-flip mutation.
 
+\lstset{language=rust,label=orgdbc8474,caption= ,captionpos=b,numbers=none}
+\begin{lstlisting}
+/// One-point crossover, between two u64s, as bitvectors.
+fn onept_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
+    let i = rng.gen::<u64>() % 64;
+    let mut mask = ((!0) >> i) << i;
+    if rng.gen::<bool>() {
+        mask ^= !0
+    };
+    (mask & a) | (!mask & b)
+}
 
+/// Uniform crossover between two u64s, as bitvectors.
+fn uniform_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
+    let mask = rng.gen::<u64>();
+    (mask & a) | (!mask & b)
+}
 
-\lstset{language=rust,label=org04aecf7,caption= ,captionpos=b,numbers=none}
+/// A simple mutation operator to use on the crossover mask,
+/// prior to passing it on to the offspring.
+fn random_bit_flip<R: Rng>(u: u64, rng: &mut R) -> u64 {
+  if rng.gen::<f32>() < *CROSSOVER_MASK_MUT_RATE {
+      u ^ (1u64 << (rng.gen::<u64>() % 64)) 
+  } else {
+      u
+  }
+}
+
+fn combine_xbits<R: Rng>(m_bits: u64,
+                         p_bits: u64,
+                         combiner: MaskOp,
+                         mut rng: &mut R) -> u64 {
+    match combiner {
+        MaskOp::Xor => m_bits ^ p_bits,
+        MaskOp::Nand => !(m_bits & p_bits),
+        MaskOp::OnePt => onept_bits(m_bits, p_bits, &mut rng),
+        MaskOp::Uniform => uniform_bits(m_bits, p_bits, &mut rng),
+        MaskOp::And => m_bits & p_bits,
+        MaskOp::Or => m_bits | p_bits,
+    }
+}
+\end{lstlisting}
+
+Once the two parents' \texttt{xbits} have been combined into a crossover mask, we
+can use it to generate a list of sites to be used in the genomic crossover
+operation. 
+
+\lstset{language=rust,label=org94efb61,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 fn xbits_sites<R: Rng>(
     xbits: u64,
@@ -155,7 +207,8 @@ fn xbits_sites<R: Rng>(
     }
 
     let mut actual_sites = rand::seq::sample_iter(&mut rng,
-                                                  potential_sites.into_iter(), num).unwrap();
+                                                  potential_sites.into_iter(), 
+                                                  num).unwrap();
     if cfg!(debug_assertions) {
         println!("actual sites: {:?}", &actual_sites);
     }
@@ -163,48 +216,8 @@ fn xbits_sites<R: Rng>(
 }
 \end{lstlisting}
 
-The utility functions referenced in the above block cover those methods
-of combination that can't be reduced to simple boolean arithmetic, but
-require the additional contribution of a \gls{prng}. They are, in particular,
-fairly canonical bitwise crossover functions, as used in simple boolean
-\gls{ga}. Their use introduces a secondary evolutionary process, supervening on
-the primary evolution of \gls{roper} creatures (\gls{rop} chain payloads). 
-
-\lstset{language=rust,label=org75b8850,caption= ,captionpos=b,numbers=none}
-\begin{lstlisting}
-/// One-point crossover, between two u64s, as bitvectors.
-fn onept_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
-    let i = rng.gen::<u64>() % 64;
-    let mut mask = ((!0) >> i) << i;
-    if rng.gen::<bool>() {
-        mask ^= !0
-    };
-    (mask & a) | (!mask & b)
-}
-
-/// Uniform crossover between two u64s, as bitvectors.
-fn uniform_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
-    let mask = rng.gen::<u64>();
-    (mask & a) | (!mask & b)
-}
-
-fn combine_xbits<R: Rng>(m_bits: u64,
-                         p_bits: u64,
-                         combiner: MaskOp,
-                         mut rng: &mut R) -> u64 {
-    match combiner {
-        MaskOp::Xor => m_bits ^ p_bits,
-        MaskOp::Nand => !(m_bits & p_bits),
-        MaskOp::OnePt => onept_bits(m_bits, p_bits, &mut rng),
-        MaskOp::Uniform => uniform_bits(m_bits, p_bits, &mut rng),
-        MaskOp::And => m_bits & p_bits,
-        MaskOp::Or => m_bits | p_bits,
-    }
-}
-\end{lstlisting}
-
 \section{Dependencies}
-\label{sec:orga0d882f}
+\label{sec:org584126e}
 
 For this to work, we'll need just a handful of dependencies: the pseudo-random
 number generator library in the \texttt{rand} crate, ROPER's own genotype structs in
@@ -214,7 +227,7 @@ a trivial implementation decision, and may change), and a few static parameter
 values that we essentially treat as immutable globals in this project, for
 the sake of convenience, sparing ourselves quite a bit of parameter clutter.
 
-\lstset{language=rust,label=orge108ef8,caption= ,captionpos=b,numbers=none}
+\lstset{language=rust,label=org9d71ad8,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 extern crate rand;
 use self::rand::{Rng};
@@ -224,13 +237,13 @@ use par::statics::*;
 
 
 \section{Putting it Together}
-\label{sec:org3f372d6}
-\lstset{language=rust,label=org17addcc,caption= ,captionpos=b,numbers=none}
+\label{sec:org4bf025c}
+\lstset{language=rust,label=orgc3876cf,caption= ,captionpos=b,numbers=none}
 \begin{lstlisting}
 <<crossover-module-dependencies>>
 
-<<crossover-masks-utility-functions>>
 <<combining crossover masks>>
+<<mapping masks to crossover sites>>
 <<homologous crossover>>
 \end{lstlisting}
 \end{document}

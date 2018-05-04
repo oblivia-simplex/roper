@@ -1,5 +1,5 @@
 extern crate rand;
-use self::rand::Rng;
+use self::rand::{Rng};
 use gen::*;
 use par::statics::*;
 
@@ -19,7 +19,20 @@ fn uniform_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
     (mask & a) | (!mask & b)
 }
 
-fn combine_xbits<R: Rng>(m_bits: u64, p_bits: u64, combiner: MaskOp, mut rng: &mut R) -> u64 {
+/// A simple mutation operator to use on the crossover mask,
+/// prior to passing it on to the offspring.
+fn random_bit_flip<R: Rng>(u: u64, rng: &mut R) -> u64 {
+  if rng.gen::<f32>() < *CROSSOVER_MASK_MUT_RATE {
+      u ^ (1u64 << (rng.gen::<u64>() % 64)) 
+  } else {
+      u
+  }
+}
+
+fn combine_xbits<R: Rng>(m_bits: u64,
+                         p_bits: u64,
+                         combiner: MaskOp,
+                         mut rng: &mut R) -> u64 {
     match combiner {
         MaskOp::Xor => m_bits ^ p_bits,
         MaskOp::Nand => !(m_bits & p_bits),
@@ -45,38 +58,32 @@ fn xbits_sites<R: Rng>(
         println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
     }
 
-    let mut actual_sites =
-        rand::seq::sample_iter(&mut rng, potential_sites.into_iter(), num).unwrap();
+    let mut actual_sites = rand::seq::sample_iter(&mut rng,
+                                                  potential_sites.into_iter(), 
+                                                  num).unwrap();
     if cfg!(debug_assertions) {
         println!("actual sites: {:?}", &actual_sites);
     }
     actual_sites
 }
-// test
-
-pub fn homologous_crossover<R>(
-    mother: &Creature,
-    father: &Creature,
-    mut rng: &mut R,
-) -> Vec<Creature>
-where
-    R: Rng,
-{
+pub fn homologous_crossover<R>(mother: &Creature,
+                               father: &Creature,
+                               mut rng: &mut R) -> Vec<Creature>
+where R: Rng, {
     let crossover_degree = *CROSSOVER_DEGREE;
-    let bound = usize::min(mother.genome.alleles.len(), father.genome.alleles.len());
-    let xbits = combine_xbits(
-        mother.genome.xbits,
-        father.genome.xbits,
-        *CROSSOVER_MASK_COMBINER,
-        rng,
+    let bound = usize::min(mother.genome.alleles.len(), 
+                           father.genome.alleles.len());
+    let xbits = combine_xbits(mother.genome.xbits, 
+                              father.genome.xbits, 
+                              *CROSSOVER_MASK_COMBINER, rng);
+    let child_xbits = combine_xbits(mother.genome.xbits, 
+                                    father.genome.xbits, 
+                                    *CROSSOVER_MASK_INHERITANCE, rng);
+    let sites = xbits_sites(xbits,
+                            bound, 
+                            crossover_degree, 
+                            &mut rng,
     );
-    let child_xbits = combine_xbits(
-        mother.genome.xbits,
-        father.genome.xbits,
-        *CROSSOVER_MASK_INHERITANCE,
-        rng,
-    );
-    let sites = xbits_sites(xbits, bound, crossover_degree, &mut rng);
     let mut offspring = Vec::new();
     let parents = vec![mother, father];
     let mut i = 0;
@@ -95,7 +102,7 @@ where
         let zygote = Chain {
             alleles: egg,
             metadata: Metadata::new(),
-            xbits: child_xbits,
+            xbits: random_bit_flip(child_xbits, &mut rng),
         };
         /* The index will be filled in later, prior to filling
          * the graves of the fallen
@@ -104,10 +111,11 @@ where
             offspring.push(Creature::new(zygote, 0));
         };
         if cfg!(debug_assertions) {
-            println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}\n**********************************",
+            println!("WITH XBITS {:064b}, SITES: {:?}, MATED\n{}\nAND\n{}\nPRODUCING\n{}",
                      xbits,
                      &sites.iter().map(|x| x % bound).collect::<Vec<usize>>(),
                      p0, p1, &offspring[offspring.len()-1]);
+            println!("************************************************************");
         }
     }
     offspring
