@@ -3,6 +3,7 @@ extern crate unicorn;
 extern crate rand;
 
 
+use rand::{Rng,thread_rng};
 use std::env;
 use std::time::Instant;
 use std::sync::mpsc::{Sender};
@@ -17,7 +18,14 @@ use libroper::evo;
  */
 
 
-
+fn mkseed(u: u64) -> [u8; 32] {
+    let mut seed = [0u8; 32];
+    let mut u = u;
+    for i in 0..32 {
+        seed[i] = (u.rotate_left(2) & 0xFF) as u8;
+    }
+    seed
+}
 
 
 fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Creature>) {
@@ -26,7 +34,7 @@ fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Cre
         expect,
         (2, 32),
         &vec![vec![1, 2, 3]],
-        start.elapsed().subsec_nanos() as u64,
+        mkseed(start.elapsed().subsec_nanos() as u64),
     );
     let (hatch_tx, hatch_rx, hatch_hdl) = emu::spawn_hatchery(engines, expect);
     //    let (logger_tx, logger_hdl) = log::spawn_logger(512);
@@ -35,7 +43,8 @@ fn seeder_hatchery_pipeline(engines: usize, expect: usize, logger_tx: Sender<Cre
     /* KLUDGEY TESTING THING */
     let p0 = hatch_rx.recv().unwrap();
     let p1 = hatch_rx.recv().unwrap();
-    let _offspring = evo::crossover::homologous_crossover(&p0, &p1, &[p0.genome.entry().unwrap()]);
+    let mut rng = thread_rng(); /* screw it, this is just a test */
+    let _offspring = evo::crossover::homologous_crossover(&p0, &p1, &mut rng);
 
     //println!("hello");
     let pipe_hdl_2 = pipeline(hatch_rx, vec![logger_tx]);

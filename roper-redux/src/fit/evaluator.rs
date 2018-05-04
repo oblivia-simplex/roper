@@ -1,14 +1,12 @@
 
-use std::thread::{spawn,sleep,JoinHandle};
-use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
-use std::sync::{Arc,RwLock,MutexGuard,Mutex};
-use std::collections::VecDeque;
-use std::time::Duration;
+use std::thread::{spawn,JoinHandle};
+use std::sync::mpsc::{channel,Sender,Receiver};
+use std::sync::{Arc,RwLock};
 
 use gen::*;
 use circbuf::CircBuf;
 
-use ketos::{Interpreter,FromValueRef};
+// use ketos::{Interpreter,FromValueRef};
 
 /* Instead of using the entire population as a reference point when
  * calculating things like shared fitness, we'll just keep reference
@@ -31,7 +29,7 @@ pub fn spawn_evaluator(num_evaluators: usize,
         /* Here, we use the same pattern that we did in spawn_hatchery */
         let mut carousel = Vec::new();
         let reading_window = circbuf.clone();
-        for i in 0..num_evaluators {
+        for _ in 0..num_evaluators {
             let (eval_tx,eval_rx) = channel();
             let tx = from_eval_tx.clone();
             let window = reading_window.clone();
@@ -44,14 +42,12 @@ pub fn spawn_evaluator(num_evaluators: usize,
         }
 
         let mut slave_idx = 0;
-        let mut counter = 0;
         let sliding_window = circbuf.clone();
         for creature in into_eval_rx {
             let mut creature: Creature = creature;
             //eval_fitness(&mut creature, &sliding_window.read().unwrap());
             let &(ref slave_tx, _) = &carousel[slave_idx];
             slave_idx = (slave_idx + 1) % carousel.len();
-            counter += 1;
             let mut sliding_window = sliding_window.write().unwrap();
             sliding_window.push(creature.clone());
             slave_tx.send(creature);
@@ -71,7 +67,7 @@ pub fn spawn_evaluator(num_evaluators: usize,
 
 fn slave_eval(eval_rx: Receiver<Creature>, 
               eval_tx: Sender<Creature>,
-              sliding_window: Arc<RwLock<CircBuf>>) -> () {
+              _sliding_window: Arc<RwLock<CircBuf>>) -> () {
 
     /*
     let interp = Interpreter::new();    

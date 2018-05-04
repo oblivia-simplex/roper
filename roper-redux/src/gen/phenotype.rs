@@ -5,7 +5,7 @@ extern crate evmap;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
-use std::sync::{Arc,Mutex,RwLock,MutexGuard};
+use std::sync::{Arc,Mutex};
 use std::hash::{Hash,Hasher};
 use std::fmt;
 use std::fmt::{Display};
@@ -14,9 +14,8 @@ use self::rand::{Rng,SeedableRng};
 use self::rand::isaac::Isaac64Rng;
 
 use genotype::*;
-use emu::loader::{Mode,MemImage};
+use emu::loader::{Mode};
 use par::statics::*;
-use emu::loader;
 use log;
 
 #[derive(ForeignValue,FromValue,FromValueRef,Clone,Debug,PartialEq,Eq)]
@@ -37,10 +36,10 @@ pub struct VisitRecord {
 
 impl Display for VisitRecord {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}    [REGS: {}]", 
-               log::disas_static(self.pc, 
-                                 self.inst_size, 
-                                 self.mode, 
+        write!(f, "{}    [REGS: {}]",
+               log::disas_static(self.pc,
+                                 self.inst_size,
+                                 self.mode,
                                  1),
                self.registers
                    .iter()
@@ -59,7 +58,7 @@ pub struct Pod {
 }
 
 impl Pod {
-    pub fn new(registers: Vec<u64>, 
+    pub fn new(registers: Vec<u64>,
                visited:   Vec<VisitRecord>,
                writelog:  Vec<WriteRecord>,
                retlog:    Vec<u64>) -> Self {
@@ -82,7 +81,7 @@ impl Pod {
 
     /// Dump information about the writes performed by the
     /// phenotype.
-    /// TODO: adjust the word size used in these contexts, dependent on 
+    /// TODO: adjust the word size used in these contexts, dependent on
     /// architecture. (FIXME)
     pub fn dump_written (&self) -> Vec<String> {
         let mut v = Vec::new();
@@ -109,12 +108,12 @@ impl Pod {
  * the hatched phenome with different parameters. But that part of the
  * evaluation is a one-shot deal. ROPER I made the mistake of tightly
  * coupling the hatching procedure with the "eval_case" procedure. This
- * doesn't need to be done that way. 
+ * doesn't need to be done that way.
  */
 
 pub type Input = Vec<u64>; /* a static reference would be better FIXME */
 pub type Phenome = HashMap<Input,Option<Pod>>;
-pub type Fitness<T: Clone + Ord + PartialEq + Send> = T;
+pub type Fitness = Vec<f32>;
 
 #[derive(ForeignValue,IntoValue,FromValueRef,Debug,Clone)]
 pub struct Creature {
@@ -123,7 +122,7 @@ pub struct Creature {
     pub index: usize,
     pub metadata: Metadata,
     pub name: String,
-    pub fitness: Option<Fitness<Vec<f32>>>,
+    pub fitness: Option<Fitness>,
 }
 
 impl PartialEq for Creature {
@@ -236,7 +235,7 @@ impl Creature {
 type Larva = Mutex<Creature>;
 
 fn larvalise (creature: Creature) -> Larva {
-    Mutex::new(creature) 
+    Mutex::new(creature)
 }
 
 /* ok, evmap won't work. */
@@ -248,7 +247,7 @@ pub struct Population {
 impl Population {
     /// What we want to do here is to create an indexable
     /// collection of creatures that can be individually
-    /// and mutably accessed by arbitrary threads. 
+    /// and mutably accessed by arbitrary threads.
     pub fn new(creatures: Vec<Creature>) -> Self {
         let mut mutexed_creatures = Vec::new();
         let mut creatures = creatures;
@@ -259,7 +258,7 @@ impl Population {
                                          creatures.pop()
                                                   .unwrap()))))
         }
-            
+
         Population {
             hive: Arc::new(mutexed_creatures),
         }
@@ -269,10 +268,10 @@ impl Population {
     /// Selects num individuals at random, using the RngSeed, and
     /// ensures that the chosen are all internally mutable, wrt their
     /// RwLocks.
-    pub fn choose(&self, seed: RngSeed, num: usize) 
+    pub fn choose(&self, seed: RngSeed, num: usize)
         -> Vec<Arc<RefCell<Creature>>> {
-        let mut rng = Isaac64Rng::from_seed(&seed);
-        //sample(&mut rng, self.hive, num)       
+        let mut rng = Isaac64Rng::from_seed(seed);
+        //sample(&mut rng, self.hive, num)
         // choose unlocked
         let mut chosen = Vec::new();
         /* Careful here. Could this cause hold-and-wait deadlocks?

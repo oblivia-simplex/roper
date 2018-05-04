@@ -6,8 +6,7 @@ use std::collections::HashMap;
 use emu::loader::{Mode,Seg,align_inst_addr,MEM_IMAGE};
 use par::statics::*;
 
-use self::rand::isaac::Isaac64Rng;
-use self::rand::{Rng,SeedableRng};
+use self::rand::{Rng};
 
 #[derive(IntoValue,StructValue,ForeignValue,FromValue,FromValueRef,Clone,Copy,Debug,PartialEq,Eq)]
 pub struct Gadget {
@@ -162,32 +161,27 @@ impl Chain {
      * over a channel, maybe. 
      */
     /* TODO alignment function, which depends on ARCHITECTURE */
-    pub fn from_seed(seed: &[u64],
-                     len_range: (usize, usize)) -> Self {
+    pub fn from_seed<R>(rng: &mut R,
+                        len_range: (usize, usize)) -> Self
+    where R: Rng, {
 
-        let xbits: u64 = seed[0];
+        let xbits: u64 = rng.gen::<u64>();
 
         let input_slot_freq = INPUT_SLOT_FREQ;
-        let mut rng = Isaac64Rng::from_seed(seed);
         let exec_segs = MEM_IMAGE.iter()
                                  .filter(|s| s.is_executable())
                                  .collect::<Vec<&Seg>>();
-        let pick_addr = (|r| -> (u64,Mode) {
-                let mut rng = Isaac64Rng::from_seed(&[r]);
-                /* TODO weight this, so that small segs are overly sampled */
-                let seg = &exec_segs[rng.gen::<usize>() % exec_segs.len()];
-                let addr = seg.aligned_start() + rng.gen::<u64>() % seg.aligned_size() as u64;
-                let mode = ARCHITECTURE.mode(); /* choose mode randomly if ARM */
-                let aligned_addr = align_inst_addr(addr, mode);
-                (aligned_addr,mode)
-            });
 
         let mut alleles: Vec<Allele> = Vec::new();
         let (min_len, max_len) = len_range;
         let glen = rng.gen::<usize>() % (max_len - min_len) + min_len;
 
         for _ in 0..glen {
-            let (addr,mode) = pick_addr(rng.gen::<u64>());
+            let seg = &exec_segs[rng.gen::<usize>() % exec_segs.len()];
+            let unaligned_addr = seg.aligned_start() + rng.gen::<u64>()
+                % seg.aligned_size() as u64;
+            let mode = ARCHITECTURE.mode(); /* choose mode randomly if ARM */
+            let addr = align_inst_addr(unaligned_addr, mode);
             /* sp_delta-informed chance of choosing const or input TODO */
             if alleles.len() > 0 && rng.gen::<f32>() < input_slot_freq {
                 /* NOTE: Artificially adding an upper bound on the number of inputs
@@ -253,19 +247,18 @@ impl Metadata {
 
 
 fn pack_word(word: u64, size: usize, endian: Endian) -> Vec<u8> {
-    let mut p : Vec<u8> = Vec::new();
-    match size {
+    let mut p = match size {
         4 => { 
             let w32 = if endian == Endian::Big {
                 (word & 0xFFFFFFFF00000000) as u32
             } else {
                 (word & 0x00000000FFFFFFFF) as u32
             };
-            p = pack_word32le(w32)
+            pack_word32le(w32)
         },
-        8 => p = pack_word64le(word),
+        8 => pack_word64le(word),
         _ => panic!("Bad word size. Must be either 4 or 8."),
-    }
+    };
     if endian == Endian::Big {
         p.reverse()
     };
@@ -303,3 +296,4 @@ pub fn pack_word64le_vec (v: &Vec<u64>) -> Vec<u8> {
     }
     p
 }
+

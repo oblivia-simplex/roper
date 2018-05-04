@@ -8,22 +8,17 @@ extern crate capstone;
 
 //use std::boxed::FnBox;
 use std::thread::{spawn,sleep,JoinHandle};
-use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
-use std::sync::{Arc,RwLock,MutexGuard,Mutex};
+use std::sync::mpsc::{channel,Sender,Receiver};
 use std::rc::Rc;
-use std::cell::{RefMut,RefCell};
-use std::ops::Deref;
+use std::cell::{RefCell};
 use std::time::Duration;
-use self::rand::{SeedableRng,Rng,thread_rng};
-use self::rand::isaac::Isaac64Rng;
 //use self::rayon::prelude::*;
 
-use emu::loader;
-use emu::loader::{ARM_ARM,Arch,Mode,Engine,get_mode,read_pc,uc_general_registers};
+use emu::loader::{Engine,get_mode,read_pc,uc_general_registers};
 use par::statics::*;
 use gen;
 use gen::phenotype::{VisitRecord,WriteRecord};
-use log;
+// use log;
 
 fn snooze (millis: u64) {
     sleep(Duration::from_millis(millis))
@@ -71,7 +66,7 @@ pub fn hatch (creature: &mut gen::Creature,
      */
     let (stack_addr, stack_size) = emu.find_stack();
     payload.truncate(stack_size / 2);
-    let payload_len = payload.len();
+    let _payload_len = payload.len();
     let stack_entry = stack_addr + (stack_size/2) as u64;
     /* save writeable regions **/
 
@@ -143,10 +138,10 @@ pub fn hatch (creature: &mut gen::Creature,
 
     let ret_hook = {
         let retlog = retlog.clone();
-        let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
+        let callback = move |_uc: &unicorn::Unicorn, addr: u64, _size: u32| {
             let mut retlog = retlog.borrow_mut();
             let pc = addr;
-            let dis = log::disas_static(pc, size as usize, ARCHITECTURE.mode(), 1);
+            //let dis = log::disas_static(pc, size as usize, ARCHITECTURE.mode(), 1);
             //println!("RET HOOK: {}", dis);
             retlog.push(pc);
         };
@@ -155,9 +150,9 @@ pub fn hatch (creature: &mut gen::Creature,
 
     let indirect_jump_hook = {
         let jmplog = jmplog.clone();
-        let callback = move |uc: &unicorn::Unicorn, addr: u64, size: u32| {
+        let callback = move |_uc: &unicorn::Unicorn, addr: u64, _size: u32| {
             let mut jmplog = jmplog.borrow_mut();
-            let dis = log::disas_static(addr, size as usize, ARCHITECTURE.mode(), 1);
+            //let dis = log::disas_static(addr, size as usize, ARCHITECTURE.mode(), 1);
             //println!("JMP HOOK: {}", dis);
             jmplog.push(addr);
         };
@@ -166,7 +161,7 @@ pub fn hatch (creature: &mut gen::Creature,
 
     
     /* Hatch! **/ /* FIXME don't hardcode these params */
-    let x = emu.start(start_addr, 0, 0, 1024);
+    let _res = emu.start(start_addr, 0, 0, 1024);
 
     if retlog.borrow().len() > 2 {
         //println!("PAYLOAD: 0x{:x} bytes, {} INSTS, {} RETS: {} IND.JMPS: {}", visitor.borrow().len(), payload_len, retlog.borrow().len(), retlog.borrow().iter().map(|x| format!("{:08x}",x)).collect::<Vec<String>>().join(" "), jmplog.borrow().len());
@@ -284,7 +279,7 @@ pub fn spawn_hatchery (num_engines: usize, expect: usize)
     let handle = spawn(move || {
         let mut carousel = Vec::new();
         
-        for i in 0..num_engines {
+        for _ in 0..num_engines {
             let (eve_tx,eve_rx) = channel();
             let from_hatch_tx = from_hatch_tx.clone();
             let h = spawn(move || { spawn_coop(eve_rx, from_hatch_tx); } );        

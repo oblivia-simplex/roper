@@ -11,15 +11,15 @@ pub enum SelectionMethod {
 }
 
 
-
+/*
 fn pareto_ordering (creatures: &mut Vec<Creature>) -> () {
 }
-
-pub fn spawn_breeder(selection_method: SelectionMethod)
+*/
+pub fn spawn_breeder(_selection_method: SelectionMethod)
     -> (Sender<Creature>, Receiver<Creature>, JoinHandle<()>)
 {
-    let (from_breed_tx, from_breed_rx) = channel();
-    let (into_breed_tx, into_breed_rx) = channel();
+    let (_from_breed_tx, from_breed_rx) = channel();
+    let (into_breed_tx, _into_breed_rx) = channel();
 
     let breed_handle = spawn(move || {
         /*TODO STUB */

@@ -3,12 +3,8 @@ extern crate goblin;
 extern crate rand;
 extern crate capstone;
 
-use std::collections::HashMap;
-use self::rand::{Rng,ThreadRng,thread_rng};
-use std::fmt::{Debug,Formatter,Display};
+use std::fmt::{Formatter,Display};
 use std::fmt;
-use std::path::Path;
-use std::sync::{Mutex,Arc};
 use self::goblin::{Object,elf};
 use self::unicorn::*;
 use par::statics::*;
@@ -19,7 +15,6 @@ use par::statics::*;
  * Perhaps put this in par::statics. That would mean moving the goblin parsing
  * over there, which would also speed up the emu generation process. 
  */
-const VERBOSE : bool = false;
 pub const ARM_ARM   : Arch = Arch::Arm(Mode::Arm);
 pub const ARM_THUMB : Arch = Arch::Arm(Mode::Thumb);
 pub const STACK_SIZE: usize = 0x1000;
@@ -118,9 +113,10 @@ pub fn whats_pc() -> i32 {
     match *ARCHITECTURE {
         Arch::Arm(_) => RegisterARM::PC.to_i32(),
         Arch::Mips(_) => RegisterMIPS::PC.to_i32(),
-        Arch::X86(Bits64) => RegisterX86::RIP.to_i32(),
-        Arch::X86(Bits32) => RegisterX86::EIP.to_i32(),
-        Arch::X86(Bits16) => RegisterX86::IP.to_i32(),
+        Arch::X86(Mode::Bits64) => RegisterX86::RIP.to_i32(),
+        Arch::X86(Mode::Bits32) => RegisterX86::EIP.to_i32(),
+        Arch::X86(Mode::Bits16) => RegisterX86::IP.to_i32(),
+        _ => panic!("unimplemented"),
     }
 }
 
@@ -135,9 +131,9 @@ pub fn read_pc(uc: &Unicorn) -> Result<u64,unicorn::Error> {
 pub fn whats_accum() -> i32 {
     match *ARCHITECTURE {
         Arch::Arm(_) => RegisterARM::R0.to_i32(),
-        Arch::X86(Bits64) => RegisterX86::RAX.to_i32(),
-        Arch::X86(Bits32) => RegisterX86::EAX.to_i32(),
-        Arch::X86(Bits16) => RegisterX86::AX.to_i32(),
+        Arch::X86(Mode::Bits64) => RegisterX86::RAX.to_i32(),
+        Arch::X86(Mode::Bits32) => RegisterX86::EAX.to_i32(),
+        Arch::X86(Mode::Bits16) => RegisterX86::AX.to_i32(),
         _ => panic!("not yet implemented"),
     }
 }
@@ -147,7 +143,7 @@ pub fn uc_general_registers(uc: &Unicorn) -> Result<Vec<u64>,unicorn::Error> {
     let regids = match *ARCHITECTURE {
         Arch::Arm(_) => regids(&ARM_REGISTERS),
         Arch::Mips(_) => regids(&MIPS_REGISTERS),
-        Arch::X86(Bits64) => regids(&X86_64_REGISTERS),
+        Arch::X86(Mode::Bits64) => regids(&X86_64_REGISTERS),
         _ => unreachable!("Not implemented"),
     };
     Ok(regids.iter()
@@ -213,13 +209,13 @@ pub struct Engine {
 impl Engine {
     
     pub fn new (arch: Arch) -> Self {
-        let (uc_arch, uc_mode) = arch.as_uc();
+        let (_uc_arch, uc_mode) = arch.as_uc();
         let mut mem: MemImage = mem_image_deep_copy();
         let emu = init_emulator(arch, &mut mem, false).unwrap(); 
         let regids = match arch {
             Arch::Arm(_) => regids(&ARM_REGISTERS),
             Arch::Mips(_) => regids(&MIPS_REGISTERS),
-            Arch::X86(Bits64) => regids(&X86_64_REGISTERS),
+            Arch::X86(Mode::Bits64) => regids(&X86_64_REGISTERS),
             _ => unreachable!("Not implemented"),
         };
         let mut emu = Engine {
@@ -270,7 +266,7 @@ impl Engine {
     pub fn hard_reset (&mut self) -> () {
         self.save_state();
         let (uc_arch, uc_mode) = self.arch.as_uc();
-        let mut uc = unicorn::Unicorn::new(uc_arch, uc_mode).unwrap();
+        let uc = unicorn::Unicorn::new(uc_arch, uc_mode).unwrap();
         for seg in &self.mem {
             uc.mem_map(seg.aligned_start(),
                        seg.aligned_size(),
@@ -441,7 +437,7 @@ impl Engine {
         -> Result<unicorn::uc_hook, unicorn::Error>
         where F: Fn(&Unicorn, u64, u32) -> () + 'static,
     {
-        let (exec_start, exec_stop) = self.exec_mem_range();
+        //let (exec_start, exec_stop) = self.exec_mem_range();
         let arch = ARCHITECTURE.with_mode(self.mode());
         match arch {
             Arch::X86(_) => {
@@ -750,7 +746,7 @@ pub fn init_emulator (archmode: Arch, mem: &mut MemImage, unsafely: bool)
 
     let (arch, mode) = archmode.as_uc();
     
-    let mut uc = Unicorn::new(arch, mode)?;
+    let uc = Unicorn::new(arch, mode)?;
     
     for seg in mem {
         if unsafely {
@@ -781,7 +777,7 @@ pub fn calc_sp_delta(addr: u64, mode: Mode) -> usize {
     let arch_mode = ARCHITECTURE.with_mode(mode);
     /* TODO ! */
     match arch_mode {
-        Arch::X86(Bits64) => x86_64_calc_sp_delta(addr),
+        Arch::X86(Mode::Bits64) => x86_64_calc_sp_delta(addr),
         Arch::Arm(Mode::Arm) => arm_calc_sp_delta(addr),
         Arch::Arm(Mode::Thumb) => thumb_calc_sp_delta(addr),
         _ => panic!("unimplemented sp_delta arch/mode"),
@@ -789,17 +785,17 @@ pub fn calc_sp_delta(addr: u64, mode: Mode) -> usize {
     
 }
 
-fn x86_64_calc_sp_delta(addr: u64) -> usize {
+fn x86_64_calc_sp_delta(_addr: u64) -> usize {
     /* use capstone to disasm_count 1 instruction from addr */
     /* inspect operands and implicit writes, to gauge effect on RSP */
     0
 }
 
-fn arm_calc_sp_delta(addr: u64) -> usize {
+fn arm_calc_sp_delta(_addr: u64) -> usize {
     0
 }
 
-fn thumb_calc_sp_delta(addr: u64) -> usize {
+fn thumb_calc_sp_delta(_addr: u64) -> usize {
     0
 }
 
@@ -819,7 +815,7 @@ lazy_static! {
                         if seg.loadable() {
                             let start = seg.aligned_start() as usize;
                             if start == 0 { page_one = true };
-                            let end = seg.aligned_end() as usize;
+                            //let end = seg.aligned_end() as usize;
                             segs.push(seg);
                         }
                     }
@@ -839,7 +835,6 @@ lazy_static! {
                         let aj = usize::min(j, CODE_BUFFER.len());
                         let sdata = CODE_BUFFER[i..aj].to_vec();
                         /* find the appropriate segment */
-                        let mut s = 0;
                         
                         for seg in segs.iter_mut() {
                             if shdr.sh_addr >= seg.aligned_start()
@@ -850,7 +845,7 @@ lazy_static! {
                                 let mut v_off 
                                     = (shdr.sh_addr - seg.aligned_start()) as usize;
                                 for byte in sdata {
-                                    if (v_off >= seg.data.len()) {
+                                    if v_off >= seg.data.len() {
                                         println!("[x] v_off 0x{:x} > seg.data.len() 0x{:x}. Look into this. Line {} of loader.rs.", v_off, seg.data.len(), line!());
                                         break;
                                     };
@@ -865,7 +860,6 @@ lazy_static! {
                                 */
                                 break;
                             }
-                            s += 1;
                         }
                     }
                     /* now allocate the stack */

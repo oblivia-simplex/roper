@@ -3,21 +3,17 @@ extern crate goblin;
 extern crate num;
 
 use std::fs::File;
-use std::sync::{Arc,RwLock,Mutex};
+use std::sync::{Arc,RwLock};
 use std::io::Read;
 use std::path::Path;
 use std::env;
 use std::fmt;
 
 use self::num::PrimInt;
-use self::goblin::{Object,elf};
-use self::goblin::elf::Elf;
+use self::goblin::{Object};
 use self::goblin::elf::header::machine_to_str;
-use self::rand::{Rng,SeedableRng};
-use self::rand::isaac::Isaac64Rng;
 
-use emu::loader;
-use emu::loader::{Arch,Mode,PROT_READ,PROT_WRITE,PROT_EXEC};
+use emu::loader::{Arch,Mode};
 
 
 lazy_static! {
@@ -55,17 +51,20 @@ fn test_read_conf() {
 
 
 
-pub type RngSeed = Vec<u64>;
+pub type RngSeed = [u8; 32];
 
 lazy_static! {
     pub static ref RNG_SEED: RngSeed /* for Isaac64Rng */
         = {
             let seed_txt = read_conf("isaac64_seed.txt");
-            let mut seed_vec = Vec::new();
-            for row in seed_txt.lines() {
-                seed_vec.push(u64::from_str_radix(row,16)
-                                 .expect("Failed to parse seed"));
+            let mut seed_vec = [0u8; 32];
+            let mut i = 0;
+            for octet in seed_txt.split_whitespace() {
+                seed_vec[i] = u8::from_str_radix(octet,16).expect("Failed to parse seed");
+                i += 1;
+                if i == 32 { break };
             }
+            while i < 32 { seed_vec[i] = 0 };
             seed_vec
         };
 }
@@ -156,7 +155,7 @@ lazy_static! {
      * for which mbit ^ pbit == 1. if false, it selects only those slots
      * for which mbit ^ pbit == 0.
      */
-    pub static ref CROSSOVER_XBIT: bool = true; 
+    pub static ref CROSSOVER_XBIT: bool = true;
     /* TODO read from config file */
 }
 
@@ -166,9 +165,17 @@ pub enum MaskOp {
     Nand,
     OnePt,
     Uniform,
+    And,
+    Or,
 }
 
 lazy_static! {
     /* TODO read from config file */
-    pub static ref CROSSOVER_MASK_COMBINER: MaskOp = MaskOp::Uniform;
+    pub static ref CROSSOVER_MASK_COMBINER: MaskOp = MaskOp::And;
 }
+
+lazy_static! {
+    /* TODO read */
+    pub static ref CROSSOVER_MASK_INHERITANCE: MaskOp = MaskOp::Uniform;
+}
+

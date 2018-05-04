@@ -1,7 +1,7 @@
 extern crate rand;
 
 use std::thread::{spawn,JoinHandle};
-use std::sync::mpsc::{Sender,Receiver,channel};
+use std::sync::mpsc::{Sender,Receiver};
 
 use emu;
 use fit;
@@ -50,7 +50,7 @@ pub fn evolution_pipeline (num_engines: usize,
         = gen::spawn_seeder(population_size,
                             (2,32),                   /* length range */
                             &vec![vec![1,2,3]],       /* fake problem set */
-                            RNG_SEED[0], /* but FIXME: refresh seed! */
+                            *RNG_SEED, /* but FIXME: refresh seed! */
         );
     let (into_hatch_tx, from_hatch_rx, hatch_handle) 
         = emu::spawn_hatchery(num_engines, expect);
@@ -74,6 +74,15 @@ pub fn evolution_pipeline (num_engines: usize,
      */
     /* the circle is now complete. */
 
+    seed_handle.join().unwrap();
+    hatch_handle.join().unwrap();
+    eval_handle.join().unwrap();
+    breed_handle.join().unwrap();
+    log_handle.join().unwrap();
+
+    for ph in pipehandles {
+        ph.join().unwrap();
+    }
 
 
 }

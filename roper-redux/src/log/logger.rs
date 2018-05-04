@@ -1,8 +1,6 @@
-use std::thread::{spawn,sleep,JoinHandle};
-use std::sync::mpsc::{sync_channel,channel,SyncSender,Sender,Receiver};
-use std::sync::{Arc,RwLock,MutexGuard,Mutex};
-use std::collections::VecDeque;
-use std::time::Duration;
+use std::thread::{spawn,JoinHandle};
+use std::sync::mpsc::{channel,Sender};
+use std::sync::{Arc,RwLock};
 
 use gen::Creature;
 use fit::CircBuf;
@@ -27,7 +25,7 @@ pub fn spawn_logger (circbuf_size: usize,
     let (analyse_tx, analyse_rx) = channel();
 
     let window = circbuf.clone();
-    let stat_handle = spawn(move || {
+    let _stat_handle = spawn(move || {
         for _ in analyse_rx {
             let window = window.read().unwrap();
             /* TODO here is where the analyses will be dispatched from */

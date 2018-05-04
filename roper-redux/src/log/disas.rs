@@ -5,8 +5,8 @@ use self::capstone::prelude::*;
 use self::capstone::{Capstone};
 
 use emu::loader;
-use emu::loader::{MEM_IMAGE,Mode,Arch};
-use par::statics::{ARCHITECTURE,CODE_BUFFER};
+use emu::loader::{Mode,Arch};
+use par::statics::{ARCHITECTURE};
 use std::sync::Mutex;
 
 lazy_static! {
