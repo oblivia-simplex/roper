@@ -1,10 +1,11 @@
+// [[file:~/text/Projects/ROPER/roper-redux/src/evo/crossover.org::crossover-module-dependencies][crossover-module-dependencies]]
 extern crate rand;
-
 use self::rand::{Rng};
-
 use gen::*;
 use par::statics::*;
+// crossover-module-dependencies ends here
 
+// [[file:~/text/Projects/ROPER/roper-redux/src/evo/crossover.org::crossover-masks-utility-functions][crossover-masks-utility-functions]]
 /// One-point crossover, between two u64s, as bitvectors.
 fn onept_bits<R: Rng>(a: u64, b: u64, rng: &mut R) -> u64 {
     let i = rng.gen::<u64>() % 64;
@@ -34,62 +35,39 @@ fn combine_xbits<R: Rng>(m_bits: u64,
         MaskOp::Or => m_bits | p_bits,
     }
 }
-/**
- * The idea with the xbits mechanism is this:
- * Each genotype has an 'xbits' bitvector associated with it (in the form,
- * for now, of a u64). For the first generation, this value is
- * initialized randomly. During crossover, the sites of genetic exchange
- * are determined by the XOR of the two parents' xbit vectors:
- * crossover may (or must?) occur (only) at those sites (mod 64) where
- * the xbit vector has a 1 (we could experiment with the inbreeding-friendly
- * variation where we only crossover at 0, too).
- *
- * This may lead to a few potentially interesting effects:
- * - facilitation of emergent homological crossover
- * - emergent speciation
- *
- * We should have a float parameter crossover_degree, between 0.0 and 1.0,
- * which select a certain ratio of the xover sites to use in a each particular
- * crossover event.
- *
- * sites_to_use <- choose ceil(xbits.count_ones() * crossover_degree) from sites
- */
+// crossover-masks-utility-functions ends here
 
+// [[file:~/text/Projects/ROPER/roper-redux/src/evo/crossover.org::combine-crossover-masks][combine-crossover-masks]]
 fn xbits_sites<R: Rng>(
-    m_bits: u64,
-    p_bits: u64,
-    bound: usize,
-    crossover_degree: f32,
-    mut rng: &mut R,
-) -> (u64, u64, Vec<usize>) {
-    /*
-     * There's no reason why the inheritance mechanism for xbits
-     * has to be the same as the combination mechanism. We could use,
-     * e.g., AND for combination, and Uniform for inheritance.
-     */
-    let xbits = combine_xbits(m_bits, p_bits, *CROSSOVER_MASK_COMBINER, rng);
-    let child_xbits = combine_xbits(m_bits, p_bits, *CROSSOVER_MASK_INHERITANCE, rng);
-    let mut potential_sites = (0..bound)
-        .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
-        .collect::<Vec<usize>>();
-    potential_sites.sort();
-    potential_sites.dedup();
-    let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
-    if cfg!(debug_assertions) {
-        println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
-    }
+      m_bits: u64,
+      p_bits: u64,
+      bound: usize,
+      crossover_degree: f32,
+      mut rng: &mut R,
+  ) -> (u64, u64, Vec<usize>) {
+      let xbits = combine_xbits(m_bits, p_bits, *CROSSOVER_MASK_COMBINER, rng);
+      let child_xbits = combine_xbits(m_bits, p_bits, *CROSSOVER_MASK_INHERITANCE, rng);
+      let mut potential_sites = (0..bound)
+          .filter(|x| (1u64.rotate_left(*x as u32) & xbits != 0) == *CROSSOVER_XBIT)
+          .collect::<Vec<usize>>();
+      potential_sites.sort();
+      potential_sites.dedup();
+      let num = (potential_sites.len() as f32 * crossover_degree).ceil() as usize;
+      if cfg!(debug_assertions) {
+          println!("{:064b}: potential sites: {:?}", xbits, &potential_sites);
+      }
 
-    let mut actual_sites = rand::seq::sample_iter(&mut rng,
-                                                  potential_sites.into_iter(), num).unwrap();
-    if cfg!(debug_assertions) {
-        println!("actual sites: {:?}", &actual_sites);
-    }
-    (xbits, child_xbits, actual_sites)
-}
+      let mut actual_sites = rand::seq::sample_iter(&mut rng,
+                                                    potential_sites.into_iter(), num).unwrap();
+      if cfg!(debug_assertions) {
+          println!("actual sites: {:?}", &actual_sites);
+      }
+      (xbits, child_xbits, actual_sites)
+  }
+// test
+// combine-crossover-masks ends here
 
-/* Perhaps add a safeguard here to make sure that every offspring
- * still has an entry point.
- */
+// [[file:~/text/Projects/ROPER/roper-redux/src/evo/crossover.org::homologous-crossover][homologous-crossover]]
 pub fn homologous_crossover<R>(mother: &Creature,
                                father: &Creature,
                                mut rng: &mut R) -> Vec<Creature>
@@ -135,3 +113,4 @@ where R: Rng, {
     }
     offspring
 }
+// homologous-crossover ends here
