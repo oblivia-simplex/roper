@@ -1,0 +1,43 @@
+%\usepackage[a-1b]{pdfx}
+\usepackage[acronym]{glossaries}
+\usepackage[scaled=0.85]{beramono}
+\usepackage{authorindex}
+\let\cite=\aicite
+%\usepackage{algorithmic}
+%\usepackage[chapter]{algorithm}
+%\renewcommand{\listalgorithmname}{ }
+\usepackage{color}
+\usepackage{needspace}
+\usepackage{multicol,calc,listings}
+\lstset{
+  basicstyle=\ttfamily,
+  keepspaces=true,
+  columns=fullflexible,
+  escapeinside={/*|}{*|/}
+}
+\lstset{basicstyle=\footnotesize\ttfamily}
+\usepackage{booktabs,url}
+%  For formal tables
+%{\ttfamily \hyphenchar\the\font=`\-} 
+\usepackage{makeidx}
+\makeindex
+
+%\setcounter{secnumdepth}{5}
+% Render all text in math sections monospaced
+%\everymath{\mathtt{\xdef\tmp{\fam\the\fam\relax}\aftergroup\tmp}}
+%\everydisplay{\mathtt{\xdef\tmp{\fam\the\fam\relax}\aftergroup\tmp}}
+%\setbox0\hbox{$ $} 
+
+%\usepackage{quotchap}
+\makenoidxglossaries
+\loadglsentries{../lit-glossary}
+
+%\usepackage[all]{nowidow}
+%\usepackage{imakeidx}
+%\makeindex[title={}]
+
+%\widowpenalty10000
+%\clubpenalty10000
+
+%\usepackage[lmargin=3.81cm,tmargin=2.54cm,bmargin=2.54cm,rmargin=2.54cm]{geometry}
+

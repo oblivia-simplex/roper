@@ -2,12 +2,7 @@
 name = "roper2"
 version = "0.2.0"
 authors = ["oblivia simplex <oblivia@paranoici.org>"]
-#build = "tango-build.rs"
 build = "build.rs"
-
-[build-dependencies]
-#tango = { git = "https://github.com/oblivia-simplex/tango", branch = "master" }
-
 
 [lib]
 name = "libroper"
@@ -24,7 +19,6 @@ libunicorn-sys = { git = "https://github.com/ekse/unicorn-rs", branch = "master"
 ketos = "0.10.0"
 ketos_derive = "0.10.0"
 goblin = "0.0.14"
-#capstone = "0.0.4"
 capstone-sys = "0.7.0"
 capstone = "0.3.1"
 getopts = "0.2.17"

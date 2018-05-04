@@ -55,6 +55,7 @@ pub struct Pod {
     pub visited: Vec<VisitRecord>,
     pub writelog: Vec<WriteRecord>,
     pub retlog: Vec<u64>,
+
 }
 
 impl Pod {

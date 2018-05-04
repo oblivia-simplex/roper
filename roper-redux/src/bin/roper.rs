@@ -20,7 +20,6 @@ use libroper::evo;
 
 fn mkseed(u: u64) -> [u8; 32] {
     let mut seed = [0u8; 32];
-    let mut u = u;
     for i in 0..32 {
         seed[i] = (u.rotate_left(2) & 0xFF) as u8;
     }
