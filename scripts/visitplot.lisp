@@ -480,7 +480,7 @@
          (cmd (format nil "montage ~A/*.ppm -geometry +~D+~D ~A/montage.png"
                       dirname dim dim dirname)))
     (colormap->canvases colormap dirname)
-    (asdf:run-shell-command cmd)))
+    (uiop:run-program cmd)))
 
 
 ;; NB: to reduce memory footprint, do a binary merge superimpose on
@@ -502,7 +502,7 @@
                                                          ppm-path)
                                ".png")))
     (format t "png-path: ~A~%" png-path)
-    (asdf:run-shell-command (format nil "convert -scale 200% ~A ~A" ppm-path png-path))))
+    (uiop:run-program (format nil "convert -scale 200% ~A ~A" ppm-path png-path))))
 
 
 (defun heatmap->canvas (heatmap-path &key ppm-path elf-path)
