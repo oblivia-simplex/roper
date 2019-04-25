@@ -1,6 +1,6 @@
 ;; --- BEGIN HEATMAP ---
 (
-  (:elfpath . "/home/vagrant/ROPER/rust/../data/tomato-RT-N18U-httpd") ;; don't parse as int!
+  (:elfpath . "/home/oblivia/src/roper/rust/../data/tomato-RT-N18U-httpd") ;; don't parse as int!
   (#xa9c8 . #x1)
   (#xa9ca . #x1)
   (#xa9cc . #x1)
